@@ -82,6 +82,7 @@ describe('HTTP status mapping', () => {
   it('matches the expected per-code statuses', () => {
     const expected: Record<keyof typeof ERROR_CODES, number> = {
       AUTH_INVALID_CREDENTIALS: 401,
+      AUTH_INVALID_TOKEN: 401,
       AUTH_EMAIL_TAKEN: 409,
       AUTH_WEAK_PASSWORD: 422,
       AUTH_MFA_REQUIRED: 401,

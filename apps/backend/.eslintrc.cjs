@@ -34,4 +34,19 @@ module.exports = {
     ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
+  overrides: [
+    {
+      // Jest's `expect(obj.method).toHaveBeenCalled(...)` legitimately
+      // references unbound methods, and mock harnesses commonly cast
+      // through `as unknown as jest.Mocked<X>` which trips
+      // `no-unnecessary-type-assertion` when the inner shape already
+      // matches. Both rules guard runtime correctness — they do not
+      // earn their cost in test files.
+      files: ['**/*.spec.ts', '**/*.test.ts', 'test/**/*.ts'],
+      rules: {
+        '@typescript-eslint/unbound-method': 'off',
+        '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      },
+    },
+  ],
 };

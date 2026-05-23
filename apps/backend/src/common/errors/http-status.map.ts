@@ -17,6 +17,7 @@ import { ERROR_CODES, type ErrorCode } from './error-codes';
 export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   // 401 — credentials missing / invalid / MFA required (auth not satisfied).
   [ERROR_CODES.AUTH_INVALID_CREDENTIALS]: 401,
+  [ERROR_CODES.AUTH_INVALID_TOKEN]: 401,
   [ERROR_CODES.AUTH_MFA_REQUIRED]: 401,
   [ERROR_CODES.AUTH_MFA_INVALID_CODE]: 401,
   [ERROR_CODES.AUTH_REFRESH_REUSE]: 401,
