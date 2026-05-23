@@ -56,13 +56,20 @@ export class AuthEventRepository {
   async listByOrganization(
     organizationId: TenantId | string,
     limit = 50,
+    offset = 0,
   ): Promise<AuthEventEntity[]> {
     assertTenantId(organizationId);
     return this.repo.find({
       where: { organizationId },
       order: { createdAt: 'DESC' },
       take: limit,
+      skip: offset,
     });
+  }
+
+  async countByOrganization(organizationId: TenantId | string): Promise<number> {
+    assertTenantId(organizationId);
+    return this.repo.count({ where: { organizationId } });
   }
 
   async listByEventType(eventType: AuthEventType, limit = 50): Promise<AuthEventEntity[]> {

@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { AcceptInvitationController } from './controllers/accept-invitation.controller';
+import { AuthEventsController } from './controllers/auth-events.controller';
 import { InvitationsController } from './controllers/invitations.controller';
 import { MembersController } from './controllers/members.controller';
 import { OrganizationsController } from './controllers/organizations.controller';
@@ -47,6 +48,11 @@ import { OrganizationsService } from './services/organizations.service';
     MembersController,
     InvitationsController,
     AcceptInvitationController,
+    // Audit-read endpoint (BE-AUDIT-02). Hosted in OrganizationsModule
+    // rather than AuditModule because the URL is `/organizations/:id/*`
+    // and the guard chain already resolves cleanly here (AuthModule +
+    // RbacModule + AuditModule all imported above).
+    AuthEventsController,
   ],
   providers: [
     OrganizationRepository,
