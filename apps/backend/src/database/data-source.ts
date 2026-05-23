@@ -31,5 +31,10 @@ export const dataSourceOptions: DataSourceOptions = {
   logging: env.NODE_ENV === 'development' ? ['error', 'warn', 'migration'] : ['error'],
 };
 
+// TypeORM v0.3.30 CLI requires EXACTLY ONE `DataSource` export per
+// data-source file — having both a named (`AppDataSource`) and a
+// `default` export of the same instance trips the v0.3.30 stricter
+// loader with "Given data source file must contain only one export of
+// DataSource instance". The CLI happily picks up a single named
+// export, so we drop the default.
 export const AppDataSource = new DataSource(dataSourceOptions);
-export default AppDataSource;
