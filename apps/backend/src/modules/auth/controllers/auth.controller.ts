@@ -1,15 +1,18 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 
+import { CurrentUser } from '../decorators/current-user.decorator';
+import { Public } from '../decorators/public.decorator';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
+import { SelectOrganizationDto } from '../dto/select-organization.dto';
 import { SignupDto } from '../dto/signup.dto';
-import { Public } from '../decorators/public.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import {
   AuthService,
   type LoginResult,
   type RefreshResult,
+  type SelectOrganizationResult,
   type SignupResult,
 } from '../services/auth.service';
 import { buildAuthRequestContext } from './request-context.helper';
@@ -70,6 +73,28 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() body: RefreshTokenDto, @Req() req: Request): Promise<RefreshResult> {
     return this.auth.refresh(body.refreshToken, buildAuthRequestContext(req));
+  }
+
+  /**
+   * `POST /auth/select-organization` is gated by `JwtAuthGuard`:
+   * the caller must already be authenticated, just not yet tenant-scoped.
+   * The endpoint upgrades the session by re-signing the access token with
+   * `org_id` + `role` claims; from there on every tenant-scoped route can
+   * trust the JWT alone.
+   */
+  @Post('select-organization')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async selectOrganization(
+    @CurrentUser('id') userId: string,
+    @Body() body: SelectOrganizationDto,
+    @Req() req: Request,
+  ): Promise<SelectOrganizationResult> {
+    return await this.auth.selectOrganization(
+      userId,
+      body.organizationId,
+      buildAuthRequestContext(req),
+    );
   }
 
   /**

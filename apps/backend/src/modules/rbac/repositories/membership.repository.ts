@@ -38,6 +38,24 @@ export class MembershipRepository {
     });
   }
 
+  /**
+   * Same as `findActiveByUserAndOrganization` but eager-loads the
+   * `organization` relation. Used by `AuthService.selectOrganization`
+   * to resolve tenant name in one round-trip without injecting
+   * `OrganizationRepository` (which would force a forwardRef cycle
+   * between AuthModule and OrganizationsModule).
+   */
+  async findActiveByUserAndOrganizationWithOrg(
+    userId: string,
+    organizationId: TenantId | string,
+  ): Promise<MembershipEntity | null> {
+    assertTenantId(organizationId);
+    return this.repo.findOne({
+      where: { userId, organizationId, status: 'active' },
+      relations: { organization: true },
+    });
+  }
+
   async findByUserAndOrganization(
     userId: string,
     organizationId: TenantId | string,
@@ -50,6 +68,22 @@ export class MembershipRepository {
     assertTenantId(organizationId);
     return this.repo.find({
       where: { organizationId, status: 'active' },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  /**
+   * Same as `listActiveByOrganization` but loads the `user` + `role`
+   * relations needed by the members view (BE-ORG-07). Kept as a separate
+   * method so the bare lookup stays cheap.
+   */
+  async listActiveByOrganizationWithRelations(
+    organizationId: TenantId | string,
+  ): Promise<MembershipEntity[]> {
+    assertTenantId(organizationId);
+    return this.repo.find({
+      where: { organizationId, status: 'active' },
+      relations: { user: true, role: true },
       order: { createdAt: 'ASC' },
     });
   }

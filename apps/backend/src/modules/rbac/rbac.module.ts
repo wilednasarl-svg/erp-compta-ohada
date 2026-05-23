@@ -13,6 +13,7 @@ import { MembershipRepository } from './repositories/membership.repository';
 import { PermissionRepository } from './repositories/permission.repository';
 import { RolePermissionRepository } from './repositories/role-permission.repository';
 import { RoleRepository } from './repositories/role.repository';
+import { MembershipsService } from './services/memberships.service';
 
 /**
  * `RbacModule` — owns the RBAC catalog (`roles`, `permissions`,
@@ -42,6 +43,7 @@ import { RoleRepository } from './repositories/role.repository';
     PermissionRepository,
     RolePermissionRepository,
     MembershipRepository,
+    MembershipsService,
     TenantGuard,
     RolesGuard,
     PermissionsGuard,
@@ -51,6 +53,7 @@ import { RoleRepository } from './repositories/role.repository';
     PermissionRepository,
     RolePermissionRepository,
     MembershipRepository,
+    MembershipsService,
     TenantGuard,
     RolesGuard,
     PermissionsGuard,

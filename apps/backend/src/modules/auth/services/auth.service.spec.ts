@@ -2,6 +2,11 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { AuthEventContext, AuthEventsService } from '../../audit/services/auth-events.service';
 import type { AuthEventEntity } from '../../audit/entities/auth-event.entity';
+import type { OrganizationEntity } from '../../organizations/entities/organization.entity';
+import type { MembershipEntity } from '../../rbac/entities/membership.entity';
+import type { RoleEntity } from '../../rbac/entities/role.entity';
+import type { MembershipRepository } from '../../rbac/repositories/membership.repository';
+import type { RoleRepository } from '../../rbac/repositories/role.repository';
 import type { MfaConfigEntity } from '../entities/mfa-config.entity';
 import type { UserEntity } from '../entities/user.entity';
 import type { MfaConfigRepository } from '../repositories/mfa-config.repository';
@@ -66,6 +71,12 @@ interface Harness {
     Promise<AuthEventEntity | null>,
     [string, AuthEventContext, Record<string, unknown>?]
   >;
+  listOrgsForUser: jest.Mock<Promise<MembershipEntity[]>, [string]>;
+  findActiveMembershipByUserAndOrgWithOrg: jest.Mock<
+    Promise<MembershipEntity | null>,
+    [string, string]
+  >;
+  findRoleById: jest.Mock<Promise<RoleEntity | null>, [string]>;
 }
 
 function buildHarness(): Harness {
@@ -98,6 +109,12 @@ function buildHarness(): Harness {
   const recordEvent = jest
     .fn<Promise<AuthEventEntity | null>, [string, AuthEventContext, Record<string, unknown>?]>()
     .mockResolvedValue(null);
+  const listOrgsForUser = jest.fn<Promise<MembershipEntity[]>, [string]>().mockResolvedValue([]);
+  const findActiveMembershipByUserAndOrgWithOrg = jest.fn<
+    Promise<MembershipEntity | null>,
+    [string, string]
+  >();
+  const findRoleById = jest.fn<Promise<RoleEntity | null>, [string]>();
 
   const users = {
     findActiveByEmail,
@@ -118,8 +135,13 @@ function buildHarness(): Harness {
     revoke: revokeRefresh,
   } as unknown as RefreshTokenService;
   const audit = { record: recordEvent } as unknown as AuthEventsService;
+  const memberships = {
+    listOrganizationsForUser: listOrgsForUser,
+    findActiveByUserAndOrganizationWithOrg: findActiveMembershipByUserAndOrgWithOrg,
+  } as unknown as MembershipRepository;
+  const roles = { findById: findRoleById } as unknown as RoleRepository;
 
-  const service = new AuthService(users, mfa, passwords, jwt, refresh, audit);
+  const service = new AuthService(users, mfa, passwords, jwt, refresh, audit, memberships, roles);
 
   return {
     service,
@@ -135,6 +157,9 @@ function buildHarness(): Harness {
     rotateRefresh,
     revokeRefresh,
     recordEvent,
+    listOrgsForUser,
+    findActiveMembershipByUserAndOrgWithOrg,
+    findRoleById,
   };
 }
 
@@ -354,6 +379,121 @@ describe('AuthService (BE-AUTH-01..05)', () => {
       expect(h.revokeRefresh).toHaveBeenCalledWith('rt-x');
       expect(h.recordEvent).toHaveBeenCalledTimes(1);
       expect(h.recordEvent.mock.calls[0][0]).toBe('auth.logout');
+    });
+  });
+
+  describe('login populates `organizations`', () => {
+    it('projects each active membership into { id, name, role } and skips soft-deleted orgs', async () => {
+      const h = buildHarness();
+      h.findActiveByEmail.mockResolvedValue(buildUser({ id: 'u-multi' }));
+      h.issueRefresh.mockResolvedValue({
+        token: 'rt',
+        familyId: 'fam',
+        expiresAt: new Date(),
+        userId: 'u-multi',
+        organizationId: null,
+      } satisfies IssuedRefreshToken);
+      h.listOrgsForUser.mockResolvedValue([
+        {
+          organization: { id: 'org-A', name: 'Cabinet A', deletedAt: null },
+          role: { code: 'admin' },
+        } as unknown as MembershipEntity,
+        {
+          organization: { id: 'org-B', name: 'Cabinet B', deletedAt: new Date() },
+          role: { code: 'comptable' },
+        } as unknown as MembershipEntity,
+        {
+          organization: { id: 'org-C', name: 'Cabinet C', deletedAt: null },
+          role: { code: 'auditeur' },
+        } as unknown as MembershipEntity,
+      ]);
+
+      const result = await h.service.login({ email: 'a@b.ci', password: 'StrongPassw0rd!' }, CTX);
+      if (result.mfa_required) {
+        throw new Error('expected no MFA in this test');
+      }
+
+      expect(result.organizations).toEqual([
+        { id: 'org-A', name: 'Cabinet A', role: 'admin' },
+        // org-B skipped (deletedAt non-null)
+        { id: 'org-C', name: 'Cabinet C', role: 'auditeur' },
+      ]);
+    });
+  });
+
+  describe('selectOrganization', () => {
+    it('issues a tenant-scoped token pair on a valid membership', async () => {
+      const h = buildHarness();
+      h.findActiveMembershipByUserAndOrgWithOrg.mockResolvedValue({
+        id: 'm-1',
+        userId: 'u-1',
+        organizationId: 'org-7',
+        roleId: 'role-admin',
+        status: 'active',
+        organization: {
+          id: 'org-7',
+          name: 'Cabinet Konan',
+          deletedAt: null,
+        } as OrganizationEntity,
+      } as unknown as MembershipEntity);
+      h.findRoleById.mockResolvedValue({ id: 'role-admin', code: 'admin' } as RoleEntity);
+      h.issueRefresh.mockResolvedValue({
+        token: 'rt-scoped',
+        familyId: 'fam-2',
+        expiresAt: new Date(),
+        userId: 'u-1',
+        organizationId: 'org-7',
+      } satisfies IssuedRefreshToken);
+
+      const result = await h.service.selectOrganization('u-1', 'org-7', CTX);
+
+      expect(h.signAccessToken).toHaveBeenCalledWith({
+        sub: 'u-1',
+        orgId: 'org-7',
+        role: 'admin',
+        mfaVerified: false,
+      });
+      expect(result).toEqual({
+        accessToken: 'access.jwt',
+        refreshToken: 'rt-scoped',
+        organization: { id: 'org-7', name: 'Cabinet Konan', role: 'admin' },
+      });
+    });
+
+    it('rejects with ORG_NOT_FOUND + emits auth.cross_tenant_attempt when no active membership', async () => {
+      const h = buildHarness();
+      h.findActiveMembershipByUserAndOrgWithOrg.mockResolvedValue(null);
+
+      await expect(h.service.selectOrganization('u-1', 'org-evil', CTX)).rejects.toMatchObject({
+        code: ERROR_CODES.ORG_NOT_FOUND,
+        status: 404,
+      });
+      expect(h.recordEvent).toHaveBeenCalledTimes(1);
+      expect(h.recordEvent.mock.calls[0][0]).toBe('auth.cross_tenant_attempt');
+      expect(h.recordEvent.mock.calls[0][1]).toMatchObject({
+        userId: 'u-1',
+        organizationId: 'org-evil',
+      });
+      // Critical: no tokens minted on the rejection path.
+      expect(h.signAccessToken).not.toHaveBeenCalled();
+      expect(h.issueRefresh).not.toHaveBeenCalled();
+    });
+
+    it('rejects with ORG_NOT_FOUND when the org relation is soft-deleted', async () => {
+      const h = buildHarness();
+      h.findActiveMembershipByUserAndOrgWithOrg.mockResolvedValue({
+        roleId: 'role-x',
+        organization: {
+          id: 'org-deleted',
+          name: 'Old',
+          deletedAt: new Date(),
+        } as OrganizationEntity,
+      } as unknown as MembershipEntity);
+      h.findRoleById.mockResolvedValue({ id: 'role-x', code: 'comptable' } as RoleEntity);
+
+      await expect(h.service.selectOrganization('u-1', 'org-deleted', CTX)).rejects.toMatchObject({
+        code: ERROR_CODES.ORG_NOT_FOUND,
+      });
     });
   });
 });

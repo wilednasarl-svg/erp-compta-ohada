@@ -3,6 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { AuthEventsService } from '../../audit/services/auth-events.service';
+import { MembershipRepository } from '../../rbac/repositories/membership.repository';
+import { RoleRepository } from '../../rbac/repositories/role.repository';
 import { MfaConfigRepository } from '../repositories/mfa-config.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { JwtTokenService } from './jwt-token.service';
@@ -72,6 +74,22 @@ export interface RefreshResult {
 }
 
 /**
+ * `POST /auth/select-organization` response. The token pair is fully
+ * scoped (`org_id` + `role` claims on the access token; `organization_id`
+ * column on the refresh row) so every downstream tenant-scoped route can
+ * trust the JWT alone.
+ */
+export interface SelectOrganizationResult {
+  readonly accessToken: string;
+  readonly refreshToken: string;
+  readonly organization: {
+    readonly id: string;
+    readonly name: string;
+    readonly role: string;
+  };
+}
+
+/**
  * `AuthService` (BE-AUTH-01..05) — orchestrates the four endpoints of the
  * MVP authentication loop: signup, login, refresh, logout. Single source
  * of truth for the business rules that the spec calls out:
@@ -107,6 +125,8 @@ export class AuthService {
     private readonly jwt: JwtTokenService,
     private readonly refreshTokens: RefreshTokenService,
     private readonly audit: AuthEventsService,
+    private readonly memberships: MembershipRepository,
+    private readonly roles: RoleRepository,
   ) {}
 
   async signup(input: SignupInput, context: RequestContext): Promise<SignupResult> {
@@ -216,9 +236,40 @@ export class AuthService {
       accessToken,
       refreshToken: refreshTokenResult.token,
       user: this.toPublicUser(user),
-      // Placeholder until BE-ORG-* wires MembershipRepository.listByUser.
-      organizations: [],
+      organizations: await this.listOrganizationsForUser(user.id),
     };
+  }
+
+  /**
+   * Lookup the active memberships for `userId` and project each into the
+   * public summary `{ id, name, slug, role }` consumed by the login
+   * response and (later) the org switcher.
+   *
+   * Rows pointing at a soft-deleted organization are skipped — the user
+   * still has the membership row historically, but the tenant is no
+   * longer addressable. Rows whose `role` relation failed to load (data
+   * integrity bug) are also skipped defensively.
+   */
+  private async listOrganizationsForUser(
+    userId: string,
+  ): Promise<ReadonlyArray<{ id: string; name: string; role: string }>> {
+    const rows = await this.memberships.listOrganizationsForUser(userId);
+    const summaries: { id: string; name: string; role: string }[] = [];
+    for (const row of rows) {
+      if (
+        row.organization === undefined ||
+        row.role === undefined ||
+        row.organization.deletedAt !== null
+      ) {
+        continue;
+      }
+      summaries.push({
+        id: row.organization.id,
+        name: row.organization.name,
+        role: row.role.code,
+      });
+    }
+    return summaries;
   }
 
   async refresh(presentedToken: string, context: RequestContext): Promise<RefreshResult> {
@@ -253,6 +304,87 @@ export class AuthService {
       },
       {},
     );
+  }
+
+  /**
+   * `POST /auth/select-organization` — upgrades a freshly-authenticated
+   * session (access token with no `org_id` claim) to a tenant-scoped one.
+   *
+   * Flow:
+   *   1. Lookup the active membership for (userId, orgId). Absence →
+   *      ORG_NOT_FOUND (404, never 403) so the response can't be used to
+   *      enumerate organizations the caller has no relation to. Emits
+   *      `auth.cross_tenant_attempt` so an admin can correlate the
+   *      attempt with the originating IP / user-agent.
+   *   2. Resolve the role code from `roles` (membership stores `role_id`,
+   *      the JWT claim wants the human-readable `code`). Same 404 on a
+   *      missing role row (data-integrity bug — FK RESTRICT should
+   *      prevent it).
+   *   3. Sign a fresh access token carrying `org_id` + `role` claims, and
+   *      a fresh refresh token scoped to the org. The old refresh
+   *      survives until natural expiry; killing it here would force the
+   *      browser/CLI to keep two refresh tokens in flight (we may revisit
+   *      once a "switch organization" UX exists).
+   *
+   * `mfa_verified` is intentionally left `false` on the new access token:
+   *  selecting an org is not an MFA-binding step. A future MFA-aware path
+   *  (BE-AUTH-MFA-VERIFIED) will mint MFA-aware tokens through a
+   *  dedicated flow.
+   */
+  async selectOrganization(
+    userId: string,
+    targetOrgId: string,
+    context: RequestContext,
+  ): Promise<SelectOrganizationResult> {
+    const membership = await this.memberships.findActiveByUserAndOrganizationWithOrg(
+      userId,
+      targetOrgId,
+    );
+
+    if (membership === null) {
+      await this.audit.record(
+        'auth.cross_tenant_attempt',
+        {
+          userId,
+          organizationId: targetOrgId,
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        },
+        { attemptedOrgId: targetOrgId, via: 'select-organization' },
+      );
+      throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
+        message: 'Organization not found',
+      });
+    }
+
+    const role = await this.roles.findById(membership.roleId);
+    const organization = membership.organization;
+    if (role === null || organization === undefined || organization.deletedAt !== null) {
+      throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
+        message: 'Organization not found',
+      });
+    }
+
+    const refreshTokenResult = await this.refreshTokens.issue({
+      userId,
+      organizationId: targetOrgId,
+    });
+    const accessToken = this.jwt.signAccessToken({
+      sub: userId,
+      orgId: targetOrgId,
+      role: role.code,
+      mfaVerified: false,
+    });
+
+    return {
+      accessToken,
+      refreshToken: refreshTokenResult.token,
+      organization: {
+        id: organization.id,
+        name: organization.name,
+        role: role.code,
+      },
+    };
   }
 
   private toPublicUser(user: {

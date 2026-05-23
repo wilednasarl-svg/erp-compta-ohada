@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CLOCK, SystemClock } from '../../common/time/clock';
 import { AuditModule } from '../audit/audit.module';
+import { RbacModule } from '../rbac/rbac.module';
 import { AuthController } from './controllers/auth.controller';
 import { MfaConfigEntity } from './entities/mfa-config.entity';
 import { RefreshTokenEntity } from './entities/refresh-token.entity';
@@ -39,6 +40,13 @@ import { RefreshTokenService } from './services/refresh-token.service';
   imports: [
     TypeOrmModule.forFeature([UserEntity, RefreshTokenEntity, MfaConfigEntity]),
     AuditModule,
+    // RbacModule is pulled for `MembershipRepository` + `RoleRepository`:
+    // AuthService.login populates `organizations: [...]` and
+    // `selectOrganization` resolves the membership (with org relation) +
+    // role code in two round-trips. No OrganizationsModule dependency:
+    // `MembershipRepository.findActiveByUserAndOrganizationWithOrg` joins
+    // to the org row via TypeORM relations.
+    RbacModule,
   ],
   controllers: [AuthController],
   providers: [

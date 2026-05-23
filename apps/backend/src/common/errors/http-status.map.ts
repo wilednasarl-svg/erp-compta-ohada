@@ -43,6 +43,7 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
 
   // 422 — input rejected by validation (semantic, not syntactic).
   [ERROR_CODES.AUTH_WEAK_PASSWORD]: 422,
+  [ERROR_CODES.ORG_NOTHING_TO_UPDATE]: 422,
 };
 
 /**
