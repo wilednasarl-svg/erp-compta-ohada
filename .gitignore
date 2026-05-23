@@ -25,3 +25,4 @@ Thumbs.db
 
 # Temporary patch / scratch files
 *.patch
+app.log
