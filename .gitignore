@@ -4,10 +4,11 @@
 *.db
 .beads-credential-key
 
-# Environment files (never commit secrets — keep .env.example only)
+# Environment files (never commit secrets — keep `.env*.example` templates only)
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Node / pnpm
 node_modules/
