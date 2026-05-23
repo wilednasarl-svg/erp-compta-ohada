@@ -46,6 +46,11 @@ module.exports = {
       rules: {
         '@typescript-eslint/unbound-method': 'off',
         '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+        // `mock.calls[0]!` and friends fall through TS's inference and
+        // trip the unsafe-* family. These rules guard runtime correctness
+        // — fixture code pays no cost from suppressing them.
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
       },
     },
   ],

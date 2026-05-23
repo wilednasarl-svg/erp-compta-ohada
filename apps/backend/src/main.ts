@@ -6,6 +6,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 
 async function bootstrap(): Promise<void> {
@@ -31,6 +32,12 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
+  // Order matters: the filter must be registered BEFORE the interceptor so
+  // that thrown exceptions never reach the interceptor's success-wrapping
+  // path. The pair guarantees a single response shape app-wide:
+  //   success → { data: T, error: null }   (ResponseEnvelopeInterceptor)
+  //   failure → { data: null, error: ... } (AllExceptionsFilter)
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
 
   app.enableShutdownHooks();
