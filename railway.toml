@@ -1,0 +1,42 @@
+# Railway deployment config for the ERP Compta monorepo.
+#
+# Railway auto-detects pnpm via `pnpm-lock.yaml` and uses nixpacks as the
+# default builder. We override the build/start commands explicitly so the
+# monorepo layout is unambiguous and a future Railway nixpacks heuristic
+# change does not silently break the deploy.
+#
+# Service to deploy = backend NestJS API. The frontend (apps/frontend/)
+# is deployed separately on Vercel.
+#
+# See docs/deployment.md for the full procedure (Supabase prod DSN, env
+# vars, Postmark SMTP, healthcheck wiring, first-deploy migrations).
+
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter backend build"
+
+[deploy]
+# `dist/main.js` is the entry produced by `nest build` (see
+# `apps/backend/package.json` "main" + "build" script).
+startCommand = "node apps/backend/dist/main.js"
+
+# Healthcheck — Railway hits this every ~10s. The `/health` route lives in
+# HealthController, is `@Public()` (deny-by-default opt-out), and verifies
+# the Postgres connection is alive — so a red healthcheck = real outage.
+healthcheckPath = "/health"
+healthcheckTimeout = 10
+
+# Restart on crash, not on success (default for Railway). A migration
+# race between two replicas would trip ALWAYS — keep numReplicas = 1.
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Migrations run BEFORE every deploy. Idempotent (TypeORM tracks the
+# applied migration set). Fails fast = the deploy aborts and the previous
+# revision keeps serving traffic. Safer than running migrations inside
+# `bootstrap()` (which races with multi-replica).
+preDeployCommand = "pnpm --filter backend migration:run"
+
+# Single replica = single migration runner = no race. Lift later if the
+# backend goes horizontal AND migrations move to a dedicated one-shot job.
+numReplicas = 1
