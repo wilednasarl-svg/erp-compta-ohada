@@ -8,6 +8,7 @@ import { RoleRepository } from '../../rbac/repositories/role.repository';
 import { MfaConfigRepository } from '../repositories/mfa-config.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { JwtTokenService } from './jwt-token.service';
+import { MfaService } from './mfa.service';
 import { PasswordService } from './password.service';
 import { RefreshTokenService } from './refresh-token.service';
 
@@ -127,6 +128,7 @@ export class AuthService {
     private readonly audit: AuthEventsService,
     private readonly memberships: MembershipRepository,
     private readonly roles: RoleRepository,
+    private readonly mfaService: MfaService,
   ) {}
 
   async signup(input: SignupInput, context: RequestContext): Promise<SignupResult> {
@@ -304,6 +306,68 @@ export class AuthService {
       },
       {},
     );
+  }
+
+  /**
+   * `POST /auth/login/mfa` — consumes the short-lived `mfaChallengeToken`
+   * emitted by `login()` when the user has MFA enabled, plus a 6-digit
+   * TOTP code (or an 8-char backup code). On success, issues the full
+   * access + refresh token pair (same shape as a no-MFA login).
+   *
+   * The challenge token's purpose is enforced by
+   * `JwtTokenService.verifyMfaChallengeToken` — an access token replayed
+   * as a challenge throws `AUTH_INVALID_TOKEN` upstream, so we never get
+   * here with the wrong purpose. The TOTP / backup code verification is
+   * delegated to `MfaService.verifyLoginChallenge`, which also writes
+   * `auth.mfa_verification_failed` on bad codes (we don't double-audit
+   * here).
+   */
+  async completeMfaLogin(
+    mfaChallengeToken: string,
+    code: string,
+    context: RequestContext,
+  ): Promise<Exclude<LoginResult, { mfa_required: true }>> {
+    const claims = this.jwt.verifyMfaChallengeToken(mfaChallengeToken);
+
+    const user = await this.users.findActiveById(claims.sub);
+    if (user === null || !user.isActive) {
+      throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, {
+        message: 'Invalid token',
+      });
+    }
+
+    await this.mfaService.verifyLoginChallenge(claims.sub, code, {
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+    });
+
+    const refreshTokenResult = await this.refreshTokens.issue({
+      userId: claims.sub,
+      organizationId: null,
+    });
+    const accessToken = this.jwt.signAccessToken({
+      sub: claims.sub,
+      mfaVerified: true,
+    });
+
+    await this.audit.record(
+      'auth.login_success',
+      {
+        userId: claims.sub,
+        organizationId: null,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      },
+      { mfaVerified: true },
+    );
+
+    return {
+      mfa_required: false,
+      accessToken,
+      refreshToken: refreshTokenResult.token,
+      user: this.toPublicUser(user),
+      organizations: await this.listOrganizationsForUser(user.id),
+    };
   }
 
   /**

@@ -4,6 +4,8 @@ import type { Request } from 'express';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { Public } from '../decorators/public.decorator';
 import { LoginDto } from '../dto/login.dto';
+import { MfaCodeDto } from '../dto/mfa-code.dto';
+import { MfaVerifyChallengeDto } from '../dto/mfa-verify-challenge.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { SelectOrganizationDto } from '../dto/select-organization.dto';
 import { SignupDto } from '../dto/signup.dto';
@@ -15,6 +17,7 @@ import {
   type SelectOrganizationResult,
   type SignupResult,
 } from '../services/auth.service';
+import { MfaService, type MfaActivationResult, type MfaSetupResult } from '../services/mfa.service';
 import { buildAuthRequestContext } from './request-context.helper';
 
 /**
@@ -35,13 +38,18 @@ import { buildAuthRequestContext } from './request-context.helper';
  * (BE-BOOT-07); failures are reshaped by `AllExceptionsFilter`
  * (BE-BOOT-06). This controller therefore returns RAW payloads.
  *
- * `select-organization` and `/mfa/*` are intentionally absent — they
- * depend on Memberships (BE-ORG-*) and the MFA verify flow (BE-AUTH-MFA)
- * respectively, both deferred.
+ * `/mfa/setup` / `/mfa/verify` / `/mfa/disable` are gated by
+ * `JwtAuthGuard` — they manage MFA enrollment for the authenticated
+ * user. `/mfa/verify-challenge` is `@Public` because it is the second
+ * leg of the login flow (the caller holds the `mfa_challenge` JWT
+ * issued by `/auth/login`, not a regular access token).
  */
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly mfa: MfaService,
+  ) {}
 
   @Post('signup')
   @Public()
@@ -93,6 +101,66 @@ export class AuthController {
     return await this.auth.selectOrganization(
       userId,
       body.organizationId,
+      buildAuthRequestContext(req),
+    );
+  }
+
+  /**
+   * `POST /auth/mfa/setup` — initiates TOTP enrollment for the caller.
+   * Returns the plaintext secret (one-time) and the `otpauth://` URI
+   * suitable for a QR code. Idempotent on re-call before activation.
+   */
+  @Post('mfa/setup')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async mfaSetup(@CurrentUser('id') userId: string): Promise<MfaSetupResult> {
+    return await this.mfa.setup(userId);
+  }
+
+  /**
+   * `POST /auth/mfa/verify` — confirms enrollment with a fresh TOTP code.
+   * On success: flips `enabled=true`, returns 10 backup codes ONCE.
+   */
+  @Post('mfa/verify')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async mfaVerify(
+    @CurrentUser('id') userId: string,
+    @Body() body: MfaCodeDto,
+    @Req() req: Request,
+  ): Promise<MfaActivationResult> {
+    return await this.mfa.activate(userId, { code: body.code }, buildAuthRequestContext(req));
+  }
+
+  /**
+   * `POST /auth/mfa/disable` — turns MFA off. The current spec accepts
+   * the call without a TOTP code (the user is already authenticated via
+   * JwtAuthGuard); a future hardening pass may require a fresh code to
+   * defend against a stolen access token.
+   */
+  @Post('mfa/disable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async mfaDisable(@CurrentUser('id') userId: string, @Req() req: Request): Promise<void> {
+    await this.mfa.disable(userId, buildAuthRequestContext(req));
+  }
+
+  /**
+   * `POST /auth/mfa/verify-challenge` is `@Public` because the caller
+   * holds the short-lived `mfa_challenge` JWT (not a regular access
+   * token). Exchanging it + a valid TOTP / backup code mints a full
+   * access + refresh pair with `mfa_verified = true`.
+   */
+  @Post('mfa/verify-challenge')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  async mfaVerifyChallenge(
+    @Body() body: MfaVerifyChallengeDto,
+    @Req() req: Request,
+  ): Promise<Exclude<LoginResult, { mfa_required: true }>> {
+    return await this.auth.completeMfaLogin(
+      body.mfaChallengeToken,
+      body.code,
       buildAuthRequestContext(req),
     );
   }

@@ -15,6 +15,7 @@ import { UserRepository } from './repositories/user.repository';
 import { AuthService } from './services/auth.service';
 import { EncryptionService } from './services/encryption.service';
 import { JwtTokenService } from './services/jwt-token.service';
+import { MfaService } from './services/mfa.service';
 import { PasswordService } from './services/password.service';
 import { RefreshTokenService } from './services/refresh-token.service';
 
@@ -60,6 +61,7 @@ import { RefreshTokenService } from './services/refresh-token.service';
     RefreshTokenService,
     JwtAuthGuard,
     AuthService,
+    MfaService,
   ],
   exports: [
     UserRepository,

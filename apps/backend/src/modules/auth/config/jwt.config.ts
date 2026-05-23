@@ -29,9 +29,18 @@ export const MFA_CHALLENGE_TTL = '5m';
 export const JWT_PURPOSE = {
   ACCESS: 'access',
   MFA_CHALLENGE: 'mfa_challenge',
+  INVITATION: 'invitation',
 } as const;
 
 export type JwtPurpose = (typeof JWT_PURPOSE)[keyof typeof JWT_PURPOSE];
+
+/**
+ * Invitation tokens (BE-INV-01) are signed JWTs carrying the org+role
+ * intent. Stored hashed in `invitations.token_hash`; only the plaintext
+ * (sent by email) round-trips through the JWT layer. TTL is fixed at 7
+ * days per `specs/organizations/spec.md` ("expires_at = now + 7 days").
+ */
+export const INVITATION_TTL = '7d';
 
 /**
  * Claim shapes for the two token kinds. `iat`/`exp` are added by
@@ -56,6 +65,26 @@ export interface AccessTokenClaims {
 export interface MfaChallengeClaims {
   readonly sub: string;
   readonly purpose: 'mfa_challenge';
+  readonly iat: number;
+  readonly exp: number;
+  readonly iss: string;
+}
+
+/**
+ * Invitation token claims. `sub` is the inviter's `user_id` (audit
+ * provenance); the consumed identity is `email` — possession of the
+ * token + email match is the proof of consent (see
+ * `InvitationsService.accept`). `org_id` and `role_id` capture the
+ * full membership intent so the accept flow can run without re-asking
+ * the admin.
+ */
+export interface InvitationTokenClaims {
+  readonly sub: string;
+  readonly purpose: 'invitation';
+  readonly org_id: string;
+  readonly email: string;
+  readonly role_id: string;
+  readonly invitation_id: string;
   readonly iat: number;
   readonly exp: number;
   readonly iss: string;

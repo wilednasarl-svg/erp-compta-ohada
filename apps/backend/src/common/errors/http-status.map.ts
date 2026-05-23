@@ -20,6 +20,7 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   [ERROR_CODES.AUTH_INVALID_TOKEN]: 401,
   [ERROR_CODES.AUTH_MFA_REQUIRED]: 401,
   [ERROR_CODES.AUTH_MFA_INVALID_CODE]: 401,
+  [ERROR_CODES.AUTH_MFA_NOT_ENROLLED]: 401,
   [ERROR_CODES.AUTH_REFRESH_REUSE]: 401,
 
   // 403 — caller is authenticated but not authorized.
@@ -31,12 +32,15 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
 
   // 404 — fail-closed, also used by TenantGuard to avoid disclosure.
   [ERROR_CODES.ORG_NOT_FOUND]: 404,
+  [ERROR_CODES.INVITATION_NOT_FOUND]: 404,
 
   // 409 — state conflict (duplicate, invariant violation, already used).
   [ERROR_CODES.AUTH_EMAIL_TAKEN]: 409,
+  [ERROR_CODES.AUTH_MFA_ALREADY_ENABLED]: 409,
   [ERROR_CODES.ORG_LAST_ADMIN]: 409,
   [ERROR_CODES.INVITATION_ALREADY_USED]: 409,
   [ERROR_CODES.INVITATION_ALREADY_PENDING]: 409,
+  [ERROR_CODES.INVITATION_REVOKED]: 409,
 
   // 410 — the targeted resource existed but is no longer usable.
   [ERROR_CODES.INVITATION_EXPIRED]: 410,

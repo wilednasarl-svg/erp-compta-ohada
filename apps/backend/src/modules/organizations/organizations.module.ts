@@ -3,13 +3,17 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { EmailModule } from '../email/email.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { AcceptInvitationController } from './controllers/accept-invitation.controller';
+import { InvitationsController } from './controllers/invitations.controller';
 import { MembersController } from './controllers/members.controller';
 import { OrganizationsController } from './controllers/organizations.controller';
 import { InvitationEntity } from './entities/invitation.entity';
 import { OrganizationEntity } from './entities/organization.entity';
 import { InvitationRepository } from './repositories/invitation.repository';
 import { OrganizationRepository } from './repositories/organization.repository';
+import { InvitationsService } from './services/invitations.service';
 import { OrganizationsService } from './services/organizations.service';
 
 /**
@@ -30,16 +34,32 @@ import { OrganizationsService } from './services/organizations.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([OrganizationEntity, InvitationEntity]),
-    // AuthModule provides `JwtAuthGuard` used by `@UseGuards(...)` on the
-    // controllers. No cycle: AuthService.selectOrganization reaches the
-    // org row through `MembershipRepository
-    // .findActiveByUserAndOrganizationWithOrg` (RbacModule).
+    // AuthModule provides `JwtAuthGuard`, `JwtTokenService`,
+    // `PasswordService`, `UserRepository` (used by `InvitationsService`).
     AuthModule,
     RbacModule,
     AuditModule,
+    // `InvitationsService` ships the invitation email through `EmailService`.
+    EmailModule,
   ],
-  controllers: [OrganizationsController, MembersController],
-  providers: [OrganizationRepository, InvitationRepository, OrganizationsService],
-  exports: [OrganizationRepository, InvitationRepository, OrganizationsService, TypeOrmModule],
+  controllers: [
+    OrganizationsController,
+    MembersController,
+    InvitationsController,
+    AcceptInvitationController,
+  ],
+  providers: [
+    OrganizationRepository,
+    InvitationRepository,
+    OrganizationsService,
+    InvitationsService,
+  ],
+  exports: [
+    OrganizationRepository,
+    InvitationRepository,
+    OrganizationsService,
+    InvitationsService,
+    TypeOrmModule,
+  ],
 })
 export class OrganizationsModule {}

@@ -12,6 +12,8 @@ import {
 
 import {
   type AccessTokenClaims,
+  INVITATION_TTL,
+  type InvitationTokenClaims,
   JWT_ALGORITHM,
   JWT_ISSUER,
   JWT_PURPOSE,
@@ -32,6 +34,15 @@ export interface SignAccessTokenInput {
 
 export interface SignMfaChallengeTokenInput {
   readonly sub: string;
+}
+
+export interface SignInvitationTokenInput {
+  /** Inviter user id — bound to the JWT `sub` for audit provenance. */
+  readonly sub: string;
+  readonly invitationId: string;
+  readonly orgId: string;
+  readonly email: string;
+  readonly roleId: string;
 }
 
 /**
@@ -117,6 +128,90 @@ export class JwtTokenService {
       throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, { message: 'Invalid token' });
     }
     return claims as MfaChallengeClaims;
+  }
+
+  signInvitationToken(input: SignInvitationTokenInput): string {
+    if (typeof input.sub !== 'string' || input.sub.length === 0) {
+      throw new Error('JwtTokenService.signInvitationToken: `sub` must be a non-empty string');
+    }
+    if (typeof input.invitationId !== 'string' || input.invitationId.length === 0) {
+      throw new Error('JwtTokenService.signInvitationToken: `invitationId` is required');
+    }
+    if (typeof input.orgId !== 'string' || input.orgId.length === 0) {
+      throw new Error('JwtTokenService.signInvitationToken: `orgId` is required');
+    }
+    if (typeof input.email !== 'string' || input.email.length === 0) {
+      throw new Error('JwtTokenService.signInvitationToken: `email` is required');
+    }
+    if (typeof input.roleId !== 'string' || input.roleId.length === 0) {
+      throw new Error('JwtTokenService.signInvitationToken: `roleId` is required');
+    }
+    const payload: Omit<InvitationTokenClaims, 'iat' | 'exp' | 'iss'> = {
+      sub: input.sub,
+      purpose: JWT_PURPOSE.INVITATION,
+      invitation_id: input.invitationId,
+      org_id: input.orgId,
+      email: input.email,
+      role_id: input.roleId,
+    };
+    return this.sign(payload, INVITATION_TTL);
+  }
+
+  /**
+   * Decode the invitation token but do NOT enforce expiry here — the
+   * `InvitationsService.accept` flow distinguishes "JWT expired"
+   * (returns `INVITATION_EXPIRED`, 410) from "JWT cryptographically
+   * invalid" (returns `INVITATION_NOT_FOUND`, 404, since we cannot
+   * distinguish a forged token from one for a non-existent invitation).
+   * Throwing `AUTH_INVALID_TOKEN` here would lose that nuance.
+   *
+   * Spec-grade behavior:
+   *   - Signature / issuer / shape invalid → `INVITATION_NOT_FOUND`.
+   *   - `purpose !== 'invitation'` → `INVITATION_NOT_FOUND`.
+   *   - `exp <= now` → `INVITATION_EXPIRED`.
+   *   - Otherwise → return claims.
+   */
+  verifyInvitationToken(token: string): InvitationTokenClaims {
+    if (typeof token !== 'string' || token.length === 0) {
+      throw new AppException(ERROR_CODES.INVITATION_NOT_FOUND, {
+        message: 'Invitation not found',
+      });
+    }
+    try {
+      const decoded = jwtVerify(token, this.secret, {
+        algorithms: [JWT_ALGORITHM],
+        issuer: JWT_ISSUER,
+        clockTimestamp: Math.floor(this.clock.nowMs() / 1000),
+      });
+      if (typeof decoded === 'string') {
+        throw new AppException(ERROR_CODES.INVITATION_NOT_FOUND, {
+          message: 'Invitation not found',
+        });
+      }
+      const claims = decoded as JwtPayload & { purpose?: string };
+      if (claims.purpose !== JWT_PURPOSE.INVITATION) {
+        throw new AppException(ERROR_CODES.INVITATION_NOT_FOUND, {
+          message: 'Invitation not found',
+        });
+      }
+      return claims as InvitationTokenClaims;
+    } catch (error: unknown) {
+      if (error instanceof TokenExpiredError) {
+        this.logger.warn(`verifyInvitationToken: token expired (${error.message})`);
+        throw new AppException(ERROR_CODES.INVITATION_EXPIRED, {
+          message: 'Invitation expired',
+          cause: error,
+        });
+      }
+      if (error instanceof JsonWebTokenError || error instanceof NotBeforeError) {
+        this.logger.warn(`verifyInvitationToken: rejected token (${error.name}: ${error.message})`);
+        throw new AppException(ERROR_CODES.INVITATION_NOT_FOUND, {
+          message: 'Invitation not found',
+          cause: error,
+        });
+      }
+      throw error;
+    }
   }
 
   private sign(payload: Record<string, unknown>, expiresIn: string): string {

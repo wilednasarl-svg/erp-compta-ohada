@@ -88,6 +88,23 @@ export class InvitationRepository {
     await this.repo.update({ id, organizationId }, { status: 'accepted', acceptedAt });
   }
 
+  /**
+   * Patch the `token_hash` after the row is initially inserted.
+   * `InvitationsService.create` uses a two-step persist: insert first to
+   * obtain a stable `id` (referenced in the JWT `invitation_id` claim),
+   * then patch with the SHA-256 hash of the signed token once the JWT is
+   * minted. Scoped by `(id, organizationId)` so a cross-tenant patch is
+   * impossible.
+   */
+  async updateTokenHash(
+    id: string,
+    organizationId: TenantId | string,
+    tokenHash: string,
+  ): Promise<void> {
+    assertTenantId(organizationId);
+    await this.repo.update({ id, organizationId }, { tokenHash });
+  }
+
   async markRevoked(id: string, organizationId: TenantId | string): Promise<void> {
     assertTenantId(organizationId);
     await this.repo.update({ id, organizationId }, { status: 'revoked' });

@@ -12,6 +12,7 @@ import type { UserEntity } from '../entities/user.entity';
 import type { MfaConfigRepository } from '../repositories/mfa-config.repository';
 import type { UserRepository } from '../repositories/user.repository';
 import { AuthService, type RequestContext } from './auth.service';
+import type { MfaService } from './mfa.service';
 import type {
   IssuedRefreshToken,
   IssueRefreshTokenInput,
@@ -140,8 +141,20 @@ function buildHarness(): Harness {
     findActiveByUserAndOrganizationWithOrg: findActiveMembershipByUserAndOrgWithOrg,
   } as unknown as MembershipRepository;
   const roles = { findById: findRoleById } as unknown as RoleRepository;
+  const verifyLoginChallenge = jest.fn<Promise<void>, [string, string, AuthEventContext]>();
+  const mfaService = { verifyLoginChallenge } as unknown as MfaService;
 
-  const service = new AuthService(users, mfa, passwords, jwt, refresh, audit, memberships, roles);
+  const service = new AuthService(
+    users,
+    mfa,
+    passwords,
+    jwt,
+    refresh,
+    audit,
+    memberships,
+    roles,
+    mfaService,
+  );
 
   return {
     service,
