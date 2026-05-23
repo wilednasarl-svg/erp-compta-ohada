@@ -1,0 +1,5 @@
+# Workspace package globs.
+# NOTE: `openspec/` is a spec-driven documentation tree, not a JS package —
+# do not list it here or pnpm install warns about an empty importer.
+packages:
+  - "apps/*"
