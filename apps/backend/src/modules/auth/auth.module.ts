@@ -64,6 +64,11 @@ import { RefreshTokenService } from './services/refresh-token.service';
     MfaService,
   ],
   exports: [
+    // Re-exported so consumers of AuthModule (e.g. OrganizationsModule →
+    // InvitationsService) can inject the same `Clock` instance without
+    // re-declaring the provider — keeps clock-overriding for tests
+    // confined to a single binding.
+    CLOCK,
     UserRepository,
     RefreshTokenRepository,
     MfaConfigRepository,
