@@ -1,0 +1,123 @@
+# CI pipeline for the ERP Compta monorepo (BE-CI-01).
+#
+# Four parallel jobs run on every PR targeting `main` and every push to
+# `main`. A new push to the same branch cancels the in-progress run so
+# we never waste CI minutes on a superseded commit.
+#
+# The jobs intentionally share NO state — each one re-resolves the pnpm
+# store from the cache and runs `pnpm install --frozen-lockfile`. The
+# cache key is keyed on `pnpm-lock.yaml` so a lockfile change invalidates
+# every job; a source-only change re-uses the same store across jobs.
+#
+# To enforce this pipeline as a merge gate:
+#   Settings -> Branches -> Branch protection rules -> `main`
+#     -> Require status checks to pass before merging
+#     -> Select: ci / lint, ci / typecheck, ci / test, ci / e2e
+#   (the slug after "ci /" is the job `name` field below)
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter backend lint
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter backend typecheck
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # `test:cov` runs the unit suite AND enforces the 80% coverage
+      # threshold pinned in apps/backend/package.json `jest.coverageThreshold`.
+      # A drop below 80% fails the job — no separate coverage step needed.
+      - run: pnpm --filter backend test:cov
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+
+    # Ephemeral Postgres 16 service spun up by GitHub on the runner. Lives
+    # for the duration of this job only — no Supabase coupling, no secrets.
+    # `--health-cmd` blocks the job until the DB accepts connections so
+    # `global-setup.ts` doesn't race against a not-yet-ready container.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: erp_compta_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d erp_compta_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Promoted to DATABASE_URL by test/setup/load-env.ts at jest boot.
+      # The other 10+ env vars (JWT_SECRET, MFA_ENCRYPTION_KEY, SMTP_*,
+      # …) fall back to deterministic test values defined inside that
+      # same file — no need to surface them here.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/erp_compta_test
+      TEST_DB_SSL: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter backend test:e2e
