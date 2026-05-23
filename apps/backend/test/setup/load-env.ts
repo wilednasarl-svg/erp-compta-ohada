@@ -42,7 +42,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 const defaults: Record<string, string> = {
   NODE_ENV: 'test',
-  PORT: '0',
+  // env.validation.ts requires PORT >= 1; pick any valid value — supertest
+  // talks to `app.getHttpServer()` directly (no actual listen() call) so
+  // this number is never bound to a socket. We pin to 3001 rather than 0
+  // to keep the schema valid and the value identical to the dev default.
+  PORT: '3001',
   DB_SSL: process.env.TEST_DB_SSL ?? 'false',
   JWT_SECRET: 'e2e-jwt-secret-not-for-production-use-32chars',
   JWT_ACCESS_TTL: '15m',
