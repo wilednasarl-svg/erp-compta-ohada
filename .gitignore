@@ -3,3 +3,24 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# Environment files (never commit secrets — keep .env.example only)
+.env
+.env.*
+!.env.example
+
+# Node / pnpm
+node_modules/
+
+# Build outputs
+dist/
+coverage/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary patch / scratch files
+*.patch
