@@ -13,7 +13,15 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter backend build"
+# `--prod=false` forces pnpm to install devDependencies even when
+# `NODE_ENV=production` is set in the build context (which Railway does
+# automatically when the runtime var is set). Without it pnpm skips
+# `rimraf`, `@nestjs/cli`, `typescript`, etc. → the backend's
+# `prebuild: rimraf dist` crashes with `sh: 1: rimraf: not found`.
+# We still want NODE_ENV=production at RUNTIME (gates prod-only
+# behaviours in Nest), hence we don't unset the var globally — we
+# just bypass it for the install step.
+buildCommand = "pnpm install --frozen-lockfile --prod=false && pnpm --filter backend build"
 
 [deploy]
 # `dist/main.js` is the entry produced by `nest build` (see
