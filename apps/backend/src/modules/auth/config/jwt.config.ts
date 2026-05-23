@@ -72,17 +72,23 @@ export interface MfaChallengeClaims {
 
 /**
  * Invitation token claims. `sub` is the inviter's `user_id` (audit
- * provenance); the consumed identity is `email` — possession of the
- * token + email match is the proof of consent (see
- * `InvitationsService.accept`). `org_id` and `role_id` capture the
- * full membership intent so the accept flow can run without re-asking
- * the admin.
+ * provenance). `invitation_id` is the lookup key — the accept flow
+ * fetches the row by `(invitation_id, org_id)` and reads the email,
+ * role, and status from the DB. The token never carries the invitee's
+ * email: JWT claims are only base64-encoded, and the token travels
+ * through SMTP / mail clients / mail-scanning infra. Keeping PII out of
+ * the token prevents leaks via cached link previews, anti-phishing
+ * scanners, or breached mail archives.
+ *
+ * Defence: even though the email is no longer in claims, an attacker
+ * cannot forge a token without the HS256 secret, and a presented token
+ * is matched against `invitations.token_hash` before acceptance — so
+ * the integrity guarantee is unchanged.
  */
 export interface InvitationTokenClaims {
   readonly sub: string;
   readonly purpose: 'invitation';
   readonly org_id: string;
-  readonly email: string;
   readonly role_id: string;
   readonly invitation_id: string;
   readonly iat: number;

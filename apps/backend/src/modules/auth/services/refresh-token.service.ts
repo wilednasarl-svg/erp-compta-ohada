@@ -156,13 +156,29 @@ export class RefreshTokenService {
     });
   }
 
-  async revoke(presentedToken: string): Promise<void> {
+  /**
+   * Revoke a refresh token. When `expectedUserId` is supplied, the token
+   * row is silently ignored unless it belongs to that user — defends the
+   * `POST /auth/logout` path against a caller who presents a refresh
+   * token they don't own (their access token proves their identity, but
+   * the refresh token in the body must be theirs, otherwise an
+   * authenticated attacker could revoke arbitrary users' sessions).
+   *
+   * Silent no-op (rather than 404 / 403) on mismatch is deliberate: the
+   * logout endpoint is best-effort and must not leak whether the token
+   * exists. A truly invalid token and a token-belonging-to-someone-else
+   * are indistinguishable from the caller's perspective.
+   */
+  async revoke(presentedToken: string, expectedUserId?: string): Promise<void> {
     if (typeof presentedToken !== 'string' || presentedToken.length === 0) {
       return;
     }
     const tokenHash = this.hashToken(presentedToken);
     const existing = await this.repo.findByTokenHash(tokenHash);
     if (existing === null || existing.revokedAt !== null) {
+      return;
+    }
+    if (expectedUserId !== undefined && existing.userId !== expectedUserId) {
       return;
     }
     await this.repo.revokeById(existing.id, this.clock.now());

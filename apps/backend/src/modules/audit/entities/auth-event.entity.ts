@@ -36,6 +36,7 @@ export type AuthEventType =
   | 'auth.cross_tenant_attempt'
   | 'organizations.role_changed'
   | 'organizations.invitation_sent'
+  | 'organizations.invitation_revoked'
   | 'organizations.invitation_accepted'
   | 'organizations.updated';
 

@@ -30,9 +30,14 @@ interface Harness {
   service: MembershipsService;
   findByUserAndOrg: jest.Mock<Promise<MembershipEntity | null>, [string, string]>;
   listActiveWithRelations: jest.Mock<Promise<MembershipEntity[]>, [string]>;
-  countActiveAdmins: jest.Mock<Promise<number>, [string, string]>;
-  updateRole: jest.Mock<Promise<void>, [string, string, string]>;
-  removeRepo: jest.Mock<Promise<void>, [string, string]>;
+  updateRoleIfNotLastAdmin: jest.Mock<
+    Promise<number>,
+    [{ userId: string; organizationId: string; newRoleId: string; fromAdminRoleId: string | null }]
+  >;
+  removeIfNotLastAdmin: jest.Mock<
+    Promise<number>,
+    [{ userId: string; organizationId: string; adminRoleIdIfAdmin: string | null }]
+  >;
   findRoleById: jest.Mock<Promise<RoleEntity | null>, [string]>;
   findRoleByCode: jest.Mock<Promise<RoleEntity | null>, [string]>;
   recordEvent: jest.Mock<
@@ -46,11 +51,20 @@ function buildHarness(): Harness {
   const listActiveWithRelations = jest
     .fn<Promise<MembershipEntity[]>, [string]>()
     .mockResolvedValue([]);
-  const countActiveAdmins = jest.fn<Promise<number>, [string, string]>().mockResolvedValue(99); // permissive by default; tests override
-  const updateRole = jest
-    .fn<Promise<void>, [string, string, string]>()
-    .mockResolvedValue(undefined);
-  const removeRepo = jest.fn<Promise<void>, [string, string]>().mockResolvedValue(undefined);
+  // Permissive defaults — 1 row affected = success, no last-admin block.
+  // Tests for the last-admin path override with `mockResolvedValue(0)`.
+  const updateRoleIfNotLastAdmin = jest
+    .fn<
+      Promise<number>,
+      [{ userId: string; organizationId: string; newRoleId: string; fromAdminRoleId: string | null }]
+    >()
+    .mockResolvedValue(1);
+  const removeIfNotLastAdmin = jest
+    .fn<
+      Promise<number>,
+      [{ userId: string; organizationId: string; adminRoleIdIfAdmin: string | null }]
+    >()
+    .mockResolvedValue(1);
   const findRoleById = jest.fn<Promise<RoleEntity | null>, [string]>();
   const findRoleByCode = jest.fn<Promise<RoleEntity | null>, [string]>();
   const recordEvent = jest
@@ -60,9 +74,8 @@ function buildHarness(): Harness {
   const memberships = {
     findByUserAndOrganization: findByUserAndOrg,
     listActiveByOrganizationWithRelations: listActiveWithRelations,
-    countActiveAdminsForOrganization: countActiveAdmins,
-    updateRole,
-    remove: removeRepo,
+    updateRoleIfNotLastAdmin,
+    removeIfNotLastAdmin,
   } as unknown as MembershipRepository;
   const roles = { findById: findRoleById, findByCode: findRoleByCode } as unknown as RoleRepository;
   const audit = { record: recordEvent } as unknown as AuthEventsService;
@@ -73,9 +86,8 @@ function buildHarness(): Harness {
     service,
     findByUserAndOrg,
     listActiveWithRelations,
-    countActiveAdmins,
-    updateRole,
-    removeRepo,
+    updateRoleIfNotLastAdmin,
+    removeIfNotLastAdmin,
     findRoleById,
     findRoleByCode,
     recordEvent,
@@ -139,7 +151,13 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
         CTX,
       );
 
-      expect(h.updateRole).toHaveBeenCalledWith('target-user', 'org-1', 'role-chef_mission');
+      expect(h.updateRoleIfNotLastAdmin).toHaveBeenCalledWith({
+        userId: 'target-user',
+        organizationId: 'org-1',
+        newRoleId: 'role-chef_mission',
+        // Not downgrading admin → no last-admin guard required.
+        fromAdminRoleId: null,
+      });
       expect(h.recordEvent).toHaveBeenCalledTimes(1);
       expect(h.recordEvent.mock.calls[0][0]).toBe('organizations.role_changed');
       const meta = h.recordEvent.mock.calls[0][2] as {
@@ -169,7 +187,7 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
         CTX,
       );
 
-      expect(h.updateRole).not.toHaveBeenCalled();
+      expect(h.updateRoleIfNotLastAdmin).not.toHaveBeenCalled();
       expect(h.recordEvent).not.toHaveBeenCalled();
       expect(result.role).toBe('comptable');
     });
@@ -201,7 +219,9 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
       );
       h.findRoleByCode.mockResolvedValue(buildRole('comptable'));
       h.findRoleById.mockResolvedValue(buildRole('admin'));
-      h.countActiveAdmins.mockResolvedValue(1); // only admin remaining
+      // The atomic SQL guard returns 0 when the last-admin lock-count
+      // check would refuse the downgrade.
+      h.updateRoleIfNotLastAdmin.mockResolvedValue(0);
 
       await expect(
         h.service.changeRole('actor-1', 'org-1', 'lone-admin', 'comptable', CTX),
@@ -209,7 +229,14 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
         code: ERROR_CODES.ORG_LAST_ADMIN,
         status: 409,
       });
-      expect(h.updateRole).not.toHaveBeenCalled();
+      // Repo was called WITH the admin guard set; service mapped the
+      // zero-affected return to ORG_LAST_ADMIN.
+      expect(h.updateRoleIfNotLastAdmin).toHaveBeenCalledWith({
+        userId: 'lone-admin',
+        organizationId: 'org-1',
+        newRoleId: 'role-comptable',
+        fromAdminRoleId: 'role-admin',
+      });
       expect(h.recordEvent).not.toHaveBeenCalled();
     });
 
@@ -220,14 +247,20 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
       );
       h.findRoleByCode.mockResolvedValue(buildRole('comptable'));
       h.findRoleById.mockResolvedValue(buildRole('admin'));
-      h.countActiveAdmins.mockResolvedValue(2);
+      // Default permissive mock (returns 1) — repo's SQL guard would
+      // have found 2 admins and allowed the row.
 
       await h.service.changeRole('actor-1', 'org-1', 'admin-1', 'comptable', CTX);
 
-      expect(h.updateRole).toHaveBeenCalled();
+      expect(h.updateRoleIfNotLastAdmin).toHaveBeenCalledWith({
+        userId: 'admin-1',
+        organizationId: 'org-1',
+        newRoleId: 'role-comptable',
+        fromAdminRoleId: 'role-admin',
+      });
     });
 
-    it('ORG_LAST_ADMIN — skips the count when target is NOT an admin (no false invariant trip)', async () => {
+    it('ORG_LAST_ADMIN — skips the admin guard when target is NOT an admin (no false invariant trip)', async () => {
       const h = buildHarness();
       h.findByUserAndOrg.mockResolvedValue(
         buildMembership({ userId: 'comptable-1', roleId: 'role-comptable' }),
@@ -237,8 +270,12 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
 
       await h.service.changeRole('actor-1', 'org-1', 'comptable-1', 'chef_mission', CTX);
 
-      expect(h.countActiveAdmins).not.toHaveBeenCalled();
-      expect(h.updateRole).toHaveBeenCalled();
+      // `fromAdminRoleId: null` signals the repo to skip the FOR-UPDATE
+      // lock + count entirely (non-admin downgrade has no invariant to
+      // protect).
+      expect(h.updateRoleIfNotLastAdmin).toHaveBeenCalledWith(
+        expect.objectContaining({ fromAdminRoleId: null }),
+      );
     });
   });
 
@@ -250,7 +287,13 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
 
       await h.service.removeMember('admin-1', 'org-1', 'target-user', CTX);
 
-      expect(h.removeRepo).toHaveBeenCalledWith('target-user', 'org-1');
+      // Non-admin target → guard skipped (`adminRoleIdIfAdmin: null`),
+      // repo runs the plain DELETE path.
+      expect(h.removeIfNotLastAdmin).toHaveBeenCalledWith({
+        userId: 'target-user',
+        organizationId: 'org-1',
+        adminRoleIdIfAdmin: null,
+      });
       expect(h.recordEvent).toHaveBeenCalledTimes(1);
       expect(h.recordEvent.mock.calls[0][0]).toBe('organizations.role_changed');
       const meta = h.recordEvent.mock.calls[0][2] as {
@@ -274,7 +317,7 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
       await expect(h.service.removeMember('admin-1', 'org-1', 'ghost', CTX)).rejects.toMatchObject({
         code: ERROR_CODES.ORG_NOT_FOUND,
       });
-      expect(h.removeRepo).not.toHaveBeenCalled();
+      expect(h.removeIfNotLastAdmin).not.toHaveBeenCalled();
     });
 
     it('ORG_LAST_ADMIN — refuses to remove the only active admin (spec scenario "Last admin attempts to leave")', async () => {
@@ -283,7 +326,9 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
         buildMembership({ userId: 'lone-admin', roleId: 'role-admin' }),
       );
       h.findRoleById.mockResolvedValue(buildRole('admin'));
-      h.countActiveAdmins.mockResolvedValue(1);
+      // The atomic SQL guard returns 0 when the FOR-UPDATE lock + count
+      // would refuse the removal.
+      h.removeIfNotLastAdmin.mockResolvedValue(0);
 
       await expect(
         h.service.removeMember('lone-admin', 'org-1', 'lone-admin', CTX),
@@ -291,7 +336,11 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
         code: ERROR_CODES.ORG_LAST_ADMIN,
         status: 409,
       });
-      expect(h.removeRepo).not.toHaveBeenCalled();
+      expect(h.removeIfNotLastAdmin).toHaveBeenCalledWith({
+        userId: 'lone-admin',
+        organizationId: 'org-1',
+        adminRoleIdIfAdmin: 'role-admin',
+      });
       expect(h.recordEvent).not.toHaveBeenCalled();
     });
 
@@ -301,22 +350,28 @@ describe('MembershipsService (BE-ORG-05..08 + spec 7.7)', () => {
         buildMembership({ userId: 'admin-2', roleId: 'role-admin' }),
       );
       h.findRoleById.mockResolvedValue(buildRole('admin'));
-      h.countActiveAdmins.mockResolvedValue(2);
+      // Default permissive mock (returns 1) — repo's SQL guard would
+      // have found 2 admins and allowed the row.
 
       await h.service.removeMember('admin-1', 'org-1', 'admin-2', CTX);
 
-      expect(h.removeRepo).toHaveBeenCalled();
+      expect(h.removeIfNotLastAdmin).toHaveBeenCalledWith({
+        userId: 'admin-2',
+        organizationId: 'org-1',
+        adminRoleIdIfAdmin: 'role-admin',
+      });
     });
 
-    it('skips the admin count when target is NOT an admin', async () => {
+    it('skips the admin guard when target is NOT an admin', async () => {
       const h = buildHarness();
       h.findByUserAndOrg.mockResolvedValue(buildMembership({ roleId: 'role-comptable' }));
       h.findRoleById.mockResolvedValue(buildRole('comptable'));
 
       await h.service.removeMember('admin-1', 'org-1', 'target-user', CTX);
 
-      expect(h.countActiveAdmins).not.toHaveBeenCalled();
-      expect(h.removeRepo).toHaveBeenCalled();
+      expect(h.removeIfNotLastAdmin).toHaveBeenCalledWith(
+        expect.objectContaining({ adminRoleIdIfAdmin: null }),
+      );
     });
   });
 });

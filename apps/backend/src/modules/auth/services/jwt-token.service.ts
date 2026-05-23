@@ -41,7 +41,6 @@ export interface SignInvitationTokenInput {
   readonly sub: string;
   readonly invitationId: string;
   readonly orgId: string;
-  readonly email: string;
   readonly roleId: string;
 }
 
@@ -119,12 +118,23 @@ export class JwtTokenService {
     if (claims.purpose !== JWT_PURPOSE.ACCESS) {
       throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, { message: 'Invalid token' });
     }
+    // Guard required fields BEFORE casting. A token signed with our
+    // secret but missing `sub` (or another required claim) would otherwise
+    // slip through and surface as a runtime `undefined` in downstream
+    // guards. `org_id`, `role`, and `mfa_verified` are intentionally
+    // optional in the access-token shape.
+    if (typeof claims.sub !== 'string' || claims.sub.length === 0) {
+      throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, { message: 'Invalid token' });
+    }
     return claims as AccessTokenClaims;
   }
 
   verifyMfaChallengeToken(token: string): MfaChallengeClaims {
     const claims = this.verify(token);
     if (claims.purpose !== JWT_PURPOSE.MFA_CHALLENGE) {
+      throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, { message: 'Invalid token' });
+    }
+    if (typeof claims.sub !== 'string' || claims.sub.length === 0) {
       throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, { message: 'Invalid token' });
     }
     return claims as MfaChallengeClaims;
@@ -140,9 +150,6 @@ export class JwtTokenService {
     if (typeof input.orgId !== 'string' || input.orgId.length === 0) {
       throw new Error('JwtTokenService.signInvitationToken: `orgId` is required');
     }
-    if (typeof input.email !== 'string' || input.email.length === 0) {
-      throw new Error('JwtTokenService.signInvitationToken: `email` is required');
-    }
     if (typeof input.roleId !== 'string' || input.roleId.length === 0) {
       throw new Error('JwtTokenService.signInvitationToken: `roleId` is required');
     }
@@ -151,7 +158,6 @@ export class JwtTokenService {
       purpose: JWT_PURPOSE.INVITATION,
       invitation_id: input.invitationId,
       org_id: input.orgId,
-      email: input.email,
       role_id: input.roleId,
     };
     return this.sign(payload, INVITATION_TTL);
@@ -188,8 +194,30 @@ export class JwtTokenService {
           message: 'Invitation not found',
         });
       }
-      const claims = decoded as JwtPayload & { purpose?: string };
+      const claims = decoded as JwtPayload & {
+        purpose?: string;
+        sub?: string;
+        org_id?: string;
+        role_id?: string;
+        invitation_id?: string;
+      };
       if (claims.purpose !== JWT_PURPOSE.INVITATION) {
+        throw new AppException(ERROR_CODES.INVITATION_NOT_FOUND, {
+          message: 'Invitation not found',
+        });
+      }
+      // Reject a JWT that is signed correctly but missing any of the
+      // required invitation claims. Without these guards an attacker
+      // who finds an HMAC signing oracle (or a leak of the secret) could
+      // mint a token that passes the `purpose` check but contains
+      // garbage payload, leaving downstream code dereferencing
+      // `undefined`.
+      if (
+        typeof claims.sub !== 'string' ||
+        typeof claims.org_id !== 'string' ||
+        typeof claims.role_id !== 'string' ||
+        typeof claims.invitation_id !== 'string'
+      ) {
         throw new AppException(ERROR_CODES.INVITATION_NOT_FOUND, {
           message: 'Invitation not found',
         });

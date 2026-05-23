@@ -149,4 +149,103 @@ export class MembershipRepository {
     assertTenantId(organizationId);
     await this.repo.delete({ userId, organizationId });
   }
+
+  /**
+   * Atomic "change role unless this is the last active admin".
+   *
+   * The TOCTOU between `countActiveAdminsForOrganization` and a separate
+   * `updateRole` allows two concurrent admin-downgrade requests to both
+   * read `count = 2`, both pass the check, and both commit — leaving
+   * zero admins. This single statement closes that race by:
+   *
+   *   1. Locking ALL active admin rows for the org (`SELECT … FOR UPDATE`)
+   *      inside a CTE. Concurrent transactions performing the same lock
+   *      block until ours commits.
+   *   2. Running the UPDATE only if the locked-and-counted admin count
+   *      is strictly greater than 1 (i.e. the target is NOT the only
+   *      admin), OR if we are not stripping admin status (downgrade
+   *      condition is false).
+   *
+   * The whole statement runs as a single implicit transaction; if the
+   * UPDATE affects 0 rows the caller treats it as a last-admin block
+   * and throws `ORG_LAST_ADMIN`.
+   *
+   * Returns the number of affected rows (0 = blocked or row not found,
+   * 1 = updated).
+   */
+  async updateRoleIfNotLastAdmin(args: {
+    userId: string;
+    organizationId: TenantId | string;
+    newRoleId: string;
+    /** Set when downgrading admin → non-admin; null otherwise. */
+    fromAdminRoleId: string | null;
+  }): Promise<number> {
+    assertTenantId(args.organizationId);
+    if (args.fromAdminRoleId === null) {
+      // Non-downgrade path: regular update, no race to defend against.
+      const r = await this.repo.update(
+        { userId: args.userId, organizationId: args.organizationId },
+        { roleId: args.newRoleId },
+      );
+      return r.affected ?? 0;
+    }
+    const result: Array<{ id: string }> = await this.repo.query(
+      `WITH locked_admins AS (
+         SELECT id FROM memberships
+         WHERE organization_id = $1
+           AND role_id = $2
+           AND status = 'active'
+         FOR UPDATE
+       )
+       UPDATE memberships
+       SET role_id = $3, updated_at = now()
+       WHERE user_id = $4
+         AND organization_id = $1
+         AND (SELECT count(*) FROM locked_admins) > 1
+       RETURNING id`,
+      [args.organizationId, args.fromAdminRoleId, args.newRoleId, args.userId],
+    );
+    return result.length;
+  }
+
+  /**
+   * Atomic "remove member unless they are the last active admin".
+   * Same locking pattern as `updateRoleIfNotLastAdmin` — locks the
+   * org's active admin rows in a CTE before the DELETE so the count
+   * check is consistent with the eventual deletion.
+   *
+   * `adminRoleIdIfAdmin` is `null` when the target is not an admin
+   * (no guard needed) and the admin role id otherwise. Returns the
+   * number of affected rows (0 = blocked or row not found, 1 = deleted).
+   */
+  async removeIfNotLastAdmin(args: {
+    userId: string;
+    organizationId: TenantId | string;
+    adminRoleIdIfAdmin: string | null;
+  }): Promise<number> {
+    assertTenantId(args.organizationId);
+    if (args.adminRoleIdIfAdmin === null) {
+      const r = await this.repo.delete({
+        userId: args.userId,
+        organizationId: args.organizationId,
+      });
+      return r.affected ?? 0;
+    }
+    const result: Array<{ id: string }> = await this.repo.query(
+      `WITH locked_admins AS (
+         SELECT id FROM memberships
+         WHERE organization_id = $1
+           AND role_id = $2
+           AND status = 'active'
+         FOR UPDATE
+       )
+       DELETE FROM memberships
+       WHERE user_id = $3
+         AND organization_id = $1
+         AND (SELECT count(*) FROM locked_admins) > 1
+       RETURNING id`,
+      [args.organizationId, args.adminRoleIdIfAdmin, args.userId],
+    );
+    return result.length;
+  }
 }

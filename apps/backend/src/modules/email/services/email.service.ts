@@ -184,10 +184,17 @@ function renderInvitationBody(input: InvitationEmailInput): {
 }
 
 function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return (
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      // Backtick is benign in standard HTML attribute contexts but some
+      // older IE versions treated it as an attribute delimiter. Cheap
+      // belt-and-braces — keeps the escape list complete enough for any
+      // future template growth (e.g. inline JS).
+      .replace(/`/g, '&#96;')
+  );
 }

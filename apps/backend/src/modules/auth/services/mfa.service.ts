@@ -169,17 +169,27 @@ export class MfaService {
     return { backupCodes: plainBackupCodes };
   }
 
-  async disable(userId: string, context: AuthEventContext): Promise<void> {
+  /**
+   * Disable MFA on the caller's account. Requires a fresh TOTP or backup
+   * code in addition to the access token — without this second factor a
+   * briefly-compromised access token (XSS, leaked log line, stolen
+   * device) could permanently strip the MFA layer. The current code is
+   * verified the same way as a login challenge (TOTP first, backup code
+   * fallback by shape). Backup codes consumed here count against the
+   * remaining pool exactly like a login use — there's no special
+   * "disable" pool.
+   */
+  async disable(userId: string, code: string, context: AuthEventContext): Promise<void> {
     const config = await this.mfaConfigs.findByUserId(userId);
     if (config === null || !config.enabled) {
       throw new AppException(ERROR_CODES.AUTH_MFA_NOT_ENROLLED, {
         message: 'MFA is not enabled for this account',
       });
     }
-    // The current spec exposes disable behind `JwtAuthGuard` alone — the
-    // active session is the proof of intent. A future hardening pass
-    // (BE-AUTH-MFA-STEP-UP) may require a fresh TOTP / backup code to
-    // defend against a stolen access token.
+    // Reuse the login-challenge verifier: same TOTP / backup-code
+    // semantics, same audit trail on failure, same `AUTH_MFA_INVALID_CODE`
+    // error envelope. Throws on mismatch — we never reach `disable` below.
+    await this.verifyLoginChallenge(userId, code, context);
     await this.mfaConfigs.disable(userId);
     await this.audit.record('auth.mfa_disabled', { ...context, userId, organizationId: null }, {});
   }

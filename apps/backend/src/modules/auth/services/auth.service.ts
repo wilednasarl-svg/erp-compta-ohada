@@ -14,10 +14,12 @@ import { RefreshTokenService } from './refresh-token.service';
 
 /**
  * Minimum password length per `specs/auth/spec.md` (Requirement: User
- * signup with email and password). Kept as a centralized constant so a
- * future bump (or HIBP check toggle) only touches this file.
+ * signup with email and password). Exported so the invitation-accept
+ * signup path applies the same floor as `POST /auth/signup` — keeping
+ * the two in lockstep prevents the invitation flow from silently
+ * accepting weaker passwords if this gets bumped.
  */
-const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 12;
 
 export interface RequestContext {
   readonly ipAddress: string | null;
@@ -294,12 +296,22 @@ export class AuthService {
     return { accessToken, refreshToken: rotated.token };
   }
 
-  async logout(presentedToken: string, context: RequestContext): Promise<void> {
-    await this.refreshTokens.revoke(presentedToken);
+  async logout(
+    presentedToken: string,
+    callerUserId: string,
+    context: RequestContext,
+  ): Promise<void> {
+    // Bind the revoke to the authenticated caller. Without `callerUserId`
+    // any user with a valid access token could revoke an arbitrary
+    // refresh token by guessing/replaying its opaque value (or pulling
+    // one from leaked logs). Mismatch is a silent no-op inside
+    // `revoke` — the caller's perception is identical to "token not
+    // found", which avoids leaking ownership info.
+    await this.refreshTokens.revoke(presentedToken, callerUserId);
     await this.audit.record(
       'auth.logout',
       {
-        userId: null,
+        userId: callerUserId,
         organizationId: null,
         ipAddress: context.ipAddress,
         userAgent: context.userAgent,

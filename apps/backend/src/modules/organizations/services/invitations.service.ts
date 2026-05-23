@@ -9,6 +9,10 @@ import { AuthEventsService } from '../../audit/services/auth-events.service';
 import { JwtTokenService } from '../../auth/services/jwt-token.service';
 import { PasswordService } from '../../auth/services/password.service';
 import { UserRepository } from '../../auth/repositories/user.repository';
+// Single-source the minimum password length so a bump in `auth.service.ts`
+// automatically applies to the invitation-accept signup path. Previously
+// duplicated as a local const, which let the two drift silently.
+import { PASSWORD_MIN_LENGTH } from '../../auth/services/auth.service';
 import { EmailService } from '../../email/services/email.service';
 import { MembershipRepository } from '../../rbac/repositories/membership.repository';
 import { RoleRepository } from '../../rbac/repositories/role.repository';
@@ -18,7 +22,6 @@ import type { InvitationEntity } from '../entities/invitation.entity';
 import type { MembershipEntity } from '../../rbac/entities/membership.entity';
 import type { UserEntity } from '../../auth/entities/user.entity';
 
-const PASSWORD_MIN_LENGTH = 12;
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface InvitationView {
@@ -150,7 +153,6 @@ export class InvitationsService {
       sub: inviterUserId,
       invitationId: persisted.id,
       orgId: organizationId,
-      email: input.email,
       roleId: role.id,
     });
     const tokenHash = this.hashToken(token);
@@ -189,7 +191,24 @@ export class InvitationsService {
 
   async listPending(organizationId: string): Promise<ReadonlyArray<InvitationView>> {
     const rows = await this.invitations.listByStatus(organizationId, 'pending');
-    return Promise.all(rows.map((row) => this.toView(row)));
+    if (rows.length === 0) {
+      return [];
+    }
+    // Fold the role lookup into ONE query for the whole page. Previously
+    // `toView` ran `roles.findById` per row, producing 21 queries for a
+    // 20-row page (N+1). The role catalogue is small and global, so
+    // `listAll` is the cheapest correct shape; if it ever grows we can
+    // switch to a `findManyByIds(distinct(rows.map(r => r.roleId)))`.
+    const allRoles = await this.roles.listAll();
+    const codeByRoleId = new Map(allRoles.map((r) => [r.id, r.code]));
+    return rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      roleCode: codeByRoleId.get(row.roleId) ?? 'unknown',
+      status: row.status,
+      expiresAt: row.expiresAt,
+      invitedBy: row.invitedBy,
+    }));
   }
 
   async revoke(
@@ -213,13 +232,13 @@ export class InvitationsService {
     }
     await this.invitations.markRevoked(invitationId, organizationId);
     await this.audit.record(
-      'organizations.invitation_sent',
+      'organizations.invitation_revoked',
       {
         ...context,
         userId: callerUserId,
         organizationId,
       },
-      { invitationId, action: 'revoked' },
+      { invitationId },
     );
   }
 
@@ -227,6 +246,17 @@ export class InvitationsService {
     input: AcceptInvitationInput,
     context: AuthEventContext,
   ): Promise<AcceptInvitationResult> {
+    // Concurrency note (BE-INV-02): the status check below + the
+    // markAccepted call at the end are not wrapped in a transaction,
+    // so two concurrent accepts on the same token can both pass the
+    // pending-check. Data integrity is protected by two UNIQUE
+    // constraints — `users(email)` and `memberships(user_id,
+    // organization_id)` — so the second writer fails with a DB unique
+    // violation rather than producing duplicates. The current UX
+    // surface is a 5xx instead of a clean 409 INVITATION_ALREADY_USED
+    // for the loser of the race; a follow-up will add transactional
+    // accept by introducing manager-based repo methods and wrapping
+    // this flow in `dataSource.transaction`.
     const claims = this.jwt.verifyInvitationToken(input.token);
 
     const presentedHash = this.hashToken(input.token);
@@ -264,7 +294,7 @@ export class InvitationsService {
       });
     }
 
-    const existing = await this.users.findActiveByEmail(claims.email);
+    const existing = await this.users.findActiveByEmail(invitation.email);
     let user: UserEntity;
     let userCreated = false;
     if (existing !== null) {
@@ -278,7 +308,7 @@ export class InvitationsService {
       }
       const passwordHash = await this.passwords.hashPassword(input.password);
       user = await this.users.create({
-        email: claims.email,
+        email: invitation.email,
         passwordHash,
         firstName: input.firstName ?? null,
         lastName: input.lastName ?? null,
@@ -291,7 +321,7 @@ export class InvitationsService {
           userId: user.id,
           organizationId: claims.org_id,
         },
-        { email: claims.email, viaInvitation: invitation.id },
+        { email: invitation.email, viaInvitation: invitation.id },
       );
     }
 
@@ -348,18 +378,6 @@ export class InvitationsService {
       return parts.join(' ');
     }
     return inviter.email;
-  }
-
-  private async toView(row: InvitationEntity): Promise<InvitationView> {
-    const role = await this.roles.findById(row.roleId);
-    return {
-      id: row.id,
-      email: row.email,
-      roleCode: role?.code ?? 'unknown',
-      status: row.status,
-      expiresAt: row.expiresAt,
-      invitedBy: row.invitedBy,
-    };
   }
 
   private hashToken(token: string): string {

@@ -223,21 +223,45 @@ describe('MfaService (BE-AUTH-MFA-01..04)', () => {
   });
 
   describe('disable', () => {
-    it('disables MFA + emits auth.mfa_disabled', async () => {
+    it('disables MFA after verifying a fresh TOTP code', async () => {
       const h = buildHarness();
-      h.findMfaByUserId.mockResolvedValue(buildConfig({ enabled: true }));
+      const secret = authenticator.generateSecret();
+      h.findMfaByUserId.mockResolvedValue(
+        buildConfig({ enabled: true, secretEncrypted: Buffer.from(secret, 'utf8') }),
+      );
+      const code = authenticator.generate(secret);
 
-      await h.service.disable('user-1', CTX);
+      await h.service.disable('user-1', code, CTX);
 
       expect(h.disableRow).toHaveBeenCalledWith('user-1');
+      // verifyLoginChallenge writes no audit on success; only the
+      // mfa_disabled event lands.
+      expect(h.recordEvent).toHaveBeenCalledTimes(1);
       expect(h.recordEvent.mock.calls[0][0]).toBe('auth.mfa_disabled');
+    });
+
+    it('refuses disable + leaves MFA on when the code is wrong', async () => {
+      const h = buildHarness();
+      const secret = authenticator.generateSecret();
+      h.findMfaByUserId.mockResolvedValue(
+        buildConfig({ enabled: true, secretEncrypted: Buffer.from(secret, 'utf8') }),
+      );
+
+      await expect(h.service.disable('user-1', '000000', CTX)).rejects.toMatchObject({
+        code: ERROR_CODES.AUTH_MFA_INVALID_CODE,
+      });
+      expect(h.disableRow).not.toHaveBeenCalled();
+      // verifyLoginChallenge logs the failure, but mfa_disabled does NOT
+      // land — the row stays enabled.
+      const eventTypes = h.recordEvent.mock.calls.map((c) => c[0]);
+      expect(eventTypes).toEqual(['auth.mfa_verification_failed']);
     });
 
     it('rejects with AUTH_MFA_NOT_ENROLLED when MFA is not on', async () => {
       const h = buildHarness();
       h.findMfaByUserId.mockResolvedValue(buildConfig({ enabled: false }));
 
-      await expect(h.service.disable('user-1', CTX)).rejects.toMatchObject({
+      await expect(h.service.disable('user-1', '123456', CTX)).rejects.toMatchObject({
         code: ERROR_CODES.AUTH_MFA_NOT_ENROLLED,
       });
     });

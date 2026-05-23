@@ -136,16 +136,20 @@ export class AuthController {
   }
 
   /**
-   * `POST /auth/mfa/disable` — turns MFA off. The current spec accepts
-   * the call without a TOTP code (the user is already authenticated via
-   * JwtAuthGuard); a future hardening pass may require a fresh code to
-   * defend against a stolen access token.
+   * `POST /auth/mfa/disable` — turns MFA off. Step-up verification: the
+   * caller MUST present a fresh TOTP code or a backup code in the body
+   * in addition to the access token. This blocks a briefly-compromised
+   * access token from permanently stripping the second factor.
    */
   @Post('mfa/disable')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async mfaDisable(@CurrentUser('id') userId: string, @Req() req: Request): Promise<void> {
-    await this.mfa.disable(userId, buildAuditRequestContext(req));
+  async mfaDisable(
+    @CurrentUser('id') userId: string,
+    @Body() body: MfaCodeDto,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.mfa.disable(userId, body.code, buildAuditRequestContext(req));
   }
 
   /**
@@ -177,7 +181,11 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@Body() body: RefreshTokenDto, @Req() req: Request): Promise<void> {
-    await this.auth.logout(body.refreshToken, buildAuditRequestContext(req));
+  async logout(
+    @CurrentUser('id') userId: string,
+    @Body() body: RefreshTokenDto,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.auth.logout(body.refreshToken, userId, buildAuditRequestContext(req));
   }
 }

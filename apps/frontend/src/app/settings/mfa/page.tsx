@@ -56,7 +56,8 @@ type VerifyValues = z.infer<typeof verifySchema>;
 type Stage =
   | { kind: 'idle' }
   | { kind: 'setup'; setup: MfaSetupResponse }
-  | { kind: 'activated'; backupCodes: ReadonlyArray<string> };
+  | { kind: 'activated'; backupCodes: ReadonlyArray<string> }
+  | { kind: 'disabling' };
 
 export default function MfaSettingsPage() {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' });
@@ -69,8 +70,10 @@ export default function MfaSettingsPage() {
     api.post<MfaActivationResponse>('/auth/mfa/verify', { code: values.code }),
   );
 
-  const disableMutation = useApiMutation<undefined, void>(async () => {
-    await api.post('/auth/mfa/disable');
+  // Disabling requires a fresh TOTP / backup code (step-up). The form
+  // collects it; we don't trigger this from the idle state without one.
+  const disableMutation = useApiMutation(async (values: VerifyValues) => {
+    await api.post('/auth/mfa/disable', { code: values.code });
     return undefined;
   });
 
@@ -90,10 +93,16 @@ export default function MfaSettingsPage() {
     setStage({ kind: 'activated', backupCodes: result.backupCodes });
   });
 
-  const onDisable = async (): Promise<void> => {
-    await disableMutation.mutateAsync();
+  const disableForm = useForm<VerifyValues>({
+    resolver: zodResolver(verifySchema),
+    defaultValues: { code: '' },
+  });
+
+  const onDisable = disableForm.handleSubmit(async (values) => {
+    await disableMutation.mutateAsync(values);
     setStage({ kind: 'idle' });
-  };
+    disableForm.reset();
+  });
 
   return (
     <main className="container max-w-2xl space-y-6 py-10">
@@ -125,24 +134,61 @@ export default function MfaSettingsPage() {
               {setupMutation.isPending ? 'Préparation…' : 'Activer la MFA'}
             </Button>
             {/*
-             * Disable lives in idle too so a user who already activated
-             * in this session (then refreshed) can still turn it off
-             * without re-running setup. Hidden until backend tells us
-             * MFA is on — currently the simplest signal is the absence
-             * of a 4xx from disable, but for MVP we just keep the
-             * button available and surface 4xx via FormError below.
+             * The "Désactiver" button reveals a code-entry form rather
+             * than calling disable directly: the backend now requires a
+             * fresh TOTP / backup code as a step-up factor (prevents a
+             * leaked access token from stripping MFA).
              */}
-            <Button
-              variant="ghost"
-              onClick={() => void onDisable()}
-              disabled={disableMutation.isPending}
-            >
-              {disableMutation.isPending ? 'Désactivation…' : 'Désactiver'}
+            <Button variant="ghost" onClick={() => setStage({ kind: 'disabling' })}>
+              Désactiver
             </Button>
           </CardFooter>
-          <CardContent>
-            <FormError error={disableMutation.error} />
-          </CardContent>
+        </Card>
+      ) : null}
+
+      {stage.kind === 'disabling' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Confirmer la désactivation</CardTitle>
+            <CardDescription>
+              Saisissez un code TOTP courant ou un code de secours pour confirmer la désactivation
+              de la MFA. Cette vérification empêche qu'un jeton d'accès volé désactive
+              silencieusement votre second facteur.
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={onDisable} noValidate>
+            <CardContent className="space-y-4">
+              <FormError error={disableMutation.error} />
+              <div className="space-y-2">
+                <Label htmlFor="disable-code">Code</Label>
+                <Input
+                  id="disable-code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  {...disableForm.register('code')}
+                />
+                {disableForm.formState.errors.code !== undefined ? (
+                  <p className="text-xs text-destructive">
+                    {disableForm.formState.errors.code.message}
+                  </p>
+                ) : null}
+              </div>
+            </CardContent>
+            <CardFooter className="gap-3">
+              <Button type="submit" variant="destructive" disabled={disableMutation.isPending}>
+                {disableMutation.isPending ? 'Désactivation…' : 'Désactiver la MFA'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStage({ kind: 'idle' })}
+                disabled={disableMutation.isPending}
+              >
+                Annuler
+              </Button>
+            </CardFooter>
+          </form>
         </Card>
       ) : null}
 

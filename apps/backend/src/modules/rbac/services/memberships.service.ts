@@ -115,22 +115,32 @@ export class MembershipsService {
     }
 
     // Last-admin invariant (spec 7.7): refuse to downgrade the only
-    // active admin remaining. We count BEFORE the update — the count
-    // includes the target row, so "<= 1" means "this is the only admin".
-    if (oldRole.code === 'admin' && newRole.code !== 'admin') {
-      const adminCount = await this.memberships.countActiveAdminsForOrganization(
-        organizationId,
-        oldRole.id,
-      );
-      if (adminCount <= 1) {
+    // active admin remaining. Single SQL statement with `SELECT … FOR
+    // UPDATE` on the admin rows so two concurrent downgrade requests
+    // serialise instead of both passing a stale `count = 2` and leaving
+    // zero admins. `updateRoleIfNotLastAdmin` returns 0 when the guard
+    // blocks (or when the membership row vanished); we surface the
+    // former as `ORG_LAST_ADMIN`.
+    const downgradingAdmin = oldRole.code === 'admin' && newRole.code !== 'admin';
+    const affected = await this.memberships.updateRoleIfNotLastAdmin({
+      userId: targetUserId,
+      organizationId,
+      newRoleId: newRole.id,
+      fromAdminRoleId: downgradingAdmin ? oldRole.id : null,
+    });
+    if (affected === 0) {
+      if (downgradingAdmin) {
         throw new AppException(ERROR_CODES.ORG_LAST_ADMIN, {
           message: 'Cannot downgrade the last active admin of the organization',
           details: { organizationId, targetUserId },
         });
       }
+      // The membership row disappeared between our initial read and
+      // the update — surface a clean 404 rather than silently no-oping.
+      throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
+        message: 'Target user has no membership on this organization',
+      });
     }
-
-    await this.memberships.updateRole(targetUserId, organizationId, newRole.id);
     await this.audit.record(
       'organizations.role_changed',
       {
@@ -184,24 +194,29 @@ export class MembershipsService {
       });
     }
 
-    // Last-admin invariant: count BEFORE the delete; the target row is
-    // included in the count, so "<= 1" means "this is the only admin"
-    // — covers both "admin removes themselves" and "admin removes the
-    // only other admin via privileged auto-removal".
-    if (targetRole.code === 'admin') {
-      const adminCount = await this.memberships.countActiveAdminsForOrganization(
-        organizationId,
-        targetRole.id,
-      );
-      if (adminCount <= 1) {
+    // Last-admin invariant: lock-and-count inside a single DELETE so
+    // two concurrent removes can't both pass `count = 2` and leave
+    // zero admins. `removeIfNotLastAdmin` returns 0 when the guard
+    // blocks (or when the row vanished); we map the former to
+    // `ORG_LAST_ADMIN`.
+    const targetIsAdmin = targetRole.code === 'admin';
+    const affected = await this.memberships.removeIfNotLastAdmin({
+      userId: targetUserId,
+      organizationId,
+      adminRoleIdIfAdmin: targetIsAdmin ? targetRole.id : null,
+    });
+    if (affected === 0) {
+      if (targetIsAdmin) {
         throw new AppException(ERROR_CODES.ORG_LAST_ADMIN, {
           message: 'Cannot remove the last active admin of the organization',
           details: { organizationId, targetUserId },
         });
       }
+      // Row vanished between read and delete — clean 404.
+      throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
+        message: 'Target user has no membership on this organization',
+      });
     }
-
-    await this.memberships.remove(targetUserId, organizationId);
     await this.audit.record(
       'organizations.role_changed',
       {

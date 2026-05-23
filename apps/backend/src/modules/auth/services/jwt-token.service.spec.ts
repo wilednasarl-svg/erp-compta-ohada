@@ -171,11 +171,10 @@ describe('JwtTokenService (BE-CRYPTO-03)', () => {
       sub: 'inviter-user',
       invitationId: 'inv-1',
       orgId: 'org-1',
-      email: 'new@cabinet.ci',
       roleId: 'role-comptable',
     };
 
-    it('round-trips the full claim set (sub, org_id, email, role_id, invitation_id, purpose)', () => {
+    it('round-trips the claim set (sub, org_id, role_id, invitation_id, purpose) — no PII', () => {
       const service = buildService(T0);
       const token = service.signInvitationToken(INVITE_INPUT);
 
@@ -185,12 +184,16 @@ describe('JwtTokenService (BE-CRYPTO-03)', () => {
       expect(claims.purpose).toBe('invitation');
       expect(claims.invitation_id).toBe('inv-1');
       expect(claims.org_id).toBe('org-1');
-      expect(claims.email).toBe('new@cabinet.ci');
       expect(claims.role_id).toBe('role-comptable');
       expect(claims.iss).toBe(JWT_ISSUER);
       expect(claims.iat).toBe(Math.floor(T0 / 1000));
       // INVITATION_TTL = 7d → exp = iat + 7*86400
       expect(claims.exp).toBe(Math.floor(T0 / 1000) + 7 * 24 * 60 * 60);
+      // The invitee email is intentionally NOT in the token — the
+      // accept flow reads it from the DB row by invitation_id. This
+      // keeps PII out of the link that travels through SMTP and any
+      // mail-scanning infra.
+      expect(claims).not.toHaveProperty('email');
     });
 
     it('rejects empty/missing fields at sign time (programming error → plain Error)', () => {
@@ -200,7 +203,6 @@ describe('JwtTokenService (BE-CRYPTO-03)', () => {
         /invitationId/,
       );
       expect(() => service.signInvitationToken({ ...INVITE_INPUT, orgId: '' })).toThrow(/orgId/);
-      expect(() => service.signInvitationToken({ ...INVITE_INPUT, email: '' })).toThrow(/email/);
       expect(() => service.signInvitationToken({ ...INVITE_INPUT, roleId: '' })).toThrow(/roleId/);
     });
 

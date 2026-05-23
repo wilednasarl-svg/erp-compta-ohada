@@ -178,9 +178,18 @@ function buildHarness(epochMs: number = T0): Harness {
     create: createMembership,
   } as unknown as MembershipRepository;
 
+  const listRoles = jest
+    .fn<Promise<RoleEntity[]>, []>()
+    .mockResolvedValue([
+      buildRole('admin'),
+      buildRole('comptable'),
+      buildRole('expert-comptable'),
+    ]);
+
   const rolesRepo = {
     findById: findRoleById,
     findByCode: findRoleByCode,
+    listAll: listRoles,
   } as unknown as RoleRepository;
 
   const usersRepo = {
@@ -291,12 +300,12 @@ describe('InvitationsService (BE-INV-01..03)', () => {
       expect(persistArgs[0]).toBe('org-1');
       expect((persistArgs[1] as { expiresAt: Date }).expiresAt.getTime()).toBe(T0 + SEVEN_DAYS_MS);
 
-      // 2. JWT signed with the stable invitation id
+      // 2. JWT signed with the stable invitation id. `email` is
+      // intentionally absent — the accept path reads it from the DB.
       expect(h.signInvitationToken).toHaveBeenCalledWith({
         sub: 'admin-1',
         invitationId: 'inv-fresh',
         orgId: 'org-1',
-        email: 'new@cabinet.ci',
         roleId: 'role-comptable',
       });
 
@@ -336,6 +345,11 @@ describe('InvitationsService (BE-INV-01..03)', () => {
 
       expect(h.markRevoked).toHaveBeenCalledWith('inv-1', 'org-1');
       expect(h.recordEvent).toHaveBeenCalledTimes(1);
+      // Guards against the historical bug where `revoke` emitted the
+      // `invitation_sent` event by copy-paste from `create`. The
+      // event-name assertion would have caught it; previously the test
+      // only counted calls, leaving the audit trail silently corrupted.
+      expect(h.recordEvent.mock.calls[0]?.[0]).toBe('organizations.invitation_revoked');
     });
 
     it('rejects with INVITATION_NOT_FOUND when the row is missing', async () => {
@@ -363,11 +377,12 @@ describe('InvitationsService (BE-INV-01..03)', () => {
       h: Harness,
       overrides: Partial<InvitationTokenClaims> = {},
     ): InvitationTokenClaims {
+      // No `email` claim — the accept flow now resolves the invitee
+      // email from `invitation.email` (DB row), not from the JWT.
       const claims: InvitationTokenClaims = {
         sub: 'admin-1',
         purpose: 'invitation',
         org_id: 'org-1',
-        email: 'new@cabinet.ci',
         role_id: 'role-comptable',
         invitation_id: 'inv-1',
         iat: Math.floor(T0 / 1000),

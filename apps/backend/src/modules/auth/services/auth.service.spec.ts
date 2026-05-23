@@ -389,12 +389,15 @@ describe('AuthService (BE-AUTH-01..05)', () => {
   });
 
   describe('logout', () => {
-    it('revokes the presented refresh token and emits auth.logout', async () => {
+    it('revokes the presented refresh token + emits auth.logout, bound to the caller', async () => {
       const h = buildHarness();
 
-      await h.service.logout('rt-x', CTX);
+      await h.service.logout('rt-x', 'user-1', CTX);
 
-      expect(h.revokeRefresh).toHaveBeenCalledWith('rt-x');
+      // The presented refresh token is revoked only if it belongs to
+      // `user-1` — the second arg is the ownership check that prevents
+      // an authed attacker from revoking another user's session.
+      expect(h.revokeRefresh).toHaveBeenCalledWith('rt-x', 'user-1');
       expect(h.recordEvent).toHaveBeenCalledTimes(1);
       expect(h.recordEvent.mock.calls[0][0]).toBe('auth.logout');
     });

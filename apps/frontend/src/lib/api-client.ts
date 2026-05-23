@@ -169,7 +169,10 @@ async function request<T>(
 
   const envelope = parsed as { data?: unknown; error?: ApiErrorBody | null };
 
-  if (!response.ok || envelope.error !== null) {
+  // `envelope.error` is `null` on success per the backend interceptor
+  // contract. Use loose-null check so a 200 response that omits the
+  // field (`error: undefined`) doesn't get mistaken for an error.
+  if (!response.ok || envelope.error != null) {
     const errBody: ApiErrorBody =
       envelope.error ?? {
         code: 'UNKNOWN_ERROR',
