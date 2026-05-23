@@ -5,7 +5,11 @@ import { LoggerModule } from './common/logging/logger.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { configuration } from './config/configuration';
 import { DatabaseModule } from './database/database.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { RbacModule } from './modules/rbac/rbac.module';
 
 @Module({
   imports: [
@@ -21,6 +25,13 @@ import { HealthModule } from './modules/health/health.module';
     LoggerModule,
     DatabaseModule,
     HealthModule,
+    // Module 1 feature modules. They each register their entities with
+    // `TypeOrmModule.forFeature([...])` and expose typed repositories that
+    // enforce the multi-tenant invariant (BE-DB-11).
+    OrganizationsModule,
+    AuthModule,
+    RbacModule,
+    AuditModule,
   ],
   controllers: [],
   providers: [],
