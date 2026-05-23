@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport, type Transporter } from 'nodemailer';
 
@@ -67,7 +67,7 @@ export class EmailService {
      * `SMTP_*` env vars (skipped in dry-run mode to avoid a needless
      * DNS / connection attempt).
      */
-    transportOverride?: MailTransport,
+    @Optional() transportOverride?: MailTransport,
   ) {
     const email = configService.get('email', { infer: true });
     const smtp = configService.get('smtp', { infer: true });

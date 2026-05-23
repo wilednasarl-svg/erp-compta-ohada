@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -48,6 +49,8 @@ import { buildAuditRequestContext } from '../../../common/http/request-context.h
  * (populated by `TenantGuard` from the JWT claim) to fail-closed on
  * accidentally-exposed routes.
  */
+@ApiTags('Invitations')
+@ApiBearerAuth('bearer')
 @Controller('organizations/:id/invitations')
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class InvitationsController {

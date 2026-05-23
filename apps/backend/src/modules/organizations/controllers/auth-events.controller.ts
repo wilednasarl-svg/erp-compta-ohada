@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -67,6 +68,8 @@ function toView(row: AuthEventEntity): AuthEventView {
  * events, so even a misconfigured controller cannot accidentally
  * mutate the row.
  */
+@ApiTags('Audit')
+@ApiBearerAuth('bearer')
 @Controller('organizations/:id/auth-events')
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class AuthEventsController {

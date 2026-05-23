@@ -10,6 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -51,6 +52,8 @@ import { buildAuditRequestContext } from '../../../common/http/request-context.h
  * The URL `:id` is compared in the service for spec-compliant "no info
  * disclosure" on cross-tenant attempts.
  */
+@ApiTags('Organizations')
+@ApiBearerAuth('bearer')
 @Controller('organizations')
 export class OrganizationsController {
   constructor(private readonly orgs: OrganizationsService) {}

@@ -1,4 +1,5 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
@@ -8,6 +9,7 @@ export interface HealthDbPayload {
   readonly ok: true;
 }
 
+@ApiTags('Health')
 @Controller('health')
 @Public()
 export class HealthController {

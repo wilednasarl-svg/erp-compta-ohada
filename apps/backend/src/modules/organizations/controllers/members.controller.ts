@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -40,6 +41,8 @@ import { buildAuditRequestContext } from '../../../common/http/request-context.h
  * (`@CurrentOrg('id')`); the path-level `:id` is compared in the route
  * to fail-closed on a route bypassed by an upstream guard misconfig.
  */
+@ApiTags('Members')
+@ApiBearerAuth('bearer')
 @Controller('organizations/:id/members')
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class MembersController {

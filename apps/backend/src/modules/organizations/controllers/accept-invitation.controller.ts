@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
 import { Public } from '../../auth/decorators/public.decorator';
@@ -25,6 +26,7 @@ import { buildAuditRequestContext } from '../../../common/http/request-context.h
  * `invitations` table. Putting it here keeps the spec route prefix
  * (`/auth/...`) decoupled from module ownership.
  */
+@ApiTags('Auth')
 @Controller('auth/invitations')
 export class AcceptInvitationController {
   constructor(private readonly invitations: InvitationsService) {}

@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { CurrentUser } from '../decorators/current-user.decorator';
@@ -44,6 +45,8 @@ import { buildAuditRequestContext } from '../../../common/http/request-context.h
  * leg of the login flow (the caller holds the `mfa_challenge` JWT
  * issued by `/auth/login`, not a regular access token).
  */
+@ApiTags('Auth')
+@ApiBearerAuth('bearer')
 @Controller('auth')
 export class AuthController {
   constructor(
