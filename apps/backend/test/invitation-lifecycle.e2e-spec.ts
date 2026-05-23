@@ -57,11 +57,13 @@ describe('e2e: invitation single-use + expiration (Section 10.x, BE-TEST-06/07)'
   }): Promise<string> {
     const { JwtTokenService } = await import('../src/modules/auth/services/jwt-token.service');
     const jwt = app.get(JwtTokenService);
+    // `email` was removed from the invitation JWT claim payload to avoid
+    // PII leakage via cached link previews / anti-phishing scanners. The
+    // invitee's email is now read from the DB row keyed on `invitation_id`.
     const token = jwt.signInvitationToken({
       sub: input.inviterUserId,
       invitationId: input.invitationId,
       orgId: input.organizationId,
-      email: input.email,
       roleId: input.roleId,
     });
     const { createHash } = await import('node:crypto');

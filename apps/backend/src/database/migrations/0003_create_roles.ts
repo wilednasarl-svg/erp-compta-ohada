@@ -11,8 +11,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * service layer. `code` is the stable machine identifier consumed by
  * permission checks; `name` and `description` are display values.
  */
-export class CreateRoles0003 implements MigrationInterface {
-  name = 'CreateRoles0003';
+export class CreateRoles1700000000003 implements MigrationInterface {
 
   private static readonly SYSTEM_ROLE_CODES = [
     'admin',
@@ -62,7 +61,7 @@ export class CreateRoles0003 implements MigrationInterface {
     // subsequent DROP TABLE would also remove them, but the explicit DELETE
     // keeps the migration symmetrical and audit-friendly.
     await queryRunner.query(`DELETE FROM "roles" WHERE "code" = ANY($1)`, [
-      [...CreateRoles0003.SYSTEM_ROLE_CODES],
+      [...CreateRoles1700000000003.SYSTEM_ROLE_CODES],
     ]);
 
     await queryRunner.query(`DROP TABLE IF EXISTS "roles"`);

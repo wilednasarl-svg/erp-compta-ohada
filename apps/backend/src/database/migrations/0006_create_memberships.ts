@@ -14,8 +14,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * No seed: memberships are created at runtime by the signup, invitation,
  * and admin flows once those endpoints land.
  */
-export class CreateMemberships0006 implements MigrationInterface {
-  name = 'CreateMemberships0006';
+export class CreateMemberships1700000000006 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent

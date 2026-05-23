@@ -17,8 +17,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * guarantees at most one MFA configuration per user — re-enrollment overwrites
  * the existing row instead of creating a parallel one.
  */
-export class CreateMfaConfigs0009 implements MigrationInterface {
-  name = 'CreateMfaConfigs0009';
+export class CreateMfaConfigs1700000000009 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent

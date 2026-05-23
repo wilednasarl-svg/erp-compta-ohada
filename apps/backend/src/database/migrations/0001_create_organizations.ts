@@ -9,8 +9,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * standalone companies; `deleted_at` enables soft-delete and is indexed for
  * fast "active tenants" filtering.
  */
-export class CreateOrganizations0001 implements MigrationInterface {
-  name = 'CreateOrganizations0001';
+export class CreateOrganizations1700000000001 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (bundled with PostgreSQL >= 13).

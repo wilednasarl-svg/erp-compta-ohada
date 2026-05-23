@@ -16,8 +16,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * `specs/organizations/spec.md` (Requirement: Send invitation to join an
  * organization, Scenario: Duplicate pending invitation for same email).
  */
-export class CreateInvitations0007 implements MigrationInterface {
-  name = 'CreateInvitations0007';
+export class CreateInvitations1700000000007 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent

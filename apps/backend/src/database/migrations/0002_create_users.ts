@@ -11,8 +11,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * soft-delete; FK links to `organizations` and RBAC tables are deferred to
  * later migrations once those tables exist.
  */
-export class CreateUsers0002 implements MigrationInterface {
-  name = 'CreateUsers0002';
+export class CreateUsers1700000000002 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (already enabled by 0001 but kept

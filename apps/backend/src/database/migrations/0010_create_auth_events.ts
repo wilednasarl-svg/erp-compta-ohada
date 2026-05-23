@@ -25,8 +25,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * Each index is on `(scope_col, created_at DESC)` so a sort + limit can be
  * served from the index without a heap sort.
  */
-export class CreateAuthEvents0010 implements MigrationInterface {
-  name = 'CreateAuthEvents0010';
+export class CreateAuthEvents1700000000010 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent

@@ -17,8 +17,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * permissions are never deleted, but the cascade protects ad-hoc rows
  * created by future migrations.
  */
-export class CreateRolePermissions0005 implements MigrationInterface {
-  name = 'CreateRolePermissions0005';
+export class CreateRolePermissions1700000000005 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

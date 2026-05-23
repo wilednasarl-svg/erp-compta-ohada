@@ -11,8 +11,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * reference. The seed in this migration matches the catalog defined in
  * `specs/rbac/spec.md` (Requirement: Seeded permission catalog).
  */
-export class CreatePermissions0004 implements MigrationInterface {
-  name = 'CreatePermissions0004';
+export class CreatePermissions1700000000004 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent
