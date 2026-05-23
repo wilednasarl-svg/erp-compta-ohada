@@ -165,16 +165,42 @@ pnpm --filter backend seed:dev
 
 ---
 
-## 4. Frontend sur Vercel (à venir)
+## 4. Frontend sur Vercel
 
-Statut : **à faire quand le frontend existera**.
+Statut : **prêt à déployer** (`apps/frontend/` existe — Next.js 15 App Router).
 
-1. `vercel --cwd apps/frontend` ou import du repo depuis le dashboard Vercel.
+### 4.1 Import depuis le dashboard
+
+1. [vercel.com](https://vercel.com) → **Add New → Project** → importer le repo GitHub.
 2. Framework Preset : **Next.js** (auto-détecté).
-3. Root Directory : `apps/frontend`.
-4. Variables d'env :
-   - `NEXT_PUBLIC_API_URL=https://<votre-app>.up.railway.app`
-5. Mettre à jour `APP_BASE_URL` côté Railway pour pointer vers le domaine Vercel final.
+3. **Root Directory** : `apps/frontend` (Vercel détecte le monorepo via le `pnpm-workspace.yaml` racine, mais le projet pointe sur le sous-dossier).
+4. **Build & Output Settings** : laisser les défauts. Vercel utilise `pnpm install --frozen-lockfile` puis `pnpm build`. Le `outputFileTracingRoot` dans `next.config.mjs` étend le trace au workspace root pour que les deps remontent correctement.
+5. **Environment Variables** :
+
+   | Variable                     | Valeur                                            | Notes                                                                 |
+   | ---------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
+   | `NEXT_PUBLIC_API_BASE_URL`   | `https://<votre-app>.up.railway.app`              | Origine Railway de la section 3. Bundlé client-side au build.         |
+
+   Le préfixe `NEXT_PUBLIC_` est obligatoire — Next.js n'expose au navigateur que les variables qui le portent.
+
+6. **Deploy**. Le premier build prend ~2 min ; les routes (`/`, `/login`, `/signup`, `/organizations`, `/dashboard`, `/members`, `/invitations`, `/settings/mfa`, `/accept-invitation`) sont préren­dues en statique.
+
+### 4.2 Alternative CLI
+
+```powershell
+pnpm dlx vercel@latest link --cwd apps/frontend
+pnpm dlx vercel@latest env add NEXT_PUBLIC_API_BASE_URL production
+# → coller l'URL Railway
+pnpm dlx vercel@latest deploy --prod --cwd apps/frontend
+```
+
+### 4.3 Refermer la boucle CORS
+
+Une fois l'URL Vercel connue (ex. `https://erp-compta.vercel.app`) :
+
+1. Retour Railway → service backend → **Variables** → mettre à jour `APP_BASE_URL=https://erp-compta.vercel.app`.
+2. Redeploy le backend (Railway le déclenche automatiquement).
+3. Tester : ouvrir l'URL Vercel, signup avec un email réel, login. L'onglet **Network** du browser doit montrer les requêtes vers `https://<app>.up.railway.app` sans erreur CORS.
 
 ---
 

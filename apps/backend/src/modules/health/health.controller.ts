@@ -16,6 +16,24 @@ export class HealthController {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   /**
+   * Liveness probe — the cheapest possible "process is up" check,
+   * with no I/O. Consumed by Railway's healthcheck (`/health` per
+   * `railway.toml`) and by any external uptime monitor.
+   *
+   * Kept separate from `/health/db` on purpose: a transient DB blip
+   * (Supabase pooler restart, network hiccup) MUST NOT cycle the
+   * container — k8s/Railway would mark the deploy failed and roll
+   * back, when in fact the API process is perfectly healthy.
+   * `/health/db` exists for the readiness/dependency side of that
+   * coin and is what monitoring should page on.
+   */
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  liveness(): { ok: true } {
+    return { ok: true };
+  }
+
+  /**
    * Database connectivity probe.
    *
    * Returns the raw payload `{ ok: true }`; the global
