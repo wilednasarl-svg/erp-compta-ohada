@@ -2,11 +2,14 @@ import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } fr
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
+import { Public } from '../auth/decorators/public.decorator';
+
 export interface HealthDbPayload {
   readonly ok: true;
 }
 
 @Controller('health')
+@Public()
 export class HealthController {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 

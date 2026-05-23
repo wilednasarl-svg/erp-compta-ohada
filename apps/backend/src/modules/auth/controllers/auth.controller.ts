@@ -18,7 +18,7 @@ import {
   type SignupResult,
 } from '../services/auth.service';
 import { MfaService, type MfaActivationResult, type MfaSetupResult } from '../services/mfa.service';
-import { buildAuthRequestContext } from './request-context.helper';
+import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 
 /**
  * `AuthController` (BE-AUTH-01..05) — MVP authentication surface.
@@ -62,7 +62,7 @@ export class AuthController {
         ...(body.firstName !== undefined ? { firstName: body.firstName } : {}),
         ...(body.lastName !== undefined ? { lastName: body.lastName } : {}),
       },
-      buildAuthRequestContext(req),
+      buildAuditRequestContext(req),
     );
   }
 
@@ -72,7 +72,7 @@ export class AuthController {
   async login(@Body() body: LoginDto, @Req() req: Request): Promise<LoginResult> {
     return this.auth.login(
       { email: body.email, password: body.password },
-      buildAuthRequestContext(req),
+      buildAuditRequestContext(req),
     );
   }
 
@@ -80,7 +80,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() body: RefreshTokenDto, @Req() req: Request): Promise<RefreshResult> {
-    return this.auth.refresh(body.refreshToken, buildAuthRequestContext(req));
+    return this.auth.refresh(body.refreshToken, buildAuditRequestContext(req));
   }
 
   /**
@@ -101,7 +101,7 @@ export class AuthController {
     return await this.auth.selectOrganization(
       userId,
       body.organizationId,
-      buildAuthRequestContext(req),
+      buildAuditRequestContext(req),
     );
   }
 
@@ -129,7 +129,7 @@ export class AuthController {
     @Body() body: MfaCodeDto,
     @Req() req: Request,
   ): Promise<MfaActivationResult> {
-    return await this.mfa.activate(userId, { code: body.code }, buildAuthRequestContext(req));
+    return await this.mfa.activate(userId, { code: body.code }, buildAuditRequestContext(req));
   }
 
   /**
@@ -142,7 +142,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async mfaDisable(@CurrentUser('id') userId: string, @Req() req: Request): Promise<void> {
-    await this.mfa.disable(userId, buildAuthRequestContext(req));
+    await this.mfa.disable(userId, buildAuditRequestContext(req));
   }
 
   /**
@@ -161,7 +161,7 @@ export class AuthController {
     return await this.auth.completeMfaLogin(
       body.mfaChallengeToken,
       body.code,
-      buildAuthRequestContext(req),
+      buildAuditRequestContext(req),
     );
   }
 
@@ -175,6 +175,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Body() body: RefreshTokenDto, @Req() req: Request): Promise<void> {
-    await this.auth.logout(body.refreshToken, buildAuthRequestContext(req));
+    await this.auth.logout(body.refreshToken, buildAuditRequestContext(req));
   }
 }

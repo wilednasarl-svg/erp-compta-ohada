@@ -148,6 +148,76 @@ export class MembershipsService {
     return this.toView(targetMembership, newRole.code);
   }
 
+  /**
+   * BE-ORG-07 — admin-only member removal. Same last-admin invariant as
+   * `changeRole` (spec 7.7): refuse to remove the only active admin
+   * remaining. Emits `organizations.role_changed` with `{ targetUserId,
+   * fromRole, toRole: null, action: 'removed' }` so the journal can
+   * reconstruct the full membership history.
+   *
+   * The repository delete is hard (FK CASCADE), not a soft-delete: the
+   * `memberships` table has no `deleted_at` column. If the spec ever
+   * needs a "suspended" tombstone, prefer `changeRole`/`updateStatus`
+   * which already exist.
+   */
+  async removeMember(
+    actorUserId: string,
+    organizationId: string,
+    targetUserId: string,
+    context: AuthEventContext,
+  ): Promise<void> {
+    const targetMembership = await this.memberships.findByUserAndOrganization(
+      targetUserId,
+      organizationId,
+    );
+    if (targetMembership === null) {
+      throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
+        message: 'Target user has no membership on this organization',
+      });
+    }
+
+    const targetRole = await this.roles.findById(targetMembership.roleId);
+    if (targetRole === null) {
+      // Data integrity — RESTRICT FK should make this impossible.
+      throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
+        message: 'Membership role is unresolvable',
+      });
+    }
+
+    // Last-admin invariant: count BEFORE the delete; the target row is
+    // included in the count, so "<= 1" means "this is the only admin"
+    // — covers both "admin removes themselves" and "admin removes the
+    // only other admin via privileged auto-removal".
+    if (targetRole.code === 'admin') {
+      const adminCount = await this.memberships.countActiveAdminsForOrganization(
+        organizationId,
+        targetRole.id,
+      );
+      if (adminCount <= 1) {
+        throw new AppException(ERROR_CODES.ORG_LAST_ADMIN, {
+          message: 'Cannot remove the last active admin of the organization',
+          details: { organizationId, targetUserId },
+        });
+      }
+    }
+
+    await this.memberships.remove(targetUserId, organizationId);
+    await this.audit.record(
+      'organizations.role_changed',
+      {
+        ...context,
+        userId: actorUserId,
+        organizationId,
+      },
+      {
+        targetUserId,
+        fromRole: targetRole.code,
+        toRole: null,
+        action: 'removed',
+      },
+    );
+  }
+
   private toView(
     membership: { userId: string; status: 'active' | 'suspended' },
     roleCode: string,

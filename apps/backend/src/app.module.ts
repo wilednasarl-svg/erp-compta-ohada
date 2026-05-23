@@ -1,12 +1,15 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 
 import { LoggerModule } from './common/logging/logger.module';
+import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { configuration } from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { RbacModule } from './modules/rbac/rbac.module';
@@ -34,12 +37,28 @@ import { RbacModule } from './modules/rbac/rbac.module';
     AuditModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    // BE-RBAC-06 — deny-by-default authentication. `JwtAuthGuard` is
+    // registered as an `APP_GUARD` so EVERY request must carry a valid
+    // Bearer access token unless the handler is annotated `@Public()`
+    // (signup, login, refresh, accept-invitation, mfa/verify-challenge).
+    // `TenantGuard`, `PermissionsGuard`, `RolesGuard` stay opt-in via
+    // per-controller `@UseGuards` — they need a tenant scope which
+    // public/onboarding routes don't have, and mounting them globally
+    // would force every route to opt out via a third decorator.
+    //
+    // `useExisting` re-uses the singleton instance registered by
+    // `AuthModule.providers`, so it shares the same `JwtTokenService`
+    // injection without re-wiring the dependency graph.
+    { provide: APP_GUARD, useExisting: JwtAuthGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // Run on every route — health probes included — so cross-tenant
-    // attempts and DB outages are still correlatable end-to-end.
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    // Order matters: `RequestIdMiddleware` first so `pino-http` picks up
+    // the correlation id; `RequestContextMiddleware` second so
+    // `req.context.ip` / `req.context.userAgent` are available to every
+    // downstream guard / interceptor / controller.
+    consumer.apply(RequestIdMiddleware, RequestContextMiddleware).forRoutes('*');
   }
 }

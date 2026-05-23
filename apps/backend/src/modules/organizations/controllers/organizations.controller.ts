@@ -29,16 +29,7 @@ import type {
 } from '../services/organizations.service';
 import { OrganizationsService } from '../services/organizations.service';
 import type { OrganizationEntity } from '../entities/organization.entity';
-
-function extractAuditContext(req: Request): {
-  ipAddress: string | null;
-  userAgent: string | null;
-} {
-  const ip = typeof req.ip === 'string' && req.ip.length > 0 ? req.ip : null;
-  const uaHeader = req.headers['user-agent'];
-  const userAgent = typeof uaHeader === 'string' && uaHeader.length > 0 ? uaHeader : null;
-  return { ipAddress: ip, userAgent };
-}
+import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 
 /**
  * `OrganizationsController` (BE-ORG-01..03) — MVP organization surface.
@@ -79,7 +70,11 @@ export class OrganizationsController {
         message: 'Authenticated user is required',
       });
     }
-    return this.orgs.create(userId, { name: body.name, type: body.type }, extractAuditContext(req));
+    return this.orgs.create(
+      userId,
+      { name: body.name, type: body.type },
+      buildAuditRequestContext(req),
+    );
   }
 
   @Get()
@@ -118,7 +113,7 @@ export class OrganizationsController {
       targetOrgId,
       currentOrgId,
       { ...(body.name !== undefined ? { name: body.name } : {}) },
-      extractAuditContext(req),
+      buildAuditRequestContext(req),
     );
   }
 }

@@ -78,6 +78,8 @@ interface Harness {
     [string, string]
   >;
   findRoleById: jest.Mock<Promise<RoleEntity | null>, [string]>;
+  findUserById: jest.Mock<Promise<UserEntity | null>, [string]>;
+  verifyLoginChallenge: jest.Mock<Promise<void>, [string, string, AuthEventContext]>;
 }
 
 function buildHarness(): Harness {
@@ -116,10 +118,11 @@ function buildHarness(): Harness {
     [string, string]
   >();
   const findRoleById = jest.fn<Promise<RoleEntity | null>, [string]>();
+  const findUserById = jest.fn<Promise<UserEntity | null>, [string]>();
 
   const users = {
     findActiveByEmail,
-    findActiveById: jest.fn(),
+    findActiveById: findUserById,
     emailExists,
     create: createUser,
     updatePasswordHash: jest.fn(),
@@ -173,6 +176,8 @@ function buildHarness(): Harness {
     listOrgsForUser,
     findActiveMembershipByUserAndOrgWithOrg,
     findRoleById,
+    findUserById,
+    verifyLoginChallenge,
   };
 }
 
@@ -507,6 +512,98 @@ describe('AuthService (BE-AUTH-01..05)', () => {
       await expect(h.service.selectOrganization('u-1', 'org-deleted', CTX)).rejects.toMatchObject({
         code: ERROR_CODES.ORG_NOT_FOUND,
       });
+    });
+  });
+
+  describe('completeMfaLogin (BE-AUTH-MFA-04)', () => {
+    function setupValidChallenge(h: ReturnType<typeof buildHarness>): void {
+      // The JwtTokenService mock has no `verifyMfaChallengeToken` impl by
+      // default — we add a shallow one that returns a fixed claim set so
+      // the orchestrator can reach the MfaService path.
+      (
+        h.service as unknown as {
+          jwt: { verifyMfaChallengeToken: (t: string) => { sub: string } };
+        }
+      ).jwt = {
+        ...((h.service as unknown as { jwt: object }).jwt as object),
+        verifyMfaChallengeToken: jest.fn().mockReturnValue({ sub: 'u-mfa' }),
+        signAccessToken: h.signAccessToken,
+      } as unknown as { verifyMfaChallengeToken: (t: string) => { sub: string } };
+    }
+
+    it('happy path: verifies challenge + code, issues fresh access+refresh with mfa_verified=true', async () => {
+      const h = buildHarness();
+      setupValidChallenge(h);
+      h.findUserById.mockResolvedValue(buildUser({ id: 'u-mfa' }));
+      h.verifyLoginChallenge.mockResolvedValue(undefined);
+      h.issueRefresh.mockResolvedValue({
+        token: 'rt-mfa',
+        familyId: 'fam-mfa',
+        expiresAt: new Date(),
+        userId: 'u-mfa',
+        organizationId: null,
+      });
+      h.listOrgsForUser.mockResolvedValue([]);
+
+      const result = await h.service.completeMfaLogin('challenge.jwt', '123456', CTX);
+
+      // Code verified against MfaService
+      expect(h.verifyLoginChallenge).toHaveBeenCalledWith('u-mfa', '123456', {
+        ipAddress: '203.0.113.1',
+        userAgent: 'jest/1.0',
+      });
+      // Access token claims mfaVerified=true
+      expect(h.signAccessToken).toHaveBeenCalledWith({ sub: 'u-mfa', mfaVerified: true });
+      // login_success emitted with mfaVerified metadata
+      expect(h.recordEvent).toHaveBeenCalledTimes(1);
+      expect(h.recordEvent.mock.calls[0][0]).toBe('auth.login_success');
+      const meta = h.recordEvent.mock.calls[0][2] as { mfaVerified: boolean };
+      expect(meta.mfaVerified).toBe(true);
+
+      if (result.mfa_required) {
+        throw new Error('completeMfaLogin must never return mfa_required: true');
+      }
+      expect(result.accessToken).toBe('access.jwt');
+      expect(result.refreshToken).toBe('rt-mfa');
+      expect(result.organizations).toEqual([]);
+    });
+
+    it('rejects with AUTH_INVALID_TOKEN when the challenge subject points at an inactive / missing user', async () => {
+      const h = buildHarness();
+      setupValidChallenge(h);
+      h.findUserById.mockResolvedValue(null);
+
+      await expect(
+        h.service.completeMfaLogin('challenge.jwt', '123456', CTX),
+      ).rejects.toMatchObject({ code: ERROR_CODES.AUTH_INVALID_TOKEN });
+      expect(h.verifyLoginChallenge).not.toHaveBeenCalled();
+      expect(h.issueRefresh).not.toHaveBeenCalled();
+    });
+
+    it('rejects with AUTH_INVALID_TOKEN when the user is soft-deactivated (isActive=false)', async () => {
+      const h = buildHarness();
+      setupValidChallenge(h);
+      h.findUserById.mockResolvedValue(buildUser({ id: 'u-mfa', isActive: false }));
+
+      await expect(
+        h.service.completeMfaLogin('challenge.jwt', '123456', CTX),
+      ).rejects.toMatchObject({ code: ERROR_CODES.AUTH_INVALID_TOKEN });
+      expect(h.verifyLoginChallenge).not.toHaveBeenCalled();
+    });
+
+    it('propagates AUTH_MFA_INVALID_CODE thrown by MfaService.verifyLoginChallenge', async () => {
+      const h = buildHarness();
+      setupValidChallenge(h);
+      h.findUserById.mockResolvedValue(buildUser({ id: 'u-mfa' }));
+      h.verifyLoginChallenge.mockRejectedValue(new AppException(ERROR_CODES.AUTH_MFA_INVALID_CODE));
+
+      await expect(h.service.completeMfaLogin('challenge.jwt', 'wrong', CTX)).rejects.toMatchObject(
+        { code: ERROR_CODES.AUTH_MFA_INVALID_CODE },
+      );
+      expect(h.issueRefresh).not.toHaveBeenCalled();
+      // No login_success emitted on failure (MfaService writes
+      // auth.mfa_verification_failed itself).
+      expect(h.recordEvent).not.toHaveBeenCalled();
     });
   });
 });

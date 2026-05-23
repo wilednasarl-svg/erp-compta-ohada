@@ -4,16 +4,7 @@ import type { Request, Response } from 'express';
 import { Public } from '../../auth/decorators/public.decorator';
 import { AcceptInvitationDto } from '../dto/accept-invitation.dto';
 import { type AcceptInvitationResult, InvitationsService } from '../services/invitations.service';
-
-function extractAuditContext(req: Request): {
-  ipAddress: string | null;
-  userAgent: string | null;
-} {
-  const ip = typeof req.ip === 'string' && req.ip.length > 0 ? req.ip : null;
-  const uaHeader = req.headers['user-agent'];
-  const userAgent = typeof uaHeader === 'string' && uaHeader.length > 0 ? uaHeader : null;
-  return { ipAddress: ip, userAgent };
-}
+import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 
 /**
  * `AcceptInvitationController` (BE-INV-02) — public endpoint at
@@ -53,7 +44,7 @@ export class AcceptInvitationController {
         ...(body.firstName !== undefined ? { firstName: body.firstName } : {}),
         ...(body.lastName !== undefined ? { lastName: body.lastName } : {}),
       },
-      extractAuditContext(req),
+      buildAuditRequestContext(req),
     );
     if (result.userCreated) {
       res.status(HttpStatus.CREATED);

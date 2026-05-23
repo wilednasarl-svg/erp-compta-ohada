@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -23,16 +24,7 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { MembershipsService, type MemberView } from '../../rbac/services/memberships.service';
 import { ChangeMemberRoleDto } from '../dto/change-member-role.dto';
-
-function extractAuditContext(req: Request): {
-  ipAddress: string | null;
-  userAgent: string | null;
-} {
-  const ip = typeof req.ip === 'string' && req.ip.length > 0 ? req.ip : null;
-  const uaHeader = req.headers['user-agent'];
-  const userAgent = typeof uaHeader === 'string' && uaHeader.length > 0 ? uaHeader : null;
-  return { ipAddress: ip, userAgent };
-}
+import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 
 /**
  * `MembersController` (BE-ORG-07..08) — tenant-scoped member surface,
@@ -87,9 +79,41 @@ export class MembersController {
       tokenOrgId,
       targetUserId,
       body.roleCode,
-      extractAuditContext(req),
+      buildAuditRequestContext(req),
     );
     return { member };
+  }
+
+  /**
+   * `DELETE /organizations/:id/members/:userId` (BE-ORG-07) — admin-only
+   * member removal. 204 No Content on success.
+   *
+   * Same `@RequirePermission('organizations.manage_members')` as
+   * `changeRole`. Enforces the ORG_LAST_ADMIN invariant in the service
+   * layer — refuses to remove the only active admin.
+   */
+  @Delete(':userId')
+  @RequirePermission('organizations.manage_members')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('userId', new ParseUUIDPipe({ version: '4' })) targetUserId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
+  ): Promise<void> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    if (actorUserId === undefined) {
+      throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, {
+        message: 'Authenticated user is required',
+      });
+    }
+    await this.memberships.removeMember(
+      actorUserId,
+      tokenOrgId,
+      targetUserId,
+      buildAuditRequestContext(req),
+    );
   }
 
   /**

@@ -38,6 +38,7 @@
     "dotenv": "^16.4.5",
     "jsonwebtoken": "^9.0.3",
     "nestjs-pino": "^4.1.0",
+    "nodemailer": "^8.0.7",
     "otplib": "^12.0.1",
     "pg": "^8.13.0",
     "pino": "^9.5.0",
@@ -55,6 +56,7 @@
     "@types/jest": "^29.5.12",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.14.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.11.6",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -88,9 +90,27 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/*.spec.ts",
+      "!**/*.dto.ts",
+      "!**/entities/**",
+      "!**/migrations/**",
+      "!**/database/seeds/**",
+      "!**/main.ts",
+      "!**/*.module.ts",
+      "!**/index.ts",
+      "!**/controllers/**",
+      "!**/repositories/**"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
     "testEnvironment": "node"
   }
 }

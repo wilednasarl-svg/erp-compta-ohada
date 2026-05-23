@@ -28,16 +28,7 @@ import {
   InvitationsService,
   type InvitationView,
 } from '../services/invitations.service';
-
-function extractAuditContext(req: Request): {
-  ipAddress: string | null;
-  userAgent: string | null;
-} {
-  const ip = typeof req.ip === 'string' && req.ip.length > 0 ? req.ip : null;
-  const uaHeader = req.headers['user-agent'];
-  const userAgent = typeof uaHeader === 'string' && uaHeader.length > 0 ? uaHeader : null;
-  return { ipAddress: ip, userAgent };
-}
+import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 
 /**
  * `InvitationsController` (BE-INV-01, BE-INV-03) — admin surface for the
@@ -82,7 +73,7 @@ export class InvitationsController {
       userId,
       tokenOrgId,
       { email: body.email, roleCode: body.roleCode },
-      extractAuditContext(req),
+      buildAuditRequestContext(req),
     );
   }
 
@@ -113,7 +104,7 @@ export class InvitationsController {
         message: 'Authenticated user is required',
       });
     }
-    await this.invitations.revoke(userId, tokenOrgId, invitationId, extractAuditContext(req));
+    await this.invitations.revoke(userId, tokenOrgId, invitationId, buildAuditRequestContext(req));
   }
 
   private assertOrgMatch(

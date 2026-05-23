@@ -165,4 +165,104 @@ describe('JwtTokenService (BE-CRYPTO-03)', () => {
       }
     });
   });
+
+  describe('signInvitationToken / verifyInvitationToken (BE-INV-01)', () => {
+    const INVITE_INPUT = {
+      sub: 'inviter-user',
+      invitationId: 'inv-1',
+      orgId: 'org-1',
+      email: 'new@cabinet.ci',
+      roleId: 'role-comptable',
+    };
+
+    it('round-trips the full claim set (sub, org_id, email, role_id, invitation_id, purpose)', () => {
+      const service = buildService(T0);
+      const token = service.signInvitationToken(INVITE_INPUT);
+
+      const claims = service.verifyInvitationToken(token);
+
+      expect(claims.sub).toBe('inviter-user');
+      expect(claims.purpose).toBe('invitation');
+      expect(claims.invitation_id).toBe('inv-1');
+      expect(claims.org_id).toBe('org-1');
+      expect(claims.email).toBe('new@cabinet.ci');
+      expect(claims.role_id).toBe('role-comptable');
+      expect(claims.iss).toBe(JWT_ISSUER);
+      expect(claims.iat).toBe(Math.floor(T0 / 1000));
+      // INVITATION_TTL = 7d → exp = iat + 7*86400
+      expect(claims.exp).toBe(Math.floor(T0 / 1000) + 7 * 24 * 60 * 60);
+    });
+
+    it('rejects empty/missing fields at sign time (programming error → plain Error)', () => {
+      const service = buildService(T0);
+      expect(() => service.signInvitationToken({ ...INVITE_INPUT, sub: '' })).toThrow(/sub/);
+      expect(() => service.signInvitationToken({ ...INVITE_INPUT, invitationId: '' })).toThrow(
+        /invitationId/,
+      );
+      expect(() => service.signInvitationToken({ ...INVITE_INPUT, orgId: '' })).toThrow(/orgId/);
+      expect(() => service.signInvitationToken({ ...INVITE_INPUT, email: '' })).toThrow(/email/);
+      expect(() => service.signInvitationToken({ ...INVITE_INPUT, roleId: '' })).toThrow(/roleId/);
+    });
+
+    it('verify distinguishes EXPIRED (410) from INVALID (404) — spec-mandated codes', () => {
+      const signer = buildService(T0);
+      const token = signer.signInvitationToken(INVITE_INPUT);
+      // Advance the verifier clock past the 7-day TTL.
+      const verifier = buildService(T0 + 8 * 24 * 60 * 60 * 1000);
+
+      try {
+        verifier.verifyInvitationToken(token);
+        fail('expected expired token to throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AppException);
+        expect((error as AppException).code).toBe(ERROR_CODES.INVITATION_EXPIRED);
+        expect((error as AppException).status).toBe(410);
+      }
+    });
+
+    it('verify rejects malformed/empty/wrong-issuer/wrong-secret tokens with INVITATION_NOT_FOUND (404)', () => {
+      const service = buildService(T0);
+      const cases = [
+        '',
+        'not-a-jwt',
+        'a.b.c',
+        // wrong secret
+        buildService(T0, OTHER_SECRET).signInvitationToken(INVITE_INPUT),
+        // wrong issuer
+        jwtSign({ sub: 'x', purpose: 'invitation', iat: Math.floor(T0 / 1000) }, SECRET, {
+          algorithm: JWT_ALGORITHM,
+          issuer: 'attacker',
+          expiresIn: '7d',
+        }),
+      ];
+      for (const t of cases) {
+        try {
+          service.verifyInvitationToken(t);
+          fail(`expected token ${t.slice(0, 20)}... to throw`);
+        } catch (error) {
+          expect(error).toBeInstanceOf(AppException);
+          expect((error as AppException).code).toBe(ERROR_CODES.INVITATION_NOT_FOUND);
+        }
+      }
+    });
+
+    it('verify rejects a wrong-purpose token (access JWT presented as invitation) with INVITATION_NOT_FOUND', () => {
+      const service = buildService(T0);
+      const accessToken = service.signAccessToken({ sub: 'user-1' });
+
+      try {
+        service.verifyInvitationToken(accessToken);
+        fail('expected wrong-purpose to throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AppException);
+        expect((error as AppException).code).toBe(ERROR_CODES.INVITATION_NOT_FOUND);
+      }
+    });
+
+    it('invitation token is also rejected by verifyAccessToken (cross-purpose protection symmetric)', () => {
+      const service = buildService(T0);
+      const inviteToken = service.signInvitationToken(INVITE_INPUT);
+      expect(() => service.verifyAccessToken(inviteToken)).toThrow(AppException);
+    });
+  });
 });
