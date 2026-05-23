@@ -13,25 +13,12 @@
 
 [build]
 builder = "nixpacks"
-# Nixpacks runs TWO installs by default: a cached one without our
-# flags, then our buildCommand. Because `NODE_ENV=production` is set
-# in the build context, the cached install skips devDependencies. Our
-# buildCommand then tries to re-install with `--prod=false` and pnpm
-# detects a partial node_modules → fires the interactive prompt
-# "The modules directories will be removed and reinstalled from
-# scratch. Proceed? (Y/n)" — in a non-TTY environment pnpm bails
-# instead of answering yes, so devDeps never actually land and
-# `prebuild: rimraf dist` crashes with `sh: 1: rimraf: not found`.
-#
-# Fix: purge the partial node_modules first, then re-install cleanly.
-# The `apps/*/node_modules` glob covers backend + frontend symlinks
-# created by pnpm workspace. The leading `rm -rf` is idempotent — if
-# the layer was already clean it's a no-op.
-#
-# `--prod=false` forces devDependencies even with NODE_ENV=production
-# (we want NODE_ENV=production at RUNTIME for Nest's prod gates, but
-# not at build time when we need rimraf/tsc/@nestjs/cli).
-buildCommand = "rm -rf node_modules apps/backend/node_modules apps/frontend/node_modules && pnpm install --frozen-lockfile --prod=false && pnpm --filter backend build"
+# Build pipeline (install + build phases) is owned by `nixpacks.toml`
+# at the repo root. That override is required because Railway runs a
+# cached pre-install pass with the runtime NODE_ENV=production leaking
+# in, which skips devDependencies and breaks `nest build`. Centralising
+# the install command in `nixpacks.toml` ensures ONE install with
+# `--prod=false` and avoids cache-mount conflicts.
 
 [deploy]
 # `dist/main.js` is the entry produced by `nest build` (see
