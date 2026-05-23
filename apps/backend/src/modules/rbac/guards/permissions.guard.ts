@@ -6,7 +6,7 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { RequestContext } from '../../../common/types/request-context';
 import { REQUIRE_PERMISSION_METADATA_KEY } from '../decorators/require-permission.decorator';
-import { RolePermissionRepository } from '../repositories/role-permission.repository';
+import { PermissionsCacheService } from '../services/permissions-cache.service';
 
 /**
  * `PermissionsGuard` (BE-RBAC-04) — DENY-BY-DEFAULT permission check
@@ -24,16 +24,18 @@ import { RolePermissionRepository } from '../repositories/role-permission.reposi
  *      `RolePermissionRepository.roleHasPermission(roleId, code)`.
  *      Allow on `true`; `FORBIDDEN_PERMISSION` (403) on `false`.
  *
- * The repository call hits Postgres once per request. A caching layer
- * (per-role permission set, invalidated on role-matrix changes) is the
- * obvious next step but out of scope for Module 1 — the matrix is small
- * (16 codes × 6 roles) and a single indexed lookup costs sub-millisecond.
+ * The matrix lookup goes through `PermissionsCacheService` (BE-RBAC-09)
+ * — first hit per role triggers one Postgres round-trip, subsequent
+ * hits resolve from an in-memory `Set<code>`. The cache is process-
+ * local; a future admin endpoint that mutates `role_permissions` must
+ * call `invalidateRole(roleId)` on the same Nest instance (or push to
+ * a shared bus when the platform scales horizontally).
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly rolePermissions: RolePermissionRepository,
+    private readonly permissionsCache: PermissionsCacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -60,7 +62,7 @@ export class PermissionsGuard implements CanActivate {
       });
     }
 
-    const allowed = await this.rolePermissions.roleHasPermission(currentOrg.roleId, requiredCode);
+    const allowed = await this.permissionsCache.roleHasPermission(currentOrg.roleId, requiredCode);
     if (!allowed) {
       throw new AppException(ERROR_CODES.FORBIDDEN_PERMISSION, {
         message: `Caller role does not grant '${requiredCode}'`,

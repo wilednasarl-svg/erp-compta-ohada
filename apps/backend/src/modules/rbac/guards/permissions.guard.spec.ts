@@ -6,7 +6,7 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { RequestContext } from '../../../common/types/request-context';
 import { REQUIRE_PERMISSION_METADATA_KEY } from '../decorators/require-permission.decorator';
-import type { RolePermissionRepository } from '../repositories/role-permission.repository';
+import type { PermissionsCacheService } from '../services/permissions-cache.service';
 import { PermissionsGuard } from './permissions.guard';
 
 function buildExecutionContext(contextBag?: RequestContext): {
@@ -38,8 +38,8 @@ function withPermission(reflector: Reflector, code: string | undefined): void {
   });
 }
 
-function buildRepo(roleHasPermission: jest.Mock): RolePermissionRepository {
-  return { roleHasPermission } as unknown as RolePermissionRepository;
+function buildCache(roleHasPermission: jest.Mock): PermissionsCacheService {
+  return { roleHasPermission } as unknown as PermissionsCacheService;
 }
 
 describe('PermissionsGuard (BE-RBAC-04)', () => {
@@ -51,7 +51,7 @@ describe('PermissionsGuard (BE-RBAC-04)', () => {
 
   it('allows when the role has the required permission', async () => {
     const roleHasPermission = jest.fn().mockResolvedValue(true);
-    const guard = new PermissionsGuard(reflector, buildRepo(roleHasPermission));
+    const guard = new PermissionsGuard(reflector, buildCache(roleHasPermission));
     withPermission(reflector, 'organizations.update');
     const { ctx } = buildExecutionContext({
       currentOrg: { id: 'o', roleId: 'r_admin_id', role: 'admin', membershipId: 'm' },
@@ -63,7 +63,7 @@ describe('PermissionsGuard (BE-RBAC-04)', () => {
 
   it('throws FORBIDDEN_PERMISSION (403) when the role lacks the permission', async () => {
     const roleHasPermission = jest.fn().mockResolvedValue(false);
-    const guard = new PermissionsGuard(reflector, buildRepo(roleHasPermission));
+    const guard = new PermissionsGuard(reflector, buildCache(roleHasPermission));
     withPermission(reflector, 'organizations.delete');
     const { ctx } = buildExecutionContext({
       currentOrg: { id: 'o', roleId: 'r_comptable_id', role: 'comptable', membershipId: 'm' },
@@ -85,7 +85,7 @@ describe('PermissionsGuard (BE-RBAC-04)', () => {
 
   it('DENY-BY-DEFAULT: throws RBAC_NO_POLICY_DECLARED when no @RequirePermission annotation is present', async () => {
     const roleHasPermission = jest.fn();
-    const guard = new PermissionsGuard(reflector, buildRepo(roleHasPermission));
+    const guard = new PermissionsGuard(reflector, buildCache(roleHasPermission));
     withPermission(reflector, undefined);
     const { ctx } = buildExecutionContext({
       currentOrg: { id: 'o', roleId: 'r', role: 'admin', membershipId: 'm' },
@@ -101,7 +101,7 @@ describe('PermissionsGuard (BE-RBAC-04)', () => {
   });
 
   it('throws FORBIDDEN_NO_MEMBERSHIP when currentOrg is missing (TenantGuard not composed)', async () => {
-    const guard = new PermissionsGuard(reflector, buildRepo(jest.fn()));
+    const guard = new PermissionsGuard(reflector, buildCache(jest.fn()));
     withPermission(reflector, 'organizations.read');
     const { ctx } = buildExecutionContext(); // no currentOrg
 
@@ -112,7 +112,7 @@ describe('PermissionsGuard (BE-RBAC-04)', () => {
 
   it('passes through non-HTTP contexts without DB calls', async () => {
     const roleHasPermission = jest.fn();
-    const guard = new PermissionsGuard(reflector, buildRepo(roleHasPermission));
+    const guard = new PermissionsGuard(reflector, buildCache(roleHasPermission));
     const handler = (): void => undefined;
     class FakeController {}
     const ctx = {

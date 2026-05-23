@@ -96,14 +96,14 @@
 
 ## 11. Frontend Next.js (pages minimales)
 
-- [ ] 11.1 Initialiser `frontend/` Next.js 15 avec TypeScript, Tailwind, shadcn/ui, Zustand, React Query, React Hook Form, Zod
-- [ ] 11.2 Page `/signup` avec formulaire (email, password, firstName, lastName)
-- [ ] 11.3 Page `/login` avec gestion `mfa_required` (étape OTP si vrai)
-- [ ] 11.4 Page `/organizations` : sélecteur d'organisation après login (appelle `/auth/select-organization`)
-- [ ] 11.5 Page `/accept-invitation?token=…` : flow d'acceptation (signup inline si user n'existe pas)
-- [ ] 11.6 Page `/settings/mfa` : setup TOTP (QR code) + verify + affichage backup codes une seule fois
-- [ ] 11.7 Store Zustand `useAuthStore` : tokens, currentUser, currentOrg, persistence localStorage
-- [ ] 11.8 Middleware Next.js qui redirige vers `/login` si pas d'access token, vers `/organizations` si pas d'`org_id` dans le token
+- [x] 11.1 Initialiser `frontend/` Next.js 15 avec TypeScript, Tailwind, shadcn/ui, Zustand, React Query, React Hook Form, Zod
+- [x] 11.2 Page `/signup` avec formulaire (email, password, firstName, lastName)
+- [x] 11.3 Page `/login` avec gestion `mfa_required` (étape OTP si vrai)
+- [x] 11.4 Page `/organizations` : sélecteur d'organisation après login (appelle `/auth/select-organization`)
+- [x] 11.5 Page `/accept-invitation?token=…` : flow d'acceptation (signup inline si user n'existe pas)
+- [x] 11.6 Page `/settings/mfa` : setup TOTP (QR code) + verify + affichage backup codes une seule fois
+- [x] 11.7 Store Zustand `useAuthStore` : tokens, currentUser, currentOrg, persistence localStorage
+- [x] 11.8 Middleware Next.js qui redirige vers `/login` si pas d'access token, vers `/organizations` si pas d'`org_id` dans le token
 
 ## 12. Documentation et seeds
 
