@@ -50,7 +50,27 @@ export class XlsxFileParser implements IFileParser {
       // `cellDates: false` keeps dates as Excel serial numbers, which
       // we then stringify; downstream date parsing is centralised in
       // ValidationService. `raw: true` skips formatting.
-      workbook = readFile(absolutePath, { cellDates: false, raw: true });
+      //
+      // Hardening (audit Module 3 Sec-H1):
+      //   - `cellFormula: false` — SheetJS evaluates formulas
+      //     server-side by default, which is the published vector for
+      //     prototype-pollution / DDE-style payloads. We never read
+      //     the evaluated formula result anyway.
+      //   - `sheetRows: 100_000` — hard cap per sheet. Without it an
+      //     XLSX zip-bomb (compressed file under our 50 MB limit but
+      //     unpacking to GB of cells) exhausts the heap inside the
+      //     parser before our `fs.stat` size guard fires.
+      //   - `cellHTML: false` / `cellNF: false` — drop HTML and
+      //     number-format strings; we never consume them and they
+      //     widen the attack surface for crafted workbooks.
+      workbook = readFile(absolutePath, {
+        cellDates: false,
+        raw: true,
+        cellFormula: false,
+        cellHTML: false,
+        cellNF: false,
+        sheetRows: 100_000,
+      });
     } catch (err) {
       throw new FileParseError('Cannot read XLSX file', err);
     }

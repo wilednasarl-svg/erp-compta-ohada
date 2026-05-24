@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { open as fsOpen } from 'node:fs/promises';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -50,6 +51,12 @@ export class FileParserService {
     ctx: ParseContext = {},
   ): Promise<{ parser: IFileParser; result: ParseResult }> {
     const parser = this.resolve(fileMeta);
+    // Magic-byte cross-check (audit Module 3 Sec-H2): the client-declared
+    // `mimeType` selects the parser, but we re-verify the first bytes
+    // against what the parser expects so a renamed/spoofed file is
+    // rejected before any parser logic runs. Defense against EXE-as-CSV,
+    // zip-bombs disguised as CSV, etc.
+    await this.assertMagicBytesMatch(absolutePath, parser, fileMeta);
     try {
       const result = await parser.parse(absolutePath, ctx);
       return { parser, result };
@@ -62,6 +69,68 @@ export class FileParserService {
         });
       }
       throw err;
+    }
+  }
+
+  /**
+   * Read the first 8 bytes and assert they match the parser's expected
+   * format. The four signatures we care about:
+   *
+   *   - XLSX is a ZIP container → starts with `PK\x03\x04` (`50 4B 03 04`).
+   *   - CSV / TXT / Sage are plain text → must not start with a known
+   *     binary magic (we explicitly reject PK, MZ for Win EXE, 7F45 for
+   *     ELF, the PDF `%PDF`, and PNG `89 50 4E 47`).
+   *
+   * Anything matching a known binary signature gets `IMPORT_UNSUPPORTED_FORMAT`
+   * before the parser touches the bytes. This blocks the documented
+   * vector "rename `payload.exe` to `payload.csv` + spoofed
+   * `Content-Type`".
+   */
+  private async assertMagicBytesMatch(
+    absolutePath: string,
+    parser: IFileParser,
+    fileMeta: { mimeType: string; originalName: string },
+  ): Promise<void> {
+    const fh = await fsOpen(absolutePath, 'r');
+    let header: Buffer;
+    try {
+      const buf = Buffer.alloc(8);
+      const { bytesRead } = await fh.read(buf, 0, 8, 0);
+      header = buf.subarray(0, bytesRead);
+    } finally {
+      await fh.close();
+    }
+
+    const startsWith = (sig: number[]): boolean => sig.every((b, i) => header[i] === b);
+
+    const isZip = startsWith([0x50, 0x4b, 0x03, 0x04]); // PK\x03\x04
+    const isWinExe = startsWith([0x4d, 0x5a]); // MZ
+    const isElf = startsWith([0x7f, 0x45, 0x4c, 0x46]); // \x7FELF
+    const isPdf = startsWith([0x25, 0x50, 0x44, 0x46]); // %PDF
+    const isPng = startsWith([0x89, 0x50, 0x4e, 0x47]); // \x89PNG
+
+    if (parser.id === 'xlsx') {
+      // XLSX must be a ZIP container. Anything else uploaded under the
+      // XLSX MIME is a spoof — refuse before SheetJS unzips it (zip-bomb
+      // protection runs at parser level too via `sheetRows`, but the
+      // cleanest reject is here).
+      if (!isZip) {
+        throw new AppException(ERROR_CODES.IMPORT_UNSUPPORTED_FORMAT, {
+          message: "Le fichier déclaré XLSX n'a pas la signature ZIP attendue.",
+          details: { originalName: fileMeta.originalName, mimeType: fileMeta.mimeType },
+        });
+      }
+      return;
+    }
+
+    // Text-based parsers (csv, sage). Any binary signature is an
+    // immediate reject — we never legitimately parse a ZIP/EXE/ELF/PDF/PNG
+    // as text-based accounting input.
+    if (isZip || isWinExe || isElf || isPdf || isPng) {
+      throw new AppException(ERROR_CODES.IMPORT_UNSUPPORTED_FORMAT, {
+        message: `Le fichier "${fileMeta.originalName}" a une signature binaire incompatible avec le format texte attendu.`,
+        details: { originalName: fileMeta.originalName, mimeType: fileMeta.mimeType },
+      });
     }
   }
 }

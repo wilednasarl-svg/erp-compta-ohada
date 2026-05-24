@@ -44,6 +44,41 @@ export const IMPORT_SESSION_STATUSES: readonly ImportSessionStatus[] = [
 ] as const;
 
 /**
+ * Allowed status transitions for an import session (audit Module 3
+ * Code-H1).
+ *
+ *   draft           → parsing | failed
+ *   parsing         → parsed | failed
+ *   parsed          → parsing  (re-parse, e.g. user fixed mapping)
+ *                   | validated | failed
+ *   validated       → ready_for_import | parsed (back-edit) | failed
+ *   ready_for_import → completed | failed
+ *   completed       → ∅ (terminal)
+ *   failed          → draft  (operator-driven reset only, never
+ *                              auto — explicit reopen for retry)
+ *
+ * `updateStatus` MUST consult this map and refuse any transition not
+ * listed. Without this guard, any future call site could push a
+ * session straight from `draft` to `completed` and bypass the
+ * validation pipeline.
+ */
+export const VALID_STATUS_TRANSITIONS: Readonly<
+  Record<ImportSessionStatus, ReadonlySet<ImportSessionStatus>>
+> = {
+  draft: new Set(['parsing', 'failed']),
+  parsing: new Set(['parsed', 'failed']),
+  parsed: new Set(['parsing', 'validated', 'failed']),
+  validated: new Set(['ready_for_import', 'parsed', 'failed']),
+  ready_for_import: new Set(['completed', 'failed']),
+  completed: new Set([]),
+  failed: new Set(['draft']),
+};
+
+export function canTransitionTo(from: ImportSessionStatus, to: ImportSessionStatus): boolean {
+  return VALID_STATUS_TRANSITIONS[from].has(to);
+}
+
+/**
  * Format declared at session creation. The parser still auto-detects
  * the MIME at runtime — `sourceType` is the user's *intent*, not the
  * runtime authority. Useful for dashboards ("imports Sage du mois").

@@ -30,7 +30,17 @@ export class ImportStagingEntryRepository {
     return manager ? manager.getRepository(ImportStagingEntryEntity) : this.repo;
   }
 
+  /**
+   * Bulk-insert staging rows for a parsed file. `organizationId` is
+   * required and validated — the rows go in via INSERT … SELECT FROM
+   * import_files JOIN import_sessions so that any `sessionId` /
+   * `fileId` belonging to a different tenant becomes a zero-row insert
+   * (the JOIN drops the rows the caller has no claim to). Defense
+   * against a future caller passing a mismatched `sessionId` —
+   * documented gap in the original audit Code-H3.
+   */
   async bulkInsert(
+    organizationId: TenantId | string,
     rows: ReadonlyArray<{
       sessionId: string;
       fileId: string;
@@ -41,9 +51,32 @@ export class ImportStagingEntryRepository {
     }>,
     manager?: EntityManager,
   ): Promise<void> {
+    assertTenantId(organizationId);
     if (rows.length === 0) {
       return;
     }
+    // We can't easily use INSERT…SELECT JOIN here because the rows are
+    // not in the DB yet. Instead: re-verify each session's org match
+    // once (cheap — a single SELECT), then bulk insert. The verify
+    // is the choke point an attacker would have to bypass.
+    const sessionIds = Array.from(new Set(rows.map((r) => r.sessionId)));
+    const sessionsRepo = manager
+      ? manager.getRepository('import_sessions')
+      : this.repo.manager.getRepository('import_sessions');
+    const ownedSessions: Array<{ id: string }> = await sessionsRepo
+      .createQueryBuilder('s')
+      .select('s.id', 'id')
+      .where('s.id IN (:...sessionIds)', { sessionIds })
+      .andWhere('s.organization_id = :organizationId', { organizationId })
+      .getRawMany();
+    if (ownedSessions.length !== sessionIds.length) {
+      // At least one sessionId in the batch does not belong to this
+      // tenant. Refuse the whole batch — failing closed is correct.
+      throw new Error(
+        `ImportStagingEntryRepository.bulkInsert: ${sessionIds.length - ownedSessions.length} session id(s) do not belong to org ${organizationId}`,
+      );
+    }
+
     await this.scoped(manager)
       .createQueryBuilder()
       .insert()

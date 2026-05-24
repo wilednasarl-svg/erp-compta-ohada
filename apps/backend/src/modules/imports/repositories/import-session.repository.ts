@@ -4,7 +4,11 @@ import { type EntityManager, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { ImportSessionEntity } from '../entities/import-session.entity';
-import type { ImportSessionStatus, ImportSourceType } from '../types/import-status';
+import {
+  canTransitionTo,
+  type ImportSessionStatus,
+  type ImportSourceType,
+} from '../types/import-status';
 
 /**
  * Tenant-scoped repository for `import_sessions`.
@@ -82,6 +86,17 @@ export class ImportSessionRepository {
     });
   }
 
+  /**
+   * Transition the session to `status` ONLY if the move is allowed by
+   * `VALID_STATUS_TRANSITIONS`. The update is conditional on the
+   * current status (`UPDATE … WHERE status IN (allowed_from_states)`)
+   * so the check is atomic at the SQL level — a concurrent transition
+   * race can't bypass the machine.
+   *
+   * Returns silently when 0 rows were affected (row not found OR
+   * disallowed transition) — the service layer is expected to read
+   * the current status first if it needs to discriminate.
+   */
   async updateStatus(
     id: string,
     organizationId: TenantId | string,
@@ -89,7 +104,21 @@ export class ImportSessionRepository {
     manager?: EntityManager,
   ): Promise<void> {
     assertTenantId(organizationId);
-    await this.scoped(manager).update({ id, organizationId }, { status });
+    const allowedFromStates: ImportSessionStatus[] = (
+      ['draft', 'parsing', 'parsed', 'validated', 'ready_for_import', 'failed'] as const
+    ).filter((s) => canTransitionTo(s, status));
+    if (allowedFromStates.length === 0) {
+      // No state in the machine can legally reach `status` — caller bug.
+      return;
+    }
+    await this.scoped(manager)
+      .createQueryBuilder()
+      .update(ImportSessionEntity)
+      .set({ status })
+      .where('id = :id', { id })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .andWhere('status IN (:...allowedFromStates)', { allowedFromStates })
+      .execute();
   }
 
   async markFailed(

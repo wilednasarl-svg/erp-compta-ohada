@@ -307,12 +307,12 @@ export class ImportSessionService {
         });
         totalRows += 1;
         if (batch.length >= BATCH_SIZE) {
-          await this.stagingEntries.bulkInsert(batch);
+          await this.stagingEntries.bulkInsert(organizationId, batch);
           batch = [];
         }
       }
       if (batch.length > 0) {
-        await this.stagingEntries.bulkInsert(batch);
+        await this.stagingEntries.bulkInsert(organizationId, batch);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown parsing error';
@@ -473,9 +473,30 @@ export class ImportSessionService {
     };
   }
 
+  /**
+   * Resolve a stored `relativePath` (from `import_files.storage_path`)
+   * to an absolute disk path, refusing any value that escapes the
+   * imports storage root.
+   *
+   * Defense (audit Module 3 Sec-H3): even though the write path
+   * sanitises filenames, the `storage_path` column is reachable from
+   * other angles (SQL injection elsewhere, untrusted backup restore,
+   * insider DB edit). Without `startsWith(root + sep)` after
+   * `path.resolve`, a tampered row could cause `parseFile` /
+   * `preview` to open arbitrary server paths. `DOC_NOT_FOUND`-style
+   * indistinguishability is intentional — same code path as a missing
+   * file from the caller's perspective.
+   */
   private resolveAbsolutePath(relativePath: string): string {
     const root = this.config.get('imports', { infer: true }).storageDir;
-    return path.resolve(root, relativePath);
+    const rootResolved = path.resolve(root);
+    const absolute = path.resolve(rootResolved, relativePath);
+    if (absolute !== rootResolved && !absolute.startsWith(rootResolved + path.sep)) {
+      throw new AppException(ERROR_CODES.IMPORT_FILE_NOT_FOUND, {
+        message: 'Import file not found',
+      });
+    }
+    return absolute;
   }
 
   /**

@@ -136,7 +136,21 @@ export class ImportsController {
   @RequirePermission('imports.write')
   @HttpCode(HttpStatus.CREATED)
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  // Multer hard cap on upload bytes — read once at module load from env
+  // so the transport layer aborts the request stream BEFORE the whole
+  // body is buffered in memory. Without this, `multer` happily reads
+  // gigabytes into a Buffer just for our service layer to reject it.
+  // The cap here intentionally tracks `IMPORT_MAX_FILE_SIZE_MB` env
+  // (with a +1 MB headroom so the precise limit check stays in the
+  // service layer where the error code is structured).
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize:
+          (Number.parseInt(process.env.IMPORT_MAX_FILE_SIZE_MB ?? '50', 10) + 1) * 1024 * 1024,
+      },
+    }),
+  )
   async uploadFile(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
