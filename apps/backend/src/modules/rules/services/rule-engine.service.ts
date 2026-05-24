@@ -338,7 +338,7 @@ export class RuleEngineService {
     if (!rule) {
       throw new AppException(
         ERROR_CODES.RULE_NOT_FOUND,
-        `Rule '${ruleId}' not found or does not belong to this organization.`,
+        { message: `Rule '${ruleId}' not found or does not belong to this organization.` },
       );
     }
     return rule;

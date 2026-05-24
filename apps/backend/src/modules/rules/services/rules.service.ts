@@ -78,7 +78,7 @@ export class RulesService {
     assertTenantId(organizationId);
     const rule = await this.ruleRepo.findById(organizationId, ruleId);
     if (!rule) {
-      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, `Rule '${ruleId}' not found.`);
+      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, { message: `Rule '${ruleId}' not found.` });
     }
     return rule;
   }
@@ -105,7 +105,7 @@ export class RulesService {
     });
 
     if (!updated) {
-      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, `Rule '${ruleId}' not found.`);
+      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, { message: `Rule '${ruleId}' not found.` });
     }
 
     await this.emitAudit('rule_updated', updated, ctx, args);
@@ -147,7 +147,7 @@ export class RulesService {
       if (!validConditionTypes.has(cond.type)) {
         throw new AppException(
           ERROR_CODES.RULE_INVALID_CONDITION,
-          `Unknown condition type: '${cond.type}'.`,
+          { message: `Unknown condition type: '${cond.type}'.` },
         );
       }
     }
@@ -156,7 +156,7 @@ export class RulesService {
       if (!validActionTypes.has(action.type)) {
         throw new AppException(
           ERROR_CODES.RULE_INVALID_ACTION,
-          `Unknown action type: '${action.type}'.`,
+          { message: `Unknown action type: '${action.type}'.` },
         );
       }
     }
@@ -164,7 +164,7 @@ export class RulesService {
     if (actions.length === 0) {
       throw new AppException(
         ERROR_CODES.RULE_INVALID_ACTION,
-        'A rule must have at least one action.',
+        { message: 'A rule must have at least one action.' },
       );
     }
   }
