@@ -97,8 +97,7 @@ describe('OrganizationAccountRepository', () => {
     ],
     [
       'updateLabelAndActive',
-      (r: OrganizationAccountRepository) =>
-        r.updateLabelAndActive('acc-1', '', { label: 'X' }),
+      (r: OrganizationAccountRepository) => r.updateLabelAndActive('acc-1', '', { label: 'X' }),
     ],
     [
       'setAccountType',

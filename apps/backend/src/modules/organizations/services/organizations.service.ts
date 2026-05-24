@@ -3,11 +3,13 @@ import { DataSource } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import { asTenantId } from '../../../common/persistence/tenant-scope';
 import { OrganizationAccountingConfigEntity } from '../../accounting-plan/entities/organization-accounting-config.entity';
 import { ChartOfAccountsService } from '../../accounting-plan/services/chart-of-accounts.service';
 import type { AccountingSystem } from '../../accounting-plan/types/accounting-system';
 import type { AuthEventContext } from '../../audit/services/auth-events.service';
 import { AuthEventsService } from '../../audit/services/auth-events.service';
+import { JournalsService } from '../../journals/services/journals.service';
 import { MembershipEntity } from '../../rbac/entities/membership.entity';
 import { MembershipRepository } from '../../rbac/repositories/membership.repository';
 import { RoleRepository } from '../../rbac/repositories/role.repository';
@@ -85,6 +87,7 @@ export class OrganizationsService {
     private readonly roles: RoleRepository,
     private readonly audit: AuthEventsService,
     private readonly chartOfAccounts: ChartOfAccountsService,
+    private readonly journals: JournalsService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -158,6 +161,12 @@ export class OrganizationsService {
           input.system,
           manager,
         );
+
+        // Module 8 — seed les 5 journaux SYSCOHADA standards (AC, VE, BQ,
+        // CA, OD) dans la même transaction. Une org sans journaux ne peut
+        // pas recevoir d'écriture, le seed est donc partie intégrante de
+        // la création.
+        await this.journals.seedStandardJournals(asTenantId(persistedOrg.id), manager);
 
         return { organization: persistedOrg, membership: persistedMembership, cloneResult: clone };
       },

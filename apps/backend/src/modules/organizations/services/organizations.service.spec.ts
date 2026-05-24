@@ -108,6 +108,9 @@ function buildHarness(): Harness {
   const chartOfAccounts = {
     cloneReferenceIntoOrganization: cloneInOrg,
   } as unknown as ChartOfAccountsService;
+  const journals = {
+    seedStandardJournals: jest.fn().mockResolvedValue(undefined),
+  } as unknown as import('../../journals/services/journals.service').JournalsService;
   const dataSource = {
     transaction: (cb: (m: EntityManager) => Promise<unknown>) => cb(fakeManager),
   } as unknown as DataSource;
@@ -118,6 +121,7 @@ function buildHarness(): Harness {
     roleRepo,
     audit,
     chartOfAccounts,
+    journals,
     dataSource,
   );
 

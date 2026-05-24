@@ -91,7 +91,7 @@ export class JournalsService {
         entityType: 'journal',
         entityId: journal.id,
         metadata: { code: journal.code, kind: journal.kind, label: journal.label },
-        ctx,
+        ctx: { ...ctx, userId: actorId },
       })
       .catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
 

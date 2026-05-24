@@ -63,9 +63,12 @@ export class PeriodsService {
       await this.createQuarterlySubPeriods(organizationId, annual.id, year);
     }
 
-    await this.emitAudit('journals.period_created', annual.id, { year, split }, ctx).catch((e) =>
-      this.logger.warn(`Audit failed: ${String(e)}`),
-    );
+    await this.emitAudit(
+      'journals.period_created',
+      annual.id,
+      { year, split },
+      { ...ctx, userId: actorId },
+    ).catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
 
     return annual;
   }
@@ -136,7 +139,7 @@ export class PeriodsService {
       'journals.period_reopened',
       periodId,
       { reason, label: period.label },
-      ctx,
+      { ...ctx, userId: actorId },
     ).catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
   }
 

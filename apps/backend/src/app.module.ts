@@ -16,6 +16,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { RbacModule } from './modules/rbac/rbac.module';
+import { JournalsModule } from './modules/journals/journals.module';
 import { RulesModule } from './modules/rules/rules.module';
 import { TransformationsModule } from './modules/transformations/transformations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
@@ -51,6 +52,11 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     // Le commit définitif vers les tables comptables réelles arrivera
     // en vague 2 / Module 4.
     ImportsModule,
+    // Module 4 — Journals & Entries. Coeur comptable SYSCOHADA AUDCIF :
+    // journaux, ecritures double-partie, periodes comptables, invariant
+    // d'equilibre, machine a etats draft/validated/cancelled,
+    // contre-passation, numeros de piece sequentiels et immutables.
+    JournalsModule,
     // Module 4 wave 1 — Transformation Engine. Retraitement comptable :
     // reclassement, ajustement, historique. Les écritures sources
     // (import_staging_entries) restent immutables ; chaque transformation

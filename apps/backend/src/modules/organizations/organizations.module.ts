@@ -5,6 +5,7 @@ import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module'
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
+import { JournalsModule } from '../journals/journals.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { AcceptInvitationController } from './controllers/accept-invitation.controller';
 import { AuthEventsController } from './controllers/auth-events.controller';
@@ -48,6 +49,9 @@ import { OrganizationsService } from './services/organizations.service';
     // `ChartOfAccountsService` + `OrganizationAccountingConfigRepository`
     // exported by AccountingPlanModule.
     AccountingPlanModule,
+    // Module 8 — pour `JournalsService.seedStandardJournals` appelé
+    // dans la transaction de création d'org.
+    JournalsModule,
   ],
   controllers: [
     OrganizationsController,
