@@ -34,6 +34,10 @@ import { buildPgUrl } from './db-url';
           // (Supabase pooler uses a self-signed root cert).
           url: buildPgUrl(database.url, database.ssl),
           ssl: database.ssl ? { rejectUnauthorized: false } : false,
+          schema: database.schema,
+          extra: {
+            options: `-c search_path=${database.schema},public`,
+          },
           autoLoadEntities: true,
           synchronize: false,
           migrationsRun: false,

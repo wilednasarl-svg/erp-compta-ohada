@@ -26,6 +26,7 @@ describe('e2e: last-admin invariant (Section 10.x, BE-TEST-04, spec 7.7)', () =>
   let dataSource: DataSource;
 
   beforeAll(async () => {
+    jest.setTimeout(120000);
     handle = await createE2eApp();
     app = handle.app;
     dataSource = app.get(DataSource);

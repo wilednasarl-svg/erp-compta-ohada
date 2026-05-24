@@ -25,20 +25,21 @@ import { AppDataSource } from '../../src/database/data-source';
 export default async function globalSetup(): Promise<void> {
   const dsn = process.env.DATABASE_URL ?? '<unset>';
   const masked = dsn.replace(/(:[^:@]+)@/, ':***@');
+  const schema = (AppDataSource.options as any).schema || 'public';
   // eslint-disable-next-line no-console -- this is an e2e harness, stdout IS the UX
-  console.log(`[e2e] resetting test schema on ${masked}`);
+  console.log(`[e2e] resetting test schema "${schema}" on ${masked}`);
 
   await AppDataSource.initialize();
   try {
-    await AppDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
-    await AppDataSource.query('CREATE SCHEMA public');
+    await AppDataSource.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await AppDataSource.query(`CREATE SCHEMA "${schema}"`);
     // pgcrypto / citext are created idempotently by 0001 / 0002. The
     // DROP SCHEMA above also dropped the extensions, but TypeORM
     // migration 0001 re-creates pgcrypto with IF NOT EXISTS so this is
     // fine.
     await AppDataSource.runMigrations({ transaction: 'all' });
     // eslint-disable-next-line no-console
-    console.log('[e2e] schema reset + migrations applied');
+    console.log(`[e2e] schema "${schema}" reset + migrations applied`);
   } finally {
     await AppDataSource.destroy();
   }

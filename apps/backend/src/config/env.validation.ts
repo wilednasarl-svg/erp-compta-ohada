@@ -54,6 +54,7 @@ export const envSchema = z.object({
 
   DATABASE_URL: z.string().url('must be a valid URL'),
   DB_SSL: booleanFromEnv.default(false),
+  DB_SCHEMA: z.string().default('public'),
 
   JWT_SECRET: z.string().min(32, 'must be at least 32 characters long'),
   JWT_ACCESS_TTL: z

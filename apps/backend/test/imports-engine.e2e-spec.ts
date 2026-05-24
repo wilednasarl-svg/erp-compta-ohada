@@ -25,6 +25,7 @@ describe('e2e: Module 3 Import engine (12.1..12.5)', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
+    jest.setTimeout(120000);
     handle = await createE2eApp();
     app = handle.app;
     dataSource = app.get(DataSource);

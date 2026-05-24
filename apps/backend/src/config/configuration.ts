@@ -7,6 +7,7 @@ export interface AppConfig {
   database: {
     url: string;
     ssl: boolean;
+    schema: string;
   };
   jwt: {
     secret: string;
@@ -54,6 +55,7 @@ export function configuration(): AppConfig {
     database: {
       url: env.DATABASE_URL,
       ssl: env.DB_SSL,
+      schema: env.DB_SCHEMA,
     },
     jwt: {
       secret: env.JWT_SECRET,

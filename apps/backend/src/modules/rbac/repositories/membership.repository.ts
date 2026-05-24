@@ -199,7 +199,7 @@ export class MembershipRepository {
       );
       return r.affected ?? 0;
     }
-    const result: Array<{ id: string }> = await this.repo.query(
+    const result: any = await this.repo.query(
       `WITH locked_admins AS (
          SELECT id FROM memberships
          WHERE organization_id = $1
@@ -215,7 +215,13 @@ export class MembershipRepository {
        RETURNING id`,
       [args.organizationId, args.fromAdminRoleId, args.newRoleId, args.userId],
     );
-    return result.length;
+    if (Array.isArray(result)) {
+      if (result.length === 2 && typeof result[1] === 'number' && Array.isArray(result[0])) {
+        return result[1];
+      }
+      return result.length;
+    }
+    return result ? 1 : 0;
   }
 
   /**
@@ -241,7 +247,7 @@ export class MembershipRepository {
       });
       return r.affected ?? 0;
     }
-    const result: Array<{ id: string }> = await this.repo.query(
+    const result: any = await this.repo.query(
       `WITH locked_admins AS (
          SELECT id FROM memberships
          WHERE organization_id = $1
@@ -256,6 +262,12 @@ export class MembershipRepository {
        RETURNING id`,
       [args.organizationId, args.adminRoleIdIfAdmin, args.userId],
     );
-    return result.length;
+    if (Array.isArray(result)) {
+      if (result.length === 2 && typeof result[1] === 'number' && Array.isArray(result[0])) {
+        return result[1];
+      }
+      return result.length;
+    }
+    return result ? 1 : 0;
   }
 }

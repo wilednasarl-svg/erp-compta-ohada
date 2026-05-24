@@ -24,6 +24,10 @@ export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: buildPgUrl(env.DATABASE_URL, env.DB_SSL),
   ssl: env.DB_SSL ? { rejectUnauthorized: false } : false,
+  schema: env.DB_SCHEMA,
+  extra: {
+    options: `-c search_path=${env.DB_SCHEMA},public`,
+  },
   entities: [`${__dirname}/../**/*.entity.{ts,js}`],
   migrations: [`${__dirname}/migrations/*.{ts,js}`],
   migrationsTableName: 'typeorm_migrations',

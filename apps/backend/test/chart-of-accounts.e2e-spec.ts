@@ -138,7 +138,7 @@ describe('e2e: chart of accounts (Section 10.1..10.5)', () => {
       'post',
       `/organizations/${orgB.organizationId}/chart-of-accounts`,
       orgA.scopedAccessToken,
-    ).send({ parentCode: '40', code: '40000001', label: 'X' });
+    ).send({ parentCode: '40', code: '40000001', label: 'CrossTenant' });
     expect(crossWrite.status).toBe(HttpStatus.NOT_FOUND);
     expect(crossWrite.body.error.code).toBe(ERROR_CODES.ORG_NOT_FOUND);
   });
