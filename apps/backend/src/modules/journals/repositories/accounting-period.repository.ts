@@ -99,6 +99,33 @@ export class AccountingPeriodRepository {
     });
   }
 
+  /**
+   * Return any ANNUAL period whose [start_date, end_date] interval
+   * overlaps `[startDate, endDate]` for this tenant. Used by
+   * `createFiscalYear` to refuse overlapping (offset) fiscal years.
+   *
+   * The PG predicate `(a, b) OVERLAPS (c, d)` returns TRUE iff the
+   * intervals share at least one day — we cast the date columns to
+   * `tstzrange` to leverage it.
+   */
+  async findOverlappingAnnual(
+    organizationId: TenantId | string,
+    startDate: string,
+    endDate: string,
+  ): Promise<AccountingPeriodEntity | null> {
+    assertTenantId(organizationId);
+    return this.repo
+      .createQueryBuilder('p')
+      .where('p.organization_id = :organizationId', { organizationId })
+      .andWhere('p.parent_id IS NULL')
+      .andWhere(`p.kind = 'ANNUAL'`)
+      .andWhere(
+        `(p.start_date, p.end_date + INTERVAL '1 day') OVERLAPS (:startDate::date, :endDate::date + INTERVAL '1 day')`,
+        { startDate, endDate },
+      )
+      .getOne();
+  }
+
   async closePeriod(id: string, closedBy: string | null): Promise<void> {
     await this.repo.update(
       { id },

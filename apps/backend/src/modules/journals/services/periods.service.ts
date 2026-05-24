@@ -42,11 +42,39 @@ export class PeriodsService {
     split: FiscalYearSplit,
     actorId: string,
     ctx: AuditContext,
+    options: { startDate?: string } = {},
   ): Promise<AccountingPeriodEntity> {
     assertTenantId(organizationId);
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
-    const label = String(year);
+
+    // Resolve the [start, end] interval. Default (no startDate) =
+    // calendar year (Jan 1 → Dec 31). With startDate = an arbitrary
+    // first day (offset fiscal year, e.g. agricultural Apr 1 → Mar 31).
+    const start = options.startDate ?? `${year}-01-01`;
+    if (!PeriodsService.isValidYmd(start)) {
+      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_OVERLAPS, {
+        message: `startDate must be YYYY-MM-DD (received: ${start}).`,
+      });
+    }
+    const startDate = start;
+    const endDate = PeriodsService.lastDayOfFiscalYear(startDate);
+    const isCalendar = PeriodsService.isCalendarStart(startDate);
+    const label = isCalendar ? String(year) : `${startDate} → ${endDate}`;
+
+    // Refuse overlap with an existing ANNUAL period for this org.
+    const overlap = await this.periodsRepo.findOverlappingAnnual(
+      organizationId,
+      startDate,
+      endDate,
+    );
+    if (overlap !== null) {
+      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_OVERLAPS, {
+        message: `Fiscal year ${startDate}..${endDate} overlaps existing period '${overlap.label}' (${overlap.startDate}..${overlap.endDate}).`,
+        details: {
+          requested: { startDate, endDate },
+          existing: { id: overlap.id, label: overlap.label },
+        },
+      });
+    }
 
     const annual = await this.periodsRepo.create({
       organizationId,
@@ -58,15 +86,21 @@ export class PeriodsService {
     });
 
     if (split === 'MONTHLY') {
-      await this.createMonthlySubPeriods(organizationId, annual.id, year);
+      await this.createMonthlySubPeriods(organizationId, annual.id, year, startDate);
     } else if (split === 'QUARTERLY') {
-      await this.createQuarterlySubPeriods(organizationId, annual.id, year);
+      await this.createQuarterlySubPeriods(organizationId, annual.id, year, startDate);
     }
 
     await this.emitAudit(
       'journals.period_created',
       annual.id,
-      { year, split },
+      {
+        year,
+        split,
+        startDate,
+        endDate,
+        type: isCalendar ? 'CALENDAR' : 'OFFSET',
+      },
       { ...ctx, userId: actorId },
     ).catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
 
@@ -145,25 +179,29 @@ export class PeriodsService {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
+  /**
+   * 12 monthly sub-periods rolling forward from the fiscal year start.
+   * For an offset year (e.g. start = 2026-04-01), this produces
+   * Avr 2026, Mai 2026, …, Mar 2027 — each ending on the correct
+   * last day of its month (28/29 Feb on leap years included).
+   */
   private async createMonthlySubPeriods(
     organizationId: TenantId,
     parentId: string,
     year: number,
+    startDate: string,
   ): Promise<void> {
-    const months = [
-      { m: 1, label: `Jan ${year}`, start: `${year}-01-01`, end: `${year}-01-31` },
-      { m: 2, label: `Fév ${year}`, start: `${year}-02-01`, end: this.lastDayOfMonth(year, 2) },
-      { m: 3, label: `Mar ${year}`, start: `${year}-03-01`, end: `${year}-03-31` },
-      { m: 4, label: `Avr ${year}`, start: `${year}-04-01`, end: `${year}-04-30` },
-      { m: 5, label: `Mai ${year}`, start: `${year}-05-01`, end: `${year}-05-31` },
-      { m: 6, label: `Jun ${year}`, start: `${year}-06-01`, end: `${year}-06-30` },
-      { m: 7, label: `Jul ${year}`, start: `${year}-07-01`, end: `${year}-07-31` },
-      { m: 8, label: `Aoû ${year}`, start: `${year}-08-01`, end: `${year}-08-31` },
-      { m: 9, label: `Sep ${year}`, start: `${year}-09-01`, end: `${year}-09-30` },
-      { m: 10, label: `Oct ${year}`, start: `${year}-10-01`, end: `${year}-10-31` },
-      { m: 11, label: `Nov ${year}`, start: `${year}-11-01`, end: `${year}-11-30` },
-      { m: 12, label: `Déc ${year}`, start: `${year}-12-01`, end: `${year}-12-31` },
-    ];
+    const [sy, sm] = PeriodsService.parseYmd(startDate);
+    const months: Array<{ label: string; start: string; end: string }> = [];
+    for (let i = 0; i < 12; i++) {
+      const m = ((sm - 1 + i) % 12) + 1;
+      const y = sy + Math.floor((sm - 1 + i) / 12);
+      months.push({
+        label: `${PeriodsService.MONTH_LABELS[m - 1]} ${y}`,
+        start: PeriodsService.ymd(y, m, 1),
+        end: PeriodsService.lastDayOfMonthYmd(y, m),
+      });
+    }
     for (const { label, start, end } of months) {
       await this.periodsRepo.create({
         organizationId,
@@ -174,19 +212,33 @@ export class PeriodsService {
         endDate: end,
       });
     }
+    void year;
   }
 
+  /**
+   * 4 quarterly sub-periods rolling forward from the fiscal year start.
+   */
   private async createQuarterlySubPeriods(
     organizationId: TenantId,
     parentId: string,
     year: number,
+    startDate: string,
   ): Promise<void> {
-    const quarters = [
-      { label: `T1 ${year}`, start: `${year}-01-01`, end: `${year}-03-31` },
-      { label: `T2 ${year}`, start: `${year}-04-01`, end: `${year}-06-30` },
-      { label: `T3 ${year}`, start: `${year}-07-01`, end: `${year}-09-30` },
-      { label: `T4 ${year}`, start: `${year}-10-01`, end: `${year}-12-31` },
-    ];
+    const [sy, sm] = PeriodsService.parseYmd(startDate);
+    const quarters: Array<{ label: string; start: string; end: string }> = [];
+    for (let q = 0; q < 4; q++) {
+      const firstMonthIdx = q * 3;
+      const lastMonthIdx = firstMonthIdx + 2;
+      const startM = ((sm - 1 + firstMonthIdx) % 12) + 1;
+      const startY = sy + Math.floor((sm - 1 + firstMonthIdx) / 12);
+      const endM = ((sm - 1 + lastMonthIdx) % 12) + 1;
+      const endY = sy + Math.floor((sm - 1 + lastMonthIdx) / 12);
+      quarters.push({
+        label: `T${q + 1} ${startY === endY ? startY : `${startY}/${endY}`}`,
+        start: PeriodsService.ymd(startY, startM, 1),
+        end: PeriodsService.lastDayOfMonthYmd(endY, endM),
+      });
+    }
     for (const { label, start, end } of quarters) {
       await this.periodsRepo.create({
         organizationId,
@@ -197,11 +249,80 @@ export class PeriodsService {
         endDate: end,
       });
     }
+    void year;
   }
 
-  private lastDayOfMonth(year: number, month: number): string {
-    const d = new Date(year, month, 0);
-    return `${year}-${String(month).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // ─── Static date helpers (pure, easy to unit-test) ────────────────
+
+  private static readonly MONTH_LABELS = [
+    'Jan',
+    'Fév',
+    'Mar',
+    'Avr',
+    'Mai',
+    'Jun',
+    'Jul',
+    'Aoû',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Déc',
+  ] as const;
+
+  static isValidYmd(s: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const [y, m, d] = PeriodsService.parseYmd(s);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+    const last = PeriodsService.lastDayOfMonth(y, m);
+    return d <= last;
+  }
+
+  static parseYmd(s: string): [number, number, number] {
+    const [y, m, d] = s.split('-').map(Number) as [number, number, number];
+    return [y, m, d];
+  }
+
+  static ymd(y: number, m: number, d: number): string {
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  /** Returns the last *calendar* day of the given month (handles leap years). */
+  static lastDayOfMonth(year: number, month: number): number {
+    return new Date(year, month, 0).getDate();
+  }
+
+  static lastDayOfMonthYmd(year: number, month: number): string {
+    return PeriodsService.ymd(year, month, PeriodsService.lastDayOfMonth(year, month));
+  }
+
+  /**
+   * End of a 12-month fiscal year that starts at `startDate`. Computed as
+   * (startDate + 12 months − 1 day), correctly handling the Feb 29 case
+   * (e.g. start = 2024-02-29 → end = 2025-02-28).
+   */
+  static lastDayOfFiscalYear(startDate: string): string {
+    const [y, m, d] = PeriodsService.parseYmd(startDate);
+    let endY = y + 1;
+    let endM = m;
+    let endD = d - 1;
+    if (endD < 1) {
+      endM -= 1;
+      if (endM < 1) {
+        endM = 12;
+        endY -= 1;
+      }
+      endD = PeriodsService.lastDayOfMonth(endY, endM);
+    } else {
+      // Clamp to the last day of endM (e.g. 2024-02-29 + 12m − 1d → 2025-02-28).
+      const max = PeriodsService.lastDayOfMonth(endY, endM);
+      if (endD > max) endD = max;
+    }
+    return PeriodsService.ymd(endY, endM, endD);
+  }
+
+  /** Calendar year = starts on Jan 1. */
+  static isCalendarStart(startDate: string): boolean {
+    return /-01-01$/.test(startDate);
   }
 
   private async emitAudit(

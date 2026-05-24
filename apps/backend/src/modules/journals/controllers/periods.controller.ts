@@ -52,7 +52,9 @@ export class PeriodsController {
     @Req() req: Request,
   ) {
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
-    return this.periods.createFiscalYear(asTenantId(org.id), dto.year, dto.split, user.id, ctx);
+    return this.periods.createFiscalYear(asTenantId(org.id), dto.year, dto.split, user.id, ctx, {
+      startDate: dto.startDate,
+    });
   }
 
   @Post(':periodId/close')

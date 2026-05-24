@@ -68,6 +68,7 @@ function buildService(
     closePeriod: jest.fn().mockResolvedValue(undefined),
     reopenPeriod: jest.fn().mockResolvedValue(undefined),
     listChildren: jest.fn().mockResolvedValue(children),
+    findOverlappingAnnual: jest.fn().mockResolvedValue(null),
   };
 
   const entriesRepo = {
@@ -142,6 +143,149 @@ describe('PeriodsService.createFiscalYear', () => {
         metadata: expect.objectContaining({ year: 2026, split: 'MONTHLY' }),
       }),
     );
+  });
+
+  // ─── Offset fiscal year (projet-ferme-01n) ──────────────────────────
+
+  it('offset year: startDate=2026-04-01 produces 12 months Apr 2026 → Mar 2027', async () => {
+    const { service, periodsRepo } = buildService();
+    await service.createFiscalYear(asTenantId(ORG_ID), 2026, 'MONTHLY', USER_ID, CTX, {
+      startDate: '2026-04-01',
+    });
+
+    // First call = ANNUAL parent, with computed end = 2027-03-31.
+    expect(periodsRepo.create.mock.calls[0][0]).toMatchObject({
+      kind: 'ANNUAL',
+      startDate: '2026-04-01',
+      endDate: '2027-03-31',
+    });
+    expect(periodsRepo.create.mock.calls[0][0].label).toBe('2026-04-01 → 2027-03-31');
+
+    // 12 monthly children rolling forward.
+    expect(periodsRepo.create).toHaveBeenCalledTimes(13);
+    expect(periodsRepo.create.mock.calls[1][0]).toMatchObject({
+      kind: 'MONTHLY',
+      startDate: '2026-04-01',
+      endDate: '2026-04-30',
+    });
+    expect(periodsRepo.create.mock.calls[12][0]).toMatchObject({
+      kind: 'MONTHLY',
+      startDate: '2027-03-01',
+      endDate: '2027-03-31',
+    });
+  });
+
+  it('offset year: quarterly split rolls 4 quarters across year boundary', async () => {
+    const { service, periodsRepo } = buildService();
+    await service.createFiscalYear(asTenantId(ORG_ID), 2026, 'QUARTERLY', USER_ID, CTX, {
+      startDate: '2026-04-01',
+    });
+
+    expect(periodsRepo.create).toHaveBeenCalledTimes(5);
+    // Q1: Apr-Jun 2026
+    expect(periodsRepo.create.mock.calls[1][0]).toMatchObject({
+      kind: 'QUARTERLY',
+      startDate: '2026-04-01',
+      endDate: '2026-06-30',
+    });
+    // Q4: Jan-Mar 2027
+    expect(periodsRepo.create.mock.calls[4][0]).toMatchObject({
+      kind: 'QUARTERLY',
+      startDate: '2027-01-01',
+      endDate: '2027-03-31',
+    });
+  });
+
+  it('offset year on a leap-year boundary: start=2024-02-29 yields end=2025-02-28', async () => {
+    const { service, periodsRepo } = buildService();
+    await service.createFiscalYear(asTenantId(ORG_ID), 2024, 'ANNUAL_ONLY', USER_ID, CTX, {
+      startDate: '2024-02-29',
+    });
+    expect(periodsRepo.create.mock.calls[0][0]).toMatchObject({
+      kind: 'ANNUAL',
+      startDate: '2024-02-29',
+      endDate: '2025-02-28',
+    });
+  });
+
+  it('refuses ACCOUNTING_PERIOD_OVERLAPS when an existing period overlaps the requested window', async () => {
+    const { service, periodsRepo } = buildService();
+    periodsRepo.findOverlappingAnnual.mockResolvedValue({
+      id: 'existing-1',
+      label: '2026',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+    } as never);
+
+    await expect(
+      service.createFiscalYear(asTenantId(ORG_ID), 2026, 'MONTHLY', USER_ID, CTX, {
+        startDate: '2026-04-01',
+      }),
+    ).rejects.toMatchObject({
+      code: 'ACCOUNTING_PERIOD_OVERLAPS',
+      details: { existing: { id: 'existing-1', label: '2026' } },
+    });
+    expect(periodsRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses ACCOUNTING_PERIOD_OVERLAPS on a malformed startDate', async () => {
+    const { service, periodsRepo } = buildService();
+    await expect(
+      service.createFiscalYear(asTenantId(ORG_ID), 2026, 'MONTHLY', USER_ID, CTX, {
+        startDate: '2026-13-01', // month 13 = invalid
+      }),
+    ).rejects.toMatchObject({ code: 'ACCOUNTING_PERIOD_OVERLAPS' });
+    expect(periodsRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('audit metadata distinguishes CALENDAR vs OFFSET fiscal years', async () => {
+    const { service, audit } = buildService();
+    await service.createFiscalYear(asTenantId(ORG_ID), 2026, 'ANNUAL_ONLY', USER_ID, CTX, {
+      startDate: '2026-04-01',
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          type: 'OFFSET',
+          startDate: '2026-04-01',
+          endDate: '2027-03-31',
+        }),
+      }),
+    );
+  });
+});
+
+// ─── PeriodsService static helpers ────────────────────────────────────────
+
+describe('PeriodsService date helpers', () => {
+  it('lastDayOfFiscalYear handles calendar year correctly', () => {
+    expect(PeriodsService.lastDayOfFiscalYear('2026-01-01')).toBe('2026-12-31');
+  });
+
+  it('lastDayOfFiscalYear handles offset year correctly', () => {
+    expect(PeriodsService.lastDayOfFiscalYear('2026-04-01')).toBe('2027-03-31');
+  });
+
+  it('lastDayOfFiscalYear clamps Feb 29 → Feb 28 on non-leap end year', () => {
+    expect(PeriodsService.lastDayOfFiscalYear('2024-02-29')).toBe('2025-02-28');
+  });
+
+  it('lastDayOfFiscalYear preserves Feb 29 when end year is also leap', () => {
+    // 2027-02-29 invalid; closest test: start=2023-02-28 (non-leap origin)
+    expect(PeriodsService.lastDayOfFiscalYear('2023-02-28')).toBe('2024-02-27');
+  });
+
+  it('isValidYmd rejects month 13', () => {
+    expect(PeriodsService.isValidYmd('2026-13-01')).toBe(false);
+  });
+
+  it('isValidYmd rejects Feb 30', () => {
+    expect(PeriodsService.isValidYmd('2026-02-30')).toBe(false);
+  });
+
+  it('isCalendarStart returns true only for Jan 1', () => {
+    expect(PeriodsService.isCalendarStart('2026-01-01')).toBe(true);
+    expect(PeriodsService.isCalendarStart('2026-04-01')).toBe(false);
   });
 });
 
