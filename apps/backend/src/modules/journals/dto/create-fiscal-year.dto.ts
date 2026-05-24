@@ -27,8 +27,7 @@ export class CreateFiscalYearDto {
   @ApiProperty({
     required: false,
     example: '2026-04-01',
-    description:
-      'Optional fiscal-year start date (YYYY-MM-DD). Omit for a calendar year.',
+    description: 'Optional fiscal-year start date (YYYY-MM-DD). Omit for a calendar year.',
   })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'startDate must be YYYY-MM-DD' })

@@ -89,7 +89,16 @@ export class JournalRepository {
       [journalId, organizationId],
     );
 
-    const rows = Array.isArray(result) ? result : [];
+    // TypeORM 0.3.x PostgresQueryRunner returns UPDATE...RETURNING as
+    // a TWO-LEVEL nested array: `[rows[], commandTag?]` — so
+    // `result[0]` is the rows array, not the first row. (Diagnostic
+    // surfaced by the previous defensive throw: got
+    // `[{"next_entry_number":2}]` for `result[0]`, which is itself an
+    // array.) We unwrap one level if the first element is an array, so
+    // the code works whether the driver returns `rows[]` directly or
+    // `[rows[], ...]`.
+    const outer = Array.isArray(result) ? result : [];
+    const rows: unknown[] = Array.isArray(outer[0]) ? (outer[0] as unknown[]) : outer;
     if (rows.length === 0) {
       throw new Error(
         `Journal ${journalId} not found in org ${organizationId} — cannot assign entry number`,
