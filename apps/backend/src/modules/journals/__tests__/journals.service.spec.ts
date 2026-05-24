@@ -29,20 +29,23 @@ function makeJournal(overrides: Partial<JournalEntity> = {}): JournalEntity {
   } as JournalEntity;
 }
 
-function buildService(overrides: {
-  existingJournal?: JournalEntity | null;
-  createResult?: JournalEntity;
-} = {}) {
-  const existingJournal = overrides.existingJournal === undefined
-    ? makeJournal()
-    : overrides.existingJournal;
+function buildService(
+  overrides: {
+    existingJournal?: JournalEntity | null;
+    createResult?: JournalEntity;
+  } = {},
+) {
+  const existingJournal =
+    overrides.existingJournal === undefined ? makeJournal() : overrides.existingJournal;
 
-  const createResult: JournalEntity = overrides.createResult ?? makeJournal({
-    id: '00000000-0000-4000-8000-000000000099',
-    code: 'BQ-02',
-    label: 'Banque secondaire',
-    kind: 'BQ',
-  });
+  const createResult: JournalEntity =
+    overrides.createResult ??
+    makeJournal({
+      id: '00000000-0000-4000-8000-000000000099',
+      code: 'BQ-02',
+      label: 'Banque secondaire',
+      kind: 'BQ',
+    });
 
   const journalRepo = {
     findByCode: jest.fn().mockResolvedValue(existingJournal),
@@ -72,9 +75,9 @@ describe('JournalsService.findByCode', () => {
   it('throws JOURNAL_NOT_FOUND when code does not exist', async () => {
     const { service } = buildService({ existingJournal: null });
 
-    await expect(
-      service.findByCode(asTenantId(ORG_ID), 'UNKNOWN'),
-    ).rejects.toMatchObject({ code: ERROR_CODES.JOURNAL_NOT_FOUND });
+    await expect(service.findByCode(asTenantId(ORG_ID), 'UNKNOWN')).rejects.toMatchObject({
+      code: ERROR_CODES.JOURNAL_NOT_FOUND,
+    });
   });
 });
 
@@ -157,9 +160,7 @@ describe('JournalsService.seedStandardJournals', () => {
 
     await service.seedStandardJournals(asTenantId(ORG_ID), {} as never);
 
-    const codes = journalRepo.create.mock.calls.map(
-      (c: [Record<string, unknown>]) => c[0].code,
-    );
+    const codes = journalRepo.create.mock.calls.map((c: [Record<string, unknown>]) => c[0].code);
     expect(codes).toEqual(['AC', 'VE', 'BQ', 'CA', 'OD']);
   });
 

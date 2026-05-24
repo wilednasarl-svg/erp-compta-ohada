@@ -15,9 +15,7 @@ const CTX = {
   userAgent: 'jest',
 };
 
-function makePeriod(
-  overrides: Partial<AccountingPeriodEntity> = {},
-): AccountingPeriodEntity {
+function makePeriod(overrides: Partial<AccountingPeriodEntity> = {}): AccountingPeriodEntity {
   return {
     id: PERIOD_ID,
     organizationId: ORG_ID,
@@ -34,30 +32,34 @@ function makePeriod(
   } as AccountingPeriodEntity;
 }
 
-function buildService(overrides: {
-  period?: AccountingPeriodEntity | null;
-  draftCount?: number;
-  children?: AccountingPeriodEntity[];
-  createResult?: AccountingPeriodEntity;
-} = {}) {
+function buildService(
+  overrides: {
+    period?: AccountingPeriodEntity | null;
+    draftCount?: number;
+    children?: AccountingPeriodEntity[];
+    createResult?: AccountingPeriodEntity;
+  } = {},
+) {
   const period = overrides.period === undefined ? makePeriod() : overrides.period;
   const draftCount = overrides.draftCount ?? 0;
   const children = overrides.children ?? [];
 
   const annualId = '00000000-0000-4000-8000-000000000010';
-  const created: AccountingPeriodEntity = overrides.createResult ?? {
-    id: annualId,
-    organizationId: ORG_ID,
-    parentId: null,
-    kind: 'ANNUAL',
-    label: '2026',
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
-    status: 'open',
-    closedAt: null,
-    closedBy: null,
-    reopenedReason: null,
-  } as AccountingPeriodEntity;
+  const created: AccountingPeriodEntity =
+    overrides.createResult ??
+    ({
+      id: annualId,
+      organizationId: ORG_ID,
+      parentId: null,
+      kind: 'ANNUAL',
+      label: '2026',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      status: 'open',
+      closedAt: null,
+      closedBy: null,
+      reopenedReason: null,
+    } as AccountingPeriodEntity);
 
   const periodsRepo = {
     findById: jest.fn().mockResolvedValue(period),
@@ -74,11 +76,7 @@ function buildService(overrides: {
 
   const audit = { record: jest.fn().mockResolvedValue(null) };
 
-  const service = new PeriodsService(
-    periodsRepo as never,
-    entriesRepo as never,
-    audit as never,
-  );
+  const service = new PeriodsService(periodsRepo as never, entriesRepo as never, audit as never);
 
   return { service, periodsRepo, entriesRepo, audit };
 }
@@ -239,12 +237,15 @@ describe('PeriodsService.reopenPeriod', () => {
       period: makePeriod({ status: 'closed' }),
     });
 
-    await service.reopenPeriod(asTenantId(ORG_ID), PERIOD_ID, 'Correction erreur comptable', USER_ID, CTX);
-
-    expect(periodsRepo.reopenPeriod).toHaveBeenCalledWith(
+    await service.reopenPeriod(
+      asTenantId(ORG_ID),
       PERIOD_ID,
       'Correction erreur comptable',
+      USER_ID,
+      CTX,
     );
+
+    expect(periodsRepo.reopenPeriod).toHaveBeenCalledWith(PERIOD_ID, 'Correction erreur comptable');
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'journals.period_reopened' }),
     );
