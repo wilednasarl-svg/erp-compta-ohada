@@ -12,6 +12,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { AccountingPlanModule } from './modules/accounting-plan/accounting-plan.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { ImportsModule } from './modules/imports/imports.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 
@@ -40,6 +42,17 @@ import { RbacModule } from './modules/rbac/rbac.module';
     // Pose les entités + repositories du plan comptable OHADA SYSCOHADA
     // AUDCIF : référentiel global + plans personnalisés par organisation.
     AccountingPlanModule,
+    // Module 3 wave 1 — Import engine. Sessions d'import, upload de
+    // fichiers (CSV / XLSX / Sage), parsing en staging, mapping
+    // automatique des colonnes, validation des lignes et preview.
+    // Le commit définitif vers les tables comptables réelles arrivera
+    // en vague 2 / Module 4.
+    ImportsModule,
+    // Module 10 wave 1 — Document engine. Upload / store / list /
+    // soft-delete pour les pièces comptables (factures, contrats,
+    // justificatifs) avec un `DocumentStorageService` abstrait (driver
+    // local-FS par défaut) et un hook OCR stub à câbler en vague 2.
+    DocumentsModule,
   ],
   controllers: [],
   providers: [

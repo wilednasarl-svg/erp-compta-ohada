@@ -42,7 +42,12 @@ export type AuthEventType =
   | 'chart_of_accounts.imported'
   | 'chart_of_accounts.account_created'
   | 'chart_of_accounts.account_updated'
-  | 'chart_of_accounts.account_deactivated';
+  | 'chart_of_accounts.account_deactivated'
+  | 'imports.session_created'
+  | 'imports.file_uploaded'
+  | 'imports.file_parsed'
+  | 'imports.preview_generated'
+  | 'imports.session_failed';
 
 @Entity({ name: 'auth_events' })
 @Index('ix_auth_events_user_id_created_at', ['userId', 'createdAt'])

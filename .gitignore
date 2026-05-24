@@ -27,3 +27,6 @@ Thumbs.db
 *.patch
 app.log
 apps/backend/*.log
+
+# Module 3 — import uploads (per-tenant data, must never be committed)
+apps/backend/uploads/

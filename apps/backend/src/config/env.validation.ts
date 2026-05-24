@@ -76,6 +76,18 @@ export const envSchema = z.object({
   APP_BASE_URL: z.string().url('must be a valid URL'),
 
   EMAIL_DRY_RUN: booleanFromEnv,
+
+  // Module 3 — Import engine.
+  IMPORT_STORAGE_DIR: z.string().min(1).default('./uploads'),
+  IMPORT_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(25),
+
+  // Module 10 — Document engine (vague 1).
+  // Default driver writes to the local filesystem rooted at
+  // `DOC_STORAGE_DIR`; storage keys are content-addressed
+  // (`<orgId>/<yyyy>/<mm>/<sha256>.<ext>`) so a future S3/Supabase
+  // adapter can keep the same key shape and migrate by rsync.
+  DOC_STORAGE_DIR: z.string().min(1).default('./uploads/documents'),
+  DOC_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(50),
 });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;

@@ -26,6 +26,14 @@ export interface AppConfig {
   email: {
     dryRun: boolean;
   };
+  imports: {
+    storageDir: string;
+    maxFileSizeBytes: number;
+  };
+  documents: {
+    storageDir: string;
+    maxFileSizeBytes: number;
+  };
 }
 
 /**
@@ -64,6 +72,14 @@ export function configuration(): AppConfig {
     },
     email: {
       dryRun: env.EMAIL_DRY_RUN,
+    },
+    imports: {
+      storageDir: env.IMPORT_STORAGE_DIR,
+      maxFileSizeBytes: env.IMPORT_MAX_FILE_SIZE_MB * 1024 * 1024,
+    },
+    documents: {
+      storageDir: env.DOC_STORAGE_DIR,
+      maxFileSizeBytes: env.DOC_MAX_FILE_SIZE_MB * 1024 * 1024,
     },
   };
 }
