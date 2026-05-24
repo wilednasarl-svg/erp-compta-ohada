@@ -28,8 +28,13 @@ startCommand = "node apps/backend/dist/main.js"
 # Healthcheck — Railway hits this every ~10s. The `/health` route lives in
 # HealthController, is `@Public()` (deny-by-default opt-out), and verifies
 # the Postgres connection is alive — so a red healthcheck = real outage.
+#
+# Timeout = 120 s : un cold start NestJS + handshake TCP+TLS Supavisor
+# pooler (EU West Railway → EU West Supabase) + init du pool TypeORM
+# + premier SELECT sur typeorm_migrations dépasse régulièrement 10-20 s.
+# La valeur de 10 s a tué tous les déploiements depuis 2026-05-23.
 healthcheckPath = "/health"
-healthcheckTimeout = 10
+healthcheckTimeout = 120
 
 # Restart on crash, not on success (default for Railway). A migration
 # race between two replicas would trip ALWAYS — keep numReplicas = 1.
