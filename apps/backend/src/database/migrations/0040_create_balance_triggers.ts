@@ -23,32 +23,25 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  */
 export class CreateBalanceTriggers1700000000040 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Trigger 1 : équilibre par entry (uniquement si entry validated)
+    // Shared helper — vérifie l'équilibre pour les entry IDs passés en
+    // argument. Sortie : RAISE EXCEPTION si une entry validated est
+    // déséquilibrée. Centralise la logique pour que les 3 fonctions
+    // trigger (insert/update/delete) ne dupliquent que la collecte
+    // d'IDs depuis la transition table appropriée.
     await queryRunner.query(`
-      CREATE OR REPLACE FUNCTION fn_check_journal_entry_balance()
-      RETURNS TRIGGER AS $$
+      CREATE OR REPLACE FUNCTION fn_assert_entries_balanced(p_entry_ids UUID[])
+      RETURNS VOID AS $$
       DECLARE
-        v_entry_ids UUID[];
         v_entry_id UUID;
         v_status TEXT;
         v_debit_sum DECIMAL(15, 2);
         v_credit_sum DECIMAL(15, 2);
       BEGIN
-        -- Collect impacted entry ids from NEW (insert/update) and OLD (update/delete)
-        v_entry_ids := ARRAY(
-          SELECT DISTINCT journal_entry_id
-          FROM (
-            SELECT journal_entry_id FROM new_rows
-            UNION ALL
-            SELECT journal_entry_id FROM old_rows
-          ) AS combined
-          WHERE journal_entry_id IS NOT NULL
-        );
-
-        FOREACH v_entry_id IN ARRAY v_entry_ids LOOP
+        FOREACH v_entry_id IN ARRAY p_entry_ids LOOP
           SELECT status INTO v_status FROM journal_entries WHERE id = v_entry_id;
 
-          -- Skip the check while the entry is still a draft
+          -- Skip the check while the entry is still a draft (drafts can
+          -- be transiently unbalanced during the line-by-line INSERT).
           IF v_status IS NULL OR v_status = 'draft' THEN
             CONTINUE;
           END IF;
@@ -64,45 +57,82 @@ export class CreateBalanceTriggers1700000000040 implements MigrationInterface {
               USING ERRCODE = 'check_violation';
           END IF;
         END LOOP;
-
-        RETURN NULL;
       END;
       $$ LANGUAGE plpgsql
     `);
 
-    // INSERT trigger (NEW table only)
-    await queryRunner
-      .query(
-        `
+    // Three operation-specific trigger functions. PG only allows
+    // REFERENCING NEW TABLE on INSERT, OLD TABLE on DELETE, both on
+    // UPDATE. Mixing them — even when the table isn't referenced —
+    // raises "OLD TABLE can only be specified for a DELETE or UPDATE
+    // trigger" and aborts the whole migration transaction.
+
+    // INSERT — only `new_rows` exists.
+    await queryRunner.query(`
+      CREATE OR REPLACE FUNCTION fn_check_balance_after_insert()
+      RETURNS TRIGGER AS $$
+      DECLARE v_ids UUID[];
+      BEGIN
+        v_ids := ARRAY(SELECT DISTINCT journal_entry_id FROM new_rows WHERE journal_entry_id IS NOT NULL);
+        PERFORM fn_assert_entries_balanced(v_ids);
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql
+    `);
+    await queryRunner.query(`
       CREATE TRIGGER tg_check_journal_entry_balance_insert
         AFTER INSERT ON journal_entry_lines
-        REFERENCING NEW TABLE AS new_rows OLD TABLE AS old_rows
+        REFERENCING NEW TABLE AS new_rows
         FOR EACH STATEMENT
-        EXECUTE FUNCTION fn_check_journal_entry_balance()
-    `,
-      )
-      .catch(async () => {
-        // PG < 11 fallback : créer 3 triggers séparés avec curseur — non
-        // applicable ici (on cible PG ≥ 13 via Supabase). On consigne juste
-        // l'absence de support transition tables.
-      });
+        EXECUTE FUNCTION fn_check_balance_after_insert()
+    `);
 
-    // UPDATE trigger
+    // UPDATE — both `new_rows` and `old_rows` exist (an update can move
+    // a line from one entry to another, both sides need re-checking).
+    await queryRunner.query(`
+      CREATE OR REPLACE FUNCTION fn_check_balance_after_update()
+      RETURNS TRIGGER AS $$
+      DECLARE v_ids UUID[];
+      BEGIN
+        v_ids := ARRAY(
+          SELECT DISTINCT journal_entry_id FROM (
+            SELECT journal_entry_id FROM new_rows
+            UNION ALL
+            SELECT journal_entry_id FROM old_rows
+          ) AS combined
+          WHERE journal_entry_id IS NOT NULL
+        );
+        PERFORM fn_assert_entries_balanced(v_ids);
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql
+    `);
     await queryRunner.query(`
       CREATE TRIGGER tg_check_journal_entry_balance_update
         AFTER UPDATE ON journal_entry_lines
         REFERENCING NEW TABLE AS new_rows OLD TABLE AS old_rows
         FOR EACH STATEMENT
-        EXECUTE FUNCTION fn_check_journal_entry_balance()
+        EXECUTE FUNCTION fn_check_balance_after_update()
     `);
 
-    // DELETE trigger
+    // DELETE — only `old_rows` exists.
+    await queryRunner.query(`
+      CREATE OR REPLACE FUNCTION fn_check_balance_after_delete()
+      RETURNS TRIGGER AS $$
+      DECLARE v_ids UUID[];
+      BEGIN
+        v_ids := ARRAY(SELECT DISTINCT journal_entry_id FROM old_rows WHERE journal_entry_id IS NOT NULL);
+        PERFORM fn_assert_entries_balanced(v_ids);
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql
+    `);
     await queryRunner.query(`
       CREATE TRIGGER tg_check_journal_entry_balance_delete
         AFTER DELETE ON journal_entry_lines
-        REFERENCING NEW TABLE AS new_rows OLD TABLE AS old_rows
+        REFERENCING OLD TABLE AS old_rows
         FOR EACH STATEMENT
-        EXECUTE FUNCTION fn_check_journal_entry_balance()
+        EXECUTE FUNCTION fn_check_balance_after_delete()
     `);
 
     // Trigger 2 : compte POSTING obligatoire
@@ -154,6 +184,14 @@ export class CreateBalanceTriggers1700000000040 implements MigrationInterface {
       `DROP TRIGGER IF EXISTS tg_check_journal_entry_balance_insert ON journal_entry_lines`,
     );
     await queryRunner.query(`DROP FUNCTION IF EXISTS fn_check_account_is_posting()`);
+    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_check_balance_after_insert()`);
+    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_check_balance_after_update()`);
+    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_check_balance_after_delete()`);
+    await queryRunner.query(`DROP FUNCTION IF EXISTS fn_assert_entries_balanced(UUID[])`);
+    // Legacy name kept for backwards-compat: if a re-run happened on a
+    // DB that had been upgraded after the first failed attempt, the old
+    // function name may still exist. IF EXISTS makes this a no-op when
+    // it doesn't.
     await queryRunner.query(`DROP FUNCTION IF EXISTS fn_check_journal_entry_balance()`);
   }
 }
