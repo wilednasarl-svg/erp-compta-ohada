@@ -7,19 +7,23 @@ import { RbacModule } from '../rbac/rbac.module';
 import { OrganizationAccountEntity } from '../accounting-plan/entities/organization-account.entity';
 import { EntriesController } from './controllers/entries.controller';
 import { JournalsController } from './controllers/journals.controller';
+import { LetteringsController } from './controllers/letterings.controller';
 import { PeriodsController } from './controllers/periods.controller';
 import {
   AccountingPeriodEntity,
   JournalEntity,
   JournalEntryEntity,
   JournalEntryLineEntity,
+  PartnerLetteringEntity,
 } from './entities';
 import { AccountingPeriodRepository } from './repositories/accounting-period.repository';
 import { JournalEntryLineRepository } from './repositories/journal-entry-line.repository';
 import { JournalEntryRepository } from './repositories/journal-entry.repository';
 import { JournalRepository } from './repositories/journal.repository';
+import { PartnerLetteringRepository } from './repositories/partner-lettering.repository';
 import { EntriesService } from './services/entries.service';
 import { JournalsService } from './services/journals.service';
+import { LetteringService } from './services/lettering.service';
 import { PeriodsService } from './services/periods.service';
 
 /**
@@ -43,22 +47,30 @@ import { PeriodsService } from './services/periods.service';
       JournalEntity,
       JournalEntryEntity,
       JournalEntryLineEntity,
+      PartnerLetteringEntity,
       OrganizationAccountEntity,
     ]),
     AuthModule,
     RbacModule,
     AuditModule,
   ],
-  controllers: [PeriodsController, JournalsController, EntriesController],
+  controllers: [
+    PeriodsController,
+    JournalsController,
+    EntriesController,
+    LetteringsController,
+  ],
   providers: [
     AccountingPeriodRepository,
     JournalRepository,
     JournalEntryRepository,
     JournalEntryLineRepository,
+    PartnerLetteringRepository,
     PeriodsService,
     JournalsService,
     EntriesService,
+    LetteringService,
   ],
-  exports: [JournalsService, EntriesService, JournalRepository],
+  exports: [JournalsService, EntriesService, LetteringService, JournalRepository],
 })
 export class JournalsModule {}

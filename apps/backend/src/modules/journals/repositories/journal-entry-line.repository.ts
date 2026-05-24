@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, IsNull, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { JournalEntryLineEntity } from '../entities/journal-entry-line.entity';
+import { JournalEntryEntity } from '../entities/journal-entry.entity';
 
 export interface CreateLineInput {
   readonly organizationId: TenantId | string;
@@ -59,5 +60,71 @@ export class JournalEntryLineRepository {
       where: { organizationId, accountId },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /**
+   * Lettering helper: load all `journal_entry_lines` matching the given
+   * IDs IN this tenant, joining the parent entry so the caller can
+   * filter on `journal_entries.status` (a draft line must never be
+   * lettered — only validated ones). Returns lines in the same order
+   * the IDs were requested where possible.
+   */
+  async listForLetteringCheck(
+    organizationId: TenantId | string,
+    ids: readonly string[],
+  ): Promise<
+    Array<{
+      line: JournalEntryLineEntity;
+      entryStatus: string;
+    }>
+  > {
+    assertTenantId(organizationId);
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await this.repo
+      .createQueryBuilder('l')
+      .innerJoinAndMapOne(
+        'l.journalEntry',
+        JournalEntryEntity,
+        'e',
+        'e.id = l.journal_entry_id',
+      )
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere('l.id IN (:...ids)', { ids: [...ids] })
+      .getMany();
+    return rows.map((line) => ({
+      line,
+      entryStatus: line.journalEntry?.status ?? 'unknown',
+    }));
+  }
+
+  async attachLettering(
+    lineIds: readonly string[],
+    letteringId: string,
+    organizationId: TenantId | string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    assertTenantId(organizationId);
+    if (lineIds.length === 0) return;
+    const repo = manager ? manager.getRepository(JournalEntryLineEntity) : this.repo;
+    await repo.update(
+      { id: In([...lineIds]), organizationId, letteringId: IsNull() },
+      { letteringId },
+    );
+  }
+
+  async detachLettering(
+    letteringId: string,
+    organizationId: TenantId | string,
+    manager?: EntityManager,
+  ): Promise<number> {
+    assertTenantId(organizationId);
+    const repo = manager ? manager.getRepository(JournalEntryLineEntity) : this.repo;
+    const result = await repo.update(
+      { letteringId, organizationId },
+      { letteringId: null },
+    );
+    return result.affected ?? 0;
   }
 }

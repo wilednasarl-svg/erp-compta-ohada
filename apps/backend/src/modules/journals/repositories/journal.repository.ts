@@ -68,19 +68,54 @@ export class JournalRepository {
     manager: EntityManager,
   ): Promise<number> {
     assertTenantId(organizationId);
-    const result: Array<{ assigned_number: number }> = await manager.query(
+    // We return the actual `next_entry_number` column (not a computed
+    // alias) so the returned key matches a real column name — avoids
+    // surprises if TypeORM / pg-driver naming behaviour changes for
+    // aliased expressions. We then subtract 1 in JS to get the number
+    // that becomes the new entry's `entry_number`.
+    //
+    // Hardened after prod smoke test (commitSession): the previous
+    // version aliased the expression `(next_entry_number - 1) AS
+    // assigned_number` and used `Number(result[0].assigned_number)`.
+    // In prod, that resolved to `undefined` → `NaN` → PG rejected the
+    // downstream INSERT with `invalid input syntax for type integer:
+    // "NaN"`, making every commitSession fail with IMPORT_COMMIT_FAILED.
+    const result: unknown = await manager.query(
       `UPDATE journals
          SET next_entry_number = next_entry_number + 1,
              updated_at = now()
        WHERE id = $1 AND organization_id = $2
-       RETURNING (next_entry_number - 1) AS assigned_number`,
+       RETURNING next_entry_number`,
       [journalId, organizationId],
     );
-    if (result.length === 0) {
+
+    const rows = Array.isArray(result) ? result : [];
+    if (rows.length === 0) {
       throw new Error(
         `Journal ${journalId} not found in org ${organizationId} — cannot assign entry number`,
       );
     }
-    return Number(result[0].assigned_number);
+    const row = rows[0];
+    // pg / TypeORM return INTEGER columns as JS number, but be defensive
+    // (a future driver swap or a schema change to BIGINT would return
+    // strings). Accept number or numeric string; refuse anything else
+    // loudly so the failure surfaces with the seen shape rather than
+    // silently producing NaN.
+    const raw = (row as Record<string, unknown>)?.next_entry_number;
+    const next =
+      typeof raw === 'number'
+        ? raw
+        : typeof raw === 'string' && /^\d+$/.test(raw)
+          ? Number(raw)
+          : Number.NaN;
+    if (!Number.isFinite(next) || next < 1) {
+      throw new Error(
+        `assignNextEntryNumber: unexpected RETURNING shape for journal ${journalId} — ` +
+          `expected { next_entry_number: number } but got ${JSON.stringify(row)}`,
+      );
+    }
+    // RETURNING gives the value AFTER `+ 1`. The number assigned to the
+    // new entry is one less (the value at row read time, before bump).
+    return next - 1;
   }
 }

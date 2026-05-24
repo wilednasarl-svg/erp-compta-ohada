@@ -68,6 +68,12 @@ export class JournalEntryLineEntity {
   @Column({ name: 'line_letter', type: 'varchar', length: 4, nullable: true })
   lineLetter!: string | null;
 
+  // Backref to a `partner_letterings` row when this line was reconciled.
+  // ON DELETE SET NULL — breaking a lettering at the DB level just
+  // unlets the lines. NULL = unlettered.
+  @Column({ name: 'lettering_id', type: 'uuid', nullable: true })
+  letteringId!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }
