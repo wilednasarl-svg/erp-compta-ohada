@@ -111,6 +111,20 @@ describe('HTTP status mapping', () => {
       CHART_ACCOUNT_INVALID_CODE: 422,
       CHART_ACCOUNT_IMMUTABLE_CODE: 422,
       ACCOUNTING_SYSTEM_REQUIRED: 422,
+      // Module 3 — imports & documents (in flight).
+      IMPORT_SESSION_NOT_FOUND: 404,
+      IMPORT_SESSION_NOT_DRAFT: 409,
+      IMPORT_SESSION_NOT_PARSED: 409,
+      IMPORT_FILE_NOT_FOUND: 404,
+      IMPORT_FILE_TOO_LARGE: 413,
+      IMPORT_FILE_DUPLICATE: 409,
+      IMPORT_UNSUPPORTED_FORMAT: 422,
+      IMPORT_FILE_PARSE_FAILED: 422,
+      DOC_NOT_FOUND: 404,
+      DOC_FILE_REQUIRED: 422,
+      DOC_FILE_TOO_LARGE: 413,
+      DOC_MIME_REJECTED: 422,
+      DOC_STORAGE_FAILURE: 500,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

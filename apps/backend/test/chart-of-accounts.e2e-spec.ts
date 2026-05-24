@@ -127,7 +127,10 @@ describe('e2e: chart of accounts (Section 10.1..10.5)', () => {
       orgA.scopedAccessToken,
     );
     expect(crossRead.status).toBe(HttpStatus.NOT_FOUND);
-    expect(crossRead.body).toMatchObject({ data: null, error: { code: ERROR_CODES.ORG_NOT_FOUND } });
+    expect(crossRead.body).toMatchObject({
+      data: null,
+      error: { code: ERROR_CODES.ORG_NOT_FOUND },
+    });
 
     // Same for a write.
     const crossWrite = await authedJson(

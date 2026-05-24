@@ -96,10 +96,7 @@ describe('AuthEventsService (BE-AUDIT-01) — wrapper over AuditTrailService', (
       // Cast is a deliberate "what if a buggy emitter sneaks in a code
       // without a dot?" — the type system blocks it for canonical
       // emitters but defensive code still has to behave.
-      const result = await service.record(
-        'malformed_event_no_dot' as never,
-        FULL_CONTEXT,
-      );
+      const result = await service.record('malformed_event_no_dot' as never, FULL_CONTEXT);
 
       expect(result).toBeNull();
       expect(trailRecord).not.toHaveBeenCalled();

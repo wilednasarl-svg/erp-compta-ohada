@@ -39,7 +39,7 @@ process refuses to boot if any are missing or malformed):
 
 ```bash
 pnpm install                           # from the repo root, installs all workspace deps
-pnpm --filter backend migration:run    # apply migrations 0001..0010
+pnpm --filter backend migration:run    # apply migrations 0001..0014 (Module 1 + Module 2 plan comptable)
 pnpm --filter backend seed:dev         # idempotent — creates demo org + 6 users
 pnpm --filter backend start:dev        # NestJS in watch mode on :3001
 ```
@@ -104,6 +104,8 @@ src/
 ├── database/
 │   ├── data-source.ts     standalone DataSource for CLI scripts
 │   ├── migrations/        0001..0010 — auth/orgs/RBAC schema
+│   │                      0011..0014 — Module 2 plan comptable OHADA
+│                                       (reference + per-org charts + perms)
 │   └── seeds/dev-seed.ts  idempotent fixture
 └── modules/
     ├── audit/             AuthEventRepository, AuthEventsService
@@ -117,13 +119,17 @@ src/
     │                      OrganizationsController, MembersController,
     │                      InvitationsController, AcceptInvitationController,
     │                      AuthEventsController (BE-AUDIT-02)
+    ├── accounting-plan/   Module 2 — ReferenceChartService,
+    │                      ChartOfAccountsService, ReferenceChartController,
+    │                      ChartOfAccountsController + SYSCOHADA AUDCIF seed
     └── rbac/              MembershipsService, TenantGuard, RolesGuard,
                            PermissionsGuard, @Roles, @RequirePermission
 ```
 
 See [docs/error-codes.md](../../docs/error-codes.md) for the public
-error catalog and [docs/rbac.md](../../docs/rbac.md) for the
-role × permission matrix.
+error catalog, [docs/rbac.md](../../docs/rbac.md) for the
+role × permission matrix, and [docs/accounting-plan.md](../../docs/accounting-plan.md)
+for the OHADA SYSCOHADA AUDCIF plan structure and CRUD invariants.
 
 ## Spec-driven plan
 

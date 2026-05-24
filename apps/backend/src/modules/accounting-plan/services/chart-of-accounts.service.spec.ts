@@ -2,10 +2,7 @@ import type { DataSource } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
-import type {
-  AuditContext,
-  AuditTrailService,
-} from '../../audit/services/audit-trail.service';
+import type { AuditContext, AuditTrailService } from '../../audit/services/audit-trail.service';
 import type { OrganizationAccountEntity } from '../entities/organization-account.entity';
 import type { OrganizationAccountRepository } from '../repositories/organization-account.repository';
 import { ChartOfAccountsService } from './chart-of-accounts.service';
