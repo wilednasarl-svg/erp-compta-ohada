@@ -86,5 +86,5 @@
 - [ ] 12.1 `pnpm --filter backend test` passe avec coverage ≥ 80 %
 - [ ] 12.2 `pnpm lint` et `pnpm build` propres backend + frontend
 - [ ] 12.3 Validation OpenSpec : `openspec status --change module-2-plan-comptable` → `isComplete: true`
-- [ ] 12.4 Revue par `security-reviewer` agent (focus : tenant isolation sur les nouveaux endpoints, immuabilité du plan de référence)
-- [ ] 12.5 Revue par `code-reviewer` agent (focus : invariants comptables, transactionnalité du clone)
+- [x] 12.4 Revue par `security-reviewer` agent (focus : tenant isolation sur les nouveaux endpoints, immuabilité du plan de référence)
+- [x] 12.5 Revue par `code-reviewer` agent (focus : invariants comptables, transactionnalité du clone)

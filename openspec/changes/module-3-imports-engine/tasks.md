@@ -101,16 +101,16 @@
 
 ## 13. Documentation
 
-- [ ] 13.1 `docs/imports.md` : workflow sessions, mapping de colonnes, codes erreur, limites
-- [ ] 13.2 `docs/documents.md` : limites MIME et taille, storage abstrait, isolation tenant
-- [ ] 13.3 Mettre à jour `docs/rbac.md` avec les 4 nouvelles permissions
+- [x] 13.1 `docs/imports.md` : workflow sessions, mapping de colonnes, codes erreur, limites
+- [x] 13.2 `docs/documents.md` : limites MIME et taille, storage abstrait, isolation tenant
+- [x] 13.3 Mettre à jour `docs/rbac.md` avec les 4 nouvelles permissions
 - [x] 13.4 `docs/error-codes.md` étendu avec les 13 nouveaux codes Module 3
-- [ ] 13.5 README backend : mentionner les migrations 0015-0018 et la variable `DOCUMENTS_STORAGE_DIR`
+- [x] 13.5 README backend : mentionner les migrations 0015-0018 et la variable `DOCUMENTS_STORAGE_DIR`
 
 ## 14. Pre-merge checks
 
 - [x] 14.1 `pnpm --filter backend test` passe (407/407 au moment du cadrage)
 - [x] 14.2 `pnpm --filter backend typecheck` propre
-- [ ] 14.3 Validation OpenSpec : `openspec validate --changes` → ce change valide
-- [ ] 14.4 Audit `security-reviewer` sur les parsers, le storage et l'upload (focus path traversal, XLSX bombs, MIME spoofing, tenant isolation)
-- [ ] 14.5 Audit `code-reviewer` sur les services et l'invariant de transitions d'état
+- [x] 14.3 Validation OpenSpec : `openspec validate --changes` → ce change valide
+- [x] 14.4 Audit `security-reviewer` sur les parsers, le storage et l'upload (focus path traversal, XLSX bombs, MIME spoofing, tenant isolation)
+- [x] 14.5 Audit `code-reviewer` sur les services et l'invariant de transitions d'état

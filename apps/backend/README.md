@@ -39,7 +39,9 @@ process refuses to boot if any are missing or malformed):
 
 ```bash
 pnpm install                           # from the repo root, installs all workspace deps
-pnpm --filter backend migration:run    # apply migrations 0001..0014 (Module 1 + Module 2 plan comptable)
+pnpm --filter backend migration:run    # apply migrations 0001..0022
+                                       # Module 1 + Module 2 plan comptable + Module 3 imports
+                                       # + Module 7 audit trail + Module 10 documents
 pnpm --filter backend seed:dev         # idempotent — creates demo org + 6 users
 pnpm --filter backend start:dev        # NestJS in watch mode on :3001
 ```
@@ -105,10 +107,16 @@ src/
 │   ├── data-source.ts     standalone DataSource for CLI scripts
 │   ├── migrations/        0001..0010 — auth/orgs/RBAC schema
 │   │                      0011..0014 — Module 2 plan comptable OHADA
-│                                       (reference + per-org charts + perms)
+│   │                                   (reference + per-org charts + perms)
+│   │                      0015..0018 — Module 3 imports engine
+│   │                                   (sessions, files, staging, perms)
+│   │                      0019       — Module 7 audit trail (audit_logs)
+│   │                      0020..0022 — Module 10 documents
+│                                       (documents, entries, perms)
 │   └── seeds/dev-seed.ts  idempotent fixture
 └── modules/
-    ├── audit/             AuthEventRepository, AuthEventsService
+    ├── audit/             Module 7 — AuthEventRepository, AuditLogRepository,
+    │                      AuditTrailService, AuthEventsService, AuditLogsController
     ├── auth/              PasswordService, EncryptionService,
     │                      JwtTokenService, RefreshTokenService,
     │                      MfaService, AuthService, AuthController,
@@ -122,14 +130,29 @@ src/
     ├── accounting-plan/   Module 2 — ReferenceChartService,
     │                      ChartOfAccountsService, ReferenceChartController,
     │                      ChartOfAccountsController + SYSCOHADA AUDCIF seed
+    ├── imports/           Module 3 — ImportSessionService, FileParserService,
+    │                      MappingService, ValidationService,
+    │                      CSV/XLSX/Sage parsers, ImportsController
+    ├── documents/         Module 10 — DocumentsService, DocumentsController,
+    │                      DocumentStorage abstract + LocalFilesystem driver,
+    │                      DocumentOcrService stub
     └── rbac/              MembershipsService, TenantGuard, RolesGuard,
                            PermissionsGuard, @Roles, @RequirePermission
 ```
 
 See [docs/error-codes.md](../../docs/error-codes.md) for the public
 error catalog, [docs/rbac.md](../../docs/rbac.md) for the
-role × permission matrix, and [docs/accounting-plan.md](../../docs/accounting-plan.md)
-for the OHADA SYSCOHADA AUDCIF plan structure and CRUD invariants.
+role × permission matrix, [docs/accounting-plan.md](../../docs/accounting-plan.md)
+for the OHADA SYSCOHADA AUDCIF plan structure and CRUD invariants,
+[docs/imports.md](../../docs/imports.md) for the imports engine workflow,
+and [docs/documents.md](../../docs/documents.md) for the documents storage.
+
+**Module 3 / 10 storage**: file uploads land under
+`${IMPORT_STORAGE_DIR}/${orgId}/...` and `${DOCUMENTS_STORAGE_DIR}/${orgId}/...`
+respectively. Both directories are tenant-isolated by path so a sysadmin
+listing one org's folder never sees another org's files. Override the
+roots via env (`IMPORT_STORAGE_DIR`, `DOCUMENTS_STORAGE_DIR`); default
+is `./var/imports` and `./var/documents`.
 
 ## Spec-driven plan
 
