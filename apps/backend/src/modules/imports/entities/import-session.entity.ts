@@ -58,6 +58,9 @@ export class ImportSessionEntity {
   @Column({ type: 'text', default: 'draft' })
   status!: ImportSessionStatus;
 
+  @Column({ name: 'mapping_override', type: 'jsonb', nullable: true })
+  mappingOverride!: Record<string, string> | null;
+
   @Column({ name: 'total_lines', type: 'integer', default: 0 })
   totalLines!: number;
 

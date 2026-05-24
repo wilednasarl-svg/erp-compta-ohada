@@ -34,9 +34,18 @@ import {
  */
 @Injectable()
 export class MappingService {
-  autoMap(headers: readonly string[]): MappingProposal {
+  autoMap(headers: readonly string[], overrides: Record<string, TargetField> = {}): MappingProposal {
     const headerToTarget: Record<string, TargetField> = {};
     const usedTargets = new Set<TargetField>();
+
+    // Apply manual overrides first — they win over synonyms
+    for (const header of headers) {
+      const overrideTarget = overrides[header];
+      if (overrideTarget !== undefined) {
+        headerToTarget[header] = overrideTarget;
+        usedTargets.add(overrideTarget);
+      }
+    }
 
     // Index synonyms once by normalised form for O(1) lookup.
     const synonymToTarget = new Map<string, TargetField>();
@@ -50,6 +59,11 @@ export class MappingService {
     }
 
     for (const header of headers) {
+      // Skip if this header was already mapped via an override
+      if (headerToTarget[header] !== undefined) {
+        continue;
+      }
+
       const normalised = normaliseHeader(header);
       if (normalised.length === 0) {
         continue;
@@ -59,8 +73,7 @@ export class MappingService {
         continue;
       }
       if (usedTargets.has(target)) {
-        // Another header already claimed this target — keep the first
-        // match, ignore subsequent ones. The UI can override later.
+        // Another header already claimed this target (via override or first match)
         continue;
       }
       headerToTarget[header] = target;

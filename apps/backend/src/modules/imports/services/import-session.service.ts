@@ -410,7 +410,10 @@ export class ImportSessionService {
       await this.files.updateDetectedHeaders(firstFile.id, organizationId, headers);
     }
 
-    const proposal = this.mapping.autoMap(headers);
+    const proposal = this.mapping.autoMap(
+      headers,
+      (session.mappingOverride as Record<string, TargetField>) ?? {}
+    );
 
     // Build chart index for validation. Loaded fresh on each preview
     // so account additions / deactivations are picked up immediately.
@@ -691,6 +694,43 @@ export class ImportSessionService {
     });
 
     return { sessionId, committedRows: totals.total };
+  }
+
+  // ─── Update Mapping ───────────────────────────────────────────────────
+
+  async updateMappingOverride(
+    organizationId: TenantId,
+    sessionId: string,
+    mappingOverride: Record<string, string>,
+    actorUserId: string,
+    ctx: AuditContext,
+  ): Promise<void> {
+    const session = await this.sessions.findById(sessionId, organizationId);
+    if (session === null) {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_FOUND);
+    }
+
+    if (session.status !== 'parsed' && session.status !== 'validated') {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_PARSED, {
+        message: `Session must be parsed or validated before mapping can be updated (current status: ${session.status})`,
+      });
+    }
+
+    await this.sessions.updateMappingOverride(sessionId, organizationId, mappingOverride);
+
+    if (session.status === 'validated') {
+      await this.sessions.updateStatus(sessionId, organizationId, 'parsed');
+    }
+
+    await this.audit.record({
+      module: ImportSessionService.MODULE,
+      action: 'mapping_override_updated',
+      entityType: 'import_session',
+      entityId: sessionId,
+      after: { mappingOverride },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'imports.mapping_updated',
+    });
   }
 
   /**

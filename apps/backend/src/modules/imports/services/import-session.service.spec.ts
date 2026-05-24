@@ -101,6 +101,7 @@ describe('ImportSessionService', () => {
       status: 'draft',
       totalLines: 0,
       errorLines: 0,
+      mappingOverride: null,
       failureReason: null,
       createdById: USER_ID,
       createdAt: new Date('2024-03-15T00:00:00Z'),

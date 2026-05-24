@@ -146,4 +146,14 @@ export class ImportSessionRepository {
       },
     );
   }
+
+  async updateMappingOverride(
+    id: string,
+    organizationId: TenantId | string,
+    mappingOverride: Record<string, string>,
+    manager?: EntityManager,
+  ): Promise<void> {
+    assertTenantId(organizationId);
+    await this.scoped(manager).update({ id, organizationId }, { mappingOverride });
+  }
 }

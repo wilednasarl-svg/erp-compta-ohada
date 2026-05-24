@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -32,6 +33,7 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateImportSessionDto } from '../dto/create-import-session.dto';
 import { PreviewImportDto } from '../dto/preview-import.dto';
+import { UpdateMappingOverrideDto } from '../dto/update-mapping-override.dto';
 import {
   ImportSessionService,
   type CommitResult,
@@ -218,6 +220,31 @@ export class ImportsController {
       buildAuditRequestContext(req),
       { limit: query.limit, offset: query.offset },
     );
+  }
+
+  // ─── Override Mapping ────────────────────────────────────────────────
+
+  @Patch('sessions/:sessionId/mapping')
+  @RequirePermission('imports.write')
+  @HttpCode(HttpStatus.OK)
+  async updateMappingOverride(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Body() body: UpdateMappingOverrideDto,
+    @Req() req: Request,
+  ): Promise<{ success: boolean }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    await this.importSessions.updateMappingOverride(
+      asTenantId(tokenOrgId),
+      sessionId,
+      body.mappingOverride ?? {},
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
+    return { success: true };
   }
 
   // ─── Commit (wave 2) ────────────────────────────────────────────────
