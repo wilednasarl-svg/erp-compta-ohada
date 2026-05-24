@@ -12,7 +12,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * later migrations once those tables exist.
  */
 export class CreateUsers1700000000002 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (already enabled by 0001 but kept
     // idempotent so the migration is self-contained when replayed in isolation).

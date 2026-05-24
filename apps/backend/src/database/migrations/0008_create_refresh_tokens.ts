@@ -21,7 +21,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * scoped to no org until they call `POST /auth/select-organization`.
  */
 export class CreateRefreshTokens1700000000008 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent
     // so this migration can be replayed in isolation).

@@ -12,7 +12,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * permission checks; `name` and `description` are display values.
  */
 export class CreateRoles1700000000003 implements MigrationInterface {
-
   private static readonly SYSTEM_ROLE_CODES = [
     'admin',
     'expert_comptable',

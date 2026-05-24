@@ -26,7 +26,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * served from the index without a heap sort.
  */
 export class CreateAuthEvents1700000000010 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent
     // so this migration can be replayed in isolation).

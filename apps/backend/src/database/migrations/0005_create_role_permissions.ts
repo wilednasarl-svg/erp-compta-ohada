@@ -18,7 +18,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * created by future migrations.
  */
 export class CreateRolePermissions1700000000005 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "role_permissions" (

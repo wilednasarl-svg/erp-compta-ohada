@@ -12,7 +12,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * `specs/rbac/spec.md` (Requirement: Seeded permission catalog).
  */
 export class CreatePermissions1700000000004 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent
     // so this migration can be replayed in isolation).

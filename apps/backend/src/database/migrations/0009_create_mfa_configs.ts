@@ -18,7 +18,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * the existing row instead of creating a parallel one.
  */
 export class CreateMfaConfigs1700000000009 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent
     // so this migration can be replayed in isolation).

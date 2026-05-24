@@ -17,7 +17,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * organization, Scenario: Duplicate pending invitation for same email).
  */
 export class CreateInvitations1700000000007 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent
     // so this migration can be replayed in isolation).

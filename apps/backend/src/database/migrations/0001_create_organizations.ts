@@ -10,7 +10,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * fast "active tenants" filtering.
  */
 export class CreateOrganizations1700000000001 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (bundled with PostgreSQL >= 13).
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);

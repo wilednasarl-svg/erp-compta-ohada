@@ -15,7 +15,6 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * and admin flows once those endpoints land.
  */
 export class CreateMemberships1700000000006 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // `gen_random_uuid()` lives in pgcrypto (enabled by 0001, kept idempotent
     // so this migration can be replayed in isolation).
