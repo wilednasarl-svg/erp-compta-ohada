@@ -23,8 +23,26 @@ import type { ImportSourceType, ValidationError } from '../types/import-status';
 export interface CommitResult {
   readonly sessionId: string;
   readonly committedRows: number;
+  readonly entryIds: readonly string[];
+}
+
+/**
+ * Internal: one staging row projected to the shape we feed to
+ * `EntriesService.createDraft`. Built during the pre-validation phase
+ * so any parse / mapping error is surfaced before any DB write.
+ */
+interface StagingLineDraft {
+  readonly rowNumber: number;
+  readonly journalCode: string;
+  readonly entryDate: string;
+  readonly accountCode: string;
+  readonly label: string;
+  readonly debit: number;
+  readonly credit: number;
+  readonly partner: string | null;
 }
 import type { MappedRow, TargetField } from '../types/mapping';
+import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { FileParserService } from './file-parser.service';
 import { MappingService } from './mapping.service';
 import { ValidationService } from './validation.service';
@@ -106,6 +124,7 @@ export class ImportSessionService {
     private readonly mapping: MappingService,
     private readonly validation: ValidationService,
     private readonly chartAccounts: OrganizationAccountRepository,
+    private readonly entries: EntriesService,
     private readonly audit: AuditTrailService,
     @Inject(ConfigService) private readonly config: ConfigService<AppConfig, true>,
   ) {}
@@ -623,25 +642,40 @@ export class ImportSessionService {
   // ─── Commit ─────────────────────────────────────────────────────────
 
   /**
-   * Module 3 wave 2 — commit a validated session.
+   * Module 3 wave 2 — commit a validated session into real accounting
+   * entries (Module 8).
    *
    * Pipeline:
    *   1. Verify session exists + belongs to org + status is `validated`.
-   *   2. Count staging entries with non-empty `errors` — if any, refuse
-   *      with `IMPORT_SESSION_NOT_VALID` so the user fixes them first.
-   *   3. Transition `validated → ready_for_import` (guards against a
+   *   2. Count staging entries with non-empty `errors` — refuse with
+   *      `IMPORT_SESSION_NOT_VALID` so the user fixes them first.
+   *   3. Load ALL clean staging rows for the session.
+   *   4. Pre-validate the projection: parse amounts / dates / journal
+   *      code / account code, group by `(journalCode, entryDate)` and
+   *      verify each group balances (sum debit == sum credit).
+   *      Surface a single `IMPORT_COMMIT_UNBALANCED_GROUP` listing every
+   *      bad group so the user can fix in one pass.
+   *   5. Transition `validated → ready_for_import` (atomic gate vs.
    *      concurrent double-commit).
-   *   4. TODO(Module 4): write clean staging rows to accounting entries
-   *      table in a single transaction. When Module 4 lands, replace the
-   *      stub below with:
-   *        await this.accountingEntries.commitFromStaging(
-   *          organizationId, sessionId, manager
-   *        );
-   *   5. Transition `ready_for_import → completed`.
-   *   6. Emit `imports.session_committed` audit event.
+   *   6. For each group, call `EntriesService.createDraft` then
+   *      `validate`. Track the created entryIds. On unexpected failure
+   *      (post-validation race), surface `IMPORT_COMMIT_FAILED` with
+   *      the failed group + any already-committed entries listed so the
+   *      operator can decide whether to roll back manually.
+   *   7. Transition `ready_for_import → completed`.
+   *   8. Emit `imports.session_committed` audit event with the entryIds.
    *
    * Idempotence: a `completed` session is detected early and the same
-   * result is returned without re-running steps 3–5.
+   * `{ sessionId, committedRows }` is returned without re-running the
+   * write path. `entryIds` is empty in the idempotent return because
+   * the originally-created entry IDs are not retained on the session
+   * row in wave 2 — wave 3 will persist them as a backref.
+   *
+   * Grouping note: rows are grouped by `(journalCode, entryDate)` —
+   * the import format has no piece reference field. `projet-ferme-l4g`
+   * tracks adding a proper `reference` TargetField for per-piece
+   * grouping; in the meantime a daily aggregate per journal is the
+   * pragmatic MVP that still produces auditable balanced entries.
    */
   async commitSession(
     organizationId: TenantId,
@@ -657,7 +691,7 @@ export class ImportSessionService {
     // Idempotence — already committed.
     if (session.status === 'completed') {
       const totals = await this.stagingEntries.countBySession(sessionId, organizationId);
-      return { sessionId, committedRows: totals.total };
+      return { sessionId, committedRows: totals.total, entryIds: [] };
     }
 
     if (session.status !== 'validated') {
@@ -674,26 +708,218 @@ export class ImportSessionService {
       });
     }
 
-    // Step 3 — atomic gate: only moves if current status is `validated`.
+    // Step 3 — load every clean staging row (paginated to avoid the
+    // default 100-row cap on listBySession).
+    const rows = await this.loadAllStagingRows(sessionId, organizationId);
+    if (rows.length === 0) {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
+        message: 'Cannot commit an empty session (no staging rows).',
+      });
+    }
+
+    // Step 4 — project + group + balance pre-check.
+    const drafts: StagingLineDraft[] = rows.map((r) =>
+      this.projectStagingRow(r.rowNumber, r.mappedValues as MappedRow),
+    );
+    const groups = this.groupByJournalAndDate(drafts);
+    const unbalanced = this.collectUnbalancedGroups(groups);
+    if (unbalanced.length > 0) {
+      throw new AppException(ERROR_CODES.IMPORT_COMMIT_UNBALANCED_GROUP, {
+        message: `${unbalanced.length} group(s) are unbalanced; the commit was aborted before any write.`,
+        details: { groups: unbalanced },
+      });
+    }
+
+    // Step 5 — atomic gate.
     await this.sessions.updateStatus(sessionId, organizationId, 'ready_for_import');
 
-    // Step 4 — TODO(Module 4): write staging rows to accounting entries.
-    // Until Module 4 is available, the commit is a logical transition only.
+    // Step 6 — sequentially create + validate every entry. Each
+    // `EntriesService.createDraft` opens its own transaction; the
+    // pre-validation above means a runtime failure here is a true
+    // race (e.g. period closed between steps 4 and 6).
+    const committedEntryIds: string[] = [];
+    try {
+      for (const [key, group] of groups) {
+        const lines: CreateLineInput[] = group.rows.map((row) => ({
+          accountCode: row.accountCode,
+          debit: row.debit,
+          credit: row.credit,
+          description: row.label,
+        }));
+        const draft = await this.entries.createDraft(
+          organizationId,
+          {
+            journalCode: group.journalCode,
+            entryDate: group.entryDate,
+            description: `Import session ${sessionId} — ${group.journalCode} ${group.entryDate}`,
+            reference: null,
+            lines,
+            sourceType: 'import',
+            sourceImportSessionId: sessionId,
+          },
+          actorUserId,
+          ctx,
+        );
+        await this.entries.validate(organizationId, draft.id, actorUserId, ctx);
+        committedEntryIds.push(draft.id);
+        // Best-effort: if a downstream user later wants the group key
+        // back from telemetry, it lives in the audit metadata below.
+        void key;
+      }
+    } catch (error: unknown) {
+      // Partial commit: surface the failure and what was already
+      // written. The session is left in `ready_for_import` so a human
+      // can decide whether to roll the entries back or finish manually.
+      throw new AppException(ERROR_CODES.IMPORT_COMMIT_FAILED, {
+        message: 'Commit failed mid-way; some entries may have been written.',
+        cause: error,
+        details: {
+          committedEntryIds,
+          remainingGroups: groups.size - committedEntryIds.length,
+        },
+      });
+    }
 
-    // Step 5 — mark complete.
+    // Step 7 — mark complete.
     await this.sessions.updateStatus(sessionId, organizationId, 'completed');
 
+    // Step 8 — single aggregated audit event with the produced IDs.
     await this.audit.record({
       module: ImportSessionService.MODULE,
       action: 'session_committed',
       entityType: 'import_session',
       entityId: sessionId,
-      after: { committedRows: totals.total, status: 'completed' },
+      after: {
+        committedRows: totals.total,
+        status: 'completed',
+        entryIds: committedEntryIds,
+        groups: committedEntryIds.length,
+      },
       ctx: { ...ctx, userId: actorUserId, organizationId },
       legacyEventType: 'imports.session_committed',
     });
 
-    return { sessionId, committedRows: totals.total };
+    return { sessionId, committedRows: totals.total, entryIds: committedEntryIds };
+  }
+
+  // ─── Commit helpers ─────────────────────────────────────────────────
+
+  private async loadAllStagingRows(
+    sessionId: string,
+    organizationId: TenantId,
+  ): Promise<Array<{ rowNumber: number; mappedValues: MappedRow }>> {
+    const pageSize = 500;
+    let offset = 0;
+    const all: Array<{ rowNumber: number; mappedValues: MappedRow }> = [];
+    // Loop until a page comes back smaller than pageSize — no terminal
+    // total query so we don't double-count a concurrent insert (none
+    // expected on a `validated` session, but defensive).
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const page = await this.stagingEntries.listBySession(sessionId, organizationId, {
+        limit: pageSize,
+        offset,
+      });
+      for (const row of page) {
+        all.push({ rowNumber: row.rowNumber, mappedValues: row.mappedValues as MappedRow });
+      }
+      if (page.length < pageSize) {
+        break;
+      }
+      offset += pageSize;
+    }
+    return all;
+  }
+
+  /**
+   * Project a single `mappedValues` row to the typed shape consumed by
+   * the grouping + balance pre-check. ValidationService has already
+   * proven the row well-formed before status reached `validated`, so
+   * the parsing here is meant to surface a *programming* error rather
+   * than a user data error (the throws below would indicate that
+   * validation drift let an invalid row sneak through).
+   */
+  private projectStagingRow(rowNumber: number, mapped: MappedRow): StagingLineDraft {
+    const journalCode = (mapped.journal ?? '').trim();
+    const entryDate = (mapped.date ?? '').trim();
+    const accountCode = (mapped.account ?? '').trim();
+    const label = (mapped.label ?? '').trim();
+    if (journalCode === '' || entryDate === '' || accountCode === '' || label === '') {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
+        message: `Row ${rowNumber} is missing a required target field after mapping.`,
+        details: { rowNumber, mapped },
+      });
+    }
+    const debit = parseFloat((mapped.debit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
+    const credit = parseFloat((mapped.credit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
+    return {
+      rowNumber,
+      journalCode,
+      entryDate,
+      accountCode,
+      label,
+      debit,
+      credit,
+      partner: mapped.partner ?? null,
+    };
+  }
+
+  private groupByJournalAndDate(
+    drafts: readonly StagingLineDraft[],
+  ): Map<
+    string,
+    { journalCode: string; entryDate: string; rows: StagingLineDraft[] }
+  > {
+    const groups = new Map<
+      string,
+      { journalCode: string; entryDate: string; rows: StagingLineDraft[] }
+    >();
+    for (const d of drafts) {
+      const key = `${d.journalCode}|${d.entryDate}`;
+      const bucket = groups.get(key);
+      if (bucket === undefined) {
+        groups.set(key, { journalCode: d.journalCode, entryDate: d.entryDate, rows: [d] });
+      } else {
+        bucket.rows.push(d);
+      }
+    }
+    return groups;
+  }
+
+  private collectUnbalancedGroups(
+    groups: ReadonlyMap<
+      string,
+      { journalCode: string; entryDate: string; rows: StagingLineDraft[] }
+    >,
+  ): Array<{
+    journalCode: string;
+    entryDate: string;
+    totalDebit: number;
+    totalCredit: number;
+    rowCount: number;
+  }> {
+    const out: Array<{
+      journalCode: string;
+      entryDate: string;
+      totalDebit: number;
+      totalCredit: number;
+      rowCount: number;
+    }> = [];
+    for (const group of groups.values()) {
+      const totalDebit = group.rows.reduce((s, r) => s + r.debit, 0);
+      const totalCredit = group.rows.reduce((s, r) => s + r.credit, 0);
+      // Match EntriesService.createDraft tolerance (5 mille).
+      if (Math.abs(totalDebit - totalCredit) > 0.005) {
+        out.push({
+          journalCode: group.journalCode,
+          entryDate: group.entryDate,
+          totalDebit: Math.round(totalDebit * 100) / 100,
+          totalCredit: Math.round(totalCredit * 100) / 100,
+          rowCount: group.rows.length,
+        });
+      }
+    }
+    return out;
   }
 
   // ─── Update Mapping ───────────────────────────────────────────────────

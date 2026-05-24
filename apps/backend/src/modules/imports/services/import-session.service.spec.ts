@@ -56,6 +56,10 @@ describe('ImportSessionService', () => {
     const audit = {
       record: jest.fn().mockResolvedValue(null),
     };
+    const entries = {
+      createDraft: jest.fn().mockResolvedValue({ id: 'entry-1' }),
+      validate: jest.fn().mockResolvedValue({ id: 'entry-1', status: 'validated' }),
+    };
     const config = {
       get: jest.fn().mockImplementation((key: string) => {
         if (key === 'imports') {
@@ -73,6 +77,7 @@ describe('ImportSessionService', () => {
       new MappingService(),
       new ValidationService(),
       chartRepo as never,
+      entries as never,
       audit as never,
       config as never,
     );
@@ -84,6 +89,7 @@ describe('ImportSessionService', () => {
       stagingRepo,
       parserService,
       chartRepo,
+      entries,
       audit,
       config,
       ...overrides,
@@ -351,17 +357,74 @@ describe('ImportSessionService', () => {
       };
     }
 
-    it('commits a clean validated session and emits audit event', async () => {
-      const { service, sessionsRepo, stagingRepo, audit } = buildService();
+    function balancedRows(): Array<{
+      rowNumber: number;
+      mappedValues: Record<string, string | null>;
+    }> {
+      // 2 lines, same (journal, date), balanced 100 debit / 100 credit.
+      return [
+        {
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'VTE',
+            date: '2026-01-15',
+            account: '411000',
+            label: 'Facture A',
+            debit: '100',
+            credit: '0',
+          },
+        },
+        {
+          rowNumber: 2,
+          mappedValues: {
+            journal: 'VTE',
+            date: '2026-01-15',
+            account: '707000',
+            label: 'Facture A',
+            debit: '0',
+            credit: '100',
+          },
+        },
+      ];
+    }
+
+    it('commits a clean validated session, creates a balanced entry and emits audit event', async () => {
+      const { service, sessionsRepo, stagingRepo, entries, audit } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
-      stagingRepo.countBySession.mockResolvedValue({ total: 5, withErrors: 0 });
+      stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
+      stagingRepo.listBySession.mockResolvedValueOnce(balancedRows()).mockResolvedValueOnce([]);
+      entries.createDraft.mockResolvedValue({ id: 'entry-uuid-1' });
 
       const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
         ipAddress: null,
         userAgent: null,
       });
 
-      expect(result).toEqual({ sessionId: SESSION_ID, committedRows: 5 });
+      expect(result.sessionId).toBe(SESSION_ID);
+      expect(result.committedRows).toBe(2);
+      expect(result.entryIds).toEqual(['entry-uuid-1']);
+
+      // Pre-validation balance check passed → one createDraft + one validate per group.
+      expect(entries.createDraft).toHaveBeenCalledTimes(1);
+      const draftArg = entries.createDraft.mock.calls[0][1] as {
+        journalCode: string;
+        entryDate: string;
+        sourceType: string;
+        sourceImportSessionId: string;
+        lines: Array<{ accountCode: string; debit: number; credit: number }>;
+      };
+      expect(draftArg.journalCode).toBe('VTE');
+      expect(draftArg.entryDate).toBe('2026-01-15');
+      expect(draftArg.sourceType).toBe('import');
+      expect(draftArg.sourceImportSessionId).toBe(SESSION_ID);
+      expect(draftArg.lines).toHaveLength(2);
+      expect(entries.validate).toHaveBeenCalledWith(
+        ORG_ID,
+        'entry-uuid-1',
+        USER_ID,
+        expect.any(Object),
+      );
+
       expect(sessionsRepo.updateStatus).toHaveBeenCalledWith(
         SESSION_ID,
         ORG_ID,
@@ -372,8 +435,119 @@ describe('ImportSessionService', () => {
         expect.objectContaining({
           action: 'session_committed',
           legacyEventType: 'imports.session_committed',
-          after: { committedRows: 5, status: 'completed' },
+          after: expect.objectContaining({
+            committedRows: 2,
+            status: 'completed',
+            entryIds: ['entry-uuid-1'],
+            groups: 1,
+          }),
         }),
+      );
+    });
+
+    it('refuses with IMPORT_COMMIT_UNBALANCED_GROUP when sum(debit) != sum(credit)', async () => {
+      const { service, sessionsRepo, stagingRepo, entries } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 1, withErrors: 0 });
+      stagingRepo.listBySession
+        .mockResolvedValueOnce([
+          {
+            rowNumber: 1,
+            mappedValues: {
+              journal: 'VTE',
+              date: '2026-01-15',
+              account: '411000',
+              label: 'Orphan debit',
+              debit: '100',
+              credit: '0',
+            },
+          },
+        ])
+        .mockResolvedValueOnce([]);
+
+      await expect(
+        service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
+      ).rejects.toMatchObject({
+        code: 'IMPORT_COMMIT_UNBALANCED_GROUP',
+        details: { groups: [{ journalCode: 'VTE', entryDate: '2026-01-15' }] },
+      });
+
+      // Pre-validation runs BEFORE any state change or DB write.
+      expect(sessionsRepo.updateStatus).not.toHaveBeenCalled();
+      expect(entries.createDraft).not.toHaveBeenCalled();
+    });
+
+    it('groups multiple balanced lines on (journalCode, entryDate) into a single entry', async () => {
+      const { service, sessionsRepo, stagingRepo, entries } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 4, withErrors: 0 });
+      stagingRepo.listBySession
+        .mockResolvedValueOnce([
+          ...balancedRows(),
+          {
+            rowNumber: 3,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-16',
+              account: '607000',
+              label: 'Achat',
+              debit: '50',
+              credit: '0',
+            },
+          },
+          {
+            rowNumber: 4,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-16',
+              account: '401000',
+              label: 'Achat',
+              debit: '0',
+              credit: '50',
+            },
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      entries.createDraft
+        .mockResolvedValueOnce({ id: 'entry-vte' })
+        .mockResolvedValueOnce({ id: 'entry-ach' });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      expect(entries.createDraft).toHaveBeenCalledTimes(2);
+      expect(result.entryIds).toEqual(['entry-vte', 'entry-ach']);
+    });
+
+    it('surfaces IMPORT_COMMIT_FAILED when createDraft fails after the atomic gate', async () => {
+      const { service, sessionsRepo, stagingRepo, entries } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
+      stagingRepo.listBySession.mockResolvedValueOnce(balancedRows()).mockResolvedValueOnce([]);
+      entries.createDraft.mockRejectedValueOnce(new Error('period closed by race'));
+
+      await expect(
+        service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
+      ).rejects.toMatchObject({ code: 'IMPORT_COMMIT_FAILED' });
+
+      // The atomic gate fired, but the final `completed` transition did NOT.
+      expect(sessionsRepo.updateStatus).toHaveBeenCalledWith(
+        SESSION_ID,
+        ORG_ID,
+        'ready_for_import',
+      );
+      expect(sessionsRepo.updateStatus).not.toHaveBeenCalledWith(
+        SESSION_ID,
+        ORG_ID,
+        'completed',
       );
     });
 

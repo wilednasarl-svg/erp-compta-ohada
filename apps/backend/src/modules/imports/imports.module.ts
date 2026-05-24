@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { JournalsModule } from '../journals/journals.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { ImportsController } from './controllers/imports.controller';
 import { ImportFileEntity } from './entities/import-file.entity';
@@ -59,6 +60,7 @@ import { ValidationService } from './services/validation.service';
     RbacModule,
     AuditModule,
     AccountingPlanModule,
+    JournalsModule,
   ],
   controllers: [ImportsController],
   providers: [
