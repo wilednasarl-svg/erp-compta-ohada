@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, type TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 import type { AppConfig } from '../config/configuration';
+import { buildPgUrl } from './db-url';
 
 /**
  * DatabaseModule — PostgreSQL via TypeORM (Supabase-compatible).
@@ -27,7 +28,11 @@ import type { AppConfig } from '../config/configuration';
 
         return {
           type: 'postgres',
-          url: database.url,
+          // `buildPgUrl` strips `sslmode` from the URL when DB_SSL=true
+          // so pg-connection-string v3's strict alias resolution doesn't
+          // override our `ssl: { rejectUnauthorized: false }` option
+          // (Supabase pooler uses a self-signed root cert).
+          url: buildPgUrl(database.url, database.ssl),
           ssl: database.ssl ? { rejectUnauthorized: false } : false,
           autoLoadEntities: true,
           synchronize: false,

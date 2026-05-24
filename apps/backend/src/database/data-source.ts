@@ -12,6 +12,7 @@ import { config as loadDotenv } from 'dotenv';
 import { DataSource, type DataSourceOptions } from 'typeorm';
 
 import { validateEnv } from '../config/env.validation';
+import { buildPgUrl } from './db-url';
 
 // Load `.env` from the CWD (typically `apps/backend/`) for CLI invocations.
 // `override: false` keeps already-exported env vars (e.g. CI secrets) winning.
@@ -21,7 +22,7 @@ const env = validateEnv(process.env);
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  url: env.DATABASE_URL,
+  url: buildPgUrl(env.DATABASE_URL, env.DB_SSL),
   ssl: env.DB_SSL ? { rejectUnauthorized: false } : false,
   entities: [`${__dirname}/../**/*.entity.{ts,js}`],
   migrations: [`${__dirname}/migrations/*.{ts,js}`],
