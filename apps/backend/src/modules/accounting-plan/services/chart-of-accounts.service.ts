@@ -128,13 +128,21 @@ export class ChartOfAccountsService {
           `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, ` +
             `$${base + 5}, $${base + 6}, $${base + 7}, $${base + 8})`,
         );
+        // `.getMany()` returns entity-mapped rows: TypeORM converts the
+        // DB snake_case columns (`account_type`, `normal_balance`) to
+        // the entity's camelCase properties (`accountType`,
+        // `normalBalance`). Reading the snake_case names returns
+        // undefined → null in the INSERT → "null value in column
+        // account_type violates not-null constraint". Bug that
+        // 100 % blocked org creation in prod (no spec covered this
+        // method end-to-end).
         values.push(
           organizationId,
           row['code'],
           row['label'],
           row['class'],
-          row['account_type'],
-          row['normal_balance'],
+          row['accountType'],
+          row['normalBalance'],
           row['id'], // reference_account_id
           true, // is_active
         );
