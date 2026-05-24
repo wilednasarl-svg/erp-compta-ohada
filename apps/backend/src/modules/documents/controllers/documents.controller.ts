@@ -195,9 +195,7 @@ export class DocumentsController {
     const asciiFallback = safeName.replace(/[^\x20-\x7E]/g, '_');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(
-        safeName,
-      )}`,
+      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
     );
     // `X-Content-Type-Options: nosniff` prevents browsers from
     // overriding the declared `Content-Type` with their own sniff,

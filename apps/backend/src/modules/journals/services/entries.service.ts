@@ -91,7 +91,7 @@ export class EntriesService {
     }
 
     for (let i = 0; i < input.lines.length; i++) {
-      const l = input.lines[i]!;
+      const l = input.lines[i];
       if ((l.debit > 0 && l.credit > 0) || (l.debit <= 0 && l.credit <= 0)) {
         throw new AppException(ERROR_CODES.JOURNAL_ENTRY_INVALID_LINE, {
           message: `Line ${i + 1}: exactly one of debit or credit must be positive.`,
@@ -156,10 +156,15 @@ export class EntriesService {
         manager,
       );
 
-      await this.emitAudit('journals.entry_created', entry.id, {
-        journalCode: input.journalCode,
-        entryNumber,
-      }, ctx).catch((e: unknown) => this.logger.warn(`Audit failed: ${String(e)}`));
+      await this.emitAudit(
+        'journals.entry_created',
+        entry.id,
+        {
+          journalCode: input.journalCode,
+          entryNumber,
+        },
+        ctx,
+      ).catch((e: unknown) => this.logger.warn(`Audit failed: ${String(e)}`));
 
       return this.buildView(entry, journal.code, resolvedLines);
     });
@@ -182,8 +187,8 @@ export class EntriesService {
       validatedAt: new Date(),
       validatedById: actorId,
     });
-    await this.emitAudit('journals.entry_validated', entryId, {}, ctx).catch(
-      (e: unknown) => this.logger.warn(`Audit failed: ${String(e)}`),
+    await this.emitAudit('journals.entry_validated', entryId, {}, ctx).catch((e: unknown) =>
+      this.logger.warn(`Audit failed: ${String(e)}`),
     );
     return this.getEntry(organizationId, entryId);
   }
@@ -266,9 +271,15 @@ export class EntriesService {
         manager,
       );
 
-      await this.emitAudit('journals.entry_cancelled', entryId, {
-        reversalId: reversal.id, reason,
-      }, ctx).catch((e: unknown) => this.logger.warn(`Audit failed: ${String(e)}`));
+      await this.emitAudit(
+        'journals.entry_cancelled',
+        entryId,
+        {
+          reversalId: reversal.id,
+          reason,
+        },
+        ctx,
+      ).catch((e: unknown) => this.logger.warn(`Audit failed: ${String(e)}`));
 
       return this.getEntry(organizationId, reversal.id);
     });
@@ -288,8 +299,8 @@ export class EntriesService {
       });
     }
     await this.dataSource.manager.delete('journal_entries', { id: entryId });
-    await this.emitAudit('journals.entry_deleted', entryId, {}, ctx).catch(
-      (e: unknown) => this.logger.warn(`Audit failed: ${String(e)}`),
+    await this.emitAudit('journals.entry_deleted', entryId, {}, ctx).catch((e: unknown) =>
+      this.logger.warn(`Audit failed: ${String(e)}`),
     );
   }
 
@@ -337,10 +348,7 @@ export class EntriesService {
     return this.entryRepo.listForOrg(organizationId, filters as any);
   }
 
-  private async getOrThrow(
-    organizationId: TenantId,
-    entryId: string,
-  ): Promise<JournalEntryEntity> {
+  private async getOrThrow(organizationId: TenantId, entryId: string): Promise<JournalEntryEntity> {
     const entry = await this.entryRepo.findById(entryId, organizationId);
     if (!entry) {
       throw new AppException(ERROR_CODES.JOURNAL_ENTRY_NOT_FOUND, {

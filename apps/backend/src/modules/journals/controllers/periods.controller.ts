@@ -43,7 +43,7 @@ export class PeriodsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('journals.close_period')
-  @ApiOperation({ summary: "Creer un exercice comptable avec ses sous-periodes" })
+  @ApiOperation({ summary: 'Creer un exercice comptable avec ses sous-periodes' })
   async create(
     @Param('id', ParseUUIDPipe) _id: string,
     @CurrentOrg() org: CurrentOrgContext,

@@ -95,7 +95,15 @@ function buildService(
     period?: AccountingPeriodEntity | null;
     accountByCode?: Map<string, OrganizationAccountEntity>;
     entry?: JournalEntryEntity | null;
-    lines?: Array<{ id: string; accountId: string; debit: string; credit: string; position: number; description: string | null; lineLetter: string | null }>;
+    lines?: Array<{
+      id: string;
+      accountId: string;
+      debit: string;
+      credit: string;
+      position: number;
+      description: string | null;
+      lineLetter: string | null;
+    }>;
   } = {},
 ) {
   const journal = overrides.journal === undefined ? makeJournal() : overrides.journal;
@@ -146,9 +154,9 @@ function buildService(
     delete: jest.fn().mockResolvedValue({}),
   };
   const dataSource = {
-    transaction: jest.fn().mockImplementation(async (cb: (m: typeof manager) => Promise<unknown>) =>
-      cb(manager),
-    ),
+    transaction: jest
+      .fn()
+      .mockImplementation(async (cb: (m: typeof manager) => Promise<unknown>) => cb(manager)),
     manager: { delete: jest.fn().mockResolvedValue({}) },
     getRepository: jest.fn().mockReturnValue(accountRepoForManager),
   };
