@@ -17,6 +17,7 @@ function buildHarness() {
     generalLedgerOpening: jest
       .fn()
       .mockResolvedValue({ openingDebit: '0.00', openingCredit: '0.00' }),
+    accountBalancesAsAt: jest.fn().mockResolvedValue([]),
   };
   const accounts = {
     findById: jest.fn().mockResolvedValue({
@@ -245,5 +246,267 @@ describe('ReportsService static helpers', () => {
     ['', false],
   ])('isYmd(%s) → %s', (input, expected) => {
     expect(ReportsService.isYmd(input)).toBe(expected);
+  });
+});
+
+describe('ReportsService.getProfitLoss', () => {
+  it('aggregates class 6 into charges sections and class 7 into produits sections', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      // Charges
+      tbRow({
+        accountId: 'a-60',
+        accountCode: '601000',
+        accountLabel: 'Achats',
+        accountClass: 6,
+        periodDebit: '5000.00',
+        periodCredit: '0.00',
+      }),
+      tbRow({
+        accountId: 'a-66',
+        accountCode: '661000',
+        accountLabel: 'Salaires',
+        accountClass: 6,
+        periodDebit: '8000.00',
+        periodCredit: '0.00',
+      }),
+      // Produits
+      tbRow({
+        accountId: 'a-70',
+        accountCode: '701000',
+        accountLabel: 'Ventes',
+        accountClass: 7,
+        periodDebit: '0.00',
+        periodCredit: '15000.00',
+      }),
+    ]);
+
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    // Section '60' should contain the 601 account with 5000.00
+    const section60 = result.charges.find((s) => s.code === '60');
+    expect(section60?.amount).toBe('5000.00');
+    expect(section60?.accounts[0]).toMatchObject({ code: '601000', amount: '5000.00' });
+
+    const section66 = result.charges.find((s) => s.code === '66');
+    expect(section66?.amount).toBe('8000.00');
+
+    const section70 = result.produits.find((s) => s.code === '70');
+    expect(section70?.amount).toBe('15000.00');
+
+    expect(result.totalCharges).toBe('13000.00');
+    expect(result.totalProduits).toBe('15000.00');
+    expect(result.resultat).toBe('2000.00');
+  });
+
+  it('reports a loss when charges exceed produits (negative resultat)', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({
+        accountCode: '601000',
+        accountClass: 6,
+        periodDebit: '20000.00',
+      }),
+      tbRow({
+        accountCode: '701000',
+        accountClass: 7,
+        periodCredit: '12000.00',
+      }),
+    ]);
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    expect(result.resultat).toBe('-8000.00');
+  });
+
+  it('drops empty sections from the breakdown (only sections with movement are returned)', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '100.00' }),
+    ]);
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    // Section 60 has the account; section 61 (Transports) returns empty.
+    const section61 = result.charges.find((s) => s.code === '61');
+    expect(section61?.amount).toBe('0.00');
+    expect(section61?.accounts).toHaveLength(0);
+  });
+
+  it('ignores classes 1-5 and 8-9 (P&L is strictly 6 + 7)', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '411000', accountClass: 4, periodDebit: '1000.00' }),
+      tbRow({ accountCode: '811000', accountClass: 8, periodDebit: '500.00' }),
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '300.00' }),
+    ]);
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    expect(result.totalCharges).toBe('300.00');
+    expect(result.totalProduits).toBe('0.00');
+  });
+});
+
+describe('ReportsService.getBalanceSheet', () => {
+  function balancesAsAt(
+    overrides: Array<{
+      accountId?: string;
+      accountCode: string;
+      accountLabel: string;
+      accountClass: number;
+      totalDebit: string;
+      totalCredit: string;
+    }>,
+  ) {
+    return overrides.map((o, i) => ({
+      accountId: o.accountId ?? `acc-${i}`,
+      accountCode: o.accountCode,
+      accountLabel: o.accountLabel,
+      accountClass: o.accountClass,
+      totalDebit: o.totalDebit,
+      totalCredit: o.totalCredit,
+    }));
+  }
+
+  it('ventilates a typical post-import balance into ACTIF and PASSIF correctly', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue(
+      balancesAsAt([
+        // Actif immobilisé (cl. 2)
+        {
+          accountCode: '211000',
+          accountLabel: 'Fonds commercial',
+          accountClass: 2,
+          totalDebit: '50000.00',
+          totalCredit: '0.00',
+        },
+        // Stocks (cl. 3) → Actif circulant
+        {
+          accountCode: '311000',
+          accountLabel: 'Stocks marchandises',
+          accountClass: 3,
+          totalDebit: '12000.00',
+          totalCredit: '0.00',
+        },
+        // Créance client 411 → Actif circulant
+        {
+          accountCode: '411000',
+          accountLabel: 'CLIENT X',
+          accountClass: 4,
+          totalDebit: '8000.00',
+          totalCredit: '3000.00',
+        },
+        // Dette fournisseur 401 → Passif circulant
+        {
+          accountCode: '401000',
+          accountLabel: 'FOURNISSEUR Y',
+          accountClass: 4,
+          totalDebit: '2000.00',
+          totalCredit: '7000.00',
+        },
+        // Banque (cl. 5) débit → Trésorerie actif
+        {
+          accountCode: '512000',
+          accountLabel: 'Banque',
+          accountClass: 5,
+          totalDebit: '10000.00',
+          totalCredit: '4000.00',
+        },
+        // Capital (cl. 1, code 101) → Capitaux propres
+        {
+          accountCode: '101000',
+          accountLabel: 'Capital social',
+          accountClass: 1,
+          totalDebit: '0.00',
+          totalCredit: '60000.00',
+        },
+        // Emprunt bancaire (cl. 1, code 161) → Dettes financières
+        {
+          accountCode: '161000',
+          accountLabel: 'Emprunt bancaire',
+          accountClass: 1,
+          totalDebit: '0.00',
+          totalCredit: '6000.00',
+        },
+      ]),
+    );
+
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+
+    const actifSect = Object.fromEntries(result.actif.sections.map((s) => [s.key, s]));
+    expect(actifSect['IMMOBILISE'].total).toBe('50000.00');
+    expect(actifSect['CIRCULANT'].total).toBe('17000.00'); // 12000 + (8000-3000)
+    expect(actifSect['TRESORERIE_ACTIF'].total).toBe('6000.00'); // 10000-4000
+    expect(result.actif.total).toBe('73000.00');
+
+    const passifSect = Object.fromEntries(result.passif.sections.map((s) => [s.key, s]));
+    expect(passifSect['CAPITAUX_PROPRES'].total).toBe('60000.00');
+    expect(passifSect['DETTES_FINANCIERES'].total).toBe('6000.00');
+    expect(passifSect['PASSIF_CIRCULANT'].total).toBe('5000.00'); // 7000-2000
+    expect(result.passif.total).toBe('71000.00');
+
+    // Difference = 73000 - 71000 = 2000 (résultat non incorporé en wave 2)
+    expect(result.difference).toBe('2000.00');
+  });
+
+  it('rejects malformed asAtDate before hitting the DB', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn();
+    await expect(
+      h.service.getBalanceSheet(ORG_ID, { asAtDate: 'not-a-date' }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+    expect(h.repo.accountBalancesAsAt).not.toHaveBeenCalled();
+  });
+
+  it('skips zero-balance accounts (no movement contribution)', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue(
+      balancesAsAt([
+        {
+          accountCode: '211000',
+          accountLabel: 'Fonds',
+          accountClass: 2,
+          totalDebit: '10000.00',
+          totalCredit: '10000.00',
+        },
+        {
+          accountCode: '512000',
+          accountLabel: 'Banque',
+          accountClass: 5,
+          totalDebit: '5000.00',
+          totalCredit: '0.00',
+        },
+      ]),
+    );
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    // The 211 net balance is 0 → excluded; only the 512 remains.
+    expect(result.actif.total).toBe('5000.00');
+    const immo = result.actif.sections.find((s) => s.key === 'IMMOBILISE');
+    expect(immo?.groups).toHaveLength(0);
+  });
+
+  it('routes a 5xx with credit balance to TRESORERIE_PASSIF (découvert)', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue(
+      balancesAsAt([
+        {
+          accountCode: '512000',
+          accountLabel: 'Banque',
+          accountClass: 5,
+          totalDebit: '1000.00',
+          totalCredit: '4000.00',
+        },
+      ]),
+    );
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    const tresoPassif = result.passif.sections.find((s) => s.key === 'TRESORERIE_PASSIF');
+    expect(tresoPassif?.total).toBe('3000.00');
   });
 });

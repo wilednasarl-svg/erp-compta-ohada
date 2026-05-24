@@ -108,10 +108,22 @@ export class ReportsRepository {
       .addSelect('a.code', 'accountCode')
       .addSelect('a.label', 'accountLabel')
       .addSelect('a.class', 'accountClass')
-      .addSelect(`COALESCE(SUM(CASE WHEN e.entry_date < :fromDate::date THEN l.debit  ELSE 0 END), 0)`, 'openingDebit')
-      .addSelect(`COALESCE(SUM(CASE WHEN e.entry_date < :fromDate::date THEN l.credit ELSE 0 END), 0)`, 'openingCredit')
-      .addSelect(`COALESCE(SUM(CASE WHEN e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date THEN l.debit  ELSE 0 END), 0)`, 'periodDebit')
-      .addSelect(`COALESCE(SUM(CASE WHEN e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date THEN l.credit ELSE 0 END), 0)`, 'periodCredit')
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN e.entry_date < :fromDate::date THEN l.debit  ELSE 0 END), 0)`,
+        'openingDebit',
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN e.entry_date < :fromDate::date THEN l.credit ELSE 0 END), 0)`,
+        'openingCredit',
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date THEN l.debit  ELSE 0 END), 0)`,
+        'periodDebit',
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date THEN l.credit ELSE 0 END), 0)`,
+        'periodCredit',
+      )
       .setParameter('fromDate', filters.fromDate)
       .groupBy('a.id')
       .addGroupBy('a.code')
@@ -218,6 +230,67 @@ export class ReportsRepository {
       debit: Number(r.debit).toFixed(2),
       credit: Number(r.credit).toFixed(2),
       letteringCode: r.letteringCode,
+    }));
+  }
+
+  /**
+   * Cumulative balance "as at" a date — every validated journal-entry
+   * line on or before `asAtDate`, grouped per account. Used by the
+   * Bilan (balance sheet), which is a snapshot of the org's financial
+   * position at a single date, not over a period.
+   *
+   * Returns one row per account that has had any movement; the service
+   * is in charge of normalising the signed `net` into debit / credit
+   * columns and of classifying accounts into Bilan sections.
+   */
+  async accountBalancesAsAt(
+    organizationId: TenantId | string,
+    asAtDate: string,
+  ): Promise<
+    Array<{
+      accountId: string;
+      accountCode: string;
+      accountLabel: string;
+      accountClass: number;
+      totalDebit: string;
+      totalCredit: string;
+    }>
+  > {
+    assertTenantId(organizationId);
+    const rows = await this.lineRepo
+      .createQueryBuilder('l')
+      .innerJoin('journal_entries', 'e', 'e.id = l.journal_entry_id')
+      .innerJoin('organization_chart_accounts', 'a', 'a.id = l.account_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere(`e.status = 'validated'`)
+      .andWhere(`e.entry_date <= :asAtDate::date`, { asAtDate })
+      .select('a.id', 'accountId')
+      .addSelect('a.code', 'accountCode')
+      .addSelect('a.label', 'accountLabel')
+      .addSelect('a.class', 'accountClass')
+      .addSelect('COALESCE(SUM(l.debit), 0)', 'totalDebit')
+      .addSelect('COALESCE(SUM(l.credit), 0)', 'totalCredit')
+      .groupBy('a.id')
+      .addGroupBy('a.code')
+      .addGroupBy('a.label')
+      .addGroupBy('a.class')
+      .orderBy('a.code', 'ASC')
+      .getRawMany<{
+        accountId: string;
+        accountCode: string;
+        accountLabel: string;
+        accountClass: string | number;
+        totalDebit: string;
+        totalCredit: string;
+      }>();
+
+    return rows.map((r) => ({
+      accountId: r.accountId,
+      accountCode: r.accountCode,
+      accountLabel: r.accountLabel,
+      accountClass: Number(r.accountClass),
+      totalDebit: Number(r.totalDebit).toFixed(2),
+      totalCredit: Number(r.totalCredit).toFixed(2),
     }));
   }
 

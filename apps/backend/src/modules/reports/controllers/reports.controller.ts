@@ -17,11 +17,15 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequirePermission } from '../../rbac/decorators/require-permission.decorator';
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
+import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
 import { GeneralLedgerQueryDto } from '../dto/general-ledger-query.dto';
+import { ProfitLossQueryDto } from '../dto/profit-loss-query.dto';
 import { TrialBalanceQueryDto } from '../dto/trial-balance-query.dto';
 import {
   ReportsService,
+  type BalanceSheetReport,
   type GeneralLedgerReport,
+  type ProfitLossReport,
   type TrialBalanceReport,
 } from '../services/reports.service';
 
@@ -76,6 +80,41 @@ export class ReportsController {
       accountId,
       fromDate: query.fromDate,
       toDate: query.toDate,
+    });
+    return { report };
+  }
+
+  @Get('profit-loss')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Compte de résultat (classes 6 charges + 7 produits) sur la période',
+  })
+  async profitLoss(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: ProfitLossQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: ProfitLossReport }> {
+    const report = await this.reports.getProfitLoss(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    return { report };
+  }
+
+  @Get('balance-sheet')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Bilan OHADA (actif/passif ventilés selon SYSCOHADA AUDCIF) à une date',
+  })
+  async balanceSheet(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: BalanceSheetQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: BalanceSheetReport }> {
+    const report = await this.reports.getBalanceSheet(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
     });
     return { report };
   }

@@ -9,6 +9,15 @@ import {
   type GeneralLedgerRow,
   type TrialBalanceRow,
 } from '../repositories/reports.repository';
+import {
+  ACTIF_SECTION_LABELS,
+  PASSIF_SECTION_LABELS,
+  PL_CHARGE_SECTIONS,
+  PL_PRODUIT_SECTIONS,
+  classifyForBilan,
+  type BalanceSheetActifKey,
+  type BalanceSheetPassifKey,
+} from './ohada-classifier';
 
 export interface TrialBalanceQuery {
   readonly fromDate: string;
@@ -42,6 +51,61 @@ export interface GeneralLedgerQuery {
 export interface GeneralLedgerEntry extends GeneralLedgerRow {
   /** Cumulative debit-credit balance up to and including this line. */
   readonly runningBalance: string;
+}
+
+export interface ProfitLossLine {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  readonly accounts: ReadonlyArray<{
+    readonly code: string;
+    readonly label: string;
+    readonly amount: string;
+  }>;
+}
+
+export interface ProfitLossReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly charges: ReadonlyArray<ProfitLossLine>;
+  readonly produits: ReadonlyArray<ProfitLossLine>;
+  readonly totalCharges: string;
+  readonly totalProduits: string;
+  /** produits − charges. Positive = bénéfice, negative = perte. */
+  readonly resultat: string;
+}
+
+export interface BalanceSheetGroup {
+  readonly accountId: string;
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+}
+
+export interface BalanceSheetSection {
+  readonly key: BalanceSheetActifKey | BalanceSheetPassifKey;
+  readonly label: string;
+  readonly groups: ReadonlyArray<BalanceSheetGroup>;
+  readonly total: string;
+}
+
+export interface BalanceSheetReport {
+  readonly asAtDate: string;
+  readonly actif: {
+    readonly sections: ReadonlyArray<BalanceSheetSection>;
+    readonly total: string;
+  };
+  readonly passif: {
+    readonly sections: ReadonlyArray<BalanceSheetSection>;
+    readonly total: string;
+  };
+  /**
+   * Bilan equilibre check: difference between Actif and Passif. Should
+   * be 0 once the current year's net result is incorporated. The wave 2
+   * MVP exposes the raw difference; the wave 3 will fold the P&L result
+   * into capitaux propres automatically.
+   */
+  readonly difference: string;
 }
 
 export interface GeneralLedgerReport {
@@ -163,7 +227,176 @@ export class ReportsService {
     };
   }
 
+  /**
+   * Compte de Résultat OHADA — agrégation des classes 6 (charges) et 7
+   * (produits) sur la période [fromDate, toDate].
+   *
+   * Chaque section (60, 61, …, 70, 71, …) liste les comptes mouvementés
+   * sur la période avec leur contribution nette :
+   *   - charges  : netDebit  = periodDebit  - periodCredit
+   *   - produits : netCredit = periodCredit - periodDebit
+   *
+   * Résultat = Total Produits − Total Charges.
+   */
+  async getProfitLoss(
+    organizationId: TenantId,
+    query: { fromDate: string; toDate: string },
+  ): Promise<ProfitLossReport> {
+    assertTenantId(organizationId);
+    this.assertDateRange(query.fromDate, query.toDate);
+
+    const rows = await this.repo.trialBalance(organizationId, {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+
+    const class6 = rows.filter((r) => r.accountClass === 6);
+    const class7 = rows.filter((r) => r.accountClass === 7);
+
+    const charges = PL_CHARGE_SECTIONS.map((section) =>
+      this.buildPlSection(section.code, section.label, class6, 'CHARGE'),
+    );
+    const produits = PL_PRODUIT_SECTIONS.map((section) =>
+      this.buildPlSection(section.code, section.label, class7, 'PRODUIT'),
+    );
+
+    const totalCharges = charges.reduce((s, sect) => s + Number(sect.amount), 0);
+    const totalProduits = produits.reduce((s, sect) => s + Number(sect.amount), 0);
+    const resultat = totalProduits - totalCharges;
+
+    return {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      charges,
+      produits,
+      totalCharges: totalCharges.toFixed(2),
+      totalProduits: totalProduits.toFixed(2),
+      resultat: resultat.toFixed(2),
+    };
+  }
+
+  /**
+   * Bilan OHADA — photographie patrimoniale "as at" une date.
+   *
+   * Classifie chaque compte ayant un solde cumulé en :
+   *   ACTIF  : Immobilisé (cl. 2) / Circulant (cl. 3, 4 débit) / Trésorerie actif (cl. 5 débit)
+   *   PASSIF : Capitaux propres (cl. 1, codes 10-15) / Dettes financières (cl. 1, codes 16+)
+   *            / Passif circulant (cl. 4 crédit) / Trésorerie passif (cl. 5 crédit)
+   *
+   * Wave 2 n'incorpore PAS automatiquement le résultat de l'exercice
+   * courant dans les capitaux propres — `difference` expose l'écart
+   * actif − passif pour que l'utilisateur le contrôle visuellement.
+   * Wave 3 fera la consolidation automatique.
+   */
+  async getBalanceSheet(
+    organizationId: TenantId,
+    query: { asAtDate: string },
+  ): Promise<BalanceSheetReport> {
+    assertTenantId(organizationId);
+    if (!ReportsService.isYmd(query.asAtDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: `asAtDate must be YYYY-MM-DD (got ${query.asAtDate}).`,
+      });
+    }
+
+    const rows = await this.repo.accountBalancesAsAt(organizationId, query.asAtDate);
+
+    const actifBuckets = new Map<BalanceSheetActifKey, BalanceSheetGroup[]>();
+    const passifBuckets = new Map<BalanceSheetPassifKey, BalanceSheetGroup[]>();
+
+    for (const row of rows) {
+      const debit = Number(row.totalDebit);
+      const credit = Number(row.totalCredit);
+      const net = debit - credit;
+      if (Math.abs(net) < 0.005) continue; // zero-balance account → skip
+      const netSign: 'D' | 'C' = net > 0 ? 'D' : 'C';
+      const classification = classifyForBilan(row.accountCode, row.accountClass, netSign);
+      if (classification === null) continue; // class 6/7/8/9 — not Bilan
+      const absAmount = Math.abs(net).toFixed(2);
+      const group: BalanceSheetGroup = {
+        accountId: row.accountId,
+        code: row.accountCode,
+        label: row.accountLabel,
+        amount: absAmount,
+      };
+      if (classification.side === 'ACTIF') {
+        const bucket = actifBuckets.get(classification.key) ?? [];
+        bucket.push(group);
+        actifBuckets.set(classification.key, bucket);
+      } else {
+        const bucket = passifBuckets.get(classification.key) ?? [];
+        bucket.push(group);
+        passifBuckets.set(classification.key, bucket);
+      }
+    }
+
+    const actifSections: BalanceSheetSection[] = (
+      Object.keys(ACTIF_SECTION_LABELS) as BalanceSheetActifKey[]
+    ).map((key) => {
+      const groups = actifBuckets.get(key) ?? [];
+      const total = groups.reduce((s, g) => s + Number(g.amount), 0);
+      return {
+        key,
+        label: ACTIF_SECTION_LABELS[key],
+        groups,
+        total: total.toFixed(2),
+      };
+    });
+
+    const passifSections: BalanceSheetSection[] = (
+      Object.keys(PASSIF_SECTION_LABELS) as BalanceSheetPassifKey[]
+    ).map((key) => {
+      const groups = passifBuckets.get(key) ?? [];
+      const total = groups.reduce((s, g) => s + Number(g.amount), 0);
+      return {
+        key,
+        label: PASSIF_SECTION_LABELS[key],
+        groups,
+        total: total.toFixed(2),
+      };
+    });
+
+    const totalActif = actifSections.reduce((s, sect) => s + Number(sect.total), 0);
+    const totalPassif = passifSections.reduce((s, sect) => s + Number(sect.total), 0);
+
+    return {
+      asAtDate: query.asAtDate,
+      actif: { sections: actifSections, total: totalActif.toFixed(2) },
+      passif: { sections: passifSections, total: totalPassif.toFixed(2) },
+      difference: (totalActif - totalPassif).toFixed(2),
+    };
+  }
+
   // ─── Helpers ───────────────────────────────────────────────────────
+
+  private buildPlSection(
+    prefix: string,
+    label: string,
+    rows: readonly TrialBalanceRow[],
+    side: 'CHARGE' | 'PRODUIT',
+  ): ProfitLossLine {
+    const matching = rows.filter((r) => r.accountCode.startsWith(prefix));
+    const accounts = matching
+      .map((r) => {
+        const periodD = Number(r.periodDebit);
+        const periodC = Number(r.periodCredit);
+        const net = side === 'CHARGE' ? periodD - periodC : periodC - periodD;
+        return { code: r.accountCode, label: r.accountLabel, amount: net };
+      })
+      .filter((a) => Math.abs(a.amount) >= 0.005);
+
+    const amount = accounts.reduce((s, a) => s + a.amount, 0);
+    return {
+      code: prefix,
+      label,
+      amount: amount.toFixed(2),
+      accounts: accounts.map((a) => ({
+        code: a.code,
+        label: a.label,
+        amount: a.amount.toFixed(2),
+      })),
+    };
+  }
 
   private assertDateRange(fromDate: string, toDate: string): void {
     if (!ReportsService.isYmd(fromDate) || !ReportsService.isYmd(toDate)) {
