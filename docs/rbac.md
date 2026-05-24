@@ -47,9 +47,18 @@ admin mutation endpoint we wire later).
 | `chart_of_accounts.write`       |   ✓   |        ✓         |      ✓       |           |          |                 |
 | `imports.read`                  |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
 | `imports.write`                 |   ✓   |        ✓         |      ✓       |     ✓     |          |                 |
+| `imports.commit`                |   ✓   |        ✓         |      ✓       |     ✓     |          |                 |
 | `documents.read`                |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
 | `documents.write`               |   ✓   |        ✓         |      ✓       |     ✓     |          |                 |
 | `audit_logs.read`               |   ✓   |        ✓         |      ✓       |           |    ✓     |                 |
+| `transformations.read`          |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |                 |
+| `transformations.write`         |   ✓   |        ✓         |      ✓       |     ✓     |          |                 |
+| `rules.read`                    |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |                 |
+| `rules.write`                   |   ✓   |        ✓         |      ✓       |           |          |                 |
+| `rules.simulate`                |   ✓   |        ✓         |      ✓       |     ✓     |          |                 |
+| `rules.apply`                   |   ✓   |        ✓         |      ✓       |           |          |                 |
+| `workflows.read`                |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |                 |
+| `workflows.transition`          |   ✓   |        ✓         |      ✓       |           |          |                 |
 
 > **Note on `chart_of_accounts.write`** — the rôle `comptable` (saisie)
 > is intentionally **excluded**. Letting every data-entry user spawn

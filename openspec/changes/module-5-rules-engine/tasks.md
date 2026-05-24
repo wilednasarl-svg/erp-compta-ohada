@@ -63,15 +63,15 @@
 
 ## 11. Tests d'intégration (e2e) — follow-up
 
-- [ ] 11.1 `rules-lifecycle.e2e-spec.ts` : create rule → simulate → apply → get execution history sur le même set d'écritures
-- [ ] 11.2 `rules-tenant-isolation.e2e-spec.ts` : org A ne peut pas lire, modifier, simuler ou appliquer les règles d'org B (404)
-- [ ] 11.3 `rules-rbac.e2e-spec.ts` : auditeur read OK, comptable simulate OK mais apply 403, expert_comptable tout OK
+- [x] 11.1 `rules-lifecycle.e2e-spec.ts` : create rule → simulate → apply → get execution history sur le même set d'écritures
+- [x] 11.2 `rules-tenant-isolation.e2e-spec.ts` : org A ne peut pas lire, modifier, simuler ou appliquer les règles d'org B (404)
+- [x] 11.3 `rules-rbac.e2e-spec.ts` : auditeur read OK, comptable simulate OK mais apply 403, expert_comptable tout OK
 
 ## 12. Documentation — follow-up
 
-- [ ] 12.1 `docs/rules-engine.md` : concept d'union discriminée, mode simulate vs apply, codes erreur, exemples curl
-- [ ] 12.2 Mettre à jour `docs/rbac.md` avec les 4 permissions `rules.{read,write,simulate,apply}`
-- [ ] 12.3 Mettre à jour `docs/error-codes.md` avec les 3 codes Module 5
+- [x] 12.1 `docs/rules-engine.md` : concept d'union discriminée, mode simulate vs apply, codes erreur, exemples curl
+- [x] 12.2 Mettre à jour `docs/rbac.md` avec les 4 permissions `rules.{read,write,simulate,apply}`
+- [x] 12.3 Mettre à jour `docs/error-codes.md` avec les 3 codes Module 5
 
 ## 13. Pre-merge checks — follow-up
 

@@ -83,6 +83,54 @@ HTTP status is mapped by `apps/backend/src/common/errors/http-status.map.ts`
 | `CHART_ACCOUNT_IMMUTABLE_CODE` | 422 | PATCH body included `code` (immutable after creation) | `PATCH /organizations/:id/chart-of-accounts/:accountId` |
 | `ACCOUNTING_SYSTEM_REQUIRED` | 422 | `POST /organizations` body missing or has invalid `system` (must be `NORMAL`, `MINIMAL`, or `ALLEGE`) | `POST /organizations` |
 
+### `IMPORT_*` — Module 3 moteur d'imports
+
+| Code | HTTP | Meaning | Typical trigger |
+|---|---|---|---|
+| `IMPORT_SESSION_NOT_FOUND` | 404 | Session introuvable ou hors tenant | `GET/PATCH/DELETE /imports/sessions/:id` |
+| `IMPORT_SESSION_NOT_DRAFT` | 409 | Mutation impossible — session pas en état `draft` | upload sur session déjà parsée |
+| `IMPORT_SESSION_NOT_PARSED` | 409 | Preview / commit impossible — session pas encore parsée | `POST .../preview` trop tôt |
+| `IMPORT_SESSION_NOT_VALID` | 409 | Commit impossible — session contient des lignes invalides | `POST .../commit` |
+| `IMPORT_FILE_NOT_FOUND` | 404 | Fichier introuvable dans la session | `GET .../files/:fileId` |
+| `IMPORT_FILE_TOO_LARGE` | 413 | Fichier dépasse la limite configurée (`IMPORT_MAX_FILE_SIZE`) | `POST .../files` |
+| `IMPORT_FILE_DUPLICATE` | 409 | SHA-256 du fichier déjà présent dans la session | `POST .../files` |
+| `IMPORT_UNSUPPORTED_FORMAT` | 422 | Extension ou MIME non accepté (seuls CSV / XLSX / Sage) | `POST .../files` |
+| `IMPORT_FILE_PARSE_FAILED` | 422 | Parser n'a pas pu lire le fichier (encodage, structure corrompue) | `POST .../files` |
+
+### `TRANSFORMATION_*` — Module 4 moteur de transformations
+
+| Code | HTTP | Meaning | Typical trigger |
+|---|---|---|---|
+| `TRANSFORMATION_SOURCE_ENTRY_NOT_FOUND` | 404 | Écriture source introuvable ou hors tenant | `POST .../reclassify`, `POST .../adjust` |
+| `TRANSFORMATION_NO_FIELD_CHANGED` | 422 | Reclassement fourni sans aucun champ à modifier | `POST .../reclassify` sans `account`, `journal`, `partner`, ni `label` |
+| `TRANSFORMATION_ADJUSTMENT_INVALID` | 422 | Exactement un de `adjustmentDebit` / `adjustmentCredit` doit être fourni | `POST .../adjust` avec les deux ou aucun |
+
+### `RULE_*` — Module 5 moteur de règles
+
+| Code | HTTP | Meaning | Typical trigger |
+|---|---|---|---|
+| `RULE_NOT_FOUND` | 404 | Règle introuvable ou hors tenant | `GET/PATCH .../rules/:ruleId`, `POST .../simulate`, `POST .../apply` |
+| `RULE_INVALID_CONDITION` | 422 | Type de condition inconnu dans le DSL | `POST /rules` ou `PATCH /rules/:id` |
+| `RULE_INVALID_ACTION` | 422 | Type d'action inconnu dans le DSL | `POST /rules` ou `PATCH /rules/:id` |
+
+### `WORKFLOW_*` — Module 6 moteur de workflows
+
+| Code | HTTP | Meaning | Typical trigger |
+|---|---|---|---|
+| `WORKFLOW_INSTANCE_NOT_FOUND` | 404 | Instance de workflow introuvable ou hors tenant | `GET/PATCH .../workflows/:id` |
+| `WORKFLOW_TRANSITION_INVALID` | 409 | Transition refusée par la state machine (ex. `approved → draft`) | `POST .../workflows/:id/transition` |
+| `WORKFLOW_LOCKED` | 409 | Objet ciblé est en état `locked` — mutations bloquées | `assertNotLocked` dans TransformationService et ImportsService |
+
+### `DOC_*` — Module 10 moteur de documents
+
+| Code | HTTP | Meaning | Typical trigger |
+|---|---|---|---|
+| `DOC_NOT_FOUND` | 404 | Document introuvable ou hors tenant | `GET/DELETE .../documents/:id` |
+| `DOC_FILE_REQUIRED` | 422 | Upload sans fichier joint | `POST .../documents` sans multipart `file` |
+| `DOC_FILE_TOO_LARGE` | 413 | Fichier dépasse la limite configurée | `POST .../documents` |
+| `DOC_MIME_REJECTED` | 422 | MIME non accepté par la politique document | `POST .../documents` |
+| `DOC_STORAGE_FAILURE` | 500 | Driver de stockage a planté (FS, S3…) | `POST .../documents` |
+
 ## How to add a new code
 
 1. Add the literal to `ERROR_CODES` in
