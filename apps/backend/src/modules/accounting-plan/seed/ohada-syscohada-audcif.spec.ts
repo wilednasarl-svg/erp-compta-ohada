@@ -100,4 +100,32 @@ describe('OHADA SYSCOHADA AUDCIF reference chart (seed)', () => {
       }
     });
   });
+
+  describe('postability — Module 3 prerequisite', () => {
+    /**
+     * Module 3 (Journaux & écritures) cannot post to a TITLE account.
+     * If a class has TITLE rows but zero POSTING leaves, every
+     * écriture targeting that class would be rejected as "no terminal
+     * account". This guard catches a seed-regression where someone
+     * deletes all POSTING rows of a class without realising.
+     *
+     * Classes 6 and 7 are the bare minimum: every business books
+     * charges (6) and produces revenue (7). Classes 4 and 5 are also
+     * required for VAT, banks, suppliers, customers. Classes 1/2/3/8
+     * are looser — a brand-new entity may not need them on day 1.
+     */
+    it.each([[4], [5], [6], [7]])(
+      'class %i has at least one POSTING account (Module 3 prerequisite)',
+      (cls) => {
+        const postings = OHADA_REFERENCE_CHART.filter(
+          (r) => r.class === cls && r.account_type === 'POSTING',
+        );
+        expect(postings.length).toBeGreaterThan(0);
+      },
+    );
+
+    it('the catalogue is not empty (sanity)', () => {
+      expect(OHADA_REFERENCE_CHART.length).toBeGreaterThan(50);
+    });
+  });
 });
