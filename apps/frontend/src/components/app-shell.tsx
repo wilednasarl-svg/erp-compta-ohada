@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, Building2, LayoutDashboard, LogOut, Mail, ShieldCheck, User as UserIcon, Users } from 'lucide-react';
+import { BookOpen, Building2, FileUp, LayoutDashboard, LogOut, Mail, ShieldCheck, User as UserIcon, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -31,6 +31,7 @@ interface NavItem {
 const NAV: ReadonlyArray<NavItem> = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen },
+  { href: '/imports', label: 'Imports', icon: FileUp },
   { href: '/members', label: 'Membres', icon: Users },
   { href: '/invitations', label: 'Invitations', icon: Mail },
   { href: '/settings/mfa', label: 'MFA', icon: ShieldCheck },
