@@ -146,4 +146,37 @@ export class ImportStagingEntryRepository {
     }
     await this.scoped(manager).delete({ sessionId });
   }
+
+  /**
+   * Persist the `mappedValues` and `errors` computed by the validation
+   * pass back to the staging row. Called by `preview()` after mapping +
+   * validation so subsequent SQL counts (`withErrors`) are accurate.
+   *
+   * Fix projet-ferme-7kn: the previous code computed error counts from
+   * the paginated `entries` array only (max 100 rows), leading to an
+   * under-reported `errorLines` counter in the session.
+   */
+  async updateMappedValuesAndErrors(
+    entries: ReadonlyArray<{
+      id: string;
+      mappedValues: MappedRow;
+      errors: ValidationError[];
+    }>,
+    manager?: EntityManager,
+  ): Promise<void> {
+    if (entries.length === 0) return;
+    const repo = this.scoped(manager);
+    // Use individual updates — the batch size is small (page size, max ~200).
+    // A single bulk UPDATE via VALUES would be faster but TypeORM doesn't
+    // expose a clean API for JSONB multi-row UPDATE FROM VALUES.
+    await Promise.all(
+      entries.map((entry) =>
+        repo.update(
+          { id: entry.id },
+          { mappedValues: entry.mappedValues, errors: entry.errors },
+        ),
+      ),
+    );
+  }
 }
+

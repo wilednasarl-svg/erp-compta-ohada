@@ -341,6 +341,9 @@ export class ImportSessionService {
     }
 
     await this.files.updateStatus(fileId, organizationId, 'parsed');
+    // Fix projet-ferme-7lr: persist headers so preview() can read them
+    // from DB instead of re-opening the file.
+    await this.files.updateDetectedHeaders(fileId, organizationId, detectedHeaders);
     await this.sessions.updateStatus(sessionId, organizationId, 'parsed');
     await this.sessions.updateCounters(sessionId, organizationId, {
       totalLines: totalRows,
@@ -384,23 +387,30 @@ export class ImportSessionService {
       throw new AppException(ERROR_CODES.IMPORT_FILE_NOT_FOUND);
     }
 
-    // Re-parse just enough to recover the canonical header list — we
-    // need the full set of headers for the auto-mapping proposal even
-    // if the user only previews 50 rows. Limited to one file (MVP).
+    // Fix projet-ferme-7lr: read cached headers from DB instead of
+    // re-opening and re-parsing the entire file. Fallback to re-parse
+    // only for legacy files parsed before migration 0035.
     const firstFile = sessionFiles[0];
-    const { result } = await this.parser.parse(this.resolveAbsolutePath(firstFile.storagePath), {
-      mimeType: firstFile.mimeType,
-      originalName: firstFile.originalName,
-    });
-    // Drain the row iterator without storing — we already have staging
-    // rows in DB, we just need to free the underlying file descriptor.
-    // The CSV/XLSX drivers attach listeners that keep the process busy
-    // until the iterator finishes.
-    for await (const _ of result.rows) {
-      // no-op
+    let headers: readonly string[];
+
+    if (firstFile.detectedHeaders && firstFile.detectedHeaders.length > 0) {
+      headers = firstFile.detectedHeaders;
+    } else {
+      // Legacy fallback — file was parsed before the detectedHeaders
+      // column existed. Re-parse to recover headers.
+      const { result } = await this.parser.parse(this.resolveAbsolutePath(firstFile.storagePath), {
+        mimeType: firstFile.mimeType,
+        originalName: firstFile.originalName,
+      });
+      for await (const _ of result.rows) {
+        // Drain to free the file descriptor.
+      }
+      headers = result.headers;
+      // Backfill the column so future previews skip re-parse.
+      await this.files.updateDetectedHeaders(firstFile.id, organizationId, headers);
     }
 
-    const proposal = this.mapping.autoMap(result.headers);
+    const proposal = this.mapping.autoMap(headers);
 
     // Build chart index for validation. Loaded fresh on each preview
     // so account additions / deactivations are picked up immediately.
@@ -431,13 +441,28 @@ export class ImportSessionService {
       };
     });
 
+    // Fix projet-ferme-7kn: persist mapped values + validation errors
+    // back to the staging rows so that SQL-level `countBySession` (which
+    // counts `jsonb_array_length(errors) > 0`) is accurate across ALL
+    // rows, not just the current preview page.
+    await this.stagingEntries.updateMappedValuesAndErrors(
+      stagingRows.map((row, idx) => ({
+        id: row.id,
+        mappedValues: entries[idx].mappedValues,
+        errors: entries[idx].errors,
+      })),
+    );
+
+    // Re-count AFTER the staging update so `withErrors` reflects the
+    // freshly-written validation findings.
     const totals = await this.stagingEntries.countBySession(sessionId, organizationId);
 
-    // Update counters + status with the latest pass.
-    const errorLines = entries.reduce((acc, e) => acc + (e.errors.length > 0 ? 1 : 0), 0);
+    // Use the SQL-level count — not a page-local reduce — so the
+    // session counter covers every row in the file. (Previous code
+    // only counted errors within the visible page, capped at ~100.)
     await this.sessions.updateCounters(sessionId, organizationId, {
       totalLines: totals.total,
-      errorLines,
+      errorLines: totals.withErrors,
     });
     if (session.status === 'parsed') {
       await this.sessions.updateStatus(sessionId, organizationId, 'validated');
@@ -451,7 +476,7 @@ export class ImportSessionService {
       metadata: {
         previewSize: entries.length,
         totalLines: totals.total,
-        errorLines,
+        errorLines: totals.withErrors,
         unmappedTargets: proposal.unmappedTargets,
       },
       ctx: { ...ctx, userId: actorUserId, organizationId },
@@ -461,10 +486,10 @@ export class ImportSessionService {
     const refreshed = await this.sessions.findById(sessionId, organizationId);
     return {
       session: this.toSummary(refreshed ?? session),
-      headers: result.headers,
+      headers,
       headerMapping: proposal.headerToTarget,
       unmappedTargets: proposal.unmappedTargets,
-      totals: { total: totals.total, withErrors: errorLines },
+      totals: { total: totals.total, withErrors: totals.withErrors },
       entries,
     };
   }

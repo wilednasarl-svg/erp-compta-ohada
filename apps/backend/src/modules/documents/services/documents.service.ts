@@ -397,7 +397,7 @@ export class DocumentsService {
       after: null,
       metadata: { sha256Checksum: row.sha256Checksum },
       ctx: { ...ctx, userId: actorUserId, organizationId },
-      legacyEventType: 'documents.soft_deleted',
+      legacyEventType: 'documents.deleted',
     });
   }
 

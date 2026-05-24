@@ -37,12 +37,14 @@ describe('ImportSessionService', () => {
       listBySession: jest.fn().mockResolvedValue([]),
       findByChecksumInSession: jest.fn().mockResolvedValue(null),
       updateStatus: jest.fn().mockResolvedValue(undefined),
+      updateDetectedHeaders: jest.fn().mockResolvedValue(undefined),
     };
     const stagingRepo = {
       bulkInsert: jest.fn().mockResolvedValue(undefined),
       listBySession: jest.fn().mockResolvedValue([]),
       countBySession: jest.fn().mockResolvedValue({ total: 0, withErrors: 0 }),
       deleteBySession: jest.fn().mockResolvedValue(undefined),
+      updateMappedValuesAndErrors: jest.fn().mockResolvedValue(undefined),
     };
     const parserService = {
       resolve: jest.fn().mockReturnValue({ id: 'csv' }),

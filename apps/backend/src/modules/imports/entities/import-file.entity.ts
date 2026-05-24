@@ -60,6 +60,16 @@ export class ImportFileEntity {
   @Column({ name: 'parse_error', type: 'text', nullable: true })
   parseError!: string | null;
 
+  /**
+   * Canonical header list detected during parsing (ordered array of
+   * strings). `null` until the file is successfully parsed.
+   *
+   * Fix projet-ferme-7lr: persisted at parse time so `preview()` can
+   * read them from DB instead of re-opening the file.
+   */
+  @Column({ name: 'detected_headers', type: 'jsonb', nullable: true })
+  detectedHeaders!: string[] | null;
+
   @Column({ name: 'uploaded_by', type: 'uuid' })
   uploadedById!: string;
 

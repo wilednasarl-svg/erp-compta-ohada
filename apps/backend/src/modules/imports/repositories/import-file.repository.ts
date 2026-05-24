@@ -122,4 +122,22 @@ export class ImportFileRepository {
     }
     await this.scoped(manager).update({ id }, { status, parseError });
   }
+
+  /**
+   * Persist the canonical header list detected during parsing.
+   *
+   * Fix projet-ferme-7lr: stored so `preview()` can read headers from
+   * DB instead of re-opening and re-parsing the entire file.
+   */
+  async updateDetectedHeaders(
+    id: string,
+    organizationId: TenantId | string,
+    headers: readonly string[],
+    manager?: EntityManager,
+  ): Promise<void> {
+    assertTenantId(organizationId);
+    const file = await this.findById(id, organizationId, manager);
+    if (!file) return;
+    await this.scoped(manager).update({ id }, { detectedHeaders: [...headers] });
+  }
 }

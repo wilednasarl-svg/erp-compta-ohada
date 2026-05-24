@@ -343,7 +343,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
           }),
           after: null,
           ctx: expect.objectContaining({ userId: 'user_1', organizationId: 'org_a' }),
-          legacyEventType: 'documents.soft_deleted',
+          legacyEventType: 'documents.deleted',
         }),
       );
     });

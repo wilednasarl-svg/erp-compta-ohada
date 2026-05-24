@@ -10,7 +10,7 @@ import { resetTables } from './helpers/db';
  * Section 12.6..12.7 — Module 10 Document engine end-to-end.
  *
  *   12.6  Upload → list → download → soft-delete round trip with
- *         audit assertions (documents.uploaded, documents.soft_deleted).
+ *         audit assertions (documents.uploaded, documents.deleted).
  *   12.7  Tenant isolation + path-traversal storageKey rejected as 404
  *         (no info disclosure between orgs).
  */
@@ -82,7 +82,7 @@ describe('e2e: Module 10 Document engine (12.6..12.7)', () => {
     }>;
     expect(afterItems.find((d) => d.id === documentId)).toBeUndefined();
 
-    // Audit: documents.uploaded + documents.soft_deleted both landed.
+    // Audit: documents.uploaded + documents.deleted both landed.
     const auditRows: Array<{ event_type: string }> = await dataSource.query(
       `SELECT event_type FROM "auth_events"
        WHERE organization_id = $1 AND event_type LIKE 'documents.%'
@@ -90,7 +90,7 @@ describe('e2e: Module 10 Document engine (12.6..12.7)', () => {
       [org.organizationId],
     );
     const types = auditRows.map((r) => r.event_type);
-    expect(types).toEqual(expect.arrayContaining(['documents.uploaded', 'documents.soft_deleted']));
+    expect(types).toEqual(expect.arrayContaining(['documents.uploaded', 'documents.deleted']));
   });
 
   it('cross-tenant access — org A cannot read or delete org B documents (12.7)', async () => {

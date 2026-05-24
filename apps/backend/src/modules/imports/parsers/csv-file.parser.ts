@@ -105,7 +105,14 @@ export class CsvFileParser implements IFileParser {
     delimiter: string,
     headers: readonly string[],
   ): AsyncGenerator<ParsedRow> {
-    const stream = createReadStream(path).pipe(
+    // Backpressure (fix projet-ferme-140): bound the in-memory queue
+    // so a fast parser + slow consumer (bulkInsert) doesn't OOM.
+    // When the queue exceeds HIGH_WATER rows the underlying readable
+    // is paused; it resumes once the consumer drains below the mark.
+    const HIGH_WATER = 128;
+
+    const readable = createReadStream(path);
+    const stream = readable.pipe(
       parseCsv({ headers: true, delimiter, ignoreEmpty: true, trim: true }),
     );
 
@@ -113,6 +120,7 @@ export class CsvFileParser implements IFileParser {
     const queue: ParsedRow[] = [];
     let done = false;
     let error: unknown = null;
+    let paused = false;
     let resolveWait: (() => void) | null = null;
 
     const wake = () => {
@@ -131,6 +139,14 @@ export class CsvFileParser implements IFileParser {
         values[header] = raw === undefined || raw === '' ? null : raw;
       }
       queue.push({ rowNumber, values });
+
+      // Pause the source when the queue is full — the consumer's
+      // `yield` will resume once it catches up.
+      if (queue.length >= HIGH_WATER && !paused) {
+        paused = true;
+        readable.pause();
+      }
+
       wake();
     });
     stream.on('end', () => {
@@ -145,7 +161,15 @@ export class CsvFileParser implements IFileParser {
 
     while (true) {
       if (queue.length > 0) {
-        yield queue.shift()!;
+        const row = queue.shift()!;
+
+        // Resume the source once the queue drains below the watermark.
+        if (paused && queue.length < HIGH_WATER) {
+          paused = false;
+          readable.resume();
+        }
+
+        yield row;
         continue;
       }
       if (done) {
