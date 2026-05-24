@@ -180,11 +180,7 @@ function buildHarness(epochMs: number = T0): Harness {
 
   const listRoles = jest
     .fn<Promise<RoleEntity[]>, []>()
-    .mockResolvedValue([
-      buildRole('admin'),
-      buildRole('comptable'),
-      buildRole('expert-comptable'),
-    ]);
+    .mockResolvedValue([buildRole('admin'), buildRole('comptable'), buildRole('expert-comptable')]);
 
   const rolesRepo = {
     findById: findRoleById,

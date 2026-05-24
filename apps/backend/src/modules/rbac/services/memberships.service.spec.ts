@@ -56,7 +56,14 @@ function buildHarness(): Harness {
   const updateRoleIfNotLastAdmin = jest
     .fn<
       Promise<number>,
-      [{ userId: string; organizationId: string; newRoleId: string; fromAdminRoleId: string | null }]
+      [
+        {
+          userId: string;
+          organizationId: string;
+          newRoleId: string;
+          fromAdminRoleId: string | null;
+        },
+      ]
     >()
     .mockResolvedValue(1);
   const removeIfNotLastAdmin = jest
