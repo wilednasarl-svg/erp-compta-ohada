@@ -4,6 +4,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import type { AppConfig } from '../../config/configuration';
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { DocumentsController } from './controllers/documents.controller';
@@ -39,7 +40,9 @@ import { DocumentsService } from './services/documents.service';
  *
  * Imports `AuthModule` + `RbacModule` so `JwtAuthGuard`, `TenantGuard`
  * and `PermissionsGuard` resolve inside the `DocumentsController`
- * `@UseGuards` chain.
+ * `@UseGuards` chain. Imports `AuditModule` so `AuditTrailService`
+ * (BE-DOC-09 / Module 7 vague 1) is injectable into `DocumentsService`
+ * for the upload / link / soft-delete journal entries.
  */
 @Module({
   imports: [
@@ -59,6 +62,7 @@ import { DocumentsService } from './services/documents.service';
     }),
     AuthModule,
     RbacModule,
+    AuditModule,
   ],
   controllers: [DocumentsController],
   providers: [

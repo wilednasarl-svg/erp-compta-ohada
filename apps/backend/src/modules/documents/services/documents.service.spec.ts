@@ -4,6 +4,7 @@ import type { ConfigService } from '@nestjs/config';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import type { AuditTrailService } from '../../audit/services/audit-trail.service';
 import type { DocumentEntity } from '../entities/document.entity';
 import type {
   DocumentListFilters,
@@ -63,6 +64,12 @@ function buildOcrStub(): jest.Mocked<DocumentOcrService> {
   } as unknown as jest.Mocked<DocumentOcrService>;
 }
 
+function buildAuditStub(): jest.Mocked<AuditTrailService> {
+  return {
+    record: jest.fn().mockResolvedValue(null),
+  } as unknown as jest.Mocked<AuditTrailService>;
+}
+
 function buildDocumentRow(overrides: Partial<DocumentEntity> = {}): DocumentEntity {
   const now = new Date('2026-05-24T12:00:00.000Z');
   return {
@@ -95,6 +102,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
   let entries: jest.Mocked<DocumentEntryRepository>;
   let ocr: jest.Mocked<DocumentOcrService>;
   let storage: jest.Mocked<DocumentStorage>;
+  let audit: jest.Mocked<AuditTrailService>;
   let service: DocumentsService;
 
   beforeEach(() => {
@@ -102,7 +110,8 @@ describe('DocumentsService (BE-DOC-04)', () => {
     entries = buildEntriesRepoStub();
     ocr = buildOcrStub();
     storage = buildStorageStub();
-    service = new DocumentsService(docs, entries, ocr, storage, buildConfigService());
+    audit = buildAuditStub();
+    service = new DocumentsService(docs, entries, ocr, storage, audit, buildConfigService());
   });
 
   describe('createFromUpload', () => {
@@ -148,6 +157,26 @@ describe('DocumentsService (BE-DOC-04)', () => {
       expect(ocr.requestOcr).toHaveBeenCalledWith(row.id, 'org_a');
       expect(view.id).toBe(row.id);
       expect(view.downloadUrl).toBe(`/documents/${row.id}/content`);
+
+      // BE-DOC-09 — Module 7 audit: a single `documents.uploaded` row
+      // with the immutable facts in `after`, scoped to org+actor.
+      expect(audit.record).toHaveBeenCalledTimes(1);
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          module: 'documents',
+          action: 'uploaded',
+          entityType: 'document',
+          entityId: row.id,
+          after: expect.objectContaining({
+            filename: 'invoice.pdf',
+            mimeType: 'application/pdf',
+            sha256Checksum: 'a'.repeat(64),
+          }),
+          metadata: expect.objectContaining({ linkedEntryCount: 0 }),
+          ctx: expect.objectContaining({ userId: 'user_1', organizationId: 'org_a' }),
+          legacyEventType: 'documents.uploaded',
+        }),
+      );
     });
 
     it('rejects when no file is provided (DOC_FILE_REQUIRED)', async () => {
@@ -207,6 +236,20 @@ describe('DocumentsService (BE-DOC-04)', () => {
         documentId: row.id,
         entryIds: ['entry_1', 'entry_2'],
         createdBy: 'user_1',
+      });
+
+      // BE-DOC-09 — two audit rows on a linked upload: `uploaded` +
+      // `linked_entry` (the second carries the entry id list for
+      // forensic reconstruction).
+      const actions = audit.record.mock.calls.map((c) => c[0].action);
+      expect(actions).toEqual(expect.arrayContaining(['uploaded', 'linked_entry']));
+      const linked = audit.record.mock.calls.find((c) => c[0].action === 'linked_entry');
+      expect(linked?.[0]).toMatchObject({
+        module: 'documents',
+        entityType: 'document',
+        entityId: row.id,
+        after: { entryIds: ['entry_1', 'entry_2'] },
+        metadata: { entryCount: 2 },
       });
     });
 
@@ -277,7 +320,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
   });
 
   describe('softDelete', () => {
-    it('soft-deletes the row, leaves storage untouched', async () => {
+    it('soft-deletes the row, leaves storage untouched, emits a soft_deleted audit row', async () => {
       const row = buildDocumentRow();
       docs.findById.mockResolvedValue(row);
       docs.softDelete.mockResolvedValue(true);
@@ -286,14 +329,32 @@ describe('DocumentsService (BE-DOC-04)', () => {
 
       expect(docs.softDelete).toHaveBeenCalledWith('org_a', 'doc_1', 'user_1');
       expect(storage.delete).not.toHaveBeenCalled();
+
+      expect(audit.record).toHaveBeenCalledTimes(1);
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          module: 'documents',
+          action: 'soft_deleted',
+          entityType: 'document',
+          entityId: 'doc_1',
+          before: expect.objectContaining({
+            filename: 'invoice.pdf',
+            sizeBytes: 1234,
+          }),
+          after: null,
+          ctx: expect.objectContaining({ userId: 'user_1', organizationId: 'org_a' }),
+          legacyEventType: 'documents.soft_deleted',
+        }),
+      );
     });
 
-    it('throws DOC_NOT_FOUND when the document is missing', async () => {
+    it('throws DOC_NOT_FOUND when the document is missing — and does NOT emit an audit row', async () => {
       docs.findById.mockResolvedValue(null);
       await expect(service.softDelete('org_a', 'doc_x', 'user_1')).rejects.toMatchObject({
         code: ERROR_CODES.DOC_NOT_FOUND,
       });
       expect(docs.softDelete).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
     });
   });
 

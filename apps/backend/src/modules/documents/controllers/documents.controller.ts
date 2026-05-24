@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
   Res,
   UploadedFile,
   UseGuards,
@@ -17,10 +18,11 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 import type { CurrentOrgContext, CurrentUserContext } from '../../../common/types/request-context';
 import { CurrentOrg } from '../../auth/decorators/current-org.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -78,12 +80,23 @@ export class DocumentsController {
   @ApiConsumes('multipart/form-data')
   @RequirePermission('documents.write')
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('file'))
+  // Transport-layer file-size cap so multer aborts the request stream
+  // before buffering an oversized body in memory. The +1 MB headroom
+  // keeps the precise size check in the service (which surfaces the
+  // structured `DOC_FILE_TOO_LARGE` error code).
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: (Number.parseInt(process.env.DOC_MAX_FILE_SIZE_MB ?? '25', 10) + 1) * 1024 * 1024,
+      },
+    }),
+  )
   async upload(
     @UploadedFile() file: UploadedMulterFile | undefined,
     @Body() body: UploadDocumentDto,
     @CurrentOrg() org: CurrentOrgContext | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
   ): Promise<{ document: DocumentView }> {
     const scope = this.assertActorScope(org, actorUserId);
     const document = await this.documents.createFromUpload(
@@ -102,6 +115,7 @@ export class DocumentsController {
         linkedEntryIds: body.linkedEntryIds,
         description: body.description ?? null,
       },
+      buildAuditRequestContext(req),
     );
     return { document };
   }
@@ -171,7 +185,22 @@ export class DocumentsController {
     );
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Length', String(sizeBytes));
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    // RFC 5987 + CRLF strip: a stored `filename` containing CR/LF or
+    // `"` could otherwise inject extra response headers. We strip
+    // CR/LF defensively and use the `filename*` form so non-ASCII
+    // characters survive the percent-encoding round-trip in modern
+    // browsers (audit Module 3 Sec-M4).
+    const safeName = filename.replace(/[\r\n"]/g, '_');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+    );
+    // `X-Content-Type-Options: nosniff` prevents browsers from
+    // overriding the declared `Content-Type` with their own sniff,
+    // closing the back-door where a `text/csv` (legitimately allowed)
+    // could be re-interpreted as `text/html` by IE/Edge legacy
+    // (audit Module 3 Sec-M3 hardening).
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     stream.on('error', (error) => {
       // The headers may have been flushed already; falling back to
       // `res.destroy(error)` lets Express signal the client an
@@ -188,9 +217,15 @@ export class DocumentsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @CurrentOrg() org: CurrentOrgContext | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
   ): Promise<void> {
     const scope = this.assertActorScope(org, actorUserId);
-    await this.documents.softDelete(scope.organizationId, id, scope.actorUserId);
+    await this.documents.softDelete(
+      scope.organizationId,
+      id,
+      scope.actorUserId,
+      buildAuditRequestContext(req),
+    );
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────

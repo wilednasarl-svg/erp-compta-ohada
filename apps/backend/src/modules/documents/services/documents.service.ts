@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { AppConfig } from '../../../config/configuration';
+import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import type { DocumentEntity } from '../entities/document.entity';
 import type { OcrStatus } from '../types/ocr-status';
 import {
@@ -70,7 +71,21 @@ export interface ListDocumentsResult {
  * outside this list is rejected with `DOC_MIME_REJECTED` so a future
  * config can extend it without surprising existing callers.
  */
-const ACCEPTED_MIME_PREFIXES = ['image/', 'application/pdf', 'application/vnd.', 'text/'];
+/*
+ * MIME allowlist for /documents uploads.
+ *
+ * Tightening (audit Module 3 Sec-M3): the previous catch-all `'text/'`
+ * prefix accepted `text/html` and `text/javascript`, which the download
+ * endpoint would have served back as `Content-Type: text/html` —
+ * stored XSS vector for users opening the URL in a tab where
+ * `Content-Disposition: attachment` is ignored. Replaced with the
+ * narrow exact-allowlist below. The `image/` prefix stays (covers PNG,
+ * JPEG, WebP, HEIC of scanned vouchers) and `application/vnd.` stays
+ * (covers all Office / OpenDocument variants).
+ *
+ * Anything outside this list returns `DOC_MIME_REJECTED` (422).
+ */
+const ACCEPTED_MIME_PREFIXES = ['image/', 'application/pdf', 'application/vnd.'];
 
 const ACCEPTED_MIME_EXACT = new Set<string>([
   'application/pdf',
@@ -80,6 +95,8 @@ const ACCEPTED_MIME_EXACT = new Set<string>([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.oasis.opendocument.spreadsheet',
   'application/vnd.oasis.opendocument.text',
+  // Only specific text/* — `text/html` and `text/javascript` are
+  // intentionally NOT in this list.
   'text/csv',
   'text/plain',
   'application/zip',
@@ -97,15 +114,34 @@ const ACCEPTED_MIME_EXACT = new Set<string>([
  * calls all pass through `assertTenantId`. The `getForOrg` /
  * `softDelete` paths return `DOC_NOT_FOUND` (404) for cross-tenant
  * access — never 403 — to match the spec's "no info disclosure"
- * policy. The `_legacy` audit-event indirection is intentionally NOT
- * wired here in wave 1: the Module 7 audit refactor is in progress in
- * parallel and would conflict with my call sites. A follow-up issue
- * (BE-DOC-09) will plug `AuditTrailService.record({ module: 'documents',
- * action: 'uploaded' | 'soft_deleted' | 'linked_entry' })` once the
- * service is wired into `AuditModule.providers`.
+ * policy.
+ *
+ * Audit (BE-DOC-09 / Module 7 vague 1)
+ * ------------------------------------
+ * Every state-changing operation appends a row to the unified audit
+ * journal via `AuditTrailService.record(...)` with
+ * `module: 'documents'` and one of three actions:
+ *
+ *   - `uploaded`     — emitted after the row is persisted and the
+ *                       bytes survived storage. Carries the immutable
+ *                       facts (filename, mimeType, sizeBytes, sha256)
+ *                       in `after`; `before` is null (creation).
+ *   - `linked_entry` — emitted ONCE per upload if `linkedEntryIds`
+ *                       was non-empty. Forensic: lets an auditor reconstruct
+ *                       which écritures a scan was attached to.
+ *   - `soft_deleted` — emitted after `documents.softDelete` succeeds.
+ *                       `before` snapshots the removed row; `after`
+ *                       is null.
+ *
+ * Failures from the audit write are swallowed inside `AuditTrailService`
+ * (swallow-and-warn) so a flaky journal cannot brick an upload or
+ * a deletion.
  */
 @Injectable()
 export class DocumentsService {
+  private static readonly MODULE = 'documents' as const;
+  private static readonly ENTITY_TYPE = 'document' as const;
+
   private readonly logger = new Logger(DocumentsService.name);
   private readonly maxFileSizeBytes: number;
 
@@ -114,6 +150,7 @@ export class DocumentsService {
     private readonly entries: DocumentEntryRepository,
     private readonly ocr: DocumentOcrService,
     @Inject(DOCUMENT_STORAGE) private readonly storage: DocumentStorage,
+    private readonly audit: AuditTrailService,
     config: ConfigService,
   ) {
     const docConfig = config.get<AppConfig['documents']>('documents');
@@ -128,6 +165,7 @@ export class DocumentsService {
     actorUserId: string,
     file: UploadFileInput | undefined,
     options: CreateDocumentOptions = {},
+    ctx: AuditContext = { ipAddress: null, userAgent: null },
   ): Promise<DocumentView> {
     if (file === undefined) {
       throw new AppException(ERROR_CODES.DOC_FILE_REQUIRED, {
@@ -222,6 +260,43 @@ export class DocumentsService {
       });
     }
 
+    // Module 7 audit emission. `uploaded` carries the immutable facts
+    // in `after`; `linked_entry` is emitted separately so a forensic
+    // search by `entityId=document_id` returns both rows in order.
+    await this.audit.record({
+      module: DocumentsService.MODULE,
+      action: 'uploaded',
+      entityType: DocumentsService.ENTITY_TYPE,
+      entityId: row.id,
+      after: {
+        filename: row.filename,
+        mimeType: row.mimeType,
+        sizeBytes: Number(row.sizeBytes),
+        sha256Checksum: row.sha256Checksum,
+        tags: [...(row.tags ?? [])],
+        description: row.description,
+      },
+      metadata: {
+        storageKey: row.storageKey,
+        linkedEntryCount: linkedEntryIds.length,
+      },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'documents.uploaded',
+    });
+
+    if (linkedEntryIds.length > 0) {
+      await this.audit.record({
+        module: DocumentsService.MODULE,
+        action: 'linked_entry',
+        entityType: DocumentsService.ENTITY_TYPE,
+        entityId: row.id,
+        after: { entryIds: [...linkedEntryIds] },
+        metadata: { entryCount: linkedEntryIds.length },
+        ctx: { ...ctx, userId: actorUserId, organizationId },
+        legacyEventType: 'documents.linked_entry',
+      });
+    }
+
     // Fire-and-forget. The stub returns immediately; a wave-2
     // implementation may enqueue an async job, in which case any
     // failure to enqueue MUST NOT brick the upload.
@@ -291,7 +366,12 @@ export class DocumentsService {
     };
   }
 
-  async softDelete(organizationId: string, id: string, actorUserId: string): Promise<void> {
+  async softDelete(
+    organizationId: string,
+    id: string,
+    actorUserId: string,
+    ctx: AuditContext = { ipAddress: null, userAgent: null },
+  ): Promise<void> {
     const row = await this.documents.findById(organizationId, id);
     if (row === null) {
       throw new AppException(ERROR_CODES.DOC_NOT_FOUND, {
@@ -302,6 +382,23 @@ export class DocumentsService {
     // Physical storage is retained until a janitor sweeps it (Module
     // 10 wave 3). Soft-delete is reversible at the row level; reaping
     // bytes too early would leak before we add the undo path.
+
+    await this.audit.record({
+      module: DocumentsService.MODULE,
+      action: 'soft_deleted',
+      entityType: DocumentsService.ENTITY_TYPE,
+      entityId: id,
+      before: {
+        filename: row.filename,
+        mimeType: row.mimeType,
+        sizeBytes: Number(row.sizeBytes),
+        tags: [...(row.tags ?? [])],
+      },
+      after: null,
+      metadata: { sha256Checksum: row.sha256Checksum },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'documents.soft_deleted',
+    });
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────
