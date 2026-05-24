@@ -239,6 +239,17 @@ export class LocalFilesystemDocumentStorage implements DocumentStorage {
         message: 'organizationId contains forbidden characters',
       });
     }
+    // Defense-in-depth UUID check (fix projet-ferme-2qn): organizationId
+    // is always a UUID coming out of the auth layer. Reject anything
+    // else so a programming bug elsewhere can't write into an attacker-
+    // controlled directory shape (e.g. ".." stripped above but a 50-char
+    // random segment still allowed). Accepts uppercase + lowercase hex.
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID.test(organizationId)) {
+      throw new AppException(ERROR_CODES.DOC_STORAGE_FAILURE, {
+        message: 'organizationId is not a valid UUID',
+      });
+    }
   }
 
   private isEnoent(error: unknown): boolean {

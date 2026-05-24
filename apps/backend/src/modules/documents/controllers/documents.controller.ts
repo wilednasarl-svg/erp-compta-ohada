@@ -188,13 +188,16 @@ export class DocumentsController {
     res.setHeader('Content-Length', String(sizeBytes));
     // RFC 5987 + CRLF strip: a stored `filename` containing CR/LF or
     // `"` could otherwise inject extra response headers. We strip
-    // CR/LF defensively and use the `filename*` form so non-ASCII
-    // characters survive the percent-encoding round-trip in modern
-    // browsers (audit Module 3 Sec-M4).
+    // CR/LF defensively, emit a 7-bit-safe ASCII fallback for legacy
+    // clients, and `filename*=UTF-8''…` so modern browsers display
+    // the original non-ASCII name (audit Module 3 Sec-M4 + 2qn coverage).
     const safeName = filename.replace(/[\r\n"]/g, '_');
+    const asciiFallback = safeName.replace(/[^\x20-\x7E]/g, '_');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(
+        safeName,
+      )}`,
     );
     // `X-Content-Type-Options: nosniff` prevents browsers from
     // overriding the declared `Content-Type` with their own sniff,
