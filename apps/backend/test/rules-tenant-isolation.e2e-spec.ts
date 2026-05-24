@@ -44,7 +44,10 @@ describe('e2e: rules tenant isolation (13.2)', () => {
 
     // Bob crée une règle dans org B.
     const created = await authedJson(
-      handle.http, 'post', `/organizations/${orgB.organizationId}/rules`, orgB.scopedAccessToken,
+      handle.http,
+      'post',
+      `/organizations/${orgB.organizationId}/rules`,
+      orgB.scopedAccessToken,
     ).send({
       name: 'Bob rule private',
       isActive: true,
@@ -102,7 +105,10 @@ describe('e2e: rules tenant isolation (13.2)', () => {
 
     // Bob crée une règle.
     const r = await authedJson(
-      handle.http, 'post', `/organizations/${orgB.organizationId}/rules`, orgB.scopedAccessToken,
+      handle.http,
+      'post',
+      `/organizations/${orgB.organizationId}/rules`,
+      orgB.scopedAccessToken,
     ).send({
       name: 'Bob sim rule',
       isActive: true,
@@ -131,7 +137,10 @@ describe('e2e: rules tenant isolation (13.2)', () => {
     const orgB = await createOrgAndSwitch(app, bob, 'Org B apply');
 
     const r = await authedJson(
-      handle.http, 'post', `/organizations/${orgB.organizationId}/rules`, orgB.scopedAccessToken,
+      handle.http,
+      'post',
+      `/organizations/${orgB.organizationId}/rules`,
+      orgB.scopedAccessToken,
     ).send({
       name: 'Bob apply rule',
       isActive: true,

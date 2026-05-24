@@ -171,12 +171,8 @@ export class ImportStagingEntryRepository {
     // expose a clean API for JSONB multi-row UPDATE FROM VALUES.
     await Promise.all(
       entries.map((entry) =>
-        repo.update(
-          { id: entry.id },
-          { mappedValues: entry.mappedValues, errors: entry.errors },
-        ),
+        repo.update({ id: entry.id }, { mappedValues: entry.mappedValues, errors: entry.errors }),
       ),
     );
   }
 }
-

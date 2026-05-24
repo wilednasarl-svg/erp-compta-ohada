@@ -96,4 +96,3 @@ export class SageFileParser implements IFileParser {
     }
   }
 }
-

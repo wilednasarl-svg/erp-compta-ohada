@@ -64,48 +64,72 @@ describe('e2e: rules RBAC (13.3)', () => {
     const orgId = org.organizationId;
 
     // Admin crée une règle de référence.
-    const r = await authedJson(handle.http, 'post', `/organizations/${orgId}/rules`, org.scopedAccessToken)
-      .send({
-        name: 'Règle ref',
-        isActive: true,
-        priority: 10,
-        conditions: [{ type: 'account_prefix', prefix: '60' }],
-        actions: [{ type: 'add_tag', tag: 'X' }],
-      });
+    const r = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules`,
+      org.scopedAccessToken,
+    ).send({
+      name: 'Règle ref',
+      isActive: true,
+      priority: 10,
+      conditions: [{ type: 'account_prefix', prefix: '60' }],
+      actions: [{ type: 'add_tag', tag: 'X' }],
+    });
     expect(r.status).toBe(HttpStatus.CREATED);
     const ruleId = (r.body.data ?? r.body).id as string;
 
     const auditorToken = await addMemberAndGetToken(orgId, 'rbac-auditor@e2e.test', 'auditeur');
 
     // read → 200.
-    const list = await authedJson(handle.http, 'get', `/organizations/${orgId}/rules`, auditorToken);
+    const list = await authedJson(
+      handle.http,
+      'get',
+      `/organizations/${orgId}/rules`,
+      auditorToken,
+    );
     expect(list.status).toBe(HttpStatus.OK);
 
-    const detail = await authedJson(handle.http, 'get', `/organizations/${orgId}/rules/${ruleId}`, auditorToken);
+    const detail = await authedJson(
+      handle.http,
+      'get',
+      `/organizations/${orgId}/rules/${ruleId}`,
+      auditorToken,
+    );
     expect(detail.status).toBe(HttpStatus.OK);
 
     // write → 403.
-    const write = await authedJson(handle.http, 'post', `/organizations/${orgId}/rules`, auditorToken)
-      .send({
-        name: 'Hack rule',
-        isActive: true,
-        priority: 1,
-        conditions: [{ type: 'account_prefix', prefix: '10' }],
-        actions: [{ type: 'add_tag', tag: 'HACK' }],
-      });
+    const write = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules`,
+      auditorToken,
+    ).send({
+      name: 'Hack rule',
+      isActive: true,
+      priority: 1,
+      conditions: [{ type: 'account_prefix', prefix: '10' }],
+      actions: [{ type: 'add_tag', tag: 'HACK' }],
+    });
     expect(write.status).toBe(HttpStatus.FORBIDDEN);
     expect(write.body.error.code).toBe(ERROR_CODES.FORBIDDEN_PERMISSION);
 
     // simulate → 403.
     const sim = await authedJson(
-      handle.http, 'post', `/organizations/${orgId}/rules/${ruleId}/simulate`, auditorToken,
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules/${ruleId}/simulate`,
+      auditorToken,
     ).send({});
     expect(sim.status).toBe(HttpStatus.FORBIDDEN);
     expect(sim.body.error.code).toBe(ERROR_CODES.FORBIDDEN_PERMISSION);
 
     // apply → 403.
     const apply = await authedJson(
-      handle.http, 'post', `/organizations/${orgId}/rules/${ruleId}/apply`, auditorToken,
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules/${ruleId}/apply`,
+      auditorToken,
     ).send({});
     expect(apply.status).toBe(HttpStatus.FORBIDDEN);
     expect(apply.body.error.code).toBe(ERROR_CODES.FORBIDDEN_PERMISSION);
@@ -116,46 +140,69 @@ describe('e2e: rules RBAC (13.3)', () => {
     const org = await createOrgAndSwitch(app, admin, 'Org Comptable RBAC');
     const orgId = org.organizationId;
 
-    const r = await authedJson(handle.http, 'post', `/organizations/${orgId}/rules`, org.scopedAccessToken)
-      .send({
-        name: 'Règle cpt',
-        isActive: true,
-        priority: 10,
-        conditions: [{ type: 'account_prefix', prefix: '70' }],
-        actions: [{ type: 'add_tag', tag: 'Y' }],
-      });
+    const r = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules`,
+      org.scopedAccessToken,
+    ).send({
+      name: 'Règle cpt',
+      isActive: true,
+      priority: 10,
+      conditions: [{ type: 'account_prefix', prefix: '70' }],
+      actions: [{ type: 'add_tag', tag: 'Y' }],
+    });
     expect(r.status).toBe(HttpStatus.CREATED);
     const ruleId = (r.body.data ?? r.body).id as string;
 
-    const comptableToken = await addMemberAndGetToken(orgId, 'rbac-comptable@e2e.test', 'comptable');
+    const comptableToken = await addMemberAndGetToken(
+      orgId,
+      'rbac-comptable@e2e.test',
+      'comptable',
+    );
 
     // read → 200.
-    const list = await authedJson(handle.http, 'get', `/organizations/${orgId}/rules`, comptableToken);
+    const list = await authedJson(
+      handle.http,
+      'get',
+      `/organizations/${orgId}/rules`,
+      comptableToken,
+    );
     expect(list.status).toBe(HttpStatus.OK);
 
     // simulate → 200 (matchedCount=0 — aucune écriture, mais le droit est là).
     const sim = await authedJson(
-      handle.http, 'post', `/organizations/${orgId}/rules/${ruleId}/simulate`, comptableToken,
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules/${ruleId}/simulate`,
+      comptableToken,
     ).send({});
     expect(sim.status).toBe(HttpStatus.OK);
     const simBody = sim.body.data ?? sim.body;
     expect(simBody.mode).toBe('simulation');
 
     // write → 403.
-    const write = await authedJson(handle.http, 'post', `/organizations/${orgId}/rules`, comptableToken)
-      .send({
-        name: 'Hack',
-        isActive: true,
-        priority: 1,
-        conditions: [{ type: 'account_prefix', prefix: '10' }],
-        actions: [{ type: 'add_tag', tag: 'H' }],
-      });
+    const write = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules`,
+      comptableToken,
+    ).send({
+      name: 'Hack',
+      isActive: true,
+      priority: 1,
+      conditions: [{ type: 'account_prefix', prefix: '10' }],
+      actions: [{ type: 'add_tag', tag: 'H' }],
+    });
     expect(write.status).toBe(HttpStatus.FORBIDDEN);
     expect(write.body.error.code).toBe(ERROR_CODES.FORBIDDEN_PERMISSION);
 
     // apply → 403.
     const apply = await authedJson(
-      handle.http, 'post', `/organizations/${orgId}/rules/${ruleId}/apply`, comptableToken,
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules/${ruleId}/apply`,
+      comptableToken,
     ).send({});
     expect(apply.status).toBe(HttpStatus.FORBIDDEN);
     expect(apply.body.error.code).toBe(ERROR_CODES.FORBIDDEN_PERMISSION);
@@ -166,33 +213,52 @@ describe('e2e: rules RBAC (13.3)', () => {
     const org = await createOrgAndSwitch(app, admin, 'Org Expert RBAC');
     const orgId = org.organizationId;
 
-    const expertToken = await addMemberAndGetToken(orgId, 'rbac-expert@e2e.test', 'expert_comptable');
+    const expertToken = await addMemberAndGetToken(
+      orgId,
+      'rbac-expert@e2e.test',
+      'expert_comptable',
+    );
 
     // write → 201.
-    const r = await authedJson(handle.http, 'post', `/organizations/${orgId}/rules`, expertToken)
-      .send({
-        name: 'Expert rule',
-        isActive: true,
-        priority: 20,
-        conditions: [{ type: 'account_prefix', prefix: '60' }],
-        actions: [{ type: 'add_tag', tag: 'EXP' }],
-      });
+    const r = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules`,
+      expertToken,
+    ).send({
+      name: 'Expert rule',
+      isActive: true,
+      priority: 20,
+      conditions: [{ type: 'account_prefix', prefix: '60' }],
+      actions: [{ type: 'add_tag', tag: 'EXP' }],
+    });
     expect(r.status).toBe(HttpStatus.CREATED);
     const ruleId = (r.body.data ?? r.body).id as string;
 
     // read → 200.
-    const detail = await authedJson(handle.http, 'get', `/organizations/${orgId}/rules/${ruleId}`, expertToken);
+    const detail = await authedJson(
+      handle.http,
+      'get',
+      `/organizations/${orgId}/rules/${ruleId}`,
+      expertToken,
+    );
     expect(detail.status).toBe(HttpStatus.OK);
 
     // simulate → 200.
     const sim = await authedJson(
-      handle.http, 'post', `/organizations/${orgId}/rules/${ruleId}/simulate`, expertToken,
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules/${ruleId}/simulate`,
+      expertToken,
     ).send({});
     expect(sim.status).toBe(HttpStatus.OK);
 
     // apply → 200.
     const apply = await authedJson(
-      handle.http, 'post', `/organizations/${orgId}/rules/${ruleId}/apply`, expertToken,
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules/${ruleId}/apply`,
+      expertToken,
     ).send({});
     expect(apply.status).toBe(HttpStatus.OK);
   });

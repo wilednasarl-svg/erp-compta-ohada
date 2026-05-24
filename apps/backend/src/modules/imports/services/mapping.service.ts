@@ -34,7 +34,10 @@ import {
  */
 @Injectable()
 export class MappingService {
-  autoMap(headers: readonly string[], overrides: Record<string, TargetField> = {}): MappingProposal {
+  autoMap(
+    headers: readonly string[],
+    overrides: Record<string, TargetField> = {},
+  ): MappingProposal {
     const headerToTarget: Record<string, TargetField> = {};
     const usedTargets = new Set<TargetField>();
 

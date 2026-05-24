@@ -23,6 +23,7 @@ import type { Request, Response } from 'express';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
+import { asTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import type { CurrentOrgContext, CurrentUserContext } from '../../../common/types/request-context';
 import { CurrentOrg } from '../../auth/decorators/current-org.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -233,11 +234,8 @@ export class DocumentsController {
   private assertActorScope(
     org: CurrentOrgContext | undefined,
     actorUserId: string | undefined,
-  ): { organizationId: string; actorUserId: string } {
+  ): { organizationId: TenantId; actorUserId: string } {
     if (org === undefined || org.id.length === 0) {
-      // Defence-in-depth — `TenantGuard` should have rejected the
-      // request long before we got here. Surface a 404 so an
-      // accidentally-unguarded route does not disclose anything.
       throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
         message: 'Organization not found',
       });
@@ -247,6 +245,6 @@ export class DocumentsController {
         message: 'Authenticated user is required',
       });
     }
-    return { organizationId: org.id, actorUserId };
+    return { organizationId: asTenantId(org.id), actorUserId };
   }
 }

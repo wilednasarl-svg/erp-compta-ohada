@@ -40,8 +40,12 @@ describe('e2e: rules lifecycle (13.1)', () => {
 
     // ── 1. Seed an import session + staging entries via the imports API ─────
 
-    const sessionRes = await authedJson(handle.http, 'post', `/organizations/${orgId}/imports/sessions`, token)
-      .send({ sourceType: 'csv', label: 'Test rules' });
+    const sessionRes = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/imports/sessions`,
+      token,
+    ).send({ sourceType: 'csv', label: 'Test rules' });
     expect(sessionRes.status).toBe(HttpStatus.CREATED);
     const sessionId = sessionRes.body.data.session.id as string;
 
@@ -55,7 +59,12 @@ describe('e2e: rules lifecycle (13.1)', () => {
 
     // ── 2. Create a rule ────────────────────────────────────────────────────
 
-    const created = await authedJson(handle.http, 'post', `/organizations/${orgId}/rules`, token).send({
+    const created = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules`,
+      token,
+    ).send({
       name: 'Reclasser comptes 40x',
       isActive: true,
       priority: 100,
@@ -74,7 +83,12 @@ describe('e2e: rules lifecycle (13.1)', () => {
     expect(rules.some((r) => r.id === ruleId)).toBe(true);
 
     // GET: détail.
-    const detail = await authedJson(handle.http, 'get', `/organizations/${orgId}/rules/${ruleId}`, token);
+    const detail = await authedJson(
+      handle.http,
+      'get',
+      `/organizations/${orgId}/rules/${ruleId}`,
+      token,
+    );
     expect(detail.status).toBe(HttpStatus.OK);
 
     // ── 3. Simulate ─────────────────────────────────────────────────────────
@@ -133,7 +147,12 @@ describe('e2e: rules lifecycle (13.1)', () => {
     const orgId = org.organizationId;
     const token = org.scopedAccessToken;
 
-    const created = await authedJson(handle.http, 'post', `/organizations/${orgId}/rules`, token).send({
+    const created = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/rules`,
+      token,
+    ).send({
       name: 'Empty scope rule',
       isActive: true,
       priority: 50,

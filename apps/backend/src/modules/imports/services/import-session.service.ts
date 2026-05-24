@@ -412,7 +412,7 @@ export class ImportSessionService {
 
     const proposal = this.mapping.autoMap(
       headers,
-      (session.mappingOverride as Record<string, TargetField>) ?? {}
+      (session.mappingOverride as Record<string, TargetField>) ?? {},
     );
 
     // Build chart index for validation. Loaded fresh on each preview
