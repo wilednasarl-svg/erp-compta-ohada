@@ -4,6 +4,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { ChartOfAccountsService } from '../../accounting-plan/services/chart-of-accounts.service';
 import type { AuthEventContext, AuthEventsService } from '../../audit/services/auth-events.service';
 import type { JournalsService } from '../../journals/services/journals.service';
+import type { TvaCodesService } from '../../tva/services/tva-codes.service';
 import type { AuthEventEntity } from '../../audit/entities/auth-event.entity';
 import type { MembershipEntity } from '../../rbac/entities/membership.entity';
 import type { RoleEntity } from '../../rbac/entities/role.entity';
@@ -43,6 +44,7 @@ interface Harness {
     Promise<AuthEventEntity | null>,
     [string, AuthEventContext, Record<string, unknown>?]
   >;
+  seedDefaultCodes: jest.Mock;
 }
 
 function buildHarness(): Harness {
@@ -112,6 +114,9 @@ function buildHarness(): Harness {
   const journals = {
     seedStandardJournals: jest.fn().mockResolvedValue(undefined),
   } as unknown as JournalsService;
+  const tvaCodes = {
+    seedDefaultCodes: jest.fn().mockResolvedValue(undefined),
+  } as unknown as TvaCodesService;
   const dataSource = {
     transaction: (cb: (m: EntityManager) => Promise<unknown>) => cb(fakeManager),
   } as unknown as DataSource;
@@ -123,6 +128,7 @@ function buildHarness(): Harness {
     audit,
     chartOfAccounts,
     journals,
+    tvaCodes,
     dataSource,
   );
 
@@ -136,6 +142,7 @@ function buildHarness(): Harness {
     listOrgsForUser,
     findRoleByCode,
     recordEvent,
+    seedDefaultCodes: tvaCodes.seedDefaultCodes as jest.Mock,
   };
 }
 
@@ -174,6 +181,11 @@ describe('OrganizationsService (BE-ORG-01..03 + BE-PC-08)', () => {
       expect(h.cloneInOrg.mock.calls[0][0]).toBe('org-new');
       expect(h.cloneInOrg.mock.calls[0][1]).toBe('NORMAL');
       expect(h.cloneInOrg.mock.calls[0][2]).toBeDefined(); // manager
+
+      // Seed TVA codes joins the same transaction.
+      expect(h.seedDefaultCodes).toHaveBeenCalledTimes(1);
+      expect(h.seedDefaultCodes.mock.calls[0][0]).toBe('org-new');
+      expect(h.seedDefaultCodes.mock.calls[0][1]).toBeDefined(); // manager
 
       // Two audit events, in order: organizations.updated (with action=created) + chart_of_accounts.imported.
       expect(h.recordEvent).toHaveBeenCalledTimes(2);

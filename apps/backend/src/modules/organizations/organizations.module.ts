@@ -7,6 +7,7 @@ import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { JournalsModule } from '../journals/journals.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { TvaModule } from '../tva/tva.module';
 import { AcceptInvitationController } from './controllers/accept-invitation.controller';
 import { AuthEventsController } from './controllers/auth-events.controller';
 import { InvitationsController } from './controllers/invitations.controller';
@@ -52,6 +53,9 @@ import { OrganizationsService } from './services/organizations.service';
     // Module 8 — pour `JournalsService.seedStandardJournals` appelé
     // dans la transaction de création d'org.
     JournalsModule,
+    // Module 13 — pour `TvaCodesService.seedDefaultCodes` appelé
+    // dans la transaction de création d'org.
+    TvaModule,
   ],
   controllers: [
     OrganizationsController,

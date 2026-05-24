@@ -10,6 +10,7 @@ import type { AccountingSystem } from '../../accounting-plan/types/accounting-sy
 import type { AuthEventContext } from '../../audit/services/auth-events.service';
 import { AuthEventsService } from '../../audit/services/auth-events.service';
 import { JournalsService } from '../../journals/services/journals.service';
+import { TvaCodesService } from '../../tva/services/tva-codes.service';
 import { MembershipEntity } from '../../rbac/entities/membership.entity';
 import { MembershipRepository } from '../../rbac/repositories/membership.repository';
 import { RoleRepository } from '../../rbac/repositories/role.repository';
@@ -88,6 +89,7 @@ export class OrganizationsService {
     private readonly audit: AuthEventsService,
     private readonly chartOfAccounts: ChartOfAccountsService,
     private readonly journals: JournalsService,
+    private readonly tvaCodes: TvaCodesService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -167,6 +169,9 @@ export class OrganizationsService {
         // pas recevoir d'écriture, le seed est donc partie intégrante de
         // la création.
         await this.journals.seedStandardJournals(asTenantId(persistedOrg.id), manager);
+
+        // Module 13 — seed les codes TVA standard (TVA-N-18, TVA-N-09, TVA-EXO, TVA-EXP)
+        await this.tvaCodes.seedDefaultCodes(asTenantId(persistedOrg.id), manager);
 
         return { organization: persistedOrg, membership: persistedMembership, cloneResult: clone };
       },

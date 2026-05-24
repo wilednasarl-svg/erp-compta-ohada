@@ -21,6 +21,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { RulesModule } from './modules/rules/rules.module';
 import { TransformationsModule } from './modules/transformations/transformations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
+import { TvaModule } from './modules/tva/tva.module';
 
 @Module({
   imports: [
@@ -82,6 +83,8 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     // livre en lecture seule, projections agrégées sur les écritures
     // validated. Compte de résultat + bilan + PDF arrivent en vague 2.
     ReportsModule,
+    // Module 13 wave 1 — TVA & Déclarations fiscales.
+    TvaModule,
   ],
   controllers: [],
   providers: [

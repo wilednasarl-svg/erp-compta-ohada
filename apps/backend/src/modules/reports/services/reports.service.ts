@@ -53,15 +53,34 @@ export interface GeneralLedgerEntry extends GeneralLedgerRow {
   readonly runningBalance: string;
 }
 
+export interface ProfitLossAccountLine {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  /** Amount in the comparison period (when `compareWith` is provided). */
+  readonly previousAmount?: string;
+  /** current − previous, absolute value with sign. */
+  readonly variation?: string;
+  /** (variation / |previous|) × 100, rounded to 2 dp. `null` when previous = 0. */
+  readonly variationPercent?: string | null;
+}
+
 export interface ProfitLossLine {
   readonly code: string;
   readonly label: string;
   readonly amount: string;
-  readonly accounts: ReadonlyArray<{
-    readonly code: string;
-    readonly label: string;
-    readonly amount: string;
-  }>;
+  readonly previousAmount?: string;
+  readonly variation?: string;
+  readonly variationPercent?: string | null;
+  readonly accounts: ReadonlyArray<ProfitLossAccountLine>;
+}
+
+export interface ProfitLossPreviousSummary {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly totalCharges: string;
+  readonly totalProduits: string;
+  readonly resultat: string;
 }
 
 export interface ProfitLossReport {
@@ -73,13 +92,24 @@ export interface ProfitLossReport {
   readonly totalProduits: string;
   /** produits − charges. Positive = bénéfice, negative = perte. */
   readonly resultat: string;
+  /** Headline numbers for the comparison period (when requested). */
+  readonly previous?: ProfitLossPreviousSummary;
 }
 
 export interface BalanceSheetGroup {
+  /**
+   * UUID of the underlying chart-of-accounts row, OR a synthetic
+   * marker for the consolidated net-result line (see
+   * `RESULTAT_GROUP_ID` below). Clients must NOT treat this as a
+   * stable resource id when the value starts with `__`.
+   */
   readonly accountId: string;
   readonly code: string;
   readonly label: string;
   readonly amount: string;
+  readonly previousAmount?: string;
+  readonly variation?: string;
+  readonly variationPercent?: string | null;
 }
 
 export interface BalanceSheetSection {
@@ -87,6 +117,14 @@ export interface BalanceSheetSection {
   readonly label: string;
   readonly groups: ReadonlyArray<BalanceSheetGroup>;
   readonly total: string;
+  readonly previousTotal?: string;
+}
+
+export interface BalanceSheetPreviousSummary {
+  readonly asAtDate: string;
+  readonly totalActif: string;
+  readonly totalPassif: string;
+  readonly difference: string;
 }
 
 export interface BalanceSheetReport {
@@ -100,12 +138,19 @@ export interface BalanceSheetReport {
     readonly total: string;
   };
   /**
-   * Bilan equilibre check: difference between Actif and Passif. Should
-   * be 0 once the current year's net result is incorporated. The wave 2
-   * MVP exposes the raw difference; the wave 3 will fold the P&L result
-   * into capitaux propres automatically.
+   * Net result for the fiscal year ending at `asAtDate`, incorporated
+   * into `passif > CAPITAUX_PROPRES` as a synthetic line when the
+   * caller provides `fiscalYearStartDate`. `null` when no incorporation
+   * was performed.
+   */
+  readonly netResultIncorporated: string | null;
+  /**
+   * Bilan equilibre check: actif − passif. Wave 2 returned the raw
+   * unbalanced figure; wave 3 closes the loop when
+   * `fiscalYearStartDate` is provided so this column should be ~0.00.
    */
   readonly difference: string;
+  readonly previous?: BalanceSheetPreviousSummary;
 }
 
 export interface GeneralLedgerReport {
@@ -126,7 +171,14 @@ export interface GeneralLedgerReport {
 }
 
 /**
- * `ReportsService` — Module 9 wave 1 accounting reports.
+ * Synthetic accountId marker used for the auto-incorporated net-result
+ * line in the balance sheet. Stable so clients can detect this row
+ * deterministically (e.g. to render it in italics or with a footnote).
+ */
+export const RESULTAT_GROUP_ID = '__net_result__' as const;
+
+/**
+ * `ReportsService` — Module 9 accounting reports.
  *
  *   - `getTrialBalance`  : balance générale (one row per account).
  *   - `getGeneralLedger` : grand livre d'un compte (chronologique + cumul).
@@ -240,16 +292,37 @@ export class ReportsService {
    */
   async getProfitLoss(
     organizationId: TenantId,
-    query: { fromDate: string; toDate: string },
+    query: {
+      fromDate: string;
+      toDate: string;
+      compareWith?: { fromDate: string; toDate: string };
+    },
   ): Promise<ProfitLossReport> {
     assertTenantId(organizationId);
     this.assertDateRange(query.fromDate, query.toDate);
+    if (query.compareWith !== undefined) {
+      this.assertDateRange(query.compareWith.fromDate, query.compareWith.toDate);
+    }
 
-    const rows = await this.repo.trialBalance(organizationId, {
-      fromDate: query.fromDate,
-      toDate: query.toDate,
-    });
+    const current = await this.computeProfitLossBare(organizationId, query.fromDate, query.toDate);
+    if (query.compareWith === undefined) {
+      return current;
+    }
 
+    const previous = await this.computeProfitLossBare(
+      organizationId,
+      query.compareWith.fromDate,
+      query.compareWith.toDate,
+    );
+    return this.enrichProfitLossWithComparison(current, previous);
+  }
+
+  private async computeProfitLossBare(
+    organizationId: TenantId,
+    fromDate: string,
+    toDate: string,
+  ): Promise<ProfitLossReport> {
+    const rows = await this.repo.trialBalance(organizationId, { fromDate, toDate });
     const class6 = rows.filter((r) => r.accountClass === 6);
     const class7 = rows.filter((r) => r.accountClass === 7);
 
@@ -265,14 +338,72 @@ export class ReportsService {
     const resultat = totalProduits - totalCharges;
 
     return {
-      fromDate: query.fromDate,
-      toDate: query.toDate,
+      fromDate,
+      toDate,
       charges,
       produits,
       totalCharges: totalCharges.toFixed(2),
       totalProduits: totalProduits.toFixed(2),
       resultat: resultat.toFixed(2),
     };
+  }
+
+  private enrichProfitLossWithComparison(
+    current: ProfitLossReport,
+    previous: ProfitLossReport,
+  ): ProfitLossReport {
+    const indexSection = (sects: readonly ProfitLossLine[]) =>
+      new Map(sects.map((s) => [s.code, s]));
+    const prevChargesIdx = indexSection(previous.charges);
+    const prevProduitsIdx = indexSection(previous.produits);
+
+    const enrichSection = (
+      section: ProfitLossLine,
+      prevIdx: Map<string, ProfitLossLine>,
+    ): ProfitLossLine => {
+      const prev = prevIdx.get(section.code);
+      const prevAmount = prev ? Number(prev.amount) : 0;
+      const cur = Number(section.amount);
+      const variation = cur - prevAmount;
+      const prevAccountsIdx = new Map((prev?.accounts ?? []).map((a) => [a.code, a]));
+      const accounts = section.accounts.map((a): ProfitLossAccountLine => {
+        const prevA = prevAccountsIdx.get(a.code);
+        const prevAmt = prevA ? Number(prevA.amount) : 0;
+        const curAmt = Number(a.amount);
+        const va = curAmt - prevAmt;
+        return {
+          ...a,
+          previousAmount: prevAmt.toFixed(2),
+          variation: va.toFixed(2),
+          variationPercent: ReportsService.percentChange(prevAmt, curAmt),
+        };
+      });
+      return {
+        ...section,
+        previousAmount: prevAmount.toFixed(2),
+        variation: variation.toFixed(2),
+        variationPercent: ReportsService.percentChange(prevAmount, cur),
+        accounts,
+      };
+    };
+
+    return {
+      ...current,
+      charges: current.charges.map((s) => enrichSection(s, prevChargesIdx)),
+      produits: current.produits.map((s) => enrichSection(s, prevProduitsIdx)),
+      previous: {
+        fromDate: previous.fromDate,
+        toDate: previous.toDate,
+        totalCharges: previous.totalCharges,
+        totalProduits: previous.totalProduits,
+        resultat: previous.resultat,
+      },
+    };
+  }
+
+  static percentChange(previous: number, current: number): string | null {
+    if (Math.abs(previous) < 0.005) return null;
+    return (((current - previous) / Math.abs(previous)) * 100).toFixed(2);
   }
 
   /**
@@ -290,7 +421,11 @@ export class ReportsService {
    */
   async getBalanceSheet(
     organizationId: TenantId,
-    query: { asAtDate: string },
+    query: {
+      asAtDate: string;
+      fiscalYearStartDate?: string;
+      compareWith?: { asAtDate: string; fiscalYearStartDate?: string };
+    },
   ): Promise<BalanceSheetReport> {
     assertTenantId(organizationId);
     if (!ReportsService.isYmd(query.asAtDate)) {
@@ -298,8 +433,38 @@ export class ReportsService {
         message: `asAtDate must be YYYY-MM-DD (got ${query.asAtDate}).`,
       });
     }
+    if (query.fiscalYearStartDate !== undefined) {
+      this.assertDateRange(query.fiscalYearStartDate, query.asAtDate);
+    }
+    if (query.compareWith !== undefined && !ReportsService.isYmd(query.compareWith.asAtDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: `compareWith.asAtDate must be YYYY-MM-DD.`,
+      });
+    }
 
-    const rows = await this.repo.accountBalancesAsAt(organizationId, query.asAtDate);
+    const current = await this.computeBalanceSheetBare(
+      organizationId,
+      query.asAtDate,
+      query.fiscalYearStartDate,
+    );
+    if (query.compareWith === undefined) {
+      return current;
+    }
+
+    const previous = await this.computeBalanceSheetBare(
+      organizationId,
+      query.compareWith.asAtDate,
+      query.compareWith.fiscalYearStartDate,
+    );
+    return this.enrichBalanceSheetWithComparison(current, previous);
+  }
+
+  private async computeBalanceSheetBare(
+    organizationId: TenantId,
+    asAtDate: string,
+    fiscalYearStartDate: string | undefined,
+  ): Promise<BalanceSheetReport> {
+    const rows = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
 
     const actifBuckets = new Map<BalanceSheetActifKey, BalanceSheetGroup[]>();
     const passifBuckets = new Map<BalanceSheetPassifKey, BalanceSheetGroup[]>();
@@ -308,16 +473,15 @@ export class ReportsService {
       const debit = Number(row.totalDebit);
       const credit = Number(row.totalCredit);
       const net = debit - credit;
-      if (Math.abs(net) < 0.005) continue; // zero-balance account → skip
+      if (Math.abs(net) < 0.005) continue;
       const netSign: 'D' | 'C' = net > 0 ? 'D' : 'C';
       const classification = classifyForBilan(row.accountCode, row.accountClass, netSign);
-      if (classification === null) continue; // class 6/7/8/9 — not Bilan
-      const absAmount = Math.abs(net).toFixed(2);
+      if (classification === null) continue;
       const group: BalanceSheetGroup = {
         accountId: row.accountId,
         code: row.accountCode,
         label: row.accountLabel,
-        amount: absAmount,
+        amount: Math.abs(net).toFixed(2),
       };
       if (classification.side === 'ACTIF') {
         const bucket = actifBuckets.get(classification.key) ?? [];
@@ -327,6 +491,39 @@ export class ReportsService {
         const bucket = passifBuckets.get(classification.key) ?? [];
         bucket.push(group);
         passifBuckets.set(classification.key, bucket);
+      }
+    }
+
+    // Auto-consolidate the fiscal-year net result into capitaux propres
+    // when the caller provided the year-start anchor. Without this the
+    // Bilan never balances by construction — wave 2 left it as a sanity
+    // check on `difference`.
+    let netResultIncorporated: string | null = null;
+    if (fiscalYearStartDate !== undefined) {
+      const pl = await this.computeProfitLossBare(
+        organizationId,
+        fiscalYearStartDate,
+        asAtDate,
+      );
+      const netResult = Number(pl.resultat);
+      if (Math.abs(netResult) >= 0.005) {
+        netResultIncorporated = netResult.toFixed(2);
+        const cpBucket = passifBuckets.get('CAPITAUX_PROPRES') ?? [];
+        // A loss reduces capitaux propres → push a negative entry.
+        // SYSCOHADA presents the result on the credit side of class 13
+        // (Résultat net), so we keep the absolute amount but flag the
+        // sign through `code`: "130" for gain, "129" for loss (the
+        // OHADA reform calls 12 "Résultat en instance d'affectation").
+        cpBucket.push({
+          accountId: RESULTAT_GROUP_ID,
+          code: netResult >= 0 ? '130' : '129',
+          label:
+            netResult >= 0
+              ? `Résultat de l'exercice (bénéfice)`
+              : `Résultat de l'exercice (perte)`,
+          amount: netResultIncorporated,
+        });
+        passifBuckets.set('CAPITAUX_PROPRES', cpBucket);
       }
     }
 
@@ -347,7 +544,17 @@ export class ReportsService {
       Object.keys(PASSIF_SECTION_LABELS) as BalanceSheetPassifKey[]
     ).map((key) => {
       const groups = passifBuckets.get(key) ?? [];
-      const total = groups.reduce((s, g) => s + Number(g.amount), 0);
+      // For Capitaux propres specifically, the net-result line carries
+      // a signed amount embedded in a positive `amount` string +
+      // negative-flagged code. We compute the sectional total with the
+      // sign reapplied so a loss shrinks capitaux propres correctly.
+      const total = groups.reduce((s, g) => {
+        const signed =
+          g.accountId === RESULTAT_GROUP_ID && g.code === '129'
+            ? -Number(g.amount)
+            : Number(g.amount);
+        return s + signed;
+      }, 0);
       return {
         key,
         label: PASSIF_SECTION_LABELS[key],
@@ -360,10 +567,62 @@ export class ReportsService {
     const totalPassif = passifSections.reduce((s, sect) => s + Number(sect.total), 0);
 
     return {
-      asAtDate: query.asAtDate,
+      asAtDate,
       actif: { sections: actifSections, total: totalActif.toFixed(2) },
       passif: { sections: passifSections, total: totalPassif.toFixed(2) },
+      netResultIncorporated,
       difference: (totalActif - totalPassif).toFixed(2),
+    };
+  }
+
+  private enrichBalanceSheetWithComparison(
+    current: BalanceSheetReport,
+    previous: BalanceSheetReport,
+  ): BalanceSheetReport {
+    const indexBy = (sections: readonly BalanceSheetSection[]) =>
+      new Map(sections.map((s) => [s.key, s]));
+    const prevActifIdx = indexBy(previous.actif.sections);
+    const prevPassifIdx = indexBy(previous.passif.sections);
+
+    const enrichSection = (
+      section: BalanceSheetSection,
+      prevIdx: Map<string, BalanceSheetSection>,
+    ): BalanceSheetSection => {
+      const prev = prevIdx.get(section.key);
+      const prevGroupsIdx = new Map((prev?.groups ?? []).map((g) => [g.code, g]));
+      return {
+        ...section,
+        previousTotal: prev ? prev.total : '0.00',
+        groups: section.groups.map((g) => {
+          const pg = prevGroupsIdx.get(g.code);
+          const prevAmount = pg ? Number(pg.amount) : 0;
+          const curAmount = Number(g.amount);
+          return {
+            ...g,
+            previousAmount: prevAmount.toFixed(2),
+            variation: (curAmount - prevAmount).toFixed(2),
+            variationPercent: ReportsService.percentChange(prevAmount, curAmount),
+          };
+        }),
+      };
+    };
+
+    return {
+      ...current,
+      actif: {
+        ...current.actif,
+        sections: current.actif.sections.map((s) => enrichSection(s, prevActifIdx)),
+      },
+      passif: {
+        ...current.passif,
+        sections: current.passif.sections.map((s) => enrichSection(s, prevPassifIdx)),
+      },
+      previous: {
+        asAtDate: previous.asAtDate,
+        totalActif: previous.actif.total,
+        totalPassif: previous.passif.total,
+        difference: previous.difference,
+      },
     };
   }
 

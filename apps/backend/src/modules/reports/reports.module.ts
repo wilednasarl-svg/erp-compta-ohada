@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
 import { AuthModule } from '../auth/auth.module';
+import { AuditModule } from '../audit/audit.module';
 import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.entity';
 import { RbacModule } from '../rbac/rbac.module';
 import { ReportsController } from './controllers/reports.controller';
@@ -32,6 +33,7 @@ import { ReportsService } from './services/reports.service';
     TypeOrmModule.forFeature([JournalEntryLineEntity]),
     AuthModule,
     RbacModule,
+    AuditModule,
     AccountingPlanModule,
   ],
   controllers: [ReportsController],

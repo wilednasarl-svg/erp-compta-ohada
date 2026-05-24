@@ -48,7 +48,16 @@
       "Bash(ls vercel.json)",
       "Bash(find . -name \"vercel.json\" -not -path \"*/node_modules/*\")",
       "Bash(npx vercel *)",
-      "Bash(vercel --version)"
+      "Bash(vercel --version)",
+      "Bash(bd defer *)",
+      "Bash(pnpm --filter backend typecheck)",
+      "Bash(pnpm --filter backend test --passWithNoTests)",
+      "Bash(bd stats *)",
+      "Bash(pnpm --filter backend test --testPathPattern=\"journals\")",
+      "Bash(cat .beads/config.json)",
+      "Bash(cat beads.json)",
+      "Bash(grep -n \"return {\\\\s*$\\\\|^      service,\" apps/backend/src/modules/imports/services/import-session.service.spec.ts)",
+      "Bash(pnpm build *)"
     ]
   }
 }
