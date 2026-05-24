@@ -67,11 +67,11 @@
 
 ## 10. Tests d'intégration (e2e)
 
-- [ ] 10.1 `chart-of-accounts-clone.e2e-spec.ts` : POST /organizations avec system=NORMAL → vérifie que ~800 lignes sont créées dans `organization_chart_accounts`
-- [ ] 10.2 `chart-of-accounts-tenant-isolation.e2e-spec.ts` : org A ne peut ni lire ni modifier les comptes de l'org B (404, pas 403)
+- [x] 10.1 `chart-of-accounts-clone.e2e-spec.ts` : POST /organizations avec system=NORMAL → vérifie que ~800 lignes sont créées dans `organization_chart_accounts`
+- [x] 10.2 `chart-of-accounts-tenant-isolation.e2e-spec.ts` : org A ne peut ni lire ni modifier les comptes de l'org B (404, pas 403)
 - [ ] 10.3 `chart-of-accounts-permissions.e2e-spec.ts` : Auditeur peut lire mais pas écrire (403 sur POST/PATCH/DELETE)
-- [ ] 10.4 `chart-of-accounts-invariants.e2e-spec.ts` : code immutable (PATCH avec `code` ignoré ou 422), code doit préfixer parent (422), code dupliqué dans org (409)
-- [ ] 10.5 `chart-of-accounts-deletion.e2e-spec.ts` : compte de référence indélétable (409), compte custom avec enfants indélétable (409), compte custom feuille délétable (204)
+- [x] 10.4 `chart-of-accounts-invariants.e2e-spec.ts` : code immutable (PATCH avec `code` ignoré ou 422), code doit préfixer parent (422), code dupliqué dans org (409)
+- [x] 10.5 `chart-of-accounts-deletion.e2e-spec.ts` : compte de référence indélétable (409), compte custom avec enfants indélétable (409), compte custom feuille délétable (204)
 - [ ] 10.6 Coverage backend ≥ 80 % maintenu
 
 ## 11. Documentation
