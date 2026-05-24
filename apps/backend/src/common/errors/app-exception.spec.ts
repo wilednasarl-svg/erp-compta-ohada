@@ -126,6 +126,14 @@ describe('HTTP status mapping', () => {
       DOC_FILE_TOO_LARGE: 413,
       DOC_MIME_REJECTED: 422,
       DOC_STORAGE_FAILURE: 500,
+      // Module 3 — transformations.
+      TRANSFORMATION_SOURCE_ENTRY_NOT_FOUND: 404,
+      TRANSFORMATION_NO_FIELD_CHANGED: 422,
+      TRANSFORMATION_ADJUSTMENT_INVALID: 422,
+      // Workflow.
+      WORKFLOW_INSTANCE_NOT_FOUND: 404,
+      WORKFLOW_TRANSITION_INVALID: 409,
+      WORKFLOW_LOCKED: 409,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

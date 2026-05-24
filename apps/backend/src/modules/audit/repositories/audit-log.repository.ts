@@ -14,6 +14,11 @@ import { AuditLogEntity } from '../entities/audit-log.entity';
  * (no tenant scope) is not exposed at the HTTP layer in vague 1 —
  * platform admins read directly from the DB.
  */
+export interface AuditCursor {
+  readonly createdAt: string;
+  readonly id: string;
+}
+
 export interface AuditLogListFilters {
   readonly organizationId: TenantId | string;
   readonly module?: string;
@@ -25,6 +30,40 @@ export interface AuditLogListFilters {
   readonly to?: Date;
   readonly limit?: number;
   readonly offset?: number;
+  readonly cursor?: string;
+}
+
+/**
+ * Encode a keyset cursor from the last row of a page.
+ * Returns a base64url string safe for URL query params.
+ */
+export function encodeCursor(row: { createdAt: Date; id: string }): string {
+  const payload: AuditCursor = { createdAt: row.createdAt.toISOString(), id: row.id };
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}
+
+/**
+ * Decode a cursor string. Returns `null` on any invalid input so
+ * a garbage cursor degrades to a first-page query rather than a 500.
+ */
+export function decodeCursor(cursor: string): AuditCursor | null {
+  try {
+    const raw = Buffer.from(cursor, 'base64url').toString('utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'createdAt' in parsed &&
+      'id' in parsed &&
+      typeof (parsed as AuditCursor).createdAt === 'string' &&
+      typeof (parsed as AuditCursor).id === 'string'
+    ) {
+      return parsed as AuditCursor;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -107,9 +146,20 @@ export class AuditLogRepository {
   async list(filters: AuditLogListFilters): Promise<AuditLogEntity[]> {
     assertTenantId(filters.organizationId);
     const qb = this.buildScopedQuery(filters);
-    qb.orderBy('log.created_at', 'DESC')
-      .take(this.boundedLimit(filters.limit))
-      .skip(filters.offset ?? 0);
+    qb.orderBy('log.created_at', 'DESC').addOrderBy('log.id', 'DESC');
+
+    const parsed = filters.cursor ? decodeCursor(filters.cursor) : null;
+    if (parsed !== null) {
+      // Keyset: rows strictly before (created_at, id) using DESC order.
+      qb.andWhere(`(log.created_at, log.id) < (:cursorAt::timestamptz, :cursorId::uuid)`, {
+        cursorAt: parsed.createdAt,
+        cursorId: parsed.id,
+      });
+    } else {
+      qb.skip(filters.offset ?? 0);
+    }
+
+    qb.take(this.boundedLimit(filters.limit));
     return qb.getMany();
   }
 

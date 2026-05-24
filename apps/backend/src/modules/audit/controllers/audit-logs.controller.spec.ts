@@ -1,5 +1,6 @@
 import type { AuditLogEntity } from '../entities/audit-log.entity';
 import type { AuditLogRepository } from '../repositories/audit-log.repository';
+import { decodeCursor } from '../repositories/audit-log.repository';
 import { AuditLogsController } from './audit-logs.controller';
 import { ListAuditLogsQueryDto } from '../dto/list-audit-logs-query.dto';
 
@@ -56,7 +57,7 @@ describe('AuditLogsController (BE-AUDIT-20)', () => {
 
       const result = await h.controller.list(ORG_ID, buildQuery());
 
-      expect(result.pagination).toEqual({ limit: 50, offset: 0, total: 1 });
+      expect(result.pagination).toEqual({ limit: 50, offset: 0, total: 1, nextCursor: null });
       expect(result.logs).toHaveLength(1);
       expect(result.logs[0]).toMatchObject({
         module: 'chart_of_accounts',
@@ -132,6 +133,45 @@ describe('AuditLogsController (BE-AUDIT-20)', () => {
       expect(result.pagination.total).toBe(0);
       expect(h.list).not.toHaveBeenCalled();
       expect(h.count).not.toHaveBeenCalled();
+    });
+
+    it('returns nextCursor when a full page was returned', async () => {
+      const h = buildHarness();
+      const rows = Array.from({ length: 50 }, (_, i) =>
+        buildLog({ id: `${i + 1}`.padStart(8, '0') + '-0000-4000-8000-000000000000' }),
+      );
+      h.list.mockResolvedValue(rows);
+      h.count.mockResolvedValue(120);
+
+      const result = await h.controller.list(ORG_ID, buildQuery({ limit: 50 }));
+
+      expect(result.pagination.nextCursor).not.toBeNull();
+      const decoded = decodeCursor(result.pagination.nextCursor!);
+      expect(decoded?.id).toBe(rows.at(-1)?.id);
+    });
+
+    it('returns nextCursor=null when the page is incomplete', async () => {
+      const h = buildHarness();
+      h.list.mockResolvedValue([buildLog()]);
+      h.count.mockResolvedValue(1);
+
+      const result = await h.controller.list(ORG_ID, buildQuery({ limit: 50 }));
+
+      expect(result.pagination.nextCursor).toBeNull();
+    });
+
+    it('forwards cursor param to the repository', async () => {
+      const h = buildHarness();
+      h.list.mockResolvedValue([]);
+      h.count.mockResolvedValue(0);
+
+      const cursor = Buffer.from(
+        JSON.stringify({ createdAt: '2026-01-15T10:00:00.000Z', id: ORG_ID }),
+        'utf8',
+      ).toString('base64url');
+      await h.controller.list(ORG_ID, buildQuery({ cursor }));
+
+      expect(h.list).toHaveBeenCalledWith(expect.objectContaining({ cursor }));
     });
   });
 });

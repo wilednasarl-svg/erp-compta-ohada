@@ -21,14 +21,22 @@ The system SHALL maintain a single `audit_logs` table that records every mutatio
 - **WHEN** a user successfully authenticates
 - **THEN** `audit_logs` receives a row with `module='auth'`, `action='login_success'`, `event_type='auth.login_success'`, `before=null`, `after=null`
 
-### Requirement: `auth_events` is preserved as a back-compat Postgres view
+### Requirement: `auth_events` table is extended in place; no RENAME, no view
 
-The Module 1 table `auth_events` SHALL be replaced by a Postgres `VIEW auth_events AS SELECT * FROM audit_logs WHERE module IN ('auth','organizations','rbac')`. The view's column shape MUST match what `AuthEventEntity` expected (column names and types preserved). Module 1 services and controllers (`AuthEventsService`, `AuthEventsController`, `AuthEventRepository`) MUST continue to function without code change.
+The Module 1 table `auth_events` SHALL be **extended in place** by migration `0019` with the new columns (`module`, `action`, `entity_type`, `entity_id`, `before`, `after`, `request_id`). No table rename and no Postgres view are introduced — the physical table keeps its name `auth_events` and is mapped by **two** TypeORM entities pointing at the same row shape:
 
-#### Scenario: Module 1's AuthEventsController only sees auth-relevant events
-- **WHEN** a chart_of_accounts update is recorded (via `module='chart_of_accounts'`)
-- **THEN** `GET /organizations/:id/auth-events` does NOT return that row (it's not in the `auth_events` view)
-- **AND** `GET /audit/logs?module=chart_of_accounts` DOES return it
+- `AuthEventEntity` (Module 1) — legacy projection used by `AuthEventsController` under `/organizations/:id/auth-events`. Sees only the columns Module 1 has always known.
+- `AuditLogEntity` (Module 7) — modern projection exposing all columns including `module`, `action`, `entity_type`, `entity_id`, `before`, `after`. Backs the new `/audit/logs` endpoint.
+
+The write path is **unified**: `AuthEventsService.record(eventType, ctx, metadata)` derives `module` + `action` from `eventType` (split on first `.`) and delegates to `AuditTrailService.record`, which is the only sanctioned writer. The legacy `AuthEventRepository.record` MUST be **removed** in this change — post-0019 it would insert NULL into the NOT NULL `module` / `action` columns and crash. `AuthEventRepository` is preserved as a read-only accessor for `AuthEventsController` (the `/organizations/:id/auth-events` projection).
+
+#### Scenario: Both entities address the same physical row
+- **WHEN** an `auth.login_success` is recorded via `AuthEventsService.record('auth.login_success', ctx)`
+- **THEN** the same row is observable via both `AuthEventEntity` (`event_type='auth.login_success'`) and `AuditLogEntity` (`module='auth'`, `action='login_success'`, `event_type='auth.login_success'`)
+
+#### Scenario: `AuthEventRepository.record` is removed
+- **WHEN** any future code attempts to call `AuthEventRepository.record(...)`
+- **THEN** TypeScript MUST fail the build — the method does not exist; the only sanctioned write path is `AuditTrailService.record` (called either directly by Module 7+ emitters or indirectly via `AuthEventsService.record` for Module 1 codes)
 
 ### Requirement: API is append-only — no UPDATE, no DELETE endpoints
 
@@ -40,11 +48,17 @@ The HTTP surface for audit logs SHALL expose only read endpoints. No `POST` (the
 
 ### Requirement: Listing audit logs is tenant-scoped and permission-gated
 
-`GET /audit/logs` MUST be guarded by `JwtAuthGuard + TenantGuard + PermissionsGuard` with `@RequirePermission('audit.read')`. Results MUST filter on `organization_id = currentOrg.id` (or include only `organization_id IS NULL` rows for tenant-less events the caller is meant to see).
+`GET /audit/logs` MUST be guarded by `JwtAuthGuard + TenantGuard + PermissionsGuard` with `@RequirePermission('audit.read')`. Results MUST filter **strictly** on `organization_id = currentOrg.id`. Tenant-less rows (`organization_id IS NULL` — e.g. a failed signup before org selection, cross-tenant attack telemetry) are **never** returned through this endpoint. Operators who need to see system-wide audit must use a privileged out-of-band path (DB console, future `/admin/audit` route), not the tenant-scoped UI.
+
+This is more restrictive than the natural `tenant_id IS NULL OR tenant_id = current` form: a comptable from org A should not be able to see a failed signup by `attacker@evil.com` that has no org binding — the existence of that row already leaks reconnaissance info.
 
 #### Scenario: Cross-tenant listing is impossible
 - **WHEN** a user with `org_id = A` calls `GET /audit/logs?module=imports`
-- **THEN** the system returns only rows where `organization_id = A` or `organization_id IS NULL`; never returns rows for `org_id = B`
+- **THEN** the system returns only rows where `organization_id = A`; never returns rows for `org_id = B` and never returns rows where `organization_id IS NULL`
+
+#### Scenario: Tenant-less rows are invisible to org members
+- **WHEN** a failed `auth.signup` (no `organization_id`) is recorded, then a user from any org calls `GET /audit/logs`
+- **THEN** that row does NOT appear in the response
 
 #### Scenario: Permission gate refuses comptable
 - **WHEN** a `comptable` (no `audit.read`) calls `GET /audit/logs`

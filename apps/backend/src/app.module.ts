@@ -16,6 +16,9 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { RbacModule } from './modules/rbac/rbac.module';
+import { RulesModule } from './modules/rules/rules.module';
+import { TransformationsModule } from './modules/transformations/transformations.module';
+import { WorkflowsModule } from './modules/workflows/workflows.module';
 
 @Module({
   imports: [
@@ -48,6 +51,21 @@ import { RbacModule } from './modules/rbac/rbac.module';
     // Le commit définitif vers les tables comptables réelles arrivera
     // en vague 2 / Module 4.
     ImportsModule,
+    // Module 4 wave 1 — Transformation Engine. Retraitement comptable :
+    // reclassement, ajustement, historique. Les écritures sources
+    // (import_staging_entries) restent immutables ; chaque transformation
+    // est un artefact supplémentaire tracé et auditable.
+    TransformationsModule,
+    // Module 5 wave 1 — Rule Engine. Règles d'automatisation comptable :
+    // conditions JSONB (compte, journal, montant, date, libellé) + actions
+    // (reclassement, centre de coûts, tag). Simulate avant apply, toutes
+    // les mutations passent par TransformationService (Module 4).
+    RulesModule,
+    // Module 6 wave 1 — Workflow engine. Validation multi-niveaux :
+    // draft → in_review → approved → locked. Cible vague 1 : import_session.
+    // `WorkflowService` est exporté pour que d'autres modules puissent
+    // appeler `assertNotLocked` (invariant fort sur l'état `locked`).
+    WorkflowsModule,
     // Module 10 wave 1 — Document engine. Upload / store / list /
     // soft-delete pour les pièces comptables (factures, contrats,
     // justificatifs) avec un `DocumentStorageService` abstrait (driver

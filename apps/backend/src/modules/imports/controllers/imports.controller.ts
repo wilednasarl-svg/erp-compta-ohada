@@ -34,6 +34,7 @@ import { CreateImportSessionDto } from '../dto/create-import-session.dto';
 import { PreviewImportDto } from '../dto/preview-import.dto';
 import {
   ImportSessionService,
+  type CommitResult,
   type PreviewResult,
   type SessionSummary,
 } from '../services/import-session.service';
@@ -217,6 +218,29 @@ export class ImportsController {
       buildAuditRequestContext(req),
       { limit: query.limit, offset: query.offset },
     );
+  }
+
+  // ─── Commit (wave 2) ────────────────────────────────────────────────
+
+  @Post('sessions/:sessionId/commit')
+  @RequirePermission('imports.commit')
+  @HttpCode(HttpStatus.OK)
+  async commitSession(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
+  ): Promise<{ result: CommitResult }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const result = await this.importSessions.commitSession(
+      asTenantId(tokenOrgId),
+      sessionId,
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
+    return { result };
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────

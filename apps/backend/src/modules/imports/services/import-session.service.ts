@@ -19,6 +19,11 @@ import { ImportFileRepository } from '../repositories/import-file.repository';
 import { ImportSessionRepository } from '../repositories/import-session.repository';
 import { ImportStagingEntryRepository } from '../repositories/import-staging-entry.repository';
 import type { ImportSourceType, ValidationError } from '../types/import-status';
+
+export interface CommitResult {
+  readonly sessionId: string;
+  readonly committedRows: number;
+}
 import type { MappedRow, TargetField } from '../types/mapping';
 import { FileParserService } from './file-parser.service';
 import { MappingService } from './mapping.service';
@@ -315,7 +320,8 @@ export class ImportSessionService {
         await this.stagingEntries.bulkInsert(organizationId, batch);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown parsing error';
+      const rawMessage = err instanceof Error ? err.message : 'Unknown parsing error';
+      const message = ImportSessionService.sanitizeErrorMessage(rawMessage);
       await this.files.updateStatus(fileId, organizationId, 'parse_failed', message);
       await this.sessions.markFailed(sessionId, organizationId, message);
       await this.audit.record({
@@ -323,7 +329,11 @@ export class ImportSessionService {
         action: 'session_failed',
         entityType: 'import_session',
         entityId: sessionId,
-        metadata: { reason: 'parse_failed', message },
+        metadata: {
+          reason: 'parse_failed',
+          message,
+          rawMessage: err instanceof Error ? err.message : String(err),
+        },
         ctx: { ...ctx, userId: actorUserId, organizationId },
         legacyEventType: 'imports.session_failed',
       });
@@ -580,5 +590,97 @@ export class ImportSessionService {
       sha256: hash.digest('hex'),
       actualSize: statResult.size,
     };
+  }
+
+  // ─── Commit ─────────────────────────────────────────────────────────
+
+  /**
+   * Module 3 wave 2 — commit a validated session.
+   *
+   * Pipeline:
+   *   1. Verify session exists + belongs to org + status is `validated`.
+   *   2. Count staging entries with non-empty `errors` — if any, refuse
+   *      with `IMPORT_SESSION_NOT_VALID` so the user fixes them first.
+   *   3. Transition `validated → ready_for_import` (guards against a
+   *      concurrent double-commit).
+   *   4. TODO(Module 4): write clean staging rows to accounting entries
+   *      table in a single transaction. When Module 4 lands, replace the
+   *      stub below with:
+   *        await this.accountingEntries.commitFromStaging(
+   *          organizationId, sessionId, manager
+   *        );
+   *   5. Transition `ready_for_import → completed`.
+   *   6. Emit `imports.session_committed` audit event.
+   *
+   * Idempotence: a `completed` session is detected early and the same
+   * result is returned without re-running steps 3–5.
+   */
+  async commitSession(
+    organizationId: TenantId,
+    sessionId: string,
+    actorUserId: string,
+    ctx: AuditContext,
+  ): Promise<CommitResult> {
+    const session = await this.sessions.findById(sessionId, organizationId);
+    if (session === null) {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_FOUND);
+    }
+
+    // Idempotence — already committed.
+    if (session.status === 'completed') {
+      const totals = await this.stagingEntries.countBySession(sessionId, organizationId);
+      return { sessionId, committedRows: totals.total };
+    }
+
+    if (session.status !== 'validated') {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_PARSED, {
+        message: `Session must be in 'validated' status to commit (current: ${session.status})`,
+      });
+    }
+
+    const totals = await this.stagingEntries.countBySession(sessionId, organizationId);
+    if (totals.withErrors > 0) {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
+        message: `Cannot commit: ${totals.withErrors} row(s) still have validation errors`,
+        details: { errorRows: totals.withErrors, totalRows: totals.total },
+      });
+    }
+
+    // Step 3 — atomic gate: only moves if current status is `validated`.
+    await this.sessions.updateStatus(sessionId, organizationId, 'ready_for_import');
+
+    // Step 4 — TODO(Module 4): write staging rows to accounting entries.
+    // Until Module 4 is available, the commit is a logical transition only.
+
+    // Step 5 — mark complete.
+    await this.sessions.updateStatus(sessionId, organizationId, 'completed');
+
+    await this.audit.record({
+      module: ImportSessionService.MODULE,
+      action: 'session_committed',
+      entityType: 'import_session',
+      entityId: sessionId,
+      after: { committedRows: totals.total, status: 'completed' },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'imports.session_committed',
+    });
+
+    return { sessionId, committedRows: totals.total };
+  }
+
+  /**
+   * Strip absolute filesystem paths from a parser error message before
+   * persisting to `failure_reason` and exposing via the API.
+   *
+   * Keeps the original message intact in audit log metadata (non-public).
+   * Defense: audit Module 3 Sec-L1 — info disclosure via failure_reason.
+   */
+  static sanitizeErrorMessage(raw: string): string {
+    // POSIX absolute paths: /foo/bar, /var/uploads/orgid/...
+    // Windows absolute paths: C:\foo\bar or \\share\path
+    const sanitized = raw
+      .replace(/(?:[A-Za-z]:[/\\]|\/)[^\s"'<>{}|\\^[\]`]*[^\s"'<>{}|\\^[\]`.,;:]/g, '<path>')
+      .slice(0, 500);
+    return sanitized || 'Parsing error';
   }
 }

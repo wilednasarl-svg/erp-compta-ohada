@@ -239,6 +239,7 @@ describe('ImportSessionService', () => {
         }),
       ).rejects.toThrow('boom');
 
+      // Sanitized message: 'boom' has no path, so it passes through unchanged.
       expect(filesRepo.updateStatus).toHaveBeenCalledWith(FILE_ID, ORG_ID, 'parse_failed', 'boom');
       expect(sessionsRepo.markFailed).toHaveBeenCalledWith(SESSION_ID, ORG_ID, 'boom');
       expect(audit.record).toHaveBeenCalledWith(
@@ -292,6 +293,143 @@ describe('ImportSessionService', () => {
           legacyEventType: 'imports.file_parsed',
         }),
       );
+    });
+  });
+
+  // ─── sanitizeErrorMessage ──────────────────────────────────────────
+
+  describe('sanitizeErrorMessage (static)', () => {
+    it('strips POSIX absolute paths', () => {
+      const raw = 'Cannot open file /var/uploads/org-1/sess-2/20240101-data.csv: ENOENT';
+      expect(ImportSessionService.sanitizeErrorMessage(raw)).not.toContain('/var/uploads');
+    });
+
+    it('strips Windows absolute paths (drive letter)', () => {
+      const raw = 'Failed to read C:\\Users\\erp\\uploads\\data.csv';
+      expect(ImportSessionService.sanitizeErrorMessage(raw)).not.toContain('C:\\');
+    });
+
+    it('preserves innocuous messages unchanged', () => {
+      const msg = 'Row 42: debit must be a number';
+      expect(ImportSessionService.sanitizeErrorMessage(msg)).toBe(msg);
+    });
+
+    it('falls back to "Parsing error" for empty/blank inputs', () => {
+      expect(ImportSessionService.sanitizeErrorMessage('')).toBe('Parsing error');
+    });
+
+    it('truncates very long messages to 500 chars', () => {
+      const long = 'x'.repeat(600);
+      expect(ImportSessionService.sanitizeErrorMessage(long)).toHaveLength(500);
+    });
+  });
+
+  // ─── commitSession ────────────────────────────────────────────────
+
+  describe('commitSession', () => {
+    function fakeValidatedSession() {
+      return {
+        id: SESSION_ID,
+        organizationId: ORG_ID,
+        status: 'validated' as const,
+        sourceType: 'csv' as const,
+        label: null,
+        totalLines: 10,
+        errorLines: 0,
+        createdAt: new Date(),
+        stagingEntries: [],
+        files: [],
+        createdBy: null,
+        createdById: USER_ID,
+        company: null,
+        companyId: null,
+        fiscalYear: null,
+        failureReason: null,
+      };
+    }
+
+    it('commits a clean validated session and emits audit event', async () => {
+      const { service, sessionsRepo, stagingRepo, audit } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 5, withErrors: 0 });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      expect(result).toEqual({ sessionId: SESSION_ID, committedRows: 5 });
+      expect(sessionsRepo.updateStatus).toHaveBeenCalledWith(
+        SESSION_ID,
+        ORG_ID,
+        'ready_for_import',
+      );
+      expect(sessionsRepo.updateStatus).toHaveBeenCalledWith(SESSION_ID, ORG_ID, 'completed');
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'session_committed',
+          legacyEventType: 'imports.session_committed',
+          after: { committedRows: 5, status: 'completed' },
+        }),
+      );
+    });
+
+    it('refuses when any staging rows have errors', async () => {
+      const { service, sessionsRepo, stagingRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 10, withErrors: 3 });
+
+      await expect(
+        service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
+      ).rejects.toMatchObject({ code: 'IMPORT_SESSION_NOT_VALID' });
+    });
+
+    it('refuses when session is not in validated status', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue({
+        ...fakeValidatedSession(),
+        status: 'parsed' as const,
+      });
+
+      await expect(
+        service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
+      ).rejects.toMatchObject({ code: 'IMPORT_SESSION_NOT_PARSED' });
+    });
+
+    it('is idempotent: already-completed session returns totals without re-committing', async () => {
+      const { service, sessionsRepo, stagingRepo, audit } = buildService();
+      sessionsRepo.findById.mockResolvedValue({
+        ...fakeValidatedSession(),
+        status: 'completed' as const,
+      });
+      stagingRepo.countBySession.mockResolvedValue({ total: 5, withErrors: 0 });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      expect(result.committedRows).toBe(5);
+      expect(sessionsRepo.updateStatus).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when session not found', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
+      ).rejects.toMatchObject({ code: 'IMPORT_SESSION_NOT_FOUND' });
     });
   });
 });

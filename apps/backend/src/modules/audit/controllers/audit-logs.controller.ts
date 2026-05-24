@@ -11,7 +11,7 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { ListAuditLogsQueryDto } from '../dto/list-audit-logs-query.dto';
 import type { AuditLogEntity } from '../entities/audit-log.entity';
-import { AuditLogRepository } from '../repositories/audit-log.repository';
+import { AuditLogRepository, encodeCursor } from '../repositories/audit-log.repository';
 
 /**
  * Stable wire shape for an audit log row. Decoupled from
@@ -108,7 +108,7 @@ export class AuditLogsController {
     @Query() query: ListAuditLogsQueryDto,
   ): Promise<{
     logs: ReadonlyArray<AuditLogView>;
-    pagination: { limit: number; offset: number; total: number };
+    pagination: { limit: number; offset: number; total: number; nextCursor: string | null };
   }> {
     // Defensive: `TenantGuard` should always bind `currentOrg`, but
     // surfacing a clear 401 here saves a confusing tenant-scope error
@@ -126,7 +126,7 @@ export class AuditLogsController {
     if (query.from !== undefined && query.to !== undefined && query.from > query.to) {
       return {
         logs: [],
-        pagination: { limit: query.limit, offset: query.offset, total: 0 },
+        pagination: { limit: query.limit, offset: query.offset, total: 0, nextCursor: null },
       };
     }
 
@@ -141,6 +141,7 @@ export class AuditLogsController {
       to: query.to,
       limit: query.limit,
       offset: query.offset,
+      cursor: query.cursor,
     };
 
     const [rows, total] = await Promise.all([
@@ -157,9 +158,13 @@ export class AuditLogsController {
       }),
     ]);
 
+    const lastRow = rows.at(-1);
+    const nextCursor =
+      rows.length === query.limit && lastRow !== undefined ? encodeCursor(lastRow) : null;
+
     return {
       logs: rows.map(toView),
-      pagination: { limit: query.limit, offset: query.offset, total },
+      pagination: { limit: query.limit, offset: query.offset, total, nextCursor },
     };
   }
 }

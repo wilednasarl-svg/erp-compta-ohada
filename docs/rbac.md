@@ -45,6 +45,11 @@ admin mutation endpoint we wire later).
 | `mfa.manage_self`               |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
 | `chart_of_accounts.read`        |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
 | `chart_of_accounts.write`       |   ✓   |        ✓         |      ✓       |           |          |                 |
+| `imports.read`                  |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
+| `imports.write`                 |   ✓   |        ✓         |      ✓       |     ✓     |          |                 |
+| `documents.read`                |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
+| `documents.write`               |   ✓   |        ✓         |      ✓       |     ✓     |          |                 |
+| `audit_logs.read`               |   ✓   |        ✓         |      ✓       |           |    ✓     |                 |
 
 > **Note on `chart_of_accounts.write`** — the rôle `comptable` (saisie)
 > is intentionally **excluded**. Letting every data-entry user spawn

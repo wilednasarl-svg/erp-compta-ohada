@@ -49,10 +49,18 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   [ERROR_CODES.CHART_ACCOUNT_NOT_DELETABLE]: 409,
   [ERROR_CODES.IMPORT_SESSION_NOT_DRAFT]: 409,
   [ERROR_CODES.IMPORT_SESSION_NOT_PARSED]: 409,
+  [ERROR_CODES.IMPORT_SESSION_NOT_VALID]: 409,
   [ERROR_CODES.IMPORT_FILE_DUPLICATE]: 409,
 
   // 410 — the targeted resource existed but is no longer usable.
   [ERROR_CODES.INVITATION_EXPIRED]: 410,
+
+  // 404 — Module 4 Transformation Engine.
+  [ERROR_CODES.TRANSFORMATION_SOURCE_ENTRY_NOT_FOUND]: 404,
+
+  // 422 — Module 4 Transformation Engine.
+  [ERROR_CODES.TRANSFORMATION_NO_FIELD_CHANGED]: 422,
+  [ERROR_CODES.TRANSFORMATION_ADJUSTMENT_INVALID]: 422,
 
   // 422 — input rejected by validation (semantic, not syntactic).
   [ERROR_CODES.AUTH_WEAK_PASSWORD]: 422,
@@ -72,6 +80,16 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
 
   // 500 — infra failure surfaced to the caller (storage driver crashed).
   [ERROR_CODES.DOC_STORAGE_FAILURE]: 500,
+
+  // Module 5 — Rule Engine.
+  [ERROR_CODES.RULE_NOT_FOUND]: 404,
+  [ERROR_CODES.RULE_INVALID_CONDITION]: 422,
+  [ERROR_CODES.RULE_INVALID_ACTION]: 422,
+
+  // Module 6 — Workflow engine.
+  [ERROR_CODES.WORKFLOW_INSTANCE_NOT_FOUND]: 404,
+  [ERROR_CODES.WORKFLOW_TRANSITION_INVALID]: 409,
+  [ERROR_CODES.WORKFLOW_LOCKED]: 409,
 };
 
 /**

@@ -34,6 +34,15 @@ import {
  *
  * `MAX_LIMIT` mirrors the legacy `ListAuthEventsQueryDto` so the two
  * audit views feel consistent to a frontend developer.
+ *
+ * Cursor pagination
+ * -----------------
+ * Pass `?cursor=<opaque>` instead of `?offset=N` for stable pagination
+ * over a live journal. The cursor encodes `{createdAt, id}` of the last
+ * row seen; the query becomes `(created_at, id) < (cursor.at, cursor.id)`
+ * so inserts during navigation don't shift rows into/out of pages.
+ * When `cursor` is present, `offset` is ignored.
+ * The response includes `nextCursor` when more rows exist.
  */
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -94,4 +103,15 @@ export class ListAuditLogsQueryDto {
   @IsInt({ message: 'offset must be an integer' })
   @Min(0, { message: 'offset must be >= 0' })
   offset: number = 0;
+
+  /**
+   * Opaque cursor returned by a previous `GET /audit/logs` response in
+   * `pagination.nextCursor`. When present, `offset` is ignored and the
+   * query uses `(created_at, id) < (cursor.at, cursor.id)` for stable
+   * keyset pagination. The value is base64url(JSON) — treat as opaque.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  cursor?: string;
 }

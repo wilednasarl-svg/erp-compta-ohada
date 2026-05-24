@@ -87,6 +87,20 @@ export interface AuditRecordOptions {
  * row — legacy or generic — flows through a single write path and
  * lands in a uniformly enriched row.
  */
+/**
+ * Action codes follow the `snake_case` convention shared with the
+ * canonical Module 1 `AuthEventType` codes (`login_success`,
+ * `account_created`, `session_uploaded`, …). The regex is intentionally
+ * lenient (allows trailing dots for namespaced actions like
+ * `mfa.verify_failed`) but rejects spaces, capitals, and typos that
+ * couldn't possibly be a real catalog code.
+ *
+ * Centralised here so both the write path (`AuditTrailService.record`)
+ * and the read path (`ListAuditLogsQueryDto.action` filter) validate
+ * against the same shape.
+ */
+export const AUDIT_ACTION_REGEX = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/;
+
 @Injectable()
 export class AuditTrailService {
   private readonly logger = new Logger(AuditTrailService.name);
@@ -94,6 +108,21 @@ export class AuditTrailService {
   constructor(private readonly repo: AuditLogRepository) {}
 
   async record(options: AuditRecordOptions): Promise<AuditLogEntity | null> {
+    // Runtime guard against caller typos (audit Module 7 Code-H1).
+    // Compile-time we get `module: Exclude<AuditModule, '_legacy'>` —
+    // `action` is intentionally a free-form `string` because each
+    // module owns its own action catalogue. The regex rejects
+    // obviously-wrong values (spaces, capitals, leading digits) so a
+    // single typo doesn't silently land in the journal and never
+    // match a dashboard filter.
+    if (!AUDIT_ACTION_REGEX.test(options.action)) {
+      this.logger.warn(
+        `record: rejected '${options.module}.${options.action}' — ` +
+          `action must match ${AUDIT_ACTION_REGEX.source} (snake_case, optional dotted namespace)`,
+      );
+      return null;
+    }
+
     try {
       return await this.repo.record({
         module: options.module,
