@@ -63,8 +63,8 @@ export class PeriodsService {
       await this.createQuarterlySubPeriods(organizationId, annual.id, year);
     }
 
-    await this.emitAudit('journals.period_created', annual.id, { year, split }, ctx).catch(
-      (e) => this.logger.warn(`Audit failed: ${String(e)}`),
+    await this.emitAudit('journals.period_created', annual.id, { year, split }, ctx).catch((e) =>
+      this.logger.warn(`Audit failed: ${String(e)}`),
     );
 
     return annual;
@@ -104,9 +104,12 @@ export class PeriodsService {
       }
     }
 
-    await this.emitAudit('journals.period_closed', periodId, { kind: period.kind, label: period.label }, ctx).catch(
-      (e) => this.logger.warn(`Audit failed: ${String(e)}`),
-    );
+    await this.emitAudit(
+      'journals.period_closed',
+      periodId,
+      { kind: period.kind, label: period.label },
+      ctx,
+    ).catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
   }
 
   async reopenPeriod(
@@ -129,9 +132,12 @@ export class PeriodsService {
 
     await this.periodsRepo.reopenPeriod(periodId, reason.trim());
 
-    await this.emitAudit('journals.period_reopened', periodId, { reason, label: period.label }, ctx).catch(
-      (e) => this.logger.warn(`Audit failed: ${String(e)}`),
-    );
+    await this.emitAudit(
+      'journals.period_reopened',
+      periodId,
+      { reason, label: period.label },
+      ctx,
+    ).catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -156,7 +162,14 @@ export class PeriodsService {
       { m: 12, label: `Déc ${year}`, start: `${year}-12-01`, end: `${year}-12-31` },
     ];
     for (const { label, start, end } of months) {
-      await this.periodsRepo.create({ organizationId, parentId, kind: 'MONTHLY', label, startDate: start, endDate: end });
+      await this.periodsRepo.create({
+        organizationId,
+        parentId,
+        kind: 'MONTHLY',
+        label,
+        startDate: start,
+        endDate: end,
+      });
     }
   }
 
@@ -172,7 +185,14 @@ export class PeriodsService {
       { label: `T4 ${year}`, start: `${year}-10-01`, end: `${year}-12-31` },
     ];
     for (const { label, start, end } of quarters) {
-      await this.periodsRepo.create({ organizationId, parentId, kind: 'QUARTERLY', label, startDate: start, endDate: end });
+      await this.periodsRepo.create({
+        organizationId,
+        parentId,
+        kind: 'QUARTERLY',
+        label,
+        startDate: start,
+        endDate: end,
+      });
     }
   }
 

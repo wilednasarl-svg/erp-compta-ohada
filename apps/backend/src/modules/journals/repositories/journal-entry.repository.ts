@@ -56,7 +56,10 @@ export class JournalEntryRepository {
     return repo.save(entity);
   }
 
-  async findById(id: string, organizationId: TenantId | string): Promise<JournalEntryEntity | null> {
+  async findById(
+    id: string,
+    organizationId: TenantId | string,
+  ): Promise<JournalEntryEntity | null> {
     assertTenantId(organizationId);
     return this.repo.findOne({ where: { id, organizationId }, relations: ['lines'] });
   }
@@ -74,7 +77,8 @@ export class JournalEntryRepository {
       .where('e.organization_id = :organizationId', { organizationId });
 
     if (filters.status) qb.andWhere('e.status = :status', { status: filters.status });
-    if (filters.journalId) qb.andWhere('e.journal_id = :journalId', { journalId: filters.journalId });
+    if (filters.journalId)
+      qb.andWhere('e.journal_id = :journalId', { journalId: filters.journalId });
     if (filters.periodId) qb.andWhere('e.period_id = :periodId', { periodId: filters.periodId });
 
     qb.orderBy('e.entry_date', 'DESC').addOrderBy('e.entry_number', 'DESC');
@@ -92,7 +96,12 @@ export class JournalEntryRepository {
   async updateStatus(
     id: string,
     status: JournalEntryStatus,
-    meta: Partial<Pick<JournalEntryEntity, 'validatedAt' | 'validatedById' | 'cancelledAt' | 'cancelledById' | 'cancelledReason'>>,
+    meta: Partial<
+      Pick<
+        JournalEntryEntity,
+        'validatedAt' | 'validatedById' | 'cancelledAt' | 'cancelledById' | 'cancelledReason'
+      >
+    >,
     manager?: EntityManager,
   ): Promise<void> {
     const repo = manager ? manager.getRepository(JournalEntryEntity) : this.repo;

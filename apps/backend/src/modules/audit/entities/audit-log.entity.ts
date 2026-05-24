@@ -51,6 +51,7 @@ export type AuditModule =
   | 'transformations'
   | 'rules'
   | 'workflows'
+  | 'journals'
   | 'reports'
   | 'documents'
   | 'ai'
