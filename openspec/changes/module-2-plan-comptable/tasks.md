@@ -1,31 +1,31 @@
 ## 1. Seed du plan comptable de référence OHADA AUDCIF
 
-- [ ] 1.1 Créer `apps/backend/src/modules/accounting-plan/seed/ohada-syscohada-audcif.ts` : tableau TS exhaustif `{ code, label, class, account_type, normal_balance, applicable_systems }[]` pour le Système Normal (~800 entrées, classes 1–9)
-- [ ] 1.2 Compléter le seed pour le Système Allégé (~600 entrées, sous-ensemble du Normal)
-- [ ] 1.3 Compléter le seed pour le Système Minimal de Trésorerie (~400 entrées, focus classes 5/6/7)
-- [ ] 1.4 Test unitaire `seed.spec.ts` : pas de doublon de `code`, chaque code matche `/^\d{2,10}$/`, `class` cohérent avec le premier chiffre du code, `normal_balance` ∈ {D,C}, au moins un `applicable_systems` par ligne
+- [x] 1.1 Créer `apps/backend/src/modules/accounting-plan/seed/ohada-syscohada-audcif.ts` : tableau TS exhaustif `{ code, label, class, account_type, normal_balance, applicable_systems }[]` pour le Système Normal (~800 entrées, classes 1–9)
+- [x] 1.2 Compléter le seed pour le Système Allégé (~600 entrées, sous-ensemble du Normal)
+- [x] 1.3 Compléter le seed pour le Système Minimal de Trésorerie (~400 entrées, focus classes 5/6/7)
+- [x] 1.4 Test unitaire `seed.spec.ts` : pas de doublon de `code`, chaque code matche `/^\d{2,10}$/`, `class` cohérent avec le premier chiffre du code, `normal_balance` ∈ {D,C}, au moins un `applicable_systems` par ligne
 
 ## 2. Migrations base de données
 
-- [ ] 2.1 Migration `0011_create_reference_chart_accounts.ts` : crée la table + indexes (UNIQUE code, INDEX class, INDEX GIN applicable_systems) + insère les ~800 lignes du seed via `queryRunner.manager.insert()` en batches de 100
-- [ ] 2.2 Migration `0012_create_organization_accounting_configs.ts` : crée la table 1-1 avec `organizations` (PK = organization_id, FK CASCADE, CHECK system IN ('NORMAL','MINIMAL','ALLEGE'))
-- [ ] 2.3 Migration `0013_create_organization_chart_accounts.ts` : crée la table + indexes composites + FK self-referencing parent_id (ON DELETE RESTRICT) + UNIQUE(organization_id, code)
-- [ ] 2.4 Migration `0014_add_chart_of_accounts_permissions.ts` : insère les 2 permissions (`chart_of_accounts.read`, `chart_of_accounts.write`) + assignations dans `role_permissions` selon la matrice D6 du design (ON CONFLICT DO NOTHING)
-- [ ] 2.5 Vérifier que chaque migration up/down est symétrique et idempotente (CREATE EXTENSION IF NOT EXISTS pour pgcrypto si besoin)
+- [x] 2.1 Migration `0011_create_reference_chart_accounts.ts` : crée la table + indexes (UNIQUE code, INDEX class, INDEX GIN applicable_systems) + insère les ~800 lignes du seed via `queryRunner.manager.insert()` en batches de 100
+- [x] 2.2 Migration `0012_create_organization_accounting_configs.ts` : crée la table 1-1 avec `organizations` (PK = organization_id, FK CASCADE, CHECK system IN ('NORMAL','MINIMAL','ALLEGE'))
+- [x] 2.3 Migration `0013_create_organization_chart_accounts.ts` : crée la table + indexes composites + FK self-referencing parent_id (ON DELETE RESTRICT) + UNIQUE(organization_id, code)
+- [x] 2.4 Migration `0014_add_chart_of_accounts_permissions.ts` : insère les 2 permissions (`chart_of_accounts.read`, `chart_of_accounts.write`) + assignations dans `role_permissions` selon la matrice D6 du design (ON CONFLICT DO NOTHING)
+- [x] 2.5 Vérifier que chaque migration up/down est symétrique et idempotente (CREATE EXTENSION IF NOT EXISTS pour pgcrypto si besoin)
 
 ## 3. Entités TypeORM
 
-- [ ] 3.1 `ReferenceAccountEntity` (table `reference_chart_accounts`, immuable côté code applicatif)
-- [ ] 3.2 `OrganizationAccountEntity` (table `organization_chart_accounts`, avec relation self `@ManyToOne(() => OrganizationAccountEntity) parent` et `@OneToMany(...) children`)
-- [ ] 3.3 `OrganizationAccountingConfigEntity` (1-1 avec OrganizationEntity, type `enum AccountingSystem { NORMAL, MINIMAL, ALLEGE }`)
-- [ ] 3.4 Étendre `OrganizationEntity` du Module 1 avec `@OneToOne(() => OrganizationAccountingConfigEntity)` côté JoinColumn dans la config
+- [x] 3.1 `ReferenceAccountEntity` (table `reference_chart_accounts`, immuable côté code applicatif)
+- [x] 3.2 `OrganizationAccountEntity` (table `organization_chart_accounts`, avec relation self `@ManyToOne(() => OrganizationAccountEntity) parent` et `@OneToMany(...) children`)
+- [x] 3.3 `OrganizationAccountingConfigEntity` (1-1 avec OrganizationEntity, type `enum AccountingSystem { NORMAL, MINIMAL, ALLEGE }`)
+- [x] 3.4 Étendre `OrganizationEntity` du Module 1 avec `@OneToOne(() => OrganizationAccountingConfigEntity)` côté JoinColumn dans la config
 
 ## 4. Repositories
 
-- [ ] 4.1 `ReferenceAccountRepository` : `listBySystem(system)`, `findByCode(code)` (read-only)
-- [ ] 4.2 `OrganizationAccountRepository` : tenant-scopé (paramètre `TenantId` obligatoire), méthodes `listByOrganization`, `findByCode`, `findById`, `create`, `update`, `delete`, `countChildren`, `existsAnyByCodePrefix`
-- [ ] 4.3 `OrganizationAccountingConfigRepository` : `findByOrganizationId`, `create` (en transaction avec org)
-- [ ] 4.4 Tests unitaires repositories : invariant `assertTenantId` enforcé, requêtes filtrent toujours sur `organization_id`
+- [x] 4.1 `ReferenceAccountRepository` : `listBySystem(system)`, `findByCode(code)` (read-only)
+- [x] 4.2 `OrganizationAccountRepository` : tenant-scopé (paramètre `TenantId` obligatoire), méthodes `listByOrganization`, `findByCode`, `findById`, `create`, `update`, `delete`, `countChildren`, `existsAnyByCodePrefix`
+- [x] 4.3 `OrganizationAccountingConfigRepository` : `findByOrganizationId`, `create` (en transaction avec org)
+- [x] 4.4 Tests unitaires repositories : invariant `assertTenantId` enforcé, requêtes filtrent toujours sur `organization_id`
 
 ## 5. Service `ReferenceChartService`
 

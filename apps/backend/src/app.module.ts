@@ -11,6 +11,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
+import { AccountingPlanModule } from './modules/accounting-plan/accounting-plan.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 
@@ -35,6 +36,10 @@ import { RbacModule } from './modules/rbac/rbac.module';
     AuthModule,
     RbacModule,
     AuditModule,
+    // Module 2 (couche données — services et controllers à venir).
+    // Pose les entités + repositories du plan comptable OHADA SYSCOHADA
+    // AUDCIF : référentiel global + plans personnalisés par organisation.
+    AccountingPlanModule,
   ],
   controllers: [],
   providers: [

@@ -81,7 +81,7 @@ Pour les classes 4, 8, 9 le sens est fixé par compte dans le seed AUDCIF (ex : 
 
 Deux permissions nouvelles :
 - `chart_of_accounts.read` — assignée à : Admin, Expert-comptable, Chef de mission, Comptable, Auditeur, Client readonly.
-- `chart_of_accounts.write` — assignée à : Admin, Expert-comptable, Chef de mission, Comptable.
+- `chart_of_accounts.write` — assignée à : Admin, Expert-comptable, Chef de mission **uniquement**. Le rôle Comptable (saisie) en est volontairement exclu : laisser tout saisisseur créer des sous-comptes ad-hoc conduit à une prolifération anarchique du plan qui pollue les balances analytiques et casse la cohérence inter-dossiers du cabinet. La création de comptes custom relève d'une décision de gouvernance comptable, donc d'un rôle à autorité.
 
 Ajoutées via une migration TypeORM 0011 qui insère les permissions + les `role_permissions` correspondantes (idempotent, vérifie via `INSERT … ON CONFLICT DO NOTHING`).
 

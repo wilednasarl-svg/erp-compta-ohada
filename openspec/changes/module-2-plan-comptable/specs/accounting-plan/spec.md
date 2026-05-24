@@ -124,7 +124,7 @@ The system SHALL register two new permission codes — `chart_of_accounts.read` 
 | `admin` | ✓ | ✓ |
 | `expert_comptable` | ✓ | ✓ |
 | `chef_mission` | ✓ | ✓ |
-| `comptable` | ✓ | ✓ |
+| `comptable` | ✓ | ✗ |
 | `auditeur` | ✓ | ✗ |
 | `client_readonly` | ✓ | ✗ |
 

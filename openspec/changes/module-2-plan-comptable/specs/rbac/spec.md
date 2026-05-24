@@ -9,7 +9,7 @@ The RBAC permission catalog SHALL include two additional permission codes — `c
 | `admin` | ✓ | ✓ |
 | `expert_comptable` | ✓ | ✓ |
 | `chef_mission` | ✓ | ✓ |
-| `comptable` | ✓ | ✓ |
+| `comptable` | ✓ | ✗ |
 | `auditeur` | ✓ | ✗ |
 | `client_readonly` | ✓ | ✗ |
 
