@@ -103,6 +103,14 @@ describe('HTTP status mapping', () => {
       INVITATION_REVOKED: 409,
       RBAC_NO_POLICY_DECLARED: 403,
       RBAC_SYSTEM_ROLE_LOCKED: 403,
+      // Module 2 — chart of accounts catalogue.
+      CHART_ACCOUNT_NOT_FOUND: 404,
+      CHART_ACCOUNT_CODE_TAKEN: 409,
+      CHART_ACCOUNT_NOT_DELETABLE: 409,
+      CHART_ACCOUNT_INVALID_PARENT: 422,
+      CHART_ACCOUNT_INVALID_CODE: 422,
+      CHART_ACCOUNT_IMMUTABLE_CODE: 422,
+      ACCOUNTING_SYSTEM_REQUIRED: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

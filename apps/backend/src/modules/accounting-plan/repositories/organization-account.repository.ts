@@ -73,25 +73,39 @@ export class OrganizationAccountRepository {
   }
 
   /**
-   * `true` when at least one account in the org already starts with
-   * `codePrefix`. Used to enforce the "child code must extend parent
-   * code" invariant in `ChartOfAccountsService.createCustomAccount`.
+   * `true` when at least one STRICT DESCENDANT of `codePrefix` already
+   * exists in the org's chart. "Strict" = at least one extra digit after
+   * the prefix — the prefix itself doesn't satisfy the predicate. Used
+   * by `ChartOfAccountsService.createCustomAccount` to check whether a
+   * parent already has children (which would force the `POSTING → TITLE`
+   * promotion).
+   *
+   * Wildcard handling: `%`, `_`, and `\` in the input are escaped with
+   * `ESCAPE '\\'` before being passed to LIKE. OHADA codes are numeric
+   * only and would never legitimately contain wildcards, but escaping
+   * is a cheap safety net for the day a non-numeric identifier (e.g.
+   * analytical sub-account) is added to the schema.
    */
   async existsAnyByCodePrefix(
     codePrefix: string,
     organizationId: TenantId | string,
   ): Promise<boolean> {
     assertTenantId(organizationId);
+    const escaped = codePrefix.replace(/[\\%_]/g, '\\$&');
     const count = await this.repo
       .createQueryBuilder('a')
       .where('a.organization_id = :organizationId', { organizationId })
-      .andWhere('a.code LIKE :prefix', { prefix: `${codePrefix}%` })
+      // `_` after the escaped prefix forces at least one extra char —
+      // i.e. strict descendant. `_%` then allows zero or more further
+      // chars. ESCAPE '\\' tells Postgres that `\%` and `\_` in our
+      // pattern are literal characters, not wildcards.
+      .andWhere("a.code LIKE :prefix ESCAPE '\\'", { prefix: `${escaped}_%` })
       .getCount();
     return count > 0;
   }
 
   async create(input: {
-    organizationId: string;
+    organizationId: TenantId | string;
     code: string;
     label: string;
     class: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;

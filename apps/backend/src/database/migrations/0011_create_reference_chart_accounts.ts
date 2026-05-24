@@ -39,10 +39,18 @@ export class CreateReferenceChartAccounts1700000000011 implements MigrationInter
         "applicable_systems"  TEXT[]      NOT NULL,
         "created_at"          TIMESTAMPTZ NOT NULL DEFAULT now(),
         CONSTRAINT "uq_reference_chart_accounts_code" UNIQUE ("code"),
+        -- Code must start with a non-zero digit and be 1–10 digits long.
+        -- OHADA classes are 1..9 — a code starting with 0 is invalid.
         CONSTRAINT "chk_reference_chart_accounts_code"
-          CHECK ("code" ~ '^[0-9]{1,10}$'),
+          CHECK ("code" ~ '^[1-9][0-9]{0,9}$'),
         CONSTRAINT "chk_reference_chart_accounts_class"
           CHECK ("class" BETWEEN 1 AND 9),
+        -- The class column MUST match the first digit of the code.
+        -- Without this, a direct DB insert (or a future migration bug)
+        -- could store code 411 with class 5 and silently corrupt every
+        -- balance report grouped by class.
+        CONSTRAINT "chk_reference_chart_accounts_class_matches_code"
+          CHECK (CAST(LEFT("code", 1) AS SMALLINT) = "class"),
         CONSTRAINT "chk_reference_chart_accounts_account_type"
           CHECK ("account_type" IN ('TITLE', 'POSTING')),
         CONSTRAINT "chk_reference_chart_accounts_normal_balance"

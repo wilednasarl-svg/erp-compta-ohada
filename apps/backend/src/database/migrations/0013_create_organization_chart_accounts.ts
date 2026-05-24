@@ -62,14 +62,26 @@ export class CreateOrganizationChartAccounts1700000000013 implements MigrationIn
           ON DELETE RESTRICT,
         CONSTRAINT "uq_organization_chart_accounts_org_code"
           UNIQUE ("organization_id", "code"),
+        -- Code must start with a non-zero digit and be 1–10 digits long.
         CONSTRAINT "chk_organization_chart_accounts_code"
-          CHECK ("code" ~ '^[0-9]{1,10}$'),
+          CHECK ("code" ~ '^[1-9][0-9]{0,9}$'),
         CONSTRAINT "chk_organization_chart_accounts_class"
           CHECK ("class" BETWEEN 1 AND 9),
+        -- class MUST match the first digit of code. Same forensic
+        -- guard as on reference_chart_accounts.
+        CONSTRAINT "chk_organization_chart_accounts_class_matches_code"
+          CHECK (CAST(LEFT("code", 1) AS SMALLINT) = "class"),
         CONSTRAINT "chk_organization_chart_accounts_account_type"
           CHECK ("account_type" IN ('TITLE', 'POSTING')),
         CONSTRAINT "chk_organization_chart_accounts_normal_balance"
-          CHECK ("normal_balance" IN ('D', 'C'))
+          CHECK ("normal_balance" IN ('D', 'C')),
+        -- An account cannot be its own parent. Doesn't prevent deeper
+        -- cycles (A then B then back to A); the service-layer prefix
+        -- invariant (child code starts with parent code, strictly
+        -- longer) makes such cycles impossible by construction, but
+        -- the trivial self-loop deserves a SQL-level safety net.
+        CONSTRAINT "chk_organization_chart_accounts_parent_not_self"
+          CHECK ("parent_id" IS NULL OR "parent_id" != "id")
       )
     `);
 

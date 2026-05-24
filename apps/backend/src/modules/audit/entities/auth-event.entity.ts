@@ -38,7 +38,11 @@ export type AuthEventType =
   | 'organizations.invitation_sent'
   | 'organizations.invitation_revoked'
   | 'organizations.invitation_accepted'
-  | 'organizations.updated';
+  | 'organizations.updated'
+  | 'chart_of_accounts.imported'
+  | 'chart_of_accounts.account_created'
+  | 'chart_of_accounts.account_updated'
+  | 'chart_of_accounts.account_deactivated';
 
 @Entity({ name: 'auth_events' })
 @Index('ix_auth_events_user_id_created_at', ['userId', 'createdAt'])

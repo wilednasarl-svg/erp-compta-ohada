@@ -5,12 +5,18 @@
  * des comptabilités des entreprises (révisé 2017, applicable depuis le
  * 1ᵉʳ janvier 2018), annexe « Plan comptable général SYSCOHADA ».
  *
- * STATUT : SQUELETTE — seules les racines de classe (1 chiffre) et
- * quelques comptes principaux universellement connus sont seedés ici à
- * titre de validation de la structure. Le seed exhaustif (~800 comptes
- * pour le Normal) est livré par BE-PC-01 / BE-PC-02 et DOIT être
+ * STATUT : COLONNE VERTÉBRALE — couvre l'intégralité des classes
+ * (1 chiffre) et des comptes principaux à 2 chiffres SYSCOHADA AUDCIF
+ * (∼90 entrées normées) plus une sélection des sous-comptes à 3
+ * chiffres les plus utilisés (clients/fournisseurs/TVA/banque/paie/
+ * charges courantes, ∼80 entrées). Suffisant pour rendre le Module 3
+ * (écritures) testable de bout en bout.
+ *
+ * Le scope SYSCOHADA complet (∼800 comptes Normal) sera livré par
+ * migrations additives ultérieures (`0011a`, `0011b`, …) — la table
+ * est purement additive, sans rupture API. Chaque ajout DOIT être
  * validé contre le PDF officiel AUDCIF par un expert-comptable avant
- * mise en production. Voir l'issue projet-ferme-1f8 dans bd.
+ * mise en production.
  *
  * Convention :
  * - `code`            : chiffres uniquement, longueur 2..10.

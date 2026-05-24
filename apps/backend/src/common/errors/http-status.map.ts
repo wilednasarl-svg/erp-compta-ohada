@@ -33,6 +33,7 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   // 404 — fail-closed, also used by TenantGuard to avoid disclosure.
   [ERROR_CODES.ORG_NOT_FOUND]: 404,
   [ERROR_CODES.INVITATION_NOT_FOUND]: 404,
+  [ERROR_CODES.CHART_ACCOUNT_NOT_FOUND]: 404,
 
   // 409 — state conflict (duplicate, invariant violation, already used).
   [ERROR_CODES.AUTH_EMAIL_TAKEN]: 409,
@@ -41,6 +42,8 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   [ERROR_CODES.INVITATION_ALREADY_USED]: 409,
   [ERROR_CODES.INVITATION_ALREADY_PENDING]: 409,
   [ERROR_CODES.INVITATION_REVOKED]: 409,
+  [ERROR_CODES.CHART_ACCOUNT_CODE_TAKEN]: 409,
+  [ERROR_CODES.CHART_ACCOUNT_NOT_DELETABLE]: 409,
 
   // 410 — the targeted resource existed but is no longer usable.
   [ERROR_CODES.INVITATION_EXPIRED]: 410,
@@ -48,6 +51,10 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   // 422 — input rejected by validation (semantic, not syntactic).
   [ERROR_CODES.AUTH_WEAK_PASSWORD]: 422,
   [ERROR_CODES.ORG_NOTHING_TO_UPDATE]: 422,
+  [ERROR_CODES.CHART_ACCOUNT_INVALID_PARENT]: 422,
+  [ERROR_CODES.CHART_ACCOUNT_INVALID_CODE]: 422,
+  [ERROR_CODES.CHART_ACCOUNT_IMMUTABLE_CODE]: 422,
+  [ERROR_CODES.ACCOUNTING_SYSTEM_REQUIRED]: 422,
 };
 
 /**
