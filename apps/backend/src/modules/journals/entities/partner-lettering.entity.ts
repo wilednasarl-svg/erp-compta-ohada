@@ -33,11 +33,7 @@ export type LetteringStatus = 'open' | 'complete' | 'broken';
  * (A0001, A0002…) unique par organisation.
  */
 @Entity({ name: 'partner_letterings' })
-@Index('ix_partner_letterings_org_account_status', [
-  'organizationId',
-  'partnerAccountId',
-  'status',
-])
+@Index('ix_partner_letterings_org_account_status', ['organizationId', 'partnerAccountId', 'status'])
 export class PartnerLetteringEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

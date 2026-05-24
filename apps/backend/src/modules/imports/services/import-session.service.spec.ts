@@ -544,11 +544,7 @@ describe('ImportSessionService', () => {
         ORG_ID,
         'ready_for_import',
       );
-      expect(sessionsRepo.updateStatus).not.toHaveBeenCalledWith(
-        SESSION_ID,
-        ORG_ID,
-        'completed',
-      );
+      expect(sessionsRepo.updateStatus).not.toHaveBeenCalledWith(SESSION_ID, ORG_ID, 'completed');
     });
 
     it('refuses when any staging rows have errors', async () => {

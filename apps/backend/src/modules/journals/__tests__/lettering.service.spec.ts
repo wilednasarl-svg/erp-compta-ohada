@@ -5,7 +5,7 @@ import type { AuditTrailService } from '../../audit/services/audit-trail.service
 import type { JournalEntryLineEntity } from '../entities/journal-entry-line.entity';
 import type { PartnerLetteringEntity } from '../entities/partner-lettering.entity';
 import type { JournalEntryLineRepository } from '../repositories/journal-entry-line.repository';
-import type { PartnerLetteringRepository } from '../repositories/partner-lettering.repository';
+import { PartnerLetteringRepository } from '../repositories/partner-lettering.repository';
 import { LetteringService } from '../services/lettering.service';
 
 /**
@@ -285,7 +285,11 @@ describe('LetteringService.breakLettering', () => {
 
     await h.service.breakLettering(ORG_ID, 'lettering-1', 'Erreur de saisie', USER_ID, CTX);
 
-    expect(h.lineRepo.detachLettering).toHaveBeenCalledWith('lettering-1', ORG_ID, expect.anything());
+    expect(h.lineRepo.detachLettering).toHaveBeenCalledWith(
+      'lettering-1',
+      ORG_ID,
+      expect.anything(),
+    );
     expect(h.letteringRepo.markBroken).toHaveBeenCalledWith(
       'lettering-1',
       ORG_ID,
@@ -327,12 +331,9 @@ describe('LetteringService.breakLettering', () => {
 });
 
 describe('PartnerLetteringRepository.incrementCode (static helper)', () => {
-  // Imported indirectly via the service; we exercise it via the
-  // repository's static directly to lock the wraparound semantics.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PartnerLetteringRepository } = require('../repositories/partner-lettering.repository') as {
-    PartnerLetteringRepository: { incrementCode: (s: string) => string };
-  };
+  // Exercised directly via the static — the wraparound semantics
+  // (A9999 → B0001, Z9999 → A0001) are too important to leave to
+  // implicit coverage through the service path.
 
   it.each([
     ['A0001', 'A0002'],

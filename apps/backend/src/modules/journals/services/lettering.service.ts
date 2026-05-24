@@ -205,9 +205,7 @@ export class LetteringService {
         ctx: { ...ctx, userId: actorId, organizationId },
         legacyEventType: 'journals.lettering.created',
       })
-      .catch((e: unknown) =>
-        this.logger.warn(`Audit failed for lettering_created: ${String(e)}`),
-      );
+      .catch((e: unknown) => this.logger.warn(`Audit failed for lettering_created: ${String(e)}`));
 
     return this.toView(result, [...input.journalEntryLineIds]);
   }
@@ -247,9 +245,7 @@ export class LetteringService {
         ctx: { ...ctx, userId: actorId, organizationId },
         legacyEventType: 'journals.lettering.broken',
       })
-      .catch((e: unknown) =>
-        this.logger.warn(`Audit failed for lettering_broken: ${String(e)}`),
-      );
+      .catch((e: unknown) => this.logger.warn(`Audit failed for lettering_broken: ${String(e)}`));
   }
 
   async getById(organizationId: TenantId, letteringId: string): Promise<LetteringView> {

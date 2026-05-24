@@ -54,12 +54,7 @@ import { PeriodsService } from './services/periods.service';
     RbacModule,
     AuditModule,
   ],
-  controllers: [
-    PeriodsController,
-    JournalsController,
-    EntriesController,
-    LetteringsController,
-  ],
+  controllers: [PeriodsController, JournalsController, EntriesController, LetteringsController],
   providers: [
     AccountingPeriodRepository,
     JournalRepository,

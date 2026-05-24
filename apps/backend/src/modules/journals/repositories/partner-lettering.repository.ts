@@ -3,10 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
-import {
-  PartnerLetteringEntity,
-  type LetteringStatus,
-} from '../entities/partner-lettering.entity';
+import { PartnerLetteringEntity, type LetteringStatus } from '../entities/partner-lettering.entity';
 
 export interface CreateLetteringInput {
   readonly organizationId: TenantId | string;
@@ -133,8 +130,8 @@ export class PartnerLetteringRepository {
     if (!match) {
       return 'A0001';
     }
-    const letter = match[1] as string;
-    const number = Number.parseInt(match[2] as string, 10);
+    const letter = match[1];
+    const number = Number.parseInt(match[2], 10);
     if (number < 9999) {
       return `${letter}${String(number + 1).padStart(4, '0')}`;
     }

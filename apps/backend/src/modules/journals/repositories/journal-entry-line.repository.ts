@@ -84,12 +84,7 @@ export class JournalEntryLineRepository {
     }
     const rows = await this.repo
       .createQueryBuilder('l')
-      .innerJoinAndMapOne(
-        'l.journalEntry',
-        JournalEntryEntity,
-        'e',
-        'e.id = l.journal_entry_id',
-      )
+      .innerJoinAndMapOne('l.journalEntry', JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
       .where('l.organization_id = :organizationId', { organizationId })
       .andWhere('l.id IN (:...ids)', { ids: [...ids] })
       .getMany();
@@ -121,10 +116,7 @@ export class JournalEntryLineRepository {
   ): Promise<number> {
     assertTenantId(organizationId);
     const repo = manager ? manager.getRepository(JournalEntryLineEntity) : this.repo;
-    const result = await repo.update(
-      { letteringId, organizationId },
-      { letteringId: null },
-    );
+    const result = await repo.update({ letteringId, organizationId }, { letteringId: null });
     return result.affected ?? 0;
   }
 }

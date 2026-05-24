@@ -719,7 +719,7 @@ export class ImportSessionService {
 
     // Step 4 — project + group + balance pre-check.
     const drafts: StagingLineDraft[] = rows.map((r) =>
-      this.projectStagingRow(r.rowNumber, r.mappedValues as MappedRow),
+      this.projectStagingRow(r.rowNumber, r.mappedValues),
     );
     const groups = this.groupByJournalAndDate(drafts);
     const unbalanced = this.collectUnbalancedGroups(groups);
@@ -821,7 +821,7 @@ export class ImportSessionService {
         offset,
       });
       for (const row of page) {
-        all.push({ rowNumber: row.rowNumber, mappedValues: row.mappedValues as MappedRow });
+        all.push({ rowNumber: row.rowNumber, mappedValues: row.mappedValues });
       }
       if (page.length < pageSize) {
         break;
@@ -866,10 +866,7 @@ export class ImportSessionService {
 
   private groupByJournalAndDate(
     drafts: readonly StagingLineDraft[],
-  ): Map<
-    string,
-    { journalCode: string; entryDate: string; rows: StagingLineDraft[] }
-  > {
+  ): Map<string, { journalCode: string; entryDate: string; rows: StagingLineDraft[] }> {
     const groups = new Map<
       string,
       { journalCode: string; entryDate: string; rows: StagingLineDraft[] }
