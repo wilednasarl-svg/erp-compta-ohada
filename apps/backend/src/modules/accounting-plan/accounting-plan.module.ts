@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditModule } from '../audit/audit.module';
+import { ChartOfAccountsController } from './controllers/chart-of-accounts.controller';
+import { ReferenceChartController } from './controllers/reference-chart.controller';
 import { OrganizationAccountEntity } from './entities/organization-account.entity';
 import { OrganizationAccountingConfigEntity } from './entities/organization-accounting-config.entity';
 import { ReferenceAccountEntity } from './entities/reference-account.entity';
@@ -32,6 +34,7 @@ import { ReferenceChartService } from './services/reference-chart.service';
     ]),
     AuditModule,
   ],
+  controllers: [ReferenceChartController, ChartOfAccountsController],
   providers: [
     ReferenceAccountRepository,
     OrganizationAccountRepository,

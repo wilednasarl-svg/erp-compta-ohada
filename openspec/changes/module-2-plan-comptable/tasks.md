@@ -29,18 +29,18 @@
 
 ## 5. Service `ReferenceChartService`
 
-- [ ] 5.1 `listBySystem(system: AccountingSystem): Promise<ReferenceAccountView[]>` — retourne le plan officiel filtré par système, ordonné par code
-- [ ] 5.2 Test unitaire : compte exact de comptes par système (Normal/Minimal/Allégé), tri par code croissant
+- [x] 5.1 `listBySystem(system: AccountingSystem): Promise<ReferenceAccountView[]>` — retourne le plan officiel filtré par système, ordonné par code
+- [x] 5.2 Test unitaire : compte exact de comptes par système (Normal/Minimal/Allégé), tri par code croissant
 
 ## 6. Service `ChartOfAccountsService`
 
-- [ ] 6.1 `cloneReferenceIntoOrganization(orgId, system, txManager?)` — clone toutes les lignes de référence applicables au système en `organization_chart_accounts` ; matérialise `parent_id` en deux passes (insert sans parent, puis update `parent_id` par lookup préfixe) ; idempotent (ON CONFLICT skip)
-- [ ] 6.2 `listForOrganization(orgId, { activeOnly?, classFilter? }): Promise<AccountView[]>` — retourne l'arbre aplati ordonné par code
-- [ ] 6.3 `getAccount(orgId, accountId): Promise<AccountView>` — 404 si pas trouvé / cross-tenant
-- [ ] 6.4 `createCustomAccount(orgId, { parentCode, code, label, accountType, normalBalance }, actorId, ctx)` — valide : parent existe et actif, code commence par parent.code, code.length > parent.code.length, code unique dans l'org ; promeut le parent en TITLE si nécessaire ; émet `chart_of_accounts.account_created`
-- [ ] 6.5 `updateAccount(orgId, accountId, { label?, isActive? }, actorId, ctx)` — interdit modification du code ; émet `chart_of_accounts.account_updated` ou `chart_of_accounts.account_deactivated`
-- [ ] 6.6 `deleteAccount(orgId, accountId, actorId, ctx)` — autorise uniquement si `reference_account_id IS NULL` (compte custom) ET aucun enfant actif ; sinon `CHART_ACCOUNT_NOT_DELETABLE` (409)
-- [ ] 6.7 Tests unitaires : tous les invariants (préfixe parent, code unique, code immutable, suppression refusée si enfants ou si compte de référence)
+- [x] 6.1 `cloneReferenceIntoOrganization(orgId, system, txManager?)` — clone toutes les lignes de référence applicables au système en `organization_chart_accounts` ; matérialise `parent_id` en deux passes (insert sans parent, puis update `parent_id` par lookup préfixe) ; idempotent (ON CONFLICT skip)
+- [x] 6.2 `listForOrganization(orgId, { activeOnly?, classFilter? }): Promise<AccountView[]>` — retourne l'arbre aplati ordonné par code
+- [x] 6.3 `getAccount(orgId, accountId): Promise<AccountView>` — 404 si pas trouvé / cross-tenant
+- [x] 6.4 `createCustomAccount(orgId, { parentCode, code, label, accountType, normalBalance }, actorId, ctx)` — valide : parent existe et actif, code commence par parent.code, code.length > parent.code.length, code unique dans l'org ; promeut le parent en TITLE si nécessaire ; émet `chart_of_accounts.account_created`
+- [x] 6.5 `updateAccount(orgId, accountId, { label?, isActive? }, actorId, ctx)` — interdit modification du code ; émet `chart_of_accounts.account_updated` ou `chart_of_accounts.account_deactivated`
+- [x] 6.6 `deleteAccount(orgId, accountId, actorId, ctx)` — autorise uniquement si `reference_account_id IS NULL` (compte custom) ET aucun enfant actif ; sinon `CHART_ACCOUNT_NOT_DELETABLE` (409)
+- [x] 6.7 Tests unitaires : tous les invariants (préfixe parent, code unique, code immutable, suppression refusée si enfants ou si compte de référence)
 
 ## 7. Controllers + DTOs
 
