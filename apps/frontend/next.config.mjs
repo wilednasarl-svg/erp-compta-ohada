@@ -6,10 +6,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Monorepo: pin tracing root to the workspace root so Next stops
-  // emitting the "multiple lockfiles detected" warning and so the
-  // output trace covers the right packages.
-  outputFileTracingRoot: path.join(__dirname, '../..'),
+  // Locally: pin tracing root to the workspace root to silence the
+  // "multiple lockfiles detected" warning. On Vercel, leave it unset —
+  // setting it there causes a double-path bug in the output collector
+  // (/vercel/path0/vercel/path0/.next/...).
+  ...(process.env.VERCEL
+    ? {}
+    : { outputFileTracingRoot: path.join(__dirname, '../..') }),
   // The backend lives at NEXT_PUBLIC_API_BASE_URL. Defaults to the dev
   // server. Set this to the prod URL (e.g. https://api.erp-compta.io) in
   // Vercel env vars at deploy time.
