@@ -1,20 +1,61 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuditLogsController } from './controllers/audit-logs.controller';
+import { AuditLogEntity } from './entities/audit-log.entity';
 import { AuthEventEntity } from './entities/auth-event.entity';
+import { AuditLogRepository } from './repositories/audit-log.repository';
 import { AuthEventRepository } from './repositories/auth-event.repository';
+import { AuditTrailService } from './services/audit-trail.service';
 import { AuthEventsService } from './services/auth-events.service';
 
 /**
- * `AuditModule` — owns the `auth_events` append-only journal.
- * `AuthEventsService` (BE-AUDIT-01) is the only sanctioned entry-point for
- * downstream modules; it wraps `AuthEventRepository.record()` with a typed
- * event union and a swallow-and-warn failure mode so a flaky audit table
- * cannot brick auth.
+ * `AuditModule` — owns the unified `auth_events` / audit log journal.
+ *
+ * Two layered write surfaces, ONE physical table
+ * ----------------------------------------------
+ *   - `AuthEventsService` (BE-AUDIT-01) — typed Module 1 wrapper for
+ *     the `auth.*` / `organizations.*` event union. Delegates to
+ *     `AuditTrailService`.
+ *   - `AuditTrailService` (BE-AUDIT-12) — generic Module 7 surface
+ *     consumed by every other module (chart of accounts, imports,
+ *     transformations, …). Carries `module`, `action`, `entityType`,
+ *     `entityId`, `before`, `after`, `metadata`, `requestId`.
+ *
+ * Both write through `AuditLogRepository` against the enriched
+ * `auth_events` schema (migration 0019). The legacy
+ * `AuthEventRepository` is kept for the read path of
+ * `GET /organizations/:id/auth-events` (Module 1's auth-events view)
+ * but is no longer in the write path.
+ *
+ * Two TypeORM entities (`AuthEventEntity`, `AuditLogEntity`) map to
+ * the same `auth_events` table: the legacy entity exposes the Module 1
+ * surface, the new entity exposes the full audit-log shape. Both are
+ * registered with `TypeOrmModule.forFeature(...)` so each repository
+ * gets its own `Repository<T>` injection.
+ *
+ * Re-exports
+ * ----------
+ *   - `AuditTrailService` — every consumer module imports this.
+ *   - `AuthEventsService` — kept for Module 1 back-compat.
+ *   - `AuthEventRepository` — read access for the legacy
+ *     `AuthEventsController` in `OrganizationsModule`.
+ *   - `AuditLogRepository` — read access for `AuditLogsController`
+ *     and any future module-internal read.
+ *   - `TypeOrmModule` — re-exported so downstream modules that wire
+ *     their own `Repository<AuditLogEntity>` injection (rare) can
+ *     pick it up without re-registering the entity.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([AuthEventEntity])],
-  providers: [AuthEventRepository, AuthEventsService],
-  exports: [AuthEventRepository, AuthEventsService, TypeOrmModule],
+  imports: [TypeOrmModule.forFeature([AuthEventEntity, AuditLogEntity])],
+  controllers: [AuditLogsController],
+  providers: [AuthEventRepository, AuditLogRepository, AuditTrailService, AuthEventsService],
+  exports: [
+    AuthEventRepository,
+    AuditLogRepository,
+    AuditTrailService,
+    AuthEventsService,
+    TypeOrmModule,
+  ],
 })
 export class AuditModule {}

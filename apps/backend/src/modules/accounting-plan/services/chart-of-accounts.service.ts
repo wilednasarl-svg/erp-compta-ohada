@@ -3,8 +3,8 @@ import { DataSource, type EntityManager } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
-import { AuthEventsService } from '../../audit/services/auth-events.service';
-import type { AuthEventContext } from '../../audit/services/auth-events.service';
+import { AuditTrailService } from '../../audit/services/audit-trail.service';
+import type { AuditContext } from '../../audit/services/audit-trail.service';
 import { OrganizationAccountEntity } from '../entities/organization-account.entity';
 import { OrganizationAccountRepository } from '../repositories/organization-account.repository';
 import type { AccountType, AccountingSystem, NormalBalance } from '../types/accounting-system';
@@ -55,15 +55,22 @@ const CODE_REGEX = /^\d{2,10}$/;
  *     LEAF accounts may be deleted; everything else surfaces
  *     `CHART_ACCOUNT_NOT_DELETABLE` (409).
  *
- * Audit events are appended through `AuthEventsService` with
- * swallow-and-warn semantics — a failed journal write must not break
- * the comptable's workflow.
+ * Audit events are appended through `AuditTrailService` (Module 7
+ * vague 1 — BE-AUDIT-12) with swallow-and-warn semantics: a failed
+ * journal write must not break the comptable's workflow. Every emit
+ * carries `module='chart_of_accounts'`, an `entity_type` /
+ * `entity_id` pair pointing at the touched account, and a `before`
+ * / `after` JSONB pair on update paths so the audit-log view can
+ * reconstruct the diff without joining the live row.
  */
 @Injectable()
 export class ChartOfAccountsService {
+  private static readonly MODULE = 'chart_of_accounts' as const;
+  private static readonly ENTITY_TYPE = 'organization_account' as const;
+
   constructor(
     private readonly accounts: OrganizationAccountRepository,
-    private readonly audit: AuthEventsService,
+    private readonly audit: AuditTrailService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -211,7 +218,7 @@ export class ChartOfAccountsService {
     organizationId: string,
     input: { parentCode: string; code: string; label: string },
     actorUserId: string,
-    context: AuthEventContext,
+    context: AuditContext,
   ): Promise<AccountView> {
     const { parentCode, code, label } = input;
 
@@ -267,30 +274,39 @@ export class ChartOfAccountsService {
     // when parent was POSTING; idempotent if it was already TITLE.
     if (parent.accountType === 'POSTING') {
       await this.accounts.setAccountType(parent.id, organizationId, 'TITLE');
-      await this.audit.record(
-        'chart_of_accounts.account_updated',
-        { ...context, userId: actorUserId, organizationId },
-        {
-          accountId: parent.id,
+      await this.audit.record({
+        module: ChartOfAccountsService.MODULE,
+        action: 'account_updated',
+        entityType: ChartOfAccountsService.ENTITY_TYPE,
+        entityId: parent.id,
+        before: { accountType: 'POSTING' },
+        after: { accountType: 'TITLE' },
+        metadata: {
           code: parent.code,
-          field: 'account_type',
-          from: 'POSTING',
-          to: 'TITLE',
           reason: 'first_child_added',
         },
-      );
+        ctx: { ...context, userId: actorUserId, organizationId },
+        legacyEventType: 'chart_of_accounts.account_updated',
+      });
     }
 
-    await this.audit.record(
-      'chart_of_accounts.account_created',
-      { ...context, userId: actorUserId, organizationId },
-      {
-        accountId: created.id,
+    await this.audit.record({
+      module: ChartOfAccountsService.MODULE,
+      action: 'account_created',
+      entityType: ChartOfAccountsService.ENTITY_TYPE,
+      entityId: created.id,
+      after: {
         code: created.code,
         label: created.label,
         parentCode: parent.code,
       },
-    );
+      metadata: {
+        code: created.code,
+        parentCode: parent.code,
+      },
+      ctx: { ...context, userId: actorUserId, organizationId },
+      legacyEventType: 'chart_of_accounts.account_created',
+    });
 
     return this.toView(created);
   }
@@ -304,7 +320,7 @@ export class ChartOfAccountsService {
     accountId: string,
     patch: { label?: string; isActive?: boolean; code?: string },
     actorUserId: string,
-    context: AuthEventContext,
+    context: AuditContext,
   ): Promise<AccountView> {
     // Surface a clean 422 if the caller sneaks `code` (or any other
     // immutable field) into the body — class-validator strips unknown
@@ -336,22 +352,41 @@ export class ChartOfAccountsService {
     });
 
     if (activeChanged && patch.isActive === false) {
-      await this.audit.record(
-        'chart_of_accounts.account_deactivated',
-        { ...context, userId: actorUserId, organizationId },
-        { accountId, code: existing.code },
-      );
+      await this.audit.record({
+        module: ChartOfAccountsService.MODULE,
+        action: 'account_deactivated',
+        entityType: ChartOfAccountsService.ENTITY_TYPE,
+        entityId: accountId,
+        before: { isActive: true },
+        after: { isActive: false },
+        metadata: { code: existing.code },
+        ctx: { ...context, userId: actorUserId, organizationId },
+        legacyEventType: 'chart_of_accounts.account_deactivated',
+      });
     } else {
-      await this.audit.record(
-        'chart_of_accounts.account_updated',
-        { ...context, userId: actorUserId, organizationId },
-        {
-          accountId,
-          code: existing.code,
-          ...(labelChanged ? { from: existing.label, to: patch.label } : {}),
-          ...(activeChanged ? { isActive: patch.isActive } : {}),
-        },
-      );
+      // Only the fields that actually changed go into before/after —
+      // keeps the JSONB payload small and the audit view readable.
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (labelChanged) {
+        before.label = existing.label;
+        after.label = patch.label;
+      }
+      if (activeChanged) {
+        before.isActive = existing.isActive;
+        after.isActive = patch.isActive;
+      }
+      await this.audit.record({
+        module: ChartOfAccountsService.MODULE,
+        action: 'account_updated',
+        entityType: ChartOfAccountsService.ENTITY_TYPE,
+        entityId: accountId,
+        before,
+        after,
+        metadata: { code: existing.code },
+        ctx: { ...context, userId: actorUserId, organizationId },
+        legacyEventType: 'chart_of_accounts.account_updated',
+      });
     }
 
     const refreshed = await this.accounts.findById(accountId, organizationId);
@@ -375,7 +410,7 @@ export class ChartOfAccountsService {
     organizationId: string,
     accountId: string,
     actorUserId: string,
-    context: AuthEventContext,
+    context: AuditContext,
   ): Promise<void> {
     const existing = await this.accounts.findById(accountId, organizationId);
     if (existing === null) {
@@ -410,11 +445,25 @@ export class ChartOfAccountsService {
       });
     }
 
-    await this.audit.record(
-      'chart_of_accounts.account_updated',
-      { ...context, userId: actorUserId, organizationId },
-      { accountId, code: existing.code, action: 'deleted' },
-    );
+    await this.audit.record({
+      module: ChartOfAccountsService.MODULE,
+      action: 'account_deleted',
+      entityType: ChartOfAccountsService.ENTITY_TYPE,
+      entityId: accountId,
+      before: {
+        code: existing.code,
+        label: existing.label,
+        isActive: existing.isActive,
+      },
+      after: null,
+      metadata: { code: existing.code },
+      ctx: { ...context, userId: actorUserId, organizationId },
+      // Legacy compound code kept on `account_updated` so the
+      // pre-Module-7 reader at `/organizations/:id/auth-events`
+      // continues to bucket deletions next to updates — until vague 2
+      // adds a dedicated `account_deleted` row to the Module 1 view.
+      legacyEventType: 'chart_of_accounts.account_updated',
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────

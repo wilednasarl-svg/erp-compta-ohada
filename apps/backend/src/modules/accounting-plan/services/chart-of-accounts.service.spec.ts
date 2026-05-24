@@ -2,14 +2,17 @@ import type { DataSource } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
-import type { AuthEventContext, AuthEventsService } from '../../audit/services/auth-events.service';
+import type {
+  AuditContext,
+  AuditTrailService,
+} from '../../audit/services/audit-trail.service';
 import type { OrganizationAccountEntity } from '../entities/organization-account.entity';
 import type { OrganizationAccountRepository } from '../repositories/organization-account.repository';
 import { ChartOfAccountsService } from './chart-of-accounts.service';
 
 const ORG_ID = 'org-1';
 const ACTOR_ID = 'user-actor';
-const CTX: AuthEventContext = { ipAddress: '203.0.113.1', userAgent: 'jest/1.0' };
+const CTX: AuditContext = { ipAddress: '203.0.113.1', userAgent: 'jest/1.0' };
 
 function buildAccount(
   overrides: Partial<OrganizationAccountEntity> = {},
@@ -65,7 +68,7 @@ function buildHarness(): Harness {
     setAccountType,
     deleteCustom,
   } as unknown as OrganizationAccountRepository;
-  const audit = { record } as unknown as AuthEventsService;
+  const audit = { record } as unknown as AuditTrailService;
   const dataSource = {} as DataSource;
 
   return {
@@ -258,7 +261,14 @@ describe('ChartOfAccountsService (BE-PC-06)', () => {
       expect(h.setAccountType).not.toHaveBeenCalled();
       // One audit event: account_created.
       expect(h.record).toHaveBeenCalledTimes(1);
-      expect(h.record.mock.calls[0][0]).toBe('chart_of_accounts.account_created');
+      expect(h.record.mock.calls[0][0]).toMatchObject({
+        module: 'chart_of_accounts',
+        action: 'account_created',
+        entityType: 'organization_account',
+        entityId: 'c-new',
+        after: expect.objectContaining({ code: '41100001', label: 'Client SOTRA' }),
+        legacyEventType: 'chart_of_accounts.account_created',
+      });
       expect(view).toMatchObject({ id: 'c-new', code: '41100001', isCustom: true });
     });
 
@@ -290,13 +300,20 @@ describe('ChartOfAccountsService (BE-PC-06)', () => {
       expect(h.setAccountType).toHaveBeenCalledWith('p-4111', ORG_ID, 'TITLE');
       // Two audit events: the promotion + the creation.
       expect(h.record).toHaveBeenCalledTimes(2);
-      const types = h.record.mock.calls.map((c) => c[0] as string);
-      expect(types).toEqual(
-        expect.arrayContaining([
-          'chart_of_accounts.account_updated',
-          'chart_of_accounts.account_created',
-        ]),
+      const actions = h.record.mock.calls.map(
+        (c) => (c[0] as { module: string; action: string }).action,
       );
+      expect(actions).toEqual(expect.arrayContaining(['account_updated', 'account_created']));
+      // The promotion call carries the structured before/after diff.
+      const promotion = h.record.mock.calls.find(
+        (c) => (c[0] as { action: string }).action === 'account_updated',
+      );
+      expect(promotion?.[0]).toMatchObject({
+        entityId: 'p-4111',
+        before: { accountType: 'POSTING' },
+        after: { accountType: 'TITLE' },
+        metadata: expect.objectContaining({ reason: 'first_child_added' }),
+      });
     });
   });
 
@@ -344,16 +361,31 @@ describe('ChartOfAccountsService (BE-PC-06)', () => {
         label: 'New',
         isActive: undefined,
       });
-      expect(h.record.mock.calls[0][0]).toBe('chart_of_accounts.account_updated');
+      expect(h.record.mock.calls[0][0]).toMatchObject({
+        module: 'chart_of_accounts',
+        action: 'account_updated',
+        entityType: 'organization_account',
+        entityId: 'acc-1',
+        before: { label: 'Old' },
+        after: { label: 'New' },
+        legacyEventType: 'chart_of_accounts.account_updated',
+      });
     });
 
-    it('emits account_deactivated when isActive flips false', async () => {
+    it('emits account_deactivated with a before/after diff when isActive flips false', async () => {
       const h = buildHarness();
       const current = buildAccount({ isActive: true });
       const refreshed = buildAccount({ isActive: false });
       h.findById.mockResolvedValueOnce(current).mockResolvedValueOnce(refreshed);
       await h.service.updateAccount(ORG_ID, 'acc-1', { isActive: false }, ACTOR_ID, CTX);
-      expect(h.record.mock.calls[0][0]).toBe('chart_of_accounts.account_deactivated');
+      expect(h.record.mock.calls[0][0]).toMatchObject({
+        module: 'chart_of_accounts',
+        action: 'account_deactivated',
+        entityType: 'organization_account',
+        entityId: 'acc-1',
+        before: { isActive: true },
+        after: { isActive: false },
+      });
     });
   });
 
@@ -386,7 +418,7 @@ describe('ChartOfAccountsService (BE-PC-06)', () => {
       expect(h.deleteCustom).not.toHaveBeenCalled();
     });
 
-    it('deletes a custom leaf and emits account_updated with action=deleted', async () => {
+    it('deletes a custom leaf and emits account_deleted with the pre-delete snapshot in before', async () => {
       const h = buildHarness();
       const target = buildAccount({ id: 'acc-1', referenceAccountId: null, code: '41100001' });
       h.findById.mockResolvedValue(target);
@@ -397,8 +429,18 @@ describe('ChartOfAccountsService (BE-PC-06)', () => {
 
       expect(h.deleteCustom).toHaveBeenCalledWith('acc-1', ORG_ID);
       expect(h.record).toHaveBeenCalledTimes(1);
-      expect(h.record.mock.calls[0][0]).toBe('chart_of_accounts.account_updated');
-      expect(h.record.mock.calls[0][2]).toMatchObject({ action: 'deleted', code: '41100001' });
+      expect(h.record.mock.calls[0][0]).toMatchObject({
+        module: 'chart_of_accounts',
+        action: 'account_deleted',
+        entityType: 'organization_account',
+        entityId: 'acc-1',
+        before: expect.objectContaining({ code: '41100001' }),
+        after: null,
+        // The pre-Module-7 reader still groups deletes under
+        // `chart_of_accounts.account_updated` for now (vague 2 will
+        // surface `account_deleted` once the legacy view ranges over it).
+        legacyEventType: 'chart_of_accounts.account_updated',
+      });
     });
 
     it('maps a 0-affected delete (race / guarded by SQL filter) to CHART_ACCOUNT_NOT_DELETABLE', async () => {
