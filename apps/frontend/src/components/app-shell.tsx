@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, BookText, Building2, FileUp, LayoutDashboard, LogOut, Mail, ShieldCheck, User as UserIcon, Users } from 'lucide-react';
+import { ArrowRightLeft, BookOpen, BookText, Building2, Calendar, FileUp, GitBranch, History, LayoutDashboard, LogOut, Mail, Paperclip, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -31,8 +31,14 @@ interface NavItem {
 const NAV: ReadonlyArray<NavItem> = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen },
+  { href: '/accounting-periods', label: 'Périodes', icon: Calendar },
   { href: '/imports', label: 'Imports', icon: FileUp },
   { href: '/journals', label: 'Journaux', icon: BookText },
+  { href: '/documents', label: 'Documents', icon: Paperclip },
+  { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft },
+  { href: '/rules', label: 'Règles', icon: Sparkles },
+  { href: '/workflows', label: 'Workflows', icon: GitBranch },
+  { href: '/audit-logs', label: 'Audit', icon: History },
   { href: '/members', label: 'Membres', icon: Users },
   { href: '/invitations', label: 'Invitations', icon: Mail },
   { href: '/settings/mfa', label: 'MFA', icon: ShieldCheck },
