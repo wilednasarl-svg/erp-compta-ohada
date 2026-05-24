@@ -11,7 +11,11 @@ import {
 import { UserEntity } from '../../auth/entities/user.entity';
 import { OrganizationEntity } from '../../organizations/entities/organization.entity';
 import { ImportStagingEntryEntity } from '../../imports/entities/import-staging-entry.entity';
-import type { TransformationDiff, TransformationStatus, TransformationType } from '../types/transformation.types';
+import type {
+  TransformationDiff,
+  TransformationStatus,
+  TransformationType,
+} from '../types/transformation.types';
 
 /**
  * `EntryTransformationEntity` — voir migration 0023.

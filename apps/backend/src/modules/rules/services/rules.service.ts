@@ -78,7 +78,9 @@ export class RulesService {
     assertTenantId(organizationId);
     const rule = await this.ruleRepo.findById(organizationId, ruleId);
     if (!rule) {
-      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, { message: `Rule '${ruleId}' not found.` });
+      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, {
+        message: `Rule '${ruleId}' not found.`,
+      });
     }
     return rule;
   }
@@ -93,10 +95,7 @@ export class RulesService {
     assertTenantId(organizationId);
 
     if (args.conditions !== undefined || args.actions !== undefined) {
-      this.validateRuleDefinition(
-        args.conditions ?? [],
-        args.actions ?? [],
-      );
+      this.validateRuleDefinition(args.conditions ?? [], args.actions ?? []);
     }
 
     const updated = await this.ruleRepo.update(organizationId, ruleId, {
@@ -105,7 +104,9 @@ export class RulesService {
     });
 
     if (!updated) {
-      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, { message: `Rule '${ruleId}' not found.` });
+      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, {
+        message: `Rule '${ruleId}' not found.`,
+      });
     }
 
     await this.emitAudit('rule_updated', updated, ctx, args);
@@ -145,27 +146,24 @@ export class RulesService {
 
     for (const cond of conditions) {
       if (!validConditionTypes.has(cond.type)) {
-        throw new AppException(
-          ERROR_CODES.RULE_INVALID_CONDITION,
-          { message: `Unknown condition type: '${cond.type}'.` },
-        );
+        throw new AppException(ERROR_CODES.RULE_INVALID_CONDITION, {
+          message: `Unknown condition type: '${cond.type}'.`,
+        });
       }
     }
 
     for (const action of actions) {
       if (!validActionTypes.has(action.type)) {
-        throw new AppException(
-          ERROR_CODES.RULE_INVALID_ACTION,
-          { message: `Unknown action type: '${action.type}'.` },
-        );
+        throw new AppException(ERROR_CODES.RULE_INVALID_ACTION, {
+          message: `Unknown action type: '${action.type}'.`,
+        });
       }
     }
 
     if (actions.length === 0) {
-      throw new AppException(
-        ERROR_CODES.RULE_INVALID_ACTION,
-        { message: 'A rule must have at least one action.' },
-      );
+      throw new AppException(ERROR_CODES.RULE_INVALID_ACTION, {
+        message: 'A rule must have at least one action.',
+      });
     }
   }
 
@@ -196,7 +194,9 @@ export class RulesService {
         ctx,
       });
     } catch (err) {
-      this.logger.warn(`Audit emission failed for rule ${rule.id}: ${err}`);
+      this.logger.warn(
+        `Audit emission failed for rule ${rule.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }

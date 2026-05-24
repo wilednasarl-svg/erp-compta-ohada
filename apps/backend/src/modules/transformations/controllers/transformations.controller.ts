@@ -24,7 +24,10 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { AdjustEntryDto } from '../dto/adjust-entry.dto';
 import { ReclassifyEntryDto } from '../dto/reclassify-entry.dto';
-import { TransformationService, type TransformationSummary } from '../services/transformation.service';
+import {
+  TransformationService,
+  type TransformationSummary,
+} from '../services/transformation.service';
 import type { AuditContext } from '../../audit/services/audit-trail.service';
 
 /**
@@ -130,10 +133,7 @@ export class TransformationsController {
   ): Promise<{ history: TransformationSummary[] }> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
 
-    const history = await this.transformations.getEntryHistory(
-      asTenantId(tokenOrgId),
-      entryId,
-    );
+    const history = await this.transformations.getEntryHistory(asTenantId(tokenOrgId), entryId);
 
     return { history };
   }
@@ -159,11 +159,7 @@ export class TransformationsController {
     }
   }
 
-  private buildCtx(
-    req: Request,
-    userId: string,
-    organizationId: string,
-  ): AuditContext {
+  private buildCtx(req: Request, userId: string, organizationId: string): AuditContext {
     const base = buildAuditRequestContext(req);
     return { ...base, userId, organizationId };
   }

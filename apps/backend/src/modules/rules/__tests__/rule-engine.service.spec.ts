@@ -1,5 +1,5 @@
 import { asTenantId } from '../../../common/persistence/tenant-scope';
-import { RuleEntity } from '../entities/rule.entity';
+import { type RuleEntity } from '../entities/rule.entity';
 import { RuleEngineService } from '../services/rule-engine.service';
 import type { RuleScope } from '../types/rule.types';
 import type { ImportStagingEntryEntity } from '../../imports/entities/import-staging-entry.entity';
@@ -25,13 +25,21 @@ describe('RuleEngineService', () => {
   const ENTRY_ID = '00000000-0000-4000-8000-000000000004';
   const ENTRY_ID_2 = '00000000-0000-4000-8000-000000000005';
 
-  const AUDIT_CTX = { ipAddress: '127.0.0.1', userAgent: 'test', userId: USER_ID, organizationId: ORG_ID };
+  const AUDIT_CTX = {
+    ipAddress: '127.0.0.1',
+    userAgent: 'test',
+    userId: USER_ID,
+    organizationId: ORG_ID,
+  };
 
   // ---------------------------------------------------------------------------
   // Factories
   // ---------------------------------------------------------------------------
 
-  function buildEntry(mappedValues: Record<string, string>, id = ENTRY_ID): ImportStagingEntryEntity {
+  function buildEntry(
+    mappedValues: Record<string, string>,
+    id = ENTRY_ID,
+  ): ImportStagingEntryEntity {
     return {
       id,
       sessionId: '00000000-0000-4000-8000-000000000099',
@@ -76,11 +84,11 @@ describe('RuleEngineService', () => {
     };
 
     const svc = new RuleEngineService(
-      ruleRepo as any,
-      executionRepo as any,
-      stagingRepo as any,
-      transformations as any,
-      audit as any,
+      ruleRepo as unknown as ConstructorParameters<typeof RuleEngineService>[0],
+      executionRepo as unknown as ConstructorParameters<typeof RuleEngineService>[1],
+      stagingRepo as unknown as ConstructorParameters<typeof RuleEngineService>[2],
+      transformations as unknown as ConstructorParameters<typeof RuleEngineService>[3],
+      audit as unknown as ConstructorParameters<typeof RuleEngineService>[4],
     );
 
     return { svc, ruleRepo, executionRepo, stagingRepo, transformations, audit };
@@ -181,7 +189,9 @@ describe('RuleEngineService', () => {
         actions: [{ type: 'add_tag', tag: 'INVOICE' }],
       });
 
-      expect(svc.evaluateRuleOnEntry(rule, buildEntry({ label: 'Règlement FACTURE #42' }))).toHaveLength(1);
+      expect(
+        svc.evaluateRuleOnEntry(rule, buildEntry({ label: 'Règlement FACTURE #42' })),
+      ).toHaveLength(1);
       expect(svc.evaluateRuleOnEntry(rule, buildEntry({ label: 'Salaire mensuel' }))).toEqual([]);
     });
 
@@ -256,10 +266,12 @@ describe('RuleEngineService', () => {
       stagingRepo.createQueryBuilder.mockReturnValue({
         innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([
-          buildEntry({ account: '621000' }),
-          buildEntry({ account: '521000' }, ENTRY_ID_2),
-        ]),
+        getMany: jest
+          .fn()
+          .mockResolvedValue([
+            buildEntry({ account: '621000' }),
+            buildEntry({ account: '521000' }, ENTRY_ID_2),
+          ]),
       });
 
       const result = await svc.simulateRules(ORG_ID, RULE_ID, {}, USER_ID, AUDIT_CTX);
@@ -267,7 +279,7 @@ describe('RuleEngineService', () => {
       expect(result.matches).toHaveLength(0);
     });
 
-    it('lève RULE_NOT_FOUND si la règle n\'appartient pas à l\'org', async () => {
+    it("lève RULE_NOT_FOUND si la règle n'appartient pas à l'org", async () => {
       const { svc, ruleRepo } = buildService();
       ruleRepo.findById.mockResolvedValue(null);
 
@@ -341,10 +353,12 @@ describe('RuleEngineService', () => {
       stagingRepo.createQueryBuilder.mockReturnValue({
         innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([
-          buildEntry({ account: '621000', journal: 'BQ' }, ENTRY_ID),
-          buildEntry({ account: '621000', journal: 'AC' }, ENTRY_ID_2),
-        ]),
+        getMany: jest
+          .fn()
+          .mockResolvedValue([
+            buildEntry({ account: '621000', journal: 'BQ' }, ENTRY_ID),
+            buildEntry({ account: '621000', journal: 'AC' }, ENTRY_ID_2),
+          ]),
       });
 
       const result = await svc.applyRules(ORG_ID, RULE_ID, { journal: 'BQ' }, USER_ID, AUDIT_CTX);
@@ -366,10 +380,12 @@ describe('RuleEngineService', () => {
       stagingRepo.createQueryBuilder.mockReturnValue({
         innerJoin: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([
-          buildEntry({ account: '621000' }, ENTRY_ID),
-          buildEntry({ account: '622000' }, ENTRY_ID_2),
-        ]),
+        getMany: jest
+          .fn()
+          .mockResolvedValue([
+            buildEntry({ account: '621000' }, ENTRY_ID),
+            buildEntry({ account: '622000' }, ENTRY_ID_2),
+          ]),
       });
 
       // Première transformation échoue, deuxième réussit

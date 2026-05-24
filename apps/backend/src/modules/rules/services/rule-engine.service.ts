@@ -142,9 +142,7 @@ export class RuleEngineService {
         matches.push({ entryId: entry.id, actions, transformationIds });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(
-          `Rule ${ruleId} failed to apply to entry ${entry.id}: ${msg}`,
-        );
+        this.logger.warn(`Rule ${ruleId} failed to apply to entry ${entry.id}: ${msg}`);
         applyError = applyError ?? msg;
         // Continue processing remaining entries even if one fails.
         matches.push({ entryId: entry.id, actions, transformationIds });
@@ -172,10 +170,7 @@ export class RuleEngineService {
   // Condition evaluation
   // ---------------------------------------------------------------------------
 
-  private matchesCondition(
-    cond: RuleCondition,
-    entry: ImportStagingEntryEntity,
-  ): boolean {
+  private matchesCondition(cond: RuleCondition, entry: ImportStagingEntryEntity): boolean {
     const mv = entry.mappedValues;
 
     switch (cond.type) {
@@ -334,10 +329,9 @@ export class RuleEngineService {
   private async resolveRule(organizationId: TenantId, ruleId: string): Promise<RuleEntity> {
     const rule = await this.ruleRepo.findById(organizationId, ruleId);
     if (!rule) {
-      throw new AppException(
-        ERROR_CODES.RULE_NOT_FOUND,
-        { message: `Rule '${ruleId}' not found or does not belong to this organization.` },
-      );
+      throw new AppException(ERROR_CODES.RULE_NOT_FOUND, {
+        message: `Rule '${ruleId}' not found or does not belong to this organization.`,
+      });
     }
     return rule;
   }
@@ -396,7 +390,9 @@ export class RuleEngineService {
         executedById,
       });
     } catch (err) {
-      this.logger.error(`Failed to persist rule_execution for rule ${rule.id}: ${err}`);
+      this.logger.error(
+        `Failed to persist rule_execution for rule ${rule.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
@@ -422,7 +418,9 @@ export class RuleEngineService {
         ctx,
       });
     } catch (err) {
-      this.logger.warn(`Audit emission failed for rule ${rule.id}: ${err}`);
+      this.logger.warn(
+        `Audit emission failed for rule ${rule.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }

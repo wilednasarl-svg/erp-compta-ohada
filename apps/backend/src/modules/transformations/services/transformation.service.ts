@@ -11,9 +11,7 @@ import { ImportSessionEntity } from '../../imports/entities/import-session.entit
 import type { AdjustEntryDto } from '../dto/adjust-entry.dto';
 import type { ReclassifyEntryDto } from '../dto/reclassify-entry.dto';
 import { EntryTransformationEntity } from '../entities/entry-transformation.entity';
-import {
-  EntryTransformationRepository,
-} from '../repositories/entry-transformation.repository';
+import { EntryTransformationRepository } from '../repositories/entry-transformation.repository';
 import type { TransformationDiff } from '../types/transformation.types';
 
 export interface TransformationSummary {
@@ -93,7 +91,8 @@ export class TransformationService {
     const hasChanges = Object.keys(after).length > 0;
     if (!hasChanges) {
       throw new AppException(ERROR_CODES.TRANSFORMATION_NO_FIELD_CHANGED, {
-        message: 'At least one field (account, journal, partner, label) must be provided for reclassification.',
+        message:
+          'At least one field (account, journal, partner, label) must be provided for reclassification.',
       });
     }
 

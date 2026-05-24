@@ -32,7 +32,7 @@ export class CreateRuleDto {
 
   @ApiPropertyOptional({
     default: 100,
-    description: 'Ordre d\'évaluation — valeur basse = évaluée en premier.',
+    description: "Ordre d'évaluation — valeur basse = évaluée en premier.",
   })
   @IsOptional()
   @IsInt()

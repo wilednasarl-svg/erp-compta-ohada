@@ -44,11 +44,7 @@ export class WorkflowInstanceRepository {
     return this.repo.findOne({ where: { organizationId, targetType, targetId } });
   }
 
-  async updateStatus(
-    id: string,
-    status: WorkflowStatus,
-    completedAt?: Date | null,
-  ): Promise<void> {
+  async updateStatus(id: string, status: WorkflowStatus, completedAt?: Date | null): Promise<void> {
     const qb = this.repo
       .createQueryBuilder()
       .update()

@@ -77,12 +77,8 @@ export class CreateRuleExecutions1700000000026 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "ix_rule_executions_org_created_at"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "ix_rule_executions_org_rule_created_at"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "ix_rule_executions_org_created_at"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "ix_rule_executions_org_rule_created_at"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "rule_executions"`);
   }
 }

@@ -28,7 +28,7 @@ export class ExecuteRuleDto {
   dateTo?: string;
 
   @ApiPropertyOptional({
-    description: 'Limiter à une session d\'import spécifique.',
+    description: "Limiter à une session d'import spécifique.",
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsOptional()

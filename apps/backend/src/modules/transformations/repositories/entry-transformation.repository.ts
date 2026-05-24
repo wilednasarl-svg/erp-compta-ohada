@@ -4,7 +4,11 @@ import { Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { EntryTransformationEntity } from '../entities/entry-transformation.entity';
-import type { TransformationDiff, TransformationStatus, TransformationType } from '../types/transformation.types';
+import type {
+  TransformationDiff,
+  TransformationStatus,
+  TransformationType,
+} from '../types/transformation.types';
 
 export interface CreateTransformationInput {
   readonly organizationId: TenantId;
@@ -59,10 +63,7 @@ export class EntryTransformationRepository {
     });
   }
 
-  async findById(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<EntryTransformationEntity | null> {
+  async findById(organizationId: TenantId, id: string): Promise<EntryTransformationEntity | null> {
     assertTenantId(organizationId);
     return this.repo.findOne({ where: { organizationId, id } });
   }

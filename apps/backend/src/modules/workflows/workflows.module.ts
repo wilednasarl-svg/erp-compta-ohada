@@ -5,11 +5,7 @@ import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { WorkflowsController } from './controllers/workflows.controller';
-import {
-  WorkflowDefinitionEntity,
-  WorkflowEventEntity,
-  WorkflowInstanceEntity,
-} from './entities';
+import { WorkflowDefinitionEntity, WorkflowEventEntity, WorkflowInstanceEntity } from './entities';
 import { WorkflowDefinitionRepository } from './repositories/workflow-definition.repository';
 import { WorkflowEventRepository } from './repositories/workflow-event.repository';
 import { WorkflowInstanceRepository } from './repositories/workflow-instance.repository';

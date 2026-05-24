@@ -55,12 +55,7 @@ import { RulesService } from './services/rules.service';
     TransformationsModule,
   ],
   controllers: [RulesController],
-  providers: [
-    RuleRepository,
-    RuleExecutionRepository,
-    RulesService,
-    RuleEngineService,
-  ],
+  providers: [RuleRepository, RuleExecutionRepository, RulesService, RuleEngineService],
   exports: [RuleEngineService, RulesService],
 })
 export class RulesModule {}

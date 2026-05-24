@@ -169,7 +169,7 @@ export class WorkflowService {
     }
 
     const raw = await this.events.listByInstance(instanceId);
-    return raw.map(this.toEventView);
+    return raw.map((event) => this.toEventView(event));
   }
 
   /**

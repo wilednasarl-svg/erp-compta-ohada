@@ -61,7 +61,7 @@ export class RulesController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('rules.write')
-  @ApiOperation({ summary: 'Créer une règle d\'automatisation' })
+  @ApiOperation({ summary: "Créer une règle d'automatisation" })
   async createRule(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @CurrentOrg() org: CurrentOrgContext,
@@ -75,7 +75,7 @@ export class RulesController {
 
   @Get()
   @RequirePermission('rules.read')
-  @ApiOperation({ summary: 'Lister les règles de l\'organisation' })
+  @ApiOperation({ summary: "Lister les règles de l'organisation" })
   async listRules(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @CurrentOrg() org: CurrentOrgContext,
@@ -85,7 +85,7 @@ export class RulesController {
 
   @Get(':ruleId')
   @RequirePermission('rules.read')
-  @ApiOperation({ summary: 'Détail d\'une règle' })
+  @ApiOperation({ summary: "Détail d'une règle" })
   async getRule(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
@@ -167,7 +167,7 @@ export class RulesController {
 
   @Get(':ruleId/executions')
   @RequirePermission('rules.read')
-  @ApiOperation({ summary: 'Historique des exécutions d\'une règle' })
+  @ApiOperation({ summary: "Historique des exécutions d'une règle" })
   async executionHistory(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,

@@ -104,15 +104,9 @@ export class CreateEntryTransformations1700000000023 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "ix_entry_transformations_org_created_at"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "ix_entry_transformations_org_type_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "ix_entry_transformations_org_source"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "ix_entry_transformations_org_created_at"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "ix_entry_transformations_org_type_status"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "ix_entry_transformations_org_source"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "entry_transformations"`);
   }
 }

@@ -24,7 +24,9 @@ const CTX: AuditContext = {
   requestId: 'req-test',
 };
 
-function buildStagingEntry(overrides?: Partial<ImportStagingEntryEntity>): ImportStagingEntryEntity {
+function buildStagingEntry(
+  overrides?: Partial<ImportStagingEntryEntity>,
+): ImportStagingEntryEntity {
   return {
     id: ENTRY_ID,
     sessionId: 'session-1',
@@ -335,9 +337,9 @@ describe('TransformationService', () => {
     it('throws TRANSFORMATION_SOURCE_ENTRY_NOT_FOUND for cross-tenant entryId', async () => {
       const { service } = buildService(null);
 
-      await expect(
-        service.getEntryHistory(ORG_ID, 'foreign-entry'),
-      ).rejects.toMatchObject({ code: ERROR_CODES.TRANSFORMATION_SOURCE_ENTRY_NOT_FOUND });
+      await expect(service.getEntryHistory(ORG_ID, 'foreign-entry')).rejects.toMatchObject({
+        code: ERROR_CODES.TRANSFORMATION_SOURCE_ENTRY_NOT_FOUND,
+      });
     });
   });
 });

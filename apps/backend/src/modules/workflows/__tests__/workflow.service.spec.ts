@@ -48,11 +48,13 @@ function makeInstance(status = 'draft'): WorkflowInstanceEntity {
   } as unknown as WorkflowInstanceEntity;
 }
 
-function buildService(overrides: {
-  definitions?: Partial<WorkflowDefinitionRepository>;
-  instances?: Partial<WorkflowInstanceRepository>;
-  events?: Partial<WorkflowEventRepository>;
-} = {}) {
+function buildService(
+  overrides: {
+    definitions?: Partial<WorkflowDefinitionRepository>;
+    instances?: Partial<WorkflowInstanceRepository>;
+    events?: Partial<WorkflowEventRepository>;
+  } = {},
+) {
   const definitions: WorkflowDefinitionRepository = {
     findActiveByTargetType: jest.fn().mockResolvedValue(makeDefinition()),
     ...overrides.definitions,
@@ -74,12 +76,7 @@ function buildService(overrides: {
 
   const audit = { record: jest.fn().mockResolvedValue(null) };
 
-  const service = new WorkflowService(
-    definitions,
-    instances,
-    events,
-    audit as never,
-  );
+  const service = new WorkflowService(definitions, instances, events, audit as never);
 
   return { service, definitions, instances, events, audit };
 }
@@ -258,8 +255,22 @@ describe('WorkflowService.transition', () => {
 describe('WorkflowService.getHistory', () => {
   it('returns the ordered list of events', async () => {
     const eventRows = [
-      { id: 'ev_1', fromStatus: null, toStatus: 'draft', actorId: USER_ID, comment: null, occurredAt: new Date() },
-      { id: 'ev_2', fromStatus: 'draft', toStatus: 'in_review', actorId: USER_ID, comment: 'ok', occurredAt: new Date() },
+      {
+        id: 'ev_1',
+        fromStatus: null,
+        toStatus: 'draft',
+        actorId: USER_ID,
+        comment: null,
+        occurredAt: new Date(),
+      },
+      {
+        id: 'ev_2',
+        fromStatus: 'draft',
+        toStatus: 'in_review',
+        actorId: USER_ID,
+        comment: 'ok',
+        occurredAt: new Date(),
+      },
     ] as WorkflowEventEntity[];
 
     const { service } = buildService({
