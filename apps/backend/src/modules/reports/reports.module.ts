@@ -1,0 +1,41 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
+import { AuthModule } from '../auth/auth.module';
+import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.entity';
+import { RbacModule } from '../rbac/rbac.module';
+import { ReportsController } from './controllers/reports.controller';
+import { ReportsRepository } from './repositories/reports.repository';
+import { ReportsService } from './services/reports.service';
+
+/**
+ * `ReportsModule` — Module 9 wave 1 read-only financial reports.
+ *
+ * Composes:
+ *   - `ReportsRepository` for raw SQL aggregations against
+ *     `journal_entry_lines` (joined with entries + accounts).
+ *   - `ReportsService` for business-level projection + running balance.
+ *   - `ReportsController` for the REST surface.
+ *
+ * AuthModule + RbacModule are imported for the controller's
+ * `@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)` —
+ * see memory `nest-useguards-requires-module-imports` for why both
+ * imports are necessary even with APP_GUARD globally registered.
+ *
+ * AccountingPlanModule is imported so `OrganizationAccountRepository`
+ * is available to verify the requested account exists in this tenant
+ * before serving the general-ledger drill-down.
+ */
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([JournalEntryLineEntity]),
+    AuthModule,
+    RbacModule,
+    AccountingPlanModule,
+  ],
+  controllers: [ReportsController],
+  providers: [ReportsRepository, ReportsService],
+  exports: [ReportsService],
+})
+export class ReportsModule {}

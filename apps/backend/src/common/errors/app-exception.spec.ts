@@ -132,6 +132,8 @@ describe('HTTP status mapping', () => {
       LETTERING_NOT_PARTNER_ACCOUNT: 422,
       LETTERING_LINE_NOT_VALIDATED: 422,
       LETTERING_ALREADY_BROKEN: 409,
+      // Module 9 — Financial reports.
+      REPORT_INVALID_DATE_RANGE: 422,
       DOC_NOT_FOUND: 404,
       DOC_FILE_REQUIRED: 422,
       DOC_FILE_TOO_LARGE: 413,

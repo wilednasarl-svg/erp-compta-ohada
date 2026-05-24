@@ -17,6 +17,7 @@ import { ImportsModule } from './modules/imports/imports.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 import { JournalsModule } from './modules/journals/journals.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { RulesModule } from './modules/rules/rules.module';
 import { TransformationsModule } from './modules/transformations/transformations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
@@ -77,6 +78,10 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     // justificatifs) avec un `DocumentStorageService` abstrait (driver
     // local-FS par défaut) et un hook OCR stub à câbler en vague 2.
     DocumentsModule,
+    // Module 9 wave 1 — Financial reports. Balance générale + grand
+    // livre en lecture seule, projections agrégées sur les écritures
+    // validated. Compte de résultat + bilan + PDF arrivent en vague 2.
+    ReportsModule,
   ],
   controllers: [],
   providers: [
