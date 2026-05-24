@@ -111,6 +111,12 @@ export class CsvFileParser implements IFileParser {
     // is paused; it resumes once the consumer drains below the mark.
     const HIGH_WATER = 128;
 
+    // Per-cell size cap (fix projet-ferme-2qn DoS): an accounting cell
+    // never legitimately holds more than ~64 KB of text. Cap at 256 KB
+    // and surface a clean parse error rather than letting a hostile
+    // 10 MB cell drag the whole file into the in-memory queue.
+    const CELL_MAX_BYTES = 256 * 1024;
+
     const readable = createReadStream(path);
     const stream = readable.pipe(
       parseCsv({ headers: true, delimiter, ignoreEmpty: true, trim: true }),
@@ -136,6 +142,15 @@ export class CsvFileParser implements IFileParser {
       const values: Record<string, string | null> = {};
       for (const header of headers) {
         const raw = data[header];
+        if (raw !== undefined && raw.length > CELL_MAX_BYTES) {
+          error = new FileParseError(
+            `CSV cell exceeds ${CELL_MAX_BYTES} bytes at row ${rowNumber}, column "${header}"`,
+          );
+          done = true;
+          readable.destroy();
+          wake();
+          return;
+        }
         values[header] = raw === undefined || raw === '' ? null : raw;
       }
       queue.push({ rowNumber, values });
