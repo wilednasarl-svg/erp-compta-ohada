@@ -4,6 +4,7 @@ import type { ConfigService } from '@nestjs/config';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { AuditTrailService } from '../../audit/services/audit-trail.service';
 import type { DocumentEntity } from '../entities/document.entity';
 import type {
@@ -17,6 +18,8 @@ import type { DocumentOcrService } from './document-ocr.service';
 import { DocumentsService } from './documents.service';
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB for tests
+const ORG_A = asTenantId('org_a');
+const ORG_B = asTenantId('org_b');
 
 function buildConfigService(): ConfigService {
   return {
@@ -132,7 +135,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
       const row = buildDocumentRow({ storageKey: saveResult.storageKey });
       docs.createOne.mockResolvedValue(row);
 
-      const view = await service.createFromUpload('org_a', 'user_1', file, {
+      const view = await service.createFromUpload(ORG_A, 'user_1', file, {
         tags: ['vente', 'client-x'],
       });
 
@@ -180,7 +183,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
     });
 
     it('rejects when no file is provided (DOC_FILE_REQUIRED)', async () => {
-      await expect(service.createFromUpload('org_a', 'user_1', undefined)).rejects.toMatchObject({
+      await expect(service.createFromUpload(ORG_A, 'user_1', undefined)).rejects.toMatchObject({
         code: ERROR_CODES.DOC_FILE_REQUIRED,
       });
       expect(storage.save).not.toHaveBeenCalled();
@@ -188,14 +191,14 @@ describe('DocumentsService (BE-DOC-04)', () => {
 
     it('rejects an oversized file before touching storage (DOC_FILE_TOO_LARGE)', async () => {
       await expect(
-        service.createFromUpload('org_a', 'user_1', { ...file, sizeBytes: MAX_BYTES + 1 }),
+        service.createFromUpload(ORG_A, 'user_1', { ...file, sizeBytes: MAX_BYTES + 1 }),
       ).rejects.toMatchObject({ code: ERROR_CODES.DOC_FILE_TOO_LARGE });
       expect(storage.save).not.toHaveBeenCalled();
     });
 
     it('rejects an unsupported MIME type', async () => {
       await expect(
-        service.createFromUpload('org_a', 'user_1', {
+        service.createFromUpload(ORG_A, 'user_1', {
           ...file,
           mimeType: 'application/x-executable',
         }),
@@ -212,7 +215,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
       const dbError = new Error('insert failed');
       docs.createOne.mockRejectedValue(dbError);
 
-      await expect(service.createFromUpload('org_a', 'user_1', file)).rejects.toBe(dbError);
+      await expect(service.createFromUpload(ORG_A, 'user_1', file)).rejects.toBe(dbError);
 
       expect(storage.delete).toHaveBeenCalledWith('org_a/2026/05/sha.pdf');
       expect(ocr.requestOcr).not.toHaveBeenCalled();
@@ -227,7 +230,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
       const row = buildDocumentRow();
       docs.createOne.mockResolvedValue(row);
 
-      await service.createFromUpload('org_a', 'user_1', file, {
+      await service.createFromUpload(ORG_A, 'user_1', file, {
         linkedEntryIds: ['entry_1', 'entry_2'],
       });
 
@@ -269,7 +272,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
         'client-x',
         ...Array.from({ length: 40 }, (_, i) => `tag-${i}`),
       ];
-      await service.createFromUpload('org_a', 'user_1', file, { tags: noisy });
+      await service.createFromUpload(ORG_A, 'user_1', file, { tags: noisy });
 
       const passed = docs.createOne.mock.calls[0][0].tags as string[];
       expect(passed.length).toBe(32);
@@ -282,14 +285,14 @@ describe('DocumentsService (BE-DOC-04)', () => {
   describe('getForOrg', () => {
     it('returns the view when the document exists in the tenant', async () => {
       docs.findById.mockResolvedValue(buildDocumentRow());
-      const view = await service.getForOrg('org_a', 'doc_1');
+      const view = await service.getForOrg(ORG_A, 'doc_1');
       expect(view.id).toBe('doc_1');
       expect(view.organizationId).toBe('org_a');
     });
 
     it('throws DOC_NOT_FOUND when the document is missing (cross-tenant or absent)', async () => {
       docs.findById.mockResolvedValue(null);
-      await expect(service.getForOrg('org_b', 'doc_1')).rejects.toMatchObject({
+      await expect(service.getForOrg(ORG_B, 'doc_1')).rejects.toMatchObject({
         code: ERROR_CODES.DOC_NOT_FOUND,
       });
       expect(docs.findById).toHaveBeenCalledWith('org_b', 'doc_1');
@@ -303,7 +306,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
       const stream = Readable.from(['hello']);
       storage.getStream.mockResolvedValue(stream);
 
-      const result = await service.openStreamForOrg('org_a', 'doc_1');
+      const result = await service.openStreamForOrg(ORG_A, 'doc_1');
       expect(result.filename).toBe('invoice.pdf');
       expect(result.mimeType).toBe('application/pdf');
       expect(result.sizeBytes).toBe(1234);
@@ -312,7 +315,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
 
     it('throws DOC_NOT_FOUND when the row is missing', async () => {
       docs.findById.mockResolvedValue(null);
-      await expect(service.openStreamForOrg('org_a', 'doc_1')).rejects.toMatchObject({
+      await expect(service.openStreamForOrg(ORG_A, 'doc_1')).rejects.toMatchObject({
         code: ERROR_CODES.DOC_NOT_FOUND,
       });
       expect(storage.getStream).not.toHaveBeenCalled();
@@ -325,7 +328,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
       docs.findById.mockResolvedValue(row);
       docs.softDelete.mockResolvedValue(true);
 
-      await service.softDelete('org_a', 'doc_1', 'user_1');
+      await service.softDelete(ORG_A, 'doc_1', 'user_1');
 
       expect(docs.softDelete).toHaveBeenCalledWith('org_a', 'doc_1', 'user_1');
       expect(storage.delete).not.toHaveBeenCalled();
@@ -350,7 +353,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
 
     it('throws DOC_NOT_FOUND when the document is missing — and does NOT emit an audit row', async () => {
       docs.findById.mockResolvedValue(null);
-      await expect(service.softDelete('org_a', 'doc_x', 'user_1')).rejects.toMatchObject({
+      await expect(service.softDelete(ORG_A, 'doc_x', 'user_1')).rejects.toMatchObject({
         code: ERROR_CODES.DOC_NOT_FOUND,
       });
       expect(docs.softDelete).not.toHaveBeenCalled();
@@ -367,7 +370,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
 
       const filters: DocumentListFilters = { tag: 'vente' };
       const pagination: PaginationOptions = { page: 2, pageSize: 10 };
-      const result = await service.listForOrg('org_a', filters, pagination);
+      const result = await service.listForOrg(ORG_A, filters, pagination);
 
       expect(docs.listForOrg).toHaveBeenCalledWith('org_a', filters, pagination);
       expect(result.total).toBe(27);
@@ -386,7 +389,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
       });
       docs.createOne.mockResolvedValue(buildDocumentRow({ organizationId: 'org_b' }));
 
-      await service.createFromUpload('org_b', 'user_42', {
+      await service.createFromUpload(ORG_B, 'user_42', {
         originalName: 't.txt',
         mimeType: 'text/plain',
         sizeBytes: 10,

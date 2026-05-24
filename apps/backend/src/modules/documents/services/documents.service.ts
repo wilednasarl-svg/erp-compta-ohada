@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import type { TenantId } from '../../../common/persistence/tenant-scope';
 import type { AppConfig } from '../../../config/configuration';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import type { DocumentEntity } from '../entities/document.entity';
@@ -161,7 +162,7 @@ export class DocumentsService {
   }
 
   async createFromUpload(
-    organizationId: string,
+    organizationId: TenantId,
     actorUserId: string,
     file: UploadFileInput | undefined,
     options: CreateDocumentOptions = {},
@@ -311,7 +312,7 @@ export class DocumentsService {
     return this.toView(row);
   }
 
-  async getForOrg(organizationId: string, id: string): Promise<DocumentView> {
+  async getForOrg(organizationId: TenantId, id: string): Promise<DocumentView> {
     const row = await this.documents.findById(organizationId, id);
     if (row === null) {
       throw new AppException(ERROR_CODES.DOC_NOT_FOUND, {
@@ -329,7 +330,7 @@ export class DocumentsService {
    * surfaces a clean 404 to the caller.
    */
   async openStreamForOrg(
-    organizationId: string,
+    organizationId: TenantId,
     id: string,
   ): Promise<{
     readonly stream: Readable;
@@ -353,7 +354,7 @@ export class DocumentsService {
   }
 
   async listForOrg(
-    organizationId: string,
+    organizationId: TenantId,
     filters: DocumentListFilters,
     pagination: PaginationOptions,
   ): Promise<ListDocumentsResult> {
@@ -367,7 +368,7 @@ export class DocumentsService {
   }
 
   async softDelete(
-    organizationId: string,
+    organizationId: TenantId,
     id: string,
     actorUserId: string,
     ctx: AuditContext = { ipAddress: null, userAgent: null },
