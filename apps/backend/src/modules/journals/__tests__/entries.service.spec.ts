@@ -145,7 +145,7 @@ function buildService(
 
   // Mock the DataSource — for transactional paths, run the callback inline.
   const accountRepoForManager = {
-    findOne: jest.fn().mockImplementation(async ({ where }: { where: { code: string } }) => {
+    findOne: jest.fn().mockImplementation(({ where }: { where: { code: string } }) => {
       return accountByCode.get(where.code) ?? null;
     }),
   };

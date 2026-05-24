@@ -1,5 +1,5 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -8,7 +8,10 @@ import { AuditTrailService, type AuditContext } from '../../audit/services/audit
 import { OrganizationAccountEntity } from '../../accounting-plan/entities/organization-account.entity';
 import { AccountingPeriodRepository } from '../repositories/accounting-period.repository';
 import { JournalRepository } from '../repositories/journal.repository';
-import { JournalEntryRepository } from '../repositories/journal-entry.repository';
+import {
+  JournalEntryRepository,
+  type ListEntriesFilters,
+} from '../repositories/journal-entry.repository';
 import { JournalEntryLineRepository } from '../repositories/journal-entry-line.repository';
 import type { JournalEntryEntity } from '../entities/journal-entry.entity';
 import type { JournalEntrySourceType } from '../entities/journal-entry.entity';
@@ -243,11 +246,11 @@ export class EntriesService {
           entryNumber,
           entryDate: today,
           description: `Annulation piece N${original.entryNumber} - ${reason}`,
-          status: 'validated',
-          sourceType: 'manual',
+          status: 'validated' as const,
+          sourceType: 'manual' as const,
           createdById: actorId,
           cancelsId: entryId,
-        } as any,
+        },
         manager,
       );
 
@@ -336,16 +339,10 @@ export class EntriesService {
 
   async listForOrg(
     organizationId: TenantId,
-    filters: {
-      status?: string;
-      journalId?: string;
-      periodId?: string;
-      page?: number;
-      pageSize?: number;
-    },
+    filters: ListEntriesFilters,
   ): Promise<{ entries: JournalEntryEntity[]; total: number }> {
     assertTenantId(organizationId);
-    return this.entryRepo.listForOrg(organizationId, filters as any);
+    return this.entryRepo.listForOrg(organizationId, filters);
   }
 
   private async getOrThrow(organizationId: TenantId, entryId: string): Promise<JournalEntryEntity> {
@@ -361,7 +358,7 @@ export class EntriesService {
   private async resolveAccounts(
     organizationId: TenantId,
     lines: CreateLineInput[],
-    manager: any,
+    manager: EntityManager,
   ): Promise<
     Array<{
       accountId: string;

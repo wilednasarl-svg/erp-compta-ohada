@@ -28,6 +28,7 @@ import { CancelEntryDto } from '../dto/cancel-entry.dto';
 import { CreateEntryDto } from '../dto/create-entry.dto';
 import { ListEntriesQueryDto } from '../dto/list-entries-query.dto';
 import { EntriesService } from '../services/entries.service';
+import type { JournalEntryStatus } from '../types/journal.types';
 
 @ApiTags('Journal Entries')
 @ApiBearerAuth('bearer')
@@ -45,7 +46,7 @@ export class EntriesController {
     @Query() query: ListEntriesQueryDto,
   ) {
     return this.entries.listForOrg(asTenantId(org.id), {
-      status: query.status as any,
+      status: query.status as JournalEntryStatus | undefined,
       journalId: query.journalId,
       periodId: query.periodId,
       page: query.page,

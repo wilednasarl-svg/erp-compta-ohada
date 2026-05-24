@@ -3,6 +3,7 @@ import type { DataSource, EntityManager } from 'typeorm';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { ChartOfAccountsService } from '../../accounting-plan/services/chart-of-accounts.service';
 import type { AuthEventContext, AuthEventsService } from '../../audit/services/auth-events.service';
+import type { JournalsService } from '../../journals/services/journals.service';
 import type { AuthEventEntity } from '../../audit/entities/auth-event.entity';
 import type { MembershipEntity } from '../../rbac/entities/membership.entity';
 import type { RoleEntity } from '../../rbac/entities/role.entity';
@@ -110,7 +111,7 @@ function buildHarness(): Harness {
   } as unknown as ChartOfAccountsService;
   const journals = {
     seedStandardJournals: jest.fn().mockResolvedValue(undefined),
-  } as unknown as import('../../journals/services/journals.service').JournalsService;
+  } as unknown as JournalsService;
   const dataSource = {
     transaction: (cb: (m: EntityManager) => Promise<unknown>) => cb(fakeManager),
   } as unknown as DataSource;
