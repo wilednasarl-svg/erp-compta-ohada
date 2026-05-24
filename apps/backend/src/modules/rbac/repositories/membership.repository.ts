@@ -199,7 +199,7 @@ export class MembershipRepository {
       );
       return r.affected ?? 0;
     }
-    const result: any = await this.repo.query(
+    const result: unknown = await this.repo.query(
       `WITH locked_admins AS (
          SELECT id FROM memberships
          WHERE organization_id = $1
@@ -247,7 +247,7 @@ export class MembershipRepository {
       });
       return r.affected ?? 0;
     }
-    const result: any = await this.repo.query(
+    const result: unknown = await this.repo.query(
       `WITH locked_admins AS (
          SELECT id FROM memberships
          WHERE organization_id = $1

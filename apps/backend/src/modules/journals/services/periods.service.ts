@@ -1,301 +1,199 @@
-import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
-import type { AuditContext } from '../../audit/services/audit-trail.service';
-import { AuditTrailService } from '../../audit/services/audit-trail.service';
-import { AccountingPeriodEntity } from '../entities/accounting-period.entity';
+import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
+import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import { AccountingPeriodRepository } from '../repositories/accounting-period.repository';
 import { JournalEntryRepository } from '../repositories/journal-entry.repository';
-import type {
-  AccountingPeriodKind,
-  FiscalYearSplit,
-} from '../types/journal.types';
+import type { AccountingPeriodEntity } from '../entities/accounting-period.entity';
+import type { FiscalYearSplit } from '../types/journal.types';
 
-export interface CreateFiscalYearInput {
-  readonly organizationId: string;
-  readonly year: number;
-  readonly split: FiscalYearSplit;
-  readonly ctx: AuditContext;
-}
-
-export interface AccountingPeriodView {
-  readonly id: string;
-  readonly organizationId: string;
-  readonly parentId: string | null;
-  readonly kind: AccountingPeriodKind;
-  readonly label: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly status: 'open' | 'closed';
-  readonly closedAt: Date | null;
-  readonly closedBy: string | null;
-}
-
-/**
- * `PeriodsService` (BE-JE-10) — gestion des exercices comptables et de
- * leurs sous-périodes.
- *
- * Vague 1 : exercice calendaire (1ᵉʳ janvier → 31 décembre). Découpages
- * supportés : MONTHLY (12 sous-périodes), QUARTERLY (4 sous-périodes),
- * ANNUAL_ONLY (aucune sous-période).
- *
- * Exercices décalés (clôture juin/juin par exemple) → vague 2.
- */
 @Injectable()
 export class PeriodsService {
+  private static readonly MODULE = 'journals' as const;
+  private readonly logger = new Logger(PeriodsService.name);
+
   constructor(
-    private readonly periods: AccountingPeriodRepository,
-    private readonly entries: JournalEntryRepository,
+    private readonly periodsRepo: AccountingPeriodRepository,
+    private readonly entriesRepo: JournalEntryRepository,
     private readonly audit: AuditTrailService,
-    private readonly dataSource: DataSource,
   ) {}
 
-  /**
-   * Crée un exercice annuel + ses sous-périodes selon `split`, le tout
-   * dans une transaction unique.
-   */
-  async createFiscalYear(input: CreateFiscalYearInput): Promise<AccountingPeriodView[]> {
-    const { organizationId, year, split, ctx } = input;
-    const yearStart = `${year}-01-01`;
-    const yearEnd = `${year + 1}-01-01`;
-
-    const all = await this.dataSource.transaction(async (manager) => {
-      const annual = await this.periods.create(
-        {
-          organizationId,
-          parentId: null,
-          kind: 'ANNUAL',
-          label: `Exercice ${year}`,
-          startDate: yearStart,
-          endDate: yearEnd,
-        },
-        manager,
-      );
-
-      const children: AccountingPeriodEntity[] = [];
-      if (split === 'MONTHLY') {
-        for (let m = 0; m < 12; m += 1) {
-          const start = `${year}-${String(m + 1).padStart(2, '0')}-01`;
-          const end = m === 11 ? `${year + 1}-01-01` : `${year}-${String(m + 2).padStart(2, '0')}-01`;
-          children.push(
-            await this.periods.create(
-              {
-                organizationId,
-                parentId: annual.id,
-                kind: 'MONTHLY',
-                label: monthLabel(year, m + 1),
-                startDate: start,
-                endDate: end,
-              },
-              manager,
-            ),
-          );
-        }
-      } else if (split === 'QUARTERLY') {
-        for (let q = 0; q < 4; q += 1) {
-          const startMonth = q * 3 + 1;
-          const endMonth = startMonth + 3;
-          const start = `${year}-${String(startMonth).padStart(2, '0')}-01`;
-          const end =
-            endMonth > 12
-              ? `${year + 1}-01-01`
-              : `${year}-${String(endMonth).padStart(2, '0')}-01`;
-          children.push(
-            await this.periods.create(
-              {
-                organizationId,
-                parentId: annual.id,
-                kind: 'QUARTERLY',
-                label: `T${q + 1} ${year}`,
-                startDate: start,
-                endDate: end,
-              },
-              manager,
-            ),
-          );
-        }
-      }
-
-      return [annual, ...children];
-    });
-
-    await this.audit.record({
-      module: 'workflows', // pas de module dédié journals dans AuditModule pour wave 1
-      action: 'fiscal_year_created',
-      entityType: 'accounting_period',
-      entityId: all[0].id,
-      after: { year, split, periodCount: all.length },
-      ctx,
-    });
-
-    return all.map(toView);
+  async listForOrg(organizationId: TenantId): Promise<AccountingPeriodEntity[]> {
+    assertTenantId(organizationId);
+    return this.periodsRepo.listByOrganization(organizationId);
   }
 
-  async findContainingDate(
-    organizationId: string,
-    date: string,
-    kind?: AccountingPeriodKind,
-  ): Promise<AccountingPeriodEntity | null> {
-    return this.periods.findContainingDate(organizationId, date, kind);
-  }
-
-  async assertOpenForDate(organizationId: string, date: string): Promise<AccountingPeriodEntity> {
-    const period = await this.periods.findContainingDate(organizationId, date);
+  async getById(organizationId: TenantId, id: string): Promise<AccountingPeriodEntity> {
+    assertTenantId(organizationId);
+    const period = await this.periodsRepo.findById(id, organizationId);
     if (!period) {
       throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_NOT_FOUND, {
-        message: `No accounting period covers ${date} — create the fiscal year first`,
-      });
-    }
-    if (period.status === 'closed') {
-      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_CLOSED, {
-        message: `Accounting period ${period.label} is closed`,
-        details: { periodId: period.id, periodLabel: period.label, date },
+        message: `Accounting period '${id}' not found.`,
       });
     }
     return period;
   }
 
-  async listForOrganization(organizationId: string): Promise<AccountingPeriodView[]> {
-    const rows = await this.periods.listByOrganization(organizationId);
-    return rows.map(toView);
+  async createFiscalYear(
+    organizationId: TenantId,
+    year: number,
+    split: FiscalYearSplit,
+    actorId: string,
+    ctx: AuditContext,
+  ): Promise<AccountingPeriodEntity> {
+    assertTenantId(organizationId);
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+    const label = String(year);
+
+    const annual = await this.periodsRepo.create({
+      organizationId,
+      parentId: null,
+      kind: 'ANNUAL',
+      label,
+      startDate,
+      endDate,
+    });
+
+    if (split === 'MONTHLY') {
+      await this.createMonthlySubPeriods(organizationId, annual.id, year);
+    } else if (split === 'QUARTERLY') {
+      await this.createQuarterlySubPeriods(organizationId, annual.id, year);
+    }
+
+    await this.emitAudit('journals.period_created', annual.id, { year, split }, ctx).catch(
+      (e) => this.logger.warn(`Audit failed: ${String(e)}`),
+    );
+
+    return annual;
   }
 
-  /**
-   * Clôture une période. Refuse s'il reste des drafts dans la période ou
-   * une de ses sous-périodes (clôture en cascade).
-   */
   async closePeriod(
-    organizationId: string,
+    organizationId: TenantId,
     periodId: string,
+    actorId: string,
     ctx: AuditContext,
-  ): Promise<AccountingPeriodView> {
-    const period = await this.periods.findById(periodId, organizationId);
-    if (!period) {
-      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_NOT_FOUND);
-    }
+  ): Promise<void> {
+    assertTenantId(organizationId);
+    const period = await this.getById(organizationId, periodId);
 
-    const toClose = await this.collectSelfAndOpenChildren(period, organizationId);
-
-    for (const p of toClose) {
-      const draftCount = await this.entries.countDraftsInPeriod(organizationId, p.id);
-      if (draftCount > 0) {
-        throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_HAS_DRAFTS, {
-          message: `Period ${p.label} has ${draftCount} draft entries — validate or delete them first`,
-          details: { periodId: p.id, draftCount },
-        });
-      }
-    }
-
-    await this.dataSource.transaction(async (manager: EntityManager) => {
-      for (const p of toClose) {
-        await manager
-          .getRepository(AccountingPeriodEntity)
-          .update(
-            { id: p.id },
-            { status: 'closed', closedAt: new Date(), closedBy: ctx.userId ?? null },
-          );
-      }
-    });
-
-    await this.audit.record({
-      module: 'workflows',
-      action: 'period_closed',
-      entityType: 'accounting_period',
-      entityId: period.id,
-      before: { status: 'open' },
-      after: { status: 'closed', cascadeCount: toClose.length },
-      ctx,
-    });
-
-    const reloaded = await this.periods.findById(periodId, organizationId);
-    return toView(reloaded!);
-  }
-
-  async reopenPeriod(
-    organizationId: string,
-    periodId: string,
-    reason: string,
-    ctx: AuditContext,
-  ): Promise<AccountingPeriodView> {
-    if (reason.trim().length === 0) {
-      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_REOPEN_REASON_REQUIRED, {
-        message: 'Reopening an accounting period requires a non-empty reason',
+    if (period.status === 'closed') {
+      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_CLOSED, {
+        message: `Period '${periodId}' is already closed.`,
       });
     }
 
-    const period = await this.periods.findById(periodId, organizationId);
-    if (!period) {
-      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_NOT_FOUND);
+    const draftCount = await this.entriesRepo.countDraftsByPeriod(organizationId, periodId);
+    if (draftCount > 0) {
+      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_HAS_DRAFTS, {
+        message: `Period has ${draftCount} draft entries — validate or delete them first.`,
+      });
     }
-    if (period.status === 'open') {
-      return toView(period);
-    }
 
-    await this.periods.reopenPeriod(periodId, reason);
+    await this.periodsRepo.closePeriod(periodId, actorId);
 
-    await this.audit.record({
-      module: 'workflows',
-      action: 'period_reopened',
-      entityType: 'accounting_period',
-      entityId: period.id,
-      before: { status: 'closed' },
-      after: { status: 'open', reason },
-      ctx,
-    });
-
-    const reloaded = await this.periods.findById(periodId, organizationId);
-    return toView(reloaded!);
-  }
-
-  private async collectSelfAndOpenChildren(
-    period: AccountingPeriodEntity,
-    organizationId: string,
-  ): Promise<AccountingPeriodEntity[]> {
-    const result: AccountingPeriodEntity[] = [];
-    const stack: AccountingPeriodEntity[] = [period];
-    while (stack.length > 0) {
-      const current = stack.pop()!;
-      if (current.status === 'open') result.push(current);
-      const children = await this.periods.listChildren(current.id);
-      for (const c of children) {
-        if (c.organizationId === organizationId) stack.push(c);
+    // Cascade: close children too
+    if (period.kind === 'ANNUAL') {
+      const children = await this.periodsRepo.listChildren(periodId);
+      for (const child of children) {
+        if (child.status === 'open') {
+          await this.periodsRepo.closePeriod(child.id, actorId);
+        }
       }
     }
-    return result;
+
+    await this.emitAudit('journals.period_closed', periodId, { kind: period.kind, label: period.label }, ctx).catch(
+      (e) => this.logger.warn(`Audit failed: ${String(e)}`),
+    );
   }
-}
 
-function toView(entity: AccountingPeriodEntity): AccountingPeriodView {
-  return {
-    id: entity.id,
-    organizationId: entity.organizationId,
-    parentId: entity.parentId,
-    kind: entity.kind,
-    label: entity.label,
-    startDate: entity.startDate,
-    endDate: entity.endDate,
-    status: entity.status,
-    closedAt: entity.closedAt,
-    closedBy: entity.closedBy,
-  };
-}
+  async reopenPeriod(
+    organizationId: TenantId,
+    periodId: string,
+    reason: string,
+    actorId: string,
+    ctx: AuditContext,
+  ): Promise<void> {
+    assertTenantId(organizationId);
+    if (!reason || reason.trim().length === 0) {
+      throw new AppException(ERROR_CODES.ACCOUNTING_PERIOD_REOPEN_REASON_REQUIRED, {
+        message: 'A reason is required to reopen a closed period.',
+      });
+    }
+    const period = await this.getById(organizationId, periodId);
+    if (period.status === 'open') {
+      return; // Already open — idempotent
+    }
 
-const FRENCH_MONTHS = [
-  'Janvier',
-  'Février',
-  'Mars',
-  'Avril',
-  'Mai',
-  'Juin',
-  'Juillet',
-  'Août',
-  'Septembre',
-  'Octobre',
-  'Novembre',
-  'Décembre',
-];
-function monthLabel(year: number, month: number): string {
-  return `${FRENCH_MONTHS[month - 1]} ${year}`;
+    await this.periodsRepo.reopenPeriod(periodId, reason.trim());
+
+    await this.emitAudit('journals.period_reopened', periodId, { reason, label: period.label }, ctx).catch(
+      (e) => this.logger.warn(`Audit failed: ${String(e)}`),
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  private async createMonthlySubPeriods(
+    organizationId: TenantId,
+    parentId: string,
+    year: number,
+  ): Promise<void> {
+    const months = [
+      { m: 1, label: `Jan ${year}`, start: `${year}-01-01`, end: `${year}-01-31` },
+      { m: 2, label: `Fév ${year}`, start: `${year}-02-01`, end: this.lastDayOfMonth(year, 2) },
+      { m: 3, label: `Mar ${year}`, start: `${year}-03-01`, end: `${year}-03-31` },
+      { m: 4, label: `Avr ${year}`, start: `${year}-04-01`, end: `${year}-04-30` },
+      { m: 5, label: `Mai ${year}`, start: `${year}-05-01`, end: `${year}-05-31` },
+      { m: 6, label: `Jun ${year}`, start: `${year}-06-01`, end: `${year}-06-30` },
+      { m: 7, label: `Jul ${year}`, start: `${year}-07-01`, end: `${year}-07-31` },
+      { m: 8, label: `Aoû ${year}`, start: `${year}-08-01`, end: `${year}-08-31` },
+      { m: 9, label: `Sep ${year}`, start: `${year}-09-01`, end: `${year}-09-30` },
+      { m: 10, label: `Oct ${year}`, start: `${year}-10-01`, end: `${year}-10-31` },
+      { m: 11, label: `Nov ${year}`, start: `${year}-11-01`, end: `${year}-11-30` },
+      { m: 12, label: `Déc ${year}`, start: `${year}-12-01`, end: `${year}-12-31` },
+    ];
+    for (const { label, start, end } of months) {
+      await this.periodsRepo.create({ organizationId, parentId, kind: 'MONTHLY', label, startDate: start, endDate: end });
+    }
+  }
+
+  private async createQuarterlySubPeriods(
+    organizationId: TenantId,
+    parentId: string,
+    year: number,
+  ): Promise<void> {
+    const quarters = [
+      { label: `T1 ${year}`, start: `${year}-01-01`, end: `${year}-03-31` },
+      { label: `T2 ${year}`, start: `${year}-04-01`, end: `${year}-06-30` },
+      { label: `T3 ${year}`, start: `${year}-07-01`, end: `${year}-09-30` },
+      { label: `T4 ${year}`, start: `${year}-10-01`, end: `${year}-12-31` },
+    ];
+    for (const { label, start, end } of quarters) {
+      await this.periodsRepo.create({ organizationId, parentId, kind: 'QUARTERLY', label, startDate: start, endDate: end });
+    }
+  }
+
+  private lastDayOfMonth(year: number, month: number): string {
+    const d = new Date(year, month, 0);
+    return `${year}-${String(month).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private async emitAudit(
+    action: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+    ctx: AuditContext,
+  ): Promise<void> {
+    await this.audit.record({
+      module: PeriodsService.MODULE,
+      action,
+      entityType: 'accounting_period',
+      entityId,
+      metadata,
+      ctx,
+    });
+  }
 }

@@ -25,7 +25,7 @@ import { AppDataSource } from '../../src/database/data-source';
 export default async function globalSetup(): Promise<void> {
   const dsn = process.env.DATABASE_URL ?? '<unset>';
   const masked = dsn.replace(/(:[^:@]+)@/, ':***@');
-  const schema = (AppDataSource.options as any).schema || 'public';
+  const schema = (AppDataSource.options as { schema?: string }).schema ?? 'public';
   // eslint-disable-next-line no-console -- this is an e2e harness, stdout IS the UX
   console.log(`[e2e] resetting test schema "${schema}" on ${masked}`);
 
