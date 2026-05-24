@@ -1,7 +1,8 @@
 import { createHash } from 'crypto';
-import { createReadStream, promises as fs } from 'fs';
+import { createReadStream, createWriteStream, promises as fs } from 'fs';
 import path from 'path';
 import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
@@ -59,42 +60,51 @@ export class LocalFilesystemDocumentStorage implements DocumentStorage {
   async save(input: SaveDocumentInput): Promise<SaveDocumentResult> {
     this.assertOrgIdShape(input.organizationId);
 
-    const { sha256, sizeBytes, bytes } = await this.hashBody(input.body);
     const ext = this.extensionFor(input.originalName);
     const now = new Date();
     const yyyy = String(now.getUTCFullYear()).padStart(4, '0');
     const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
 
-    const storageKey = `${input.organizationId}/${yyyy}/${mm}/${sha256}${ext}`;
-    const absolute = this.resolveKey(storageKey);
-    const dir = path.dirname(absolute);
+    // Stage to a temp file under the org/year/month directory first,
+    // then atomically rename once the final SHA-256 key is known.
+    // For Buffer inputs the bytes are already in memory; for Readable
+    // streams we tee through createHash so memory stays O(1).
+    const stagingDir = path.dirname(
+      this.resolveKey(`${input.organizationId}/${yyyy}/${mm}/_placeholder${ext}`),
+    );
 
     try {
-      await fs.mkdir(dir, { recursive: true });
+      await fs.mkdir(stagingDir, { recursive: true });
+      const tmpPath = path.join(
+        stagingDir,
+        `.upload.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`,
+      );
 
-      // Skip write when the content-addressed target already exists —
-      // re-uploads of identical bytes converge to the same key.
+      const { sha256, sizeBytes } = await this.streamToTempFile(input.body, tmpPath);
+
+      const storageKey = `${input.organizationId}/${yyyy}/${mm}/${sha256}${ext}`;
+      const absolute = this.resolveKey(storageKey);
+
+      // Idempotence: if the content-addressed target already exists,
+      // drop the temp file and reuse the existing key.
       try {
         const stat = await fs.stat(absolute);
         if (stat.isFile()) {
+          await fs.unlink(tmpPath).catch(() => undefined);
           return { storageKey, sha256Checksum: sha256, sizeBytes };
         }
       } catch (statError: unknown) {
         if (!this.isEnoent(statError)) {
+          await fs.unlink(tmpPath).catch(() => undefined);
           throw statError;
         }
       }
 
-      // Atomic write: temp file in the same directory + rename, so a
-      // crash mid-write never leaves a half-written final file.
-      const tmpPath = `${absolute}.${process.pid}.${Date.now()}.tmp`;
-      await fs.writeFile(tmpPath, bytes);
       await fs.rename(tmpPath, absolute);
-
       return { storageKey, sha256Checksum: sha256, sizeBytes };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'unknown error';
-      this.logger.warn(`save: failed to persist storageKey='${storageKey}': ${message}`);
+      this.logger.warn(`save: failed to persist document: ${message}`);
       throw new AppException(ERROR_CODES.DOC_STORAGE_FAILURE, {
         message: 'Failed to persist document bytes',
         cause: error,
@@ -171,24 +181,41 @@ export class LocalFilesystemDocumentStorage implements DocumentStorage {
     return absolute;
   }
 
-  private async hashBody(
+  /**
+   * Pipe the upload body into `tmpPath` while computing the SHA-256
+   * digest and tracking byte count on the fly. Memory stays O(1) for
+   * Readable streams (no full-content Buffer accumulation), which is
+   * the precondition for the wave-2 S3 driver and large attachments.
+   */
+  private async streamToTempFile(
     body: Buffer | Readable,
-  ): Promise<{ sha256: string; sizeBytes: number; bytes: Buffer }> {
+    tmpPath: string,
+  ): Promise<{ sha256: string; sizeBytes: number }> {
     const hash = createHash('sha256');
-    if (Buffer.isBuffer(body)) {
-      hash.update(body);
-      return { sha256: hash.digest('hex'), sizeBytes: body.length, bytes: body };
+    const source = Buffer.isBuffer(body) ? Readable.from(body) : body;
+
+    let sizeBytes = 0;
+    const writeStream = createWriteStream(tmpPath);
+
+    try {
+      await pipeline(
+        source,
+        async function* (src) {
+          for await (const chunk of src) {
+            const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
+            hash.update(buf);
+            sizeBytes += buf.length;
+            yield buf;
+          }
+        },
+        writeStream,
+      );
+    } catch (error: unknown) {
+      await fs.unlink(tmpPath).catch(() => undefined);
+      throw error;
     }
 
-    const chunks: Buffer[] = [];
-    let size = 0;
-    for await (const chunk of body) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
-      chunks.push(buf);
-      size += buf.length;
-      hash.update(buf);
-    }
-    return { sha256: hash.digest('hex'), sizeBytes: size, bytes: Buffer.concat(chunks, size) };
+    return { sha256: hash.digest('hex'), sizeBytes };
   }
 
   private extensionFor(originalName: string): string {
