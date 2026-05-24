@@ -24,16 +24,41 @@ import { useAuthStore } from '@/stores/auth-store';
 import type { SelectOrganizationResponse } from '@/types/auth';
 
 const ORG_TYPES = ['firm', 'company'] as const;
+const ACCOUNTING_SYSTEMS = ['NORMAL', 'MINIMAL', 'ALLEGE'] as const;
 
 const schema = z.object({
   name: z.string().min(2, 'Au moins 2 caractères.').max(120, 'Maximum 120 caractères.'),
   type: z.enum(ORG_TYPES),
+  // Module 2 — système comptable OHADA SYSCOHADA. Choix immuable
+  // après création (cf. design D2 du Module 2). Le backend valide la
+  // même liste fermée via `IsIn` sur `CreateOrganizationDto`.
+  system: z.enum(ACCOUNTING_SYSTEMS),
 });
 type Values = z.infer<typeof schema>;
 
 interface CreateOrgResponse {
   organization: { id: string; name: string; slug: string; type: 'firm' | 'company' };
 }
+
+/**
+ * Étiquettes utilisateur des trois systèmes. Volontairement courtes —
+ * un lien externe vers la doc accounting-plan détaillera les critères
+ * de choix (CA, type d'activité, obligation déclarative).
+ */
+const SYSTEM_LABELS: Record<(typeof ACCOUNTING_SYSTEMS)[number], { title: string; subtitle: string }> = {
+  NORMAL: {
+    title: 'Système Normal',
+    subtitle: 'PME et grandes entreprises — plan complet (~800 comptes), états financiers complets.',
+  },
+  ALLEGE: {
+    title: 'Système Allégé',
+    subtitle: 'Entités intermédiaires — plan intermédiaire (~600 comptes), états simplifiés.',
+  },
+  MINIMAL: {
+    title: 'Système Minimal de Trésorerie',
+    subtitle: 'Très petites entités sous seuils — comptabilité d\'encaissement, plan réduit.',
+  },
+};
 
 /**
  * Create an organization → auto-select it (the backend assigns the
@@ -48,7 +73,10 @@ export default function NewOrganizationPage() {
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', type: 'firm' },
+    // NORMAL = défaut le plus courant en cabinet OHADA (les TPE
+    // éligibles au Minimal sont une minorité ; la migration upgrade
+    // vers Normal est lourde, mieux vaut démarrer Normal).
+    defaultValues: { name: '', type: 'firm', system: 'NORMAL' },
   });
 
   const create = useApiMutation((values: Values) => api.post<CreateOrgResponse>('/organizations', values));
@@ -107,6 +135,40 @@ export default function NewOrganizationPage() {
                 <option value="firm">Cabinet d'expertise comptable</option>
                 <option value="company">Entreprise cliente</option>
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Système comptable OHADA</Label>
+              <p className="text-xs text-muted-foreground">
+                Choix <strong>définitif</strong> — il fige le plan comptable et les états
+                financiers. Voir{' '}
+                <Link href="/docs/accounting-plan" className="underline">
+                  guide de choix du système
+                </Link>
+                .
+              </p>
+              <div className="space-y-2">
+                {ACCOUNTING_SYSTEMS.map((sys) => (
+                  <label
+                    key={sys}
+                    className="flex cursor-pointer items-start gap-3 rounded-md border border-input p-3 transition hover:border-foreground/30 has-[:checked]:border-foreground has-[:checked]:bg-secondary/40"
+                  >
+                    <input
+                      type="radio"
+                      value={sys}
+                      className="mt-1 h-4 w-4"
+                      {...form.register('system')}
+                    />
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">{SYSTEM_LABELS[sys].title}</p>
+                      <p className="text-xs text-muted-foreground">{SYSTEM_LABELS[sys].subtitle}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              {form.formState.errors.system !== undefined ? (
+                <p className="text-xs text-destructive">{form.formState.errors.system.message}</p>
+              ) : null}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
