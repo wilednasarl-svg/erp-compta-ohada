@@ -53,7 +53,7 @@ describe('RuleEngineService', () => {
     } as RuleEntity;
   }
 
-  function buildService(overrides: Partial<Record<string, unknown>> = {}) {
+  function buildService() {
     const ruleRepo = {
       findById: jest.fn(),
       findActive: jest.fn(),
@@ -68,7 +68,6 @@ describe('RuleEngineService', () => {
         getMany: jest.fn().mockResolvedValue([]),
       }),
     };
-    const sessionRepo = {};
     const transformations = {
       reclassifyEntry: jest.fn().mockResolvedValue({ id: 'trf-1' }),
     };
@@ -80,7 +79,6 @@ describe('RuleEngineService', () => {
       ruleRepo as any,
       executionRepo as any,
       stagingRepo as any,
-      sessionRepo as any,
       transformations as any,
       audit as any,
     );
@@ -305,7 +303,7 @@ describe('RuleEngineService', () => {
       const result = await svc.applyRules(ORG_ID, RULE_ID, {}, USER_ID, AUDIT_CTX);
 
       // Transformation créée
-      expect(transformations.reclassifyEntry).toHaveBeenCalledOnce();
+      expect(transformations.reclassifyEntry).toHaveBeenCalledTimes(1);
       expect(transformations.reclassifyEntry).toHaveBeenCalledWith(
         ORG_ID,
         USER_ID,

@@ -55,8 +55,6 @@ export class RuleEngineService {
     private readonly executionRepo: RuleExecutionRepository,
     @InjectRepository(ImportStagingEntryEntity)
     private readonly stagingRepo: Repository<ImportStagingEntryEntity>,
-    @InjectRepository(ImportSessionEntity)
-    private readonly _sessionRepo: Repository<ImportSessionEntity>,
     private readonly transformations: TransformationService,
     private readonly audit: AuditTrailService,
   ) {}
