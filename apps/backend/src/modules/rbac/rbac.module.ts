@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditModule } from '../audit/audit.module';
@@ -37,7 +37,9 @@ import { PermissionsCacheService } from './services/permissions-cache.service';
       RolePermissionEntity,
       MembershipEntity,
     ]),
-    AuditModule,
+    // forwardRef because AuditModule now imports RbacModule (for
+    // TenantGuard / PermissionsGuard used by AuditLogsController).
+    forwardRef(() => AuditModule),
   ],
   providers: [
     RoleRepository,

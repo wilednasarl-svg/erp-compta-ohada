@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditModule } from '../audit/audit.module';
+import { AuthModule } from '../auth/auth.module';
+import { RbacModule } from '../rbac/rbac.module';
 import { ChartOfAccountsController } from './controllers/chart-of-accounts.controller';
 import { ReferenceChartController } from './controllers/reference-chart.controller';
 import { OrganizationAccountEntity } from './entities/organization-account.entity';
@@ -32,6 +34,15 @@ import { ReferenceChartService } from './services/reference-chart.service';
       OrganizationAccountEntity,
       OrganizationAccountingConfigEntity,
     ]),
+    // AuthModule for JwtAuthGuard, RbacModule for TenantGuard +
+    // PermissionsGuard — referenced by ChartOfAccountsController and
+    // ReferenceChartController via @UseGuards. Without these imports
+    // Nest crashes at boot with "can't resolve dependencies of
+    // JwtAuthGuard … JwtTokenService at index [1] is available in the
+    // AccountingPlanModule context" (regression that killed every
+    // deploy since BE-PC-07 landed in main).
+    AuthModule,
+    RbacModule,
     AuditModule,
   ],
   controllers: [ReferenceChartController, ChartOfAccountsController],

@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuthModule } from '../auth/auth.module';
+import { RbacModule } from '../rbac/rbac.module';
 import { AuditLogsController } from './controllers/audit-logs.controller';
 import { AuditLogEntity } from './entities/audit-log.entity';
 import { AuthEventEntity } from './entities/auth-event.entity';
@@ -47,7 +49,17 @@ import { AuthEventsService } from './services/auth-events.service';
  *     pick it up without re-registering the entity.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([AuthEventEntity, AuditLogEntity])],
+  imports: [
+    TypeOrmModule.forFeature([AuthEventEntity, AuditLogEntity]),
+    // AuditLogsController utilise @UseGuards(JwtAuthGuard, TenantGuard,
+    // PermissionsGuard). Sans ces imports, Nest crash au boot car
+    // JwtTokenService et MembershipRepository ne sont pas dans le
+    // contexte DI de AuditModule. forwardRef est requis car AuthModule
+    // et RbacModule importent eux-mêmes AuditModule (dépendance
+    // circulaire pour AuthEventsService / TenantGuard audit).
+    forwardRef(() => AuthModule),
+    forwardRef(() => RbacModule),
+  ],
   controllers: [AuditLogsController],
   providers: [AuthEventRepository, AuditLogRepository, AuditTrailService, AuthEventsService],
   exports: [

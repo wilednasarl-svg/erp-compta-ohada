@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CLOCK, SystemClock } from '../../common/time/clock';
@@ -40,7 +40,11 @@ import { RefreshTokenService } from './services/refresh-token.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserEntity, RefreshTokenEntity, MfaConfigEntity]),
-    AuditModule,
+    // forwardRef because AuditModule now imports AuthModule (for
+    // JwtAuthGuard used by AuditLogsController). Both sides must
+    // declare the cycle explicitly so Nest can resolve in the right
+    // order at bootstrap.
+    forwardRef(() => AuditModule),
     // RbacModule is pulled for `MembershipRepository` + `RoleRepository`:
     // AuthService.login populates `organizations: [...]` and
     // `selectOrganization` resolves the membership (with org relation) +

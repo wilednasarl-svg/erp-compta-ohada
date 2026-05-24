@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
 import { AuditModule } from '../audit/audit.module';
+import { AuthModule } from '../auth/auth.module';
+import { RbacModule } from '../rbac/rbac.module';
 import { ImportsController } from './controllers/imports.controller';
 import { ImportFileEntity } from './entities/import-file.entity';
 import { ImportSessionEntity } from './entities/import-session.entity';
@@ -48,6 +50,13 @@ import { ValidationService } from './services/validation.service';
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([ImportSessionEntity, ImportFileEntity, ImportStagingEntryEntity]),
+    // AuthModule (JwtAuthGuard) + RbacModule (TenantGuard,
+    // PermissionsGuard) sont consommés par ImportsController via
+    // @UseGuards. Sans ces imports, Nest crash au boot —
+    // unresolved JwtTokenService dans le contexte ImportsModule.
+    // Même pattern qu'OrganizationsModule / DocumentsModule.
+    AuthModule,
+    RbacModule,
     AuditModule,
     AccountingPlanModule,
   ],
