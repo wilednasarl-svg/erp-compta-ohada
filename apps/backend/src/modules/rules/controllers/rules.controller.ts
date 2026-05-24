@@ -69,7 +69,7 @@ export class RulesController {
     @Body() dto: CreateRuleDto,
     @Req() req: Request,
   ) {
-    const ctx = buildAuditRequestContext(req, user.id, org.id);
+    const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     return this.rulesService.createRule(asTenantId(org.id), user.id, dto, ctx);
   }
 
@@ -105,7 +105,7 @@ export class RulesController {
     @Body() dto: UpdateRuleDto,
     @Req() req: Request,
   ) {
-    const ctx = buildAuditRequestContext(req, user.id, org.id);
+    const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     return this.rulesService.updateRule(asTenantId(org.id), user.id, ruleId, dto, ctx);
   }
 
@@ -127,7 +127,7 @@ export class RulesController {
     @Body() dto: ExecuteRuleDto,
     @Req() req: Request,
   ) {
-    const ctx = buildAuditRequestContext(req, user.id, org.id);
+    const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const scope: RuleScope = {
       journal: dto.journal,
       dateFrom: dto.dateFrom,
@@ -151,7 +151,7 @@ export class RulesController {
     @Body() dto: ExecuteRuleDto,
     @Req() req: Request,
   ) {
-    const ctx = buildAuditRequestContext(req, user.id, org.id);
+    const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const scope: RuleScope = {
       journal: dto.journal,
       dateFrom: dto.dateFrom,
