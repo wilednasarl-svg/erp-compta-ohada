@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, type FindOptionsWhere, ILike, In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -56,7 +56,7 @@ export class RuleEngineService {
     @InjectRepository(ImportStagingEntryEntity)
     private readonly stagingRepo: Repository<ImportStagingEntryEntity>,
     @InjectRepository(ImportSessionEntity)
-    private readonly sessionRepo: Repository<ImportSessionEntity>,
+    private readonly _sessionRepo: Repository<ImportSessionEntity>,
     private readonly transformations: TransformationService,
     private readonly audit: AuditTrailService,
   ) {}
