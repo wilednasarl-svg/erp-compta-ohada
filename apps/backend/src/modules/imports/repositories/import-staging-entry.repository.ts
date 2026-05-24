@@ -91,12 +91,18 @@ export class ImportStagingEntryRepository {
     options: { limit?: number; offset?: number; onlyWithErrors?: boolean } = {},
   ): Promise<ImportStagingEntryEntity[]> {
     assertTenantId(organizationId);
+    // NOTE: `.orderBy()` resolves entity *property* names (camelCase)
+    // via TypeORM metadata, pas le nom DB. Passer `e.row_number`
+    // crash avec "Cannot read properties of undefined (reading
+    // 'databaseName')" car aucune propriété ne s'appelle row_number.
+    // Utiliser `e.rowNumber` — TypeORM produit la bonne colonne
+    // snake_case dans le SQL final.
     const qb = this.repo
       .createQueryBuilder('e')
       .innerJoin(ImportSessionEntity, 's', 's.id = e.session_id')
       .where('e.session_id = :sessionId', { sessionId })
       .andWhere('s.organization_id = :organizationId', { organizationId })
-      .orderBy('e.row_number', 'ASC')
+      .orderBy('e.rowNumber', 'ASC')
       .take(options.limit ?? 100)
       .skip(options.offset ?? 0);
     if (options.onlyWithErrors === true) {
