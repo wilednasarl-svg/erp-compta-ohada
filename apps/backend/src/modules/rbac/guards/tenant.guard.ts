@@ -5,6 +5,7 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { RequestContext } from '../../../common/types/request-context';
 import { AuthEventsService } from '../../audit/services/auth-events.service';
+import { OrganizationRepository } from '../../organizations/repositories/organization.repository';
 import { MembershipRepository } from '../repositories/membership.repository';
 import { RoleRepository } from '../repositories/role.repository';
 
@@ -41,6 +42,7 @@ export class TenantGuard implements CanActivate {
   constructor(
     private readonly memberships: MembershipRepository,
     private readonly roles: RoleRepository,
+    private readonly organizations: OrganizationRepository,
     private readonly authEvents: AuthEventsService,
   ) {}
 
@@ -93,7 +95,10 @@ export class TenantGuard implements CanActivate {
       });
     }
 
-    const role = await this.roles.findById(membership.roleId);
+    const [role, org] = await Promise.all([
+      this.roles.findById(membership.roleId),
+      this.organizations.findActiveById(orgId),
+    ]);
     if (role === null) {
       // A membership pointing at a missing role is a data-integrity bug
       // (RESTRICT FK should make it impossible). Fail closed.
@@ -104,6 +109,7 @@ export class TenantGuard implements CanActivate {
 
     ctxBag.currentOrg = {
       id: orgId,
+      name: org?.name ?? '',
       roleId: membership.roleId,
       role: role.code,
       membershipId: membership.id,

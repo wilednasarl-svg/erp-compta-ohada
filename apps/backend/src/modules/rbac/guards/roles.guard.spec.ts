@@ -55,7 +55,7 @@ describe('RolesGuard (BE-RBAC-03)', () => {
   it('allows when the caller role is in the allow-list', () => {
     withRoles(reflector, ['admin', 'expert_comptable']);
     const { ctx } = buildExecutionContext({
-      currentOrg: { id: 'o', roleId: 'r', role: 'admin', membershipId: 'm' },
+      currentOrg: { id: 'o', name: 'Test Org', roleId: 'r', role: 'admin', membershipId: 'm' },
     });
     expect(guard.canActivate(ctx)).toBe(true);
   });
@@ -63,7 +63,7 @@ describe('RolesGuard (BE-RBAC-03)', () => {
   it('throws FORBIDDEN_ROLE (403) when the caller role is not in the allow-list', () => {
     withRoles(reflector, ['admin']);
     const { ctx } = buildExecutionContext({
-      currentOrg: { id: 'o', roleId: 'r', role: 'comptable', membershipId: 'm' },
+      currentOrg: { id: 'o', name: 'Test Org', roleId: 'r', role: 'comptable', membershipId: 'm' },
     });
 
     try {
@@ -95,7 +95,7 @@ describe('RolesGuard (BE-RBAC-03)', () => {
   it('empty allow-list `@Roles()` deactivates the route (fail-closed)', () => {
     withRoles(reflector, []);
     const { ctx } = buildExecutionContext({
-      currentOrg: { id: 'o', roleId: 'r', role: 'admin', membershipId: 'm' },
+      currentOrg: { id: 'o', name: 'Test Org', roleId: 'r', role: 'admin', membershipId: 'm' },
     });
 
     expect(() => guard.canActivate(ctx)).toThrow(AppException);

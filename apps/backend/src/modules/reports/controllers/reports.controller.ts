@@ -6,9 +6,11 @@ import {
   Param,
   ParseUUIDPipe,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { CurrentOrgContext } from '../../../common/types/request-context';
@@ -28,23 +30,42 @@ import {
   type ProfitLossReport,
   type TrialBalanceReport,
 } from '../services/reports.service';
+import { ReportsPdfService } from '../services/reports-pdf.service';
+import { ReportsXlsxService } from '../services/reports-xlsx.service';
 
 /**
- * `ReportsController` — Module 9 wave 1 read-only financial reports.
+ * `ReportsController` — Module 9 financial reports.
  *
- *   GET /organizations/:id/reports/trial-balance               (journals.reports)
- *   GET /organizations/:id/reports/general-ledger/:accountId   (journals.reports)
+ * JSON endpoints (waves 1-2):
+ *   GET /organizations/:id/reports/trial-balance
+ *   GET /organizations/:id/reports/general-ledger/:accountId
+ *   GET /organizations/:id/reports/profit-loss
+ *   GET /organizations/:id/reports/balance-sheet
  *
- * Both endpoints require `journals.reports`. Tenant is resolved from
- * the JWT via TenantGuard and forwarded to the service as a branded
- * TenantId.
+ * Export endpoints (wave 3):
+ *   GET /organizations/:id/reports/trial-balance.pdf
+ *   GET /organizations/:id/reports/trial-balance.xlsx
+ *   GET /organizations/:id/reports/general-ledger/:accountId.pdf
+ *   GET /organizations/:id/reports/general-ledger/:accountId.xlsx
+ *   GET /organizations/:id/reports/profit-loss.pdf
+ *   GET /organizations/:id/reports/profit-loss.xlsx
+ *   GET /organizations/:id/reports/balance-sheet.pdf
+ *   GET /organizations/:id/reports/balance-sheet.xlsx
+ *
+ * All endpoints require `journals.reports` permission.
  */
 @ApiTags('Reports')
 @ApiBearerAuth('bearer')
 @Controller('organizations/:id/reports')
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(
+    private readonly reports: ReportsService,
+    private readonly pdf: ReportsPdfService,
+    private readonly xlsx: ReportsXlsxService,
+  ) {}
+
+  // ─── JSON endpoints (existing waves 1-2) ─────────────────────────
 
   @Get('trial-balance')
   @RequirePermission('journals.reports')
@@ -117,5 +138,228 @@ export class ReportsController {
       asAtDate: query.asAtDate,
     });
     return { report };
+  }
+
+  // ─── PDF export endpoints (wave 3) ──────────────────────────────
+
+  @Get('trial-balance.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Balance générale' })
+  @ApiProduces('application/pdf')
+  async trialBalancePdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: TrialBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getTrialBalance(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      accountClass: query.accountClass,
+      accountCodeFrom: query.accountCodeFrom,
+      accountCodeTo: query.accountCodeTo,
+      hideEmpty: query.hideEmpty,
+    });
+    const buffer = await this.pdf.trialBalancePdf(report, org.name);
+    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, 'balance-generale', query.fromDate, query.toDate, 'pdf'));
+  }
+
+  @Get('general-ledger/:accountId.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Grand livre' })
+  @ApiProduces('application/pdf')
+  async generalLedgerPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Param('accountId', new ParseUUIDPipe({ version: '4' })) accountId: string,
+    @Query() query: GeneralLedgerQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getGeneralLedger(asTenantId(org.id), {
+      accountId,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    const buffer = await this.pdf.generalLedgerPdf(report, org.name);
+    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, `grand-livre-${report.accountCode}`, query.fromDate, query.toDate, 'pdf'));
+  }
+
+  @Get('profit-loss.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Compte de résultat' })
+  @ApiProduces('application/pdf')
+  async profitLossPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: ProfitLossQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith =
+      query.compareFromDate && query.compareToDate
+        ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
+        : undefined;
+    const report = await this.reports.getProfitLoss(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      compareWith,
+    });
+    const buffer = await this.pdf.profitLossPdf(report, org.name);
+    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, 'compte-de-resultat', query.fromDate, query.toDate, 'pdf'));
+  }
+
+  @Get('balance-sheet.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Bilan OHADA' })
+  @ApiProduces('application/pdf')
+  async balanceSheetPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: BalanceSheetQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith =
+      query.compareAsAtDate
+        ? { asAtDate: query.compareAsAtDate, fiscalYearStartDate: query.compareFiscalYearStartDate }
+        : undefined;
+    const report = await this.reports.getBalanceSheet(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      compareWith,
+    });
+    const buffer = await this.pdf.balanceSheetPdf(report, org.name);
+    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, 'bilan', query.asAtDate, undefined, 'pdf'));
+  }
+
+  // ─── Excel export endpoints (wave 3) ────────────────────────────
+
+  @Get('trial-balance.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Balance générale' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async trialBalanceXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: TrialBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getTrialBalance(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      accountClass: query.accountClass,
+      accountCodeFrom: query.accountCodeFrom,
+      accountCodeTo: query.accountCodeTo,
+      hideEmpty: query.hideEmpty,
+    });
+    const buffer = this.xlsx.trialBalanceXlsx(report, org.name);
+    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, 'balance-generale', query.fromDate, query.toDate, 'xlsx'));
+  }
+
+  @Get('general-ledger/:accountId.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Grand livre' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async generalLedgerXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Param('accountId', new ParseUUIDPipe({ version: '4' })) accountId: string,
+    @Query() query: GeneralLedgerQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getGeneralLedger(asTenantId(org.id), {
+      accountId,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    const buffer = this.xlsx.generalLedgerXlsx(report, org.name);
+    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, `grand-livre-${report.accountCode}`, query.fromDate, query.toDate, 'xlsx'));
+  }
+
+  @Get('profit-loss.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Compte de résultat' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async profitLossXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: ProfitLossQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith =
+      query.compareFromDate && query.compareToDate
+        ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
+        : undefined;
+    const report = await this.reports.getProfitLoss(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      compareWith,
+    });
+    const buffer = this.xlsx.profitLossXlsx(report, org.name);
+    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, 'compte-de-resultat', query.fromDate, query.toDate, 'xlsx'));
+  }
+
+  @Get('balance-sheet.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Bilan OHADA' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async balanceSheetXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: BalanceSheetQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith =
+      query.compareAsAtDate
+        ? { asAtDate: query.compareAsAtDate, fiscalYearStartDate: query.compareFiscalYearStartDate }
+        : undefined;
+    const report = await this.reports.getBalanceSheet(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      compareWith,
+    });
+    const buffer = this.xlsx.balanceSheetXlsx(report, org.name);
+    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, 'bilan', query.asAtDate, undefined, 'xlsx'));
+  }
+
+  // ─── Internal helpers ───────────────────────────────────────────
+
+  /**
+   * Sends a binary file as an attachment response. Uses `@Res()` to
+   * bypass NestJS's global response interceptor and emit raw bytes.
+   */
+  private sendFile(
+    res: Response,
+    buffer: Buffer,
+    contentType: string,
+    downloadName: string,
+  ): void {
+    res
+      .set({
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${downloadName}"`,
+        'Content-Length': buffer.length.toString(),
+        'Cache-Control': 'no-store',
+      })
+      .end(buffer);
+  }
+
+  /**
+   * Builds a descriptive filename: `OrgName_report-name_from_to.ext`
+   * Slugifies the org name to be filesystem-safe.
+   */
+  private filename(
+    orgName: string,
+    reportName: string,
+    fromOrAt: string,
+    toDate: string | undefined,
+    ext: string,
+  ): string {
+    const slug = orgName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 40);
+    const period = toDate ? `${fromOrAt}_${toDate}` : fromOrAt;
+    return `${slug}_${reportName}_${period}.${ext}`;
   }
 }

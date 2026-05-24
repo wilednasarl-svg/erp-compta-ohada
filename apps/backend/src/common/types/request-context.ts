@@ -28,6 +28,7 @@ export interface CurrentUserContext {
  */
 export interface CurrentOrgContext {
   readonly id: string;
+  readonly name: string;
   readonly roleId: string;
   readonly role: string;
   readonly membershipId: string;

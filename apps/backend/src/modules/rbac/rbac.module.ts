@@ -2,6 +2,8 @@ import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditModule } from '../audit/audit.module';
+import { OrganizationEntity } from '../organizations/entities/organization.entity';
+import { OrganizationRepository } from '../organizations/repositories/organization.repository';
 import { MembershipEntity } from './entities/membership.entity';
 import { PermissionEntity } from './entities/permission.entity';
 import { RolePermissionEntity } from './entities/role-permission.entity';
@@ -36,6 +38,7 @@ import { PermissionsCacheService } from './services/permissions-cache.service';
       PermissionEntity,
       RolePermissionEntity,
       MembershipEntity,
+      OrganizationEntity,
     ]),
     // forwardRef because AuditModule now imports RbacModule (for
     // TenantGuard / PermissionsGuard used by AuditLogsController).
@@ -46,6 +49,7 @@ import { PermissionsCacheService } from './services/permissions-cache.service';
     PermissionRepository,
     RolePermissionRepository,
     MembershipRepository,
+    OrganizationRepository,
     MembershipsService,
     PermissionsCacheService,
     TenantGuard,

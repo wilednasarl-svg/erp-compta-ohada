@@ -5,6 +5,8 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { CurrentUserContext, RequestContext } from '../../../common/types/request-context';
 import type { AuthEventsService } from '../../audit/services/auth-events.service';
+import type { OrganizationEntity } from '../../organizations/entities/organization.entity';
+import type { OrganizationRepository } from '../../organizations/repositories/organization.repository';
 import type { MembershipEntity } from '../entities/membership.entity';
 import type { RoleEntity } from '../entities/role.entity';
 import type { MembershipRepository } from '../repositories/membership.repository';
@@ -20,6 +22,7 @@ interface BuildContextOptions {
 interface Mocks {
   memberships: jest.Mocked<MembershipRepository>;
   roles: jest.Mocked<RoleRepository>;
+  organizations: jest.Mocked<OrganizationRepository>;
   authEvents: jest.Mocked<AuthEventsService>;
 }
 
@@ -31,6 +34,9 @@ function buildMocks(): Mocks {
     roles: {
       findById: jest.fn(),
     } as unknown as jest.Mocked<RoleRepository>,
+    organizations: {
+      findActiveById: jest.fn().mockResolvedValue({ id: 'org-42', name: 'Test Corp' } as OrganizationEntity),
+    } as unknown as jest.Mocked<OrganizationRepository>,
     authEvents: {
       record: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<AuthEventsService>,
@@ -72,7 +78,7 @@ describe('TenantGuard (BE-RBAC-02)', () => {
       id: 'r_admin_id',
       code: 'admin',
     } as RoleEntity);
-    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.authEvents);
+    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.organizations, mocks.authEvents);
     const { ctx, req } = buildExecutionContext({
       currentUser: { id: 'u_1', mfaVerified: true, tokenOrgId: 'org-42' },
     });
@@ -80,6 +86,7 @@ describe('TenantGuard (BE-RBAC-02)', () => {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(req.context?.currentOrg).toEqual({
       id: 'org-42',
+      name: 'Test Corp',
       roleId: 'r_admin_id',
       role: 'admin',
       membershipId: 'm_1',
@@ -89,7 +96,7 @@ describe('TenantGuard (BE-RBAC-02)', () => {
 
   it('throws AUTH_INVALID_TOKEN when JwtAuthGuard was forgotten upstream', async () => {
     const mocks = buildMocks();
-    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.authEvents);
+    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.organizations, mocks.authEvents);
     const { ctx } = buildExecutionContext(); // no currentUser
 
     try {
@@ -103,7 +110,7 @@ describe('TenantGuard (BE-RBAC-02)', () => {
 
   it('throws ORG_NOT_FOUND (404, not 403) when the token has no org_id claim', async () => {
     const mocks = buildMocks();
-    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.authEvents);
+    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.organizations, mocks.authEvents);
     const { ctx } = buildExecutionContext({
       currentUser: { id: 'u_1', mfaVerified: false }, // no tokenOrgId
     });
@@ -121,7 +128,7 @@ describe('TenantGuard (BE-RBAC-02)', () => {
   it('throws ORG_NOT_FOUND + emits auth.cross_tenant_attempt when no active membership exists', async () => {
     const mocks = buildMocks();
     mocks.memberships.findActiveByUserAndOrganization.mockResolvedValue(null);
-    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.authEvents);
+    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.organizations, mocks.authEvents);
     const { ctx } = buildExecutionContext({
       currentUser: { id: 'attacker_u', mfaVerified: true, tokenOrgId: 'org-victim' },
       contextBag: { ip: '198.51.100.4', userAgent: 'curl/8.0' },
@@ -151,7 +158,7 @@ describe('TenantGuard (BE-RBAC-02)', () => {
       roleId: 'r_ghost',
     } as MembershipEntity);
     mocks.roles.findById.mockResolvedValue(null);
-    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.authEvents);
+    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.organizations, mocks.authEvents);
     const { ctx } = buildExecutionContext({
       currentUser: { id: 'u_1', mfaVerified: true, tokenOrgId: 'org-1' },
     });
@@ -163,7 +170,7 @@ describe('TenantGuard (BE-RBAC-02)', () => {
 
   it('passes through non-HTTP contexts without DB calls', async () => {
     const mocks = buildMocks();
-    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.authEvents);
+    const guard = new TenantGuard(mocks.memberships, mocks.roles, mocks.organizations, mocks.authEvents);
     const { ctx } = buildExecutionContext({ type: 'rpc' });
 
     await expect(guard.canActivate(ctx)).resolves.toBe(true);

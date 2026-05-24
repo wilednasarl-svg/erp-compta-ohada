@@ -8,16 +8,20 @@ import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.
 import { RbacModule } from '../rbac/rbac.module';
 import { ReportsController } from './controllers/reports.controller';
 import { ReportsRepository } from './repositories/reports.repository';
+import { ReportsPdfService } from './services/reports-pdf.service';
 import { ReportsService } from './services/reports.service';
+import { ReportsXlsxService } from './services/reports-xlsx.service';
 
 /**
- * `ReportsModule` — Module 9 wave 1 read-only financial reports.
+ * `ReportsModule` — Module 9 financial reports (waves 1-3).
  *
  * Composes:
  *   - `ReportsRepository` for raw SQL aggregations against
  *     `journal_entry_lines` (joined with entries + accounts).
  *   - `ReportsService` for business-level projection + running balance.
- *   - `ReportsController` for the REST surface.
+ *   - `ReportsPdfService` for PDF rendering (wave 3).
+ *   - `ReportsXlsxService` for Excel export (wave 3).
+ *   - `ReportsController` for the REST surface (JSON + PDF/XLSX).
  *
  * AuthModule + RbacModule are imported for the controller's
  * `@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)` —
@@ -37,7 +41,7 @@ import { ReportsService } from './services/reports.service';
     AccountingPlanModule,
   ],
   controllers: [ReportsController],
-  providers: [ReportsRepository, ReportsService],
+  providers: [ReportsRepository, ReportsService, ReportsPdfService, ReportsXlsxService],
   exports: [ReportsService],
 })
 export class ReportsModule {}
