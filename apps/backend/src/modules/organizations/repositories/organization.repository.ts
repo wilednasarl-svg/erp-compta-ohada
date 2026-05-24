@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { type EntityManager, IsNull, Repository } from 'typeorm';
 
 import { OrganizationEntity } from '../entities/organization.entity';
 
@@ -35,13 +35,23 @@ export class OrganizationRepository {
     return (await this.repo.count({ where: { slug } })) > 0;
   }
 
-  async create(input: {
-    name: string;
-    slug: string;
-    type: OrganizationEntity['type'];
-  }): Promise<OrganizationEntity> {
-    const entity = this.repo.create(input);
-    return this.repo.save(entity);
+  /**
+   * Persist a new organisation row. When `manager` is supplied, the
+   * insert joins that outer transaction (used by `OrganizationsService
+   * .create` to atomically bundle org + membership + accounting config
+   * + chart clone). Without it, a self-contained save runs.
+   */
+  async create(
+    input: {
+      name: string;
+      slug: string;
+      type: OrganizationEntity['type'];
+    },
+    manager?: EntityManager,
+  ): Promise<OrganizationEntity> {
+    const repo = manager !== undefined ? manager.getRepository(OrganizationEntity) : this.repo;
+    const entity = repo.create(input);
+    return repo.save(entity);
   }
 
   async updateName(id: string, name: string): Promise<OrganizationEntity | null> {

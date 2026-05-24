@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { type EntityManager, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { OrganizationAccountingConfigEntity } from '../entities/organization-accounting-config.entity';
@@ -30,15 +30,25 @@ export class OrganizationAccountingConfigRepository {
     return this.repo.findOne({ where: { organizationId } });
   }
 
-  async create(input: {
-    organizationId: TenantId | string;
-    system: AccountingSystem;
-  }): Promise<OrganizationAccountingConfigEntity> {
+  /**
+   * Persist the 1-1 config row. `manager` joins the outer transaction
+   * opened by `OrganizationsService.create` (org + membership + this
+   * + chart clone in one atomic unit per Module 2 spec).
+   */
+  async create(
+    input: {
+      organizationId: TenantId | string;
+      system: AccountingSystem;
+    },
+    manager?: EntityManager,
+  ): Promise<OrganizationAccountingConfigEntity> {
     assertTenantId(input.organizationId);
-    const entity = this.repo.create({
+    const repo =
+      manager !== undefined ? manager.getRepository(OrganizationAccountingConfigEntity) : this.repo;
+    const entity = repo.create({
       organizationId: input.organizationId,
       system: input.system,
     });
-    return this.repo.save(entity);
+    return repo.save(entity);
   }
 }

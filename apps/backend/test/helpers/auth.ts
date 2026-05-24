@@ -59,7 +59,14 @@ export async function createOrgAndSwitch(
 ): Promise<SeededOrgFixture> {
   const orgs = app.get(OrganizationsService);
   const auth = app.get(AuthService);
-  const { organization } = await orgs.create(fixture.userId, { name, type: 'firm' }, NO_OP_CONTEXT);
+  // Default to NORMAL — the heaviest plan, mirrors what a real cabinet
+  // OHADA would pick. Tests that need MINIMAL/ALLEGE can call
+  // `orgs.create` directly with the system they want.
+  const { organization } = await orgs.create(
+    fixture.userId,
+    { name, type: 'firm', system: 'NORMAL' },
+    NO_OP_CONTEXT,
+  );
   const switched = await auth.selectOrganization(fixture.userId, organization.id, NO_OP_CONTEXT);
   return {
     organizationId: organization.id,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { type EntityManager, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { MembershipEntity, type MembershipStatus } from '../entities/membership.entity';
@@ -111,20 +111,30 @@ export class MembershipRepository {
     });
   }
 
-  async create(input: {
-    userId: string;
-    organizationId: TenantId | string;
-    roleId: string;
-    status?: MembershipStatus;
-  }): Promise<MembershipEntity> {
+  /**
+   * Create a membership row. `manager` lets the caller join an outer
+   * transaction (e.g. `OrganizationsService.create` which bundles org +
+   * membership + accounting config + chart clone in a single
+   * transaction). Without `manager`, a standalone insert runs.
+   */
+  async create(
+    input: {
+      userId: string;
+      organizationId: TenantId | string;
+      roleId: string;
+      status?: MembershipStatus;
+    },
+    manager?: EntityManager,
+  ): Promise<MembershipEntity> {
     assertTenantId(input.organizationId);
-    const entity = this.repo.create({
+    const repo = manager !== undefined ? manager.getRepository(MembershipEntity) : this.repo;
+    const entity = repo.create({
       userId: input.userId,
       organizationId: input.organizationId,
       roleId: input.roleId,
       status: input.status ?? 'active',
     });
-    return this.repo.save(entity);
+    return repo.save(entity);
   }
 
   async updateRole(

@@ -1,4 +1,7 @@
+import type { DataSource, EntityManager } from 'typeorm';
+
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import type { ChartOfAccountsService } from '../../accounting-plan/services/chart-of-accounts.service';
 import type { AuthEventContext, AuthEventsService } from '../../audit/services/auth-events.service';
 import type { AuthEventEntity } from '../../audit/entities/auth-event.entity';
 import type { MembershipEntity } from '../../rbac/entities/membership.entity';
@@ -28,15 +31,11 @@ interface Harness {
   service: OrganizationsService;
   findActiveById: jest.Mock<Promise<OrganizationEntity | null>, [string]>;
   slugExists: jest.Mock<Promise<boolean>, [string]>;
-  createOrg: jest.Mock<
-    Promise<OrganizationEntity>,
-    [{ name: string; slug: string; type: OrganizationType }]
-  >;
+  /** Captures the OrganizationEntity passed to manager.save inside the txn. */
+  managerSave: jest.Mock;
+  /** Captures the txn-scoped clone call so we can assert "system + manager forwarded". */
+  cloneInOrg: jest.Mock;
   updateName: jest.Mock<Promise<OrganizationEntity | null>, [string, string]>;
-  createMembership: jest.Mock<
-    Promise<MembershipEntity>,
-    [{ userId: string; organizationId: string; roleId: string; status?: 'active' | 'suspended' }]
-  >;
   listOrgsForUser: jest.Mock<Promise<MembershipEntity[]>, [string]>;
   findRoleByCode: jest.Mock<Promise<RoleEntity | null>, [string]>;
   recordEvent: jest.Mock<
@@ -48,28 +47,7 @@ interface Harness {
 function buildHarness(): Harness {
   const findActiveById = jest.fn<Promise<OrganizationEntity | null>, [string]>();
   const slugExists = jest.fn<Promise<boolean>, [string]>().mockResolvedValue(false);
-  const createOrg = jest
-    .fn<Promise<OrganizationEntity>, [{ name: string; slug: string; type: OrganizationType }]>()
-    .mockImplementation((input) =>
-      Promise.resolve(
-        buildOrg({ id: 'org-new', name: input.name, slug: input.slug, type: input.type }),
-      ),
-    );
   const updateName = jest.fn<Promise<OrganizationEntity | null>, [string, string]>();
-  const createMembership = jest
-    .fn<
-      Promise<MembershipEntity>,
-      [{ userId: string; organizationId: string; roleId: string; status?: 'active' | 'suspended' }]
-    >()
-    .mockImplementation((input) =>
-      Promise.resolve({
-        id: 'm-new',
-        userId: input.userId,
-        organizationId: input.organizationId,
-        roleId: input.roleId,
-        status: 'active',
-      } as MembershipEntity),
-    );
   const listOrgsForUser = jest.fn<Promise<MembershipEntity[]>, [string]>().mockResolvedValue([]);
   const findRoleByCode = jest
     .fn<Promise<RoleEntity | null>, [string]>()
@@ -86,67 +64,132 @@ function buildHarness(): Harness {
     .fn<Promise<AuthEventEntity | null>, [string, AuthEventContext, Record<string, unknown>?]>()
     .mockResolvedValue(null);
 
+  // Single jest.fn captures every `manager.getRepository(X).save(...)` call
+  // in the order they happen — first call is the org, second the
+  // membership, third the accounting config (cf. service.create).
+  let savedOrgId = 'org-new';
+  const managerSave = jest.fn().mockImplementation((entity: Record<string, unknown>) => {
+    // The first save is the org — assign it the canonical id so the
+    // membership + config can pin to it via FK semantics.
+    if (
+      typeof entity['slug'] === 'string' &&
+      entity['id'] === undefined &&
+      entity['organizationId'] === undefined
+    ) {
+      const persisted = { ...entity, id: savedOrgId } as OrganizationEntity;
+      savedOrgId = (persisted.id as string) ?? savedOrgId;
+      return Promise.resolve(persisted);
+    }
+    return Promise.resolve({ ...entity, id: 'm-new' });
+  });
+
+  const fakeManager = {
+    getRepository: (_target: unknown) => ({
+      create: (input: Record<string, unknown>) => input,
+      save: managerSave,
+    }),
+  } as unknown as EntityManager;
+
+  const cloneInOrg = jest.fn().mockResolvedValue({ added: 800, skipped: 0 });
+
   const orgRepo = {
     findActiveById,
     slugExists,
-    create: createOrg,
+    create: jest.fn(),
     updateName,
     findActiveBySlug: jest.fn(),
     softDelete: jest.fn(),
   } as unknown as OrganizationRepository;
   const memberRepo = {
-    create: createMembership,
     listOrganizationsForUser: listOrgsForUser,
   } as unknown as MembershipRepository;
   const roleRepo = { findByCode: findRoleByCode } as unknown as RoleRepository;
   const audit = { record: recordEvent } as unknown as AuthEventsService;
+  const chartOfAccounts = {
+    cloneReferenceIntoOrganization: cloneInOrg,
+  } as unknown as ChartOfAccountsService;
+  const dataSource = {
+    transaction: (cb: (m: EntityManager) => Promise<unknown>) => cb(fakeManager),
+  } as unknown as DataSource;
 
-  const service = new OrganizationsService(orgRepo, memberRepo, roleRepo, audit);
+  const service = new OrganizationsService(
+    orgRepo,
+    memberRepo,
+    roleRepo,
+    audit,
+    chartOfAccounts,
+    dataSource,
+  );
 
   return {
     service,
     findActiveById,
     slugExists,
-    createOrg,
+    managerSave,
+    cloneInOrg,
     updateName,
-    createMembership,
     listOrgsForUser,
     findRoleByCode,
     recordEvent,
   };
 }
 
-describe('OrganizationsService (BE-ORG-01..03)', () => {
+describe('OrganizationsService (BE-ORG-01..03 + BE-PC-08)', () => {
   describe('create', () => {
-    it('happy path: derives slug, persists org, auto-creates admin membership, journals organizations.updated', async () => {
+    it('happy path: org + membership + accounting config saved inside one txn, plan cloned, both audit events emitted', async () => {
       const h = buildHarness();
 
       const result = await h.service.create(
         'user-1',
-        { name: 'Cabinet Konan & Associés', type: 'firm' },
+        { name: 'Cabinet Konan & Associés', type: 'firm', system: 'NORMAL' },
         CTX,
       );
 
       expect(h.findRoleByCode).toHaveBeenCalledWith('admin');
-      expect(h.createOrg).toHaveBeenCalledTimes(1);
-      const persistedOrg = h.createOrg.mock.calls[0][0];
-      expect(persistedOrg.slug).toBe('cabinet-konan-associes');
-      expect(persistedOrg.type).toBe('firm');
 
-      expect(h.createMembership).toHaveBeenCalledTimes(1);
-      const persistedMembership = h.createMembership.mock.calls[0][0];
-      expect(persistedMembership.userId).toBe('user-1');
-      expect(persistedMembership.roleId).toBe('role-admin');
-      expect(persistedMembership.status).toBe('active');
+      // 3 saves through the txn manager: org, membership, accounting config (in that order).
+      expect(h.managerSave).toHaveBeenCalledTimes(3);
 
-      expect(h.recordEvent).toHaveBeenCalledTimes(1);
+      const savedOrg = h.managerSave.mock.calls[0][0] as Record<string, unknown>;
+      expect(savedOrg.slug).toBe('cabinet-konan-associes');
+      expect(savedOrg.type).toBe('firm');
+
+      const savedMembership = h.managerSave.mock.calls[1][0] as Record<string, unknown>;
+      expect(savedMembership.userId).toBe('user-1');
+      expect(savedMembership.roleId).toBe('role-admin');
+      expect(savedMembership.status).toBe('active');
+      expect(savedMembership.organizationId).toBe('org-new');
+
+      const savedConfig = h.managerSave.mock.calls[2][0] as Record<string, unknown>;
+      expect(savedConfig.system).toBe('NORMAL');
+      expect(savedConfig.organizationId).toBe('org-new');
+
+      // Clone joins the same transaction (3rd positional arg is the manager).
+      expect(h.cloneInOrg).toHaveBeenCalledTimes(1);
+      expect(h.cloneInOrg.mock.calls[0][0]).toBe('org-new');
+      expect(h.cloneInOrg.mock.calls[0][1]).toBe('NORMAL');
+      expect(h.cloneInOrg.mock.calls[0][2]).toBeDefined(); // manager
+
+      // Two audit events, in order: organizations.updated (with action=created) + chart_of_accounts.imported.
+      expect(h.recordEvent).toHaveBeenCalledTimes(2);
       expect(h.recordEvent.mock.calls[0][0]).toBe('organizations.updated');
-      const meta = h.recordEvent.mock.calls[0][2] as { action: string; slug: string };
-      expect(meta.action).toBe('created');
-      expect(meta.slug).toBe('cabinet-konan-associes');
+      const orgMeta = h.recordEvent.mock.calls[0][2] as {
+        action: string;
+        slug: string;
+        system: string;
+      };
+      expect(orgMeta).toMatchObject({
+        action: 'created',
+        slug: 'cabinet-konan-associes',
+        system: 'NORMAL',
+      });
+      expect(h.recordEvent.mock.calls[1][0]).toBe('chart_of_accounts.imported');
+      const importMeta = h.recordEvent.mock.calls[1][2] as { system: string; accountCount: number };
+      expect(importMeta).toEqual({ system: 'NORMAL', accountCount: 800 });
 
       expect(result.organization.slug).toBe('cabinet-konan-associes');
       expect(result.membership.userId).toBe('user-1');
+      expect(result.system).toBe('NORMAL');
     });
 
     it('appends -2, -3, … to the slug on collision until a free one is found', async () => {
@@ -156,11 +199,16 @@ describe('OrganizationsService (BE-ORG-01..03)', () => {
         Promise.resolve(slug === 'cabinet-konan' || slug === 'cabinet-konan-2'),
       );
 
-      await h.service.create('user-1', { name: 'Cabinet Konan', type: 'firm' }, CTX);
+      await h.service.create(
+        'user-1',
+        { name: 'Cabinet Konan', type: 'firm', system: 'NORMAL' },
+        CTX,
+      );
 
       const calls = h.slugExists.mock.calls.map((c) => c[0]);
       expect(calls).toEqual(['cabinet-konan', 'cabinet-konan-2', 'cabinet-konan-3']);
-      expect(h.createOrg.mock.calls[0][0].slug).toBe('cabinet-konan-3');
+      const savedOrg = h.managerSave.mock.calls[0][0] as Record<string, unknown>;
+      expect(savedOrg.slug).toBe('cabinet-konan-3');
     });
 
     it('rejects with ORG_NOT_FOUND when the admin role is not seeded (broken install)', async () => {
@@ -168,11 +216,27 @@ describe('OrganizationsService (BE-ORG-01..03)', () => {
       h.findRoleByCode.mockResolvedValue(null);
 
       await expect(
-        h.service.create('user-1', { name: 'Cabinet Konan', type: 'firm' }, CTX),
+        h.service.create('user-1', { name: 'Cabinet Konan', type: 'firm', system: 'NORMAL' }, CTX),
       ).rejects.toMatchObject({ code: ERROR_CODES.ORG_NOT_FOUND });
-      expect(h.createOrg).not.toHaveBeenCalled();
-      expect(h.createMembership).not.toHaveBeenCalled();
+      expect(h.managerSave).not.toHaveBeenCalled();
+      expect(h.cloneInOrg).not.toHaveBeenCalled();
+      expect(h.recordEvent).not.toHaveBeenCalled();
     });
+
+    it.each([['MINIMAL'], ['ALLEGE']])(
+      'forwards system=%s verbatim to the accounting config + clone',
+      async (system) => {
+        const h = buildHarness();
+        await h.service.create(
+          'user-1',
+          { name: 'Cabinet Konan', type: 'firm', system: system as 'MINIMAL' | 'ALLEGE' },
+          CTX,
+        );
+        const savedConfig = h.managerSave.mock.calls[2][0] as Record<string, unknown>;
+        expect(savedConfig.system).toBe(system);
+        expect(h.cloneInOrg.mock.calls[0][1]).toBe(system);
+      },
+    );
   });
 
   describe('listForUser', () => {

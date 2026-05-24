@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import { OrganizationAccountingConfigEntity } from '../../accounting-plan/entities/organization-accounting-config.entity';
+import { ChartOfAccountsService } from '../../accounting-plan/services/chart-of-accounts.service';
+import type { AccountingSystem } from '../../accounting-plan/types/accounting-system';
 import type { AuthEventContext } from '../../audit/services/auth-events.service';
 import { AuthEventsService } from '../../audit/services/auth-events.service';
-import type { MembershipEntity } from '../../rbac/entities/membership.entity';
+import { MembershipEntity } from '../../rbac/entities/membership.entity';
 import { MembershipRepository } from '../../rbac/repositories/membership.repository';
 import { RoleRepository } from '../../rbac/repositories/role.repository';
-import type { OrganizationEntity, OrganizationType } from '../entities/organization.entity';
+import { OrganizationEntity, type OrganizationType } from '../entities/organization.entity';
 import { OrganizationRepository } from '../repositories/organization.repository';
 import { buildSlugWithSuffix, slugify } from '../lib/slug';
 
@@ -30,11 +34,13 @@ export interface OrganizationSummary {
 export interface CreateOrganizationInput {
   readonly name: string;
   readonly type: OrganizationType;
+  readonly system: AccountingSystem;
 }
 
 export interface CreateOrganizationResult {
   readonly organization: OrganizationEntity;
   readonly membership: MembershipEntity;
+  readonly system: AccountingSystem;
 }
 
 export interface UpdateOrganizationInput {
@@ -78,8 +84,29 @@ export class OrganizationsService {
     private readonly memberships: MembershipRepository,
     private readonly roles: RoleRepository,
     private readonly audit: AuthEventsService,
+    private readonly chartOfAccounts: ChartOfAccountsService,
+    private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Atomic org creation (BE-ORG-01 + BE-PC-08). Persists in a single
+   * transaction:
+   *   1. the `organizations` row,
+   *   2. the creator's admin `memberships` row,
+   *   3. the `organization_accounting_configs` row (system locked),
+   *   4. the clone of the SYSCOHADA reference plan into
+   *      `organization_chart_accounts` (joins the same txn via
+   *      `cloneReferenceIntoOrganization(orgId, system, manager)`).
+   *
+   * If any of the four fails the transaction is rolled back — no
+   * half-provisioned organisation exists. Audit events are emitted
+   * AFTER commit so we never journal a rolled-back insert (the
+   * journal is observability, not part of the consistency boundary).
+   *
+   * Slug derivation runs BEFORE the transaction (cheap reads, can
+   * tolerate the brief race window the existing comment documents on
+   * `deriveAvailableSlug`).
+   */
   async create(
     creatorUserId: string,
     input: CreateOrganizationInput,
@@ -95,35 +122,68 @@ export class OrganizationsService {
 
     const slug = await this.deriveAvailableSlug(input.name);
 
-    const organization = await this.organizations.create({
-      name: input.name,
-      slug,
-      type: input.type,
-    });
+    const { organization, membership, cloneResult } = await this.dataSource.transaction(
+      async (manager) => {
+        // We bypass the per-entity repositories here and go through
+        // `manager.getRepository(...)` so every write joins the same
+        // physical transaction. The existing repos remain authoritative
+        // for everything outside of org creation; this is the one place
+        // where transactional atomicity across modules outweighs the
+        // benefit of routing through them.
+        const orgRepo = manager.getRepository(OrganizationEntity);
+        const persistedOrg = await orgRepo.save(
+          orgRepo.create({ name: input.name, slug, type: input.type }),
+        );
 
-    const membership = await this.memberships.create({
-      userId: creatorUserId,
-      organizationId: organization.id,
-      roleId: adminRole.id,
-      status: 'active',
-    });
+        const membershipRepo = manager.getRepository(MembershipEntity);
+        const persistedMembership = await membershipRepo.save(
+          membershipRepo.create({
+            userId: creatorUserId,
+            organizationId: persistedOrg.id,
+            roleId: adminRole.id,
+            status: 'active',
+          }),
+        );
 
+        const configRepo = manager.getRepository(OrganizationAccountingConfigEntity);
+        await configRepo.save(
+          configRepo.create({
+            organizationId: persistedOrg.id,
+            system: input.system,
+          }),
+        );
+
+        const clone = await this.chartOfAccounts.cloneReferenceIntoOrganization(
+          persistedOrg.id,
+          input.system,
+          manager,
+        );
+
+        return { organization: persistedOrg, membership: persistedMembership, cloneResult: clone };
+      },
+    );
+
+    // Audit events — emitted post-commit so a rolled-back transaction
+    // leaves no trace in the journal. `AuthEventsService.record` is
+    // swallow-and-warn, so a flaky audit table cannot break creation.
     await this.audit.record(
       'organizations.updated',
-      {
-        ...context,
-        userId: creatorUserId,
-        organizationId: organization.id,
-      },
+      { ...context, userId: creatorUserId, organizationId: organization.id },
       {
         action: 'created',
         organizationId: organization.id,
         slug: organization.slug,
         type: organization.type,
+        system: input.system,
       },
     );
+    await this.audit.record(
+      'chart_of_accounts.imported',
+      { ...context, userId: creatorUserId, organizationId: organization.id },
+      { system: input.system, accountCount: cloneResult.added },
+    );
 
-    return { organization, membership };
+    return { organization, membership, system: input.system };
   }
 
   async listForUser(userId: string): Promise<ReadonlyArray<OrganizationSummary>> {

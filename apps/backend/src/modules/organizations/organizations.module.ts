@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
@@ -42,6 +43,11 @@ import { OrganizationsService } from './services/organizations.service';
     AuditModule,
     // `InvitationsService` ships the invitation email through `EmailService`.
     EmailModule,
+    // `OrganizationsService.create` clones the SYSCOHADA reference plan
+    // into the new org in a single transaction (BE-PC-08). Pulls
+    // `ChartOfAccountsService` + `OrganizationAccountingConfigRepository`
+    // exported by AccountingPlanModule.
+    AccountingPlanModule,
   ],
   controllers: [
     OrganizationsController,

@@ -75,7 +75,7 @@ export class OrganizationsController {
     }
     return this.orgs.create(
       userId,
-      { name: body.name, type: body.type },
+      { name: body.name, type: body.type, system: body.system },
       buildAuditRequestContext(req),
     );
   }

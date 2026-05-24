@@ -44,15 +44,15 @@
 
 ## 7. Controllers + DTOs
 
-- [ ] 7.1 `ReferenceChartController` : `GET /reference-chart-of-accounts?system=…` (public, `@Public()` opt-out du JwtAuthGuard global)
-- [ ] 7.2 `ChartOfAccountsController` : 5 endpoints sous `/organizations/:id/chart-of-accounts` avec `@RequirePermission('chart_of_accounts.read'|'.write')`
-- [ ] 7.3 DTOs class-validator : `CreateAccountDto` (parentCode, code, label), `UpdateAccountDto` (label?, isActive?), `ImportChartDto` (no body, just trigger)
-- [ ] 7.4 `@ApiTags('ChartOfAccounts')` + `@ApiBearerAuth('bearer')` sur tous les endpoints non-publics ; documentation Swagger générée automatiquement
+- [x] 7.1 `ReferenceChartController` : `GET /reference-chart-of-accounts?system=…` (public, `@Public()` opt-out du JwtAuthGuard global)
+- [x] 7.2 `ChartOfAccountsController` : 5 endpoints sous `/organizations/:id/chart-of-accounts` avec `@RequirePermission('chart_of_accounts.read'|'.write')`
+- [x] 7.3 DTOs class-validator : `CreateAccountDto` (parentCode, code, label), `UpdateAccountDto` (label?, isActive?), `ImportChartDto` (no body, just trigger)
+- [x] 7.4 `@ApiTags('ChartOfAccounts')` + `@ApiBearerAuth('bearer')` sur tous les endpoints non-publics ; documentation Swagger générée automatiquement
 
 ## 8. Intégration avec Module 1
 
-- [ ] 8.1 Étendre `CreateOrganizationDto` avec `system: 'NORMAL'|'MINIMAL'|'ALLEGE'` (obligatoire, validé par class-validator `IsIn`)
-- [ ] 8.2 Modifier `OrganizationsService.create()` pour qu'à la création de l'org, en une seule transaction : insert org → insert accounting config → call `ChartOfAccountsService.cloneReferenceIntoOrganization()` → émet `chart_of_accounts.imported`
+- [x] 8.1 Étendre `CreateOrganizationDto` avec `system: 'NORMAL'|'MINIMAL'|'ALLEGE'` (obligatoire, validé par class-validator `IsIn`)
+- [x] 8.2 Modifier `OrganizationsService.create()` pour qu'à la création de l'org, en une seule transaction : insert org → insert accounting config → call `ChartOfAccountsService.cloneReferenceIntoOrganization()` → émet `chart_of_accounts.imported`
 - [ ] 8.3 Ajouter le champ "système comptable" au wizard `/organizations/new` du frontend (étape 2)
 - [ ] 8.4 Migration des orgs existantes (le seed dev + tout cabinet déjà créé en pré-prod) : commande `pnpm seed:fix-accounting-configs` qui détecte les orgs sans config et leur applique `NORMAL` par défaut + clone
 
