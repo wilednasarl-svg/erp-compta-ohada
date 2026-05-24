@@ -43,6 +43,16 @@ admin mutation endpoint we wire later).
 | `audit.read`                    |   ✓   |        ✓         |      ✓       |           |    ✓     |                 |
 | `audit.export`                  |   ✓   |        ✓         |              |           |    ✓     |                 |
 | `mfa.manage_self`               |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
+| `chart_of_accounts.read`        |   ✓   |        ✓         |      ✓       |     ✓     |    ✓     |        ✓        |
+| `chart_of_accounts.write`       |   ✓   |        ✓         |      ✓       |           |          |                 |
+
+> **Note on `chart_of_accounts.write`** — the rôle `comptable` (saisie)
+> is intentionally **excluded**. Letting every data-entry user spawn
+> ad-hoc sub-accounts produces chart drift that pollutes inter-dossier
+> balances and breaks the firm's analytical consistency. Creating
+> custom accounts is a governance decision and is reserved to roles
+> with sign-off authority (admin, expert-comptable, chef de mission).
+> See Module 2 design.md (D6) for the rationale.
 
 ## Guard composition
 

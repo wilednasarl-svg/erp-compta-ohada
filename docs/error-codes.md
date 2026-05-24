@@ -71,6 +71,18 @@ HTTP status is mapped by `apps/backend/src/common/errors/http-status.map.ts`
 | `RBAC_NO_POLICY_DECLARED` | 403 | `PermissionsGuard` ran on a handler without `@RequirePermission()`. **Deny-by-default** — a forgotten annotation is a loud failure, not a silent privilege leak | `PermissionsGuard` |
 | `RBAC_SYSTEM_ROLE_LOCKED` | 403 | Attempt to mutate a seeded role (`admin`, `expert_comptable`, …) via the API | reserved for future role-management endpoints |
 
+### `CHART_ACCOUNT_*` / `ACCOUNTING_SYSTEM_*` — Module 2 plan comptable
+
+| Code | HTTP | Meaning | Typical trigger |
+|---|---|---|---|
+| `CHART_ACCOUNT_NOT_FOUND` | 404 | Account does not exist in the org's chart (or cross-tenant probe) | `GET/PATCH/DELETE /organizations/:id/chart-of-accounts/:accountId` |
+| `CHART_ACCOUNT_CODE_TAKEN` | 409 | A row with the same `code` already exists in the org's chart (reference-cloned or custom) | `POST /organizations/:id/chart-of-accounts` |
+| `CHART_ACCOUNT_INVALID_PARENT` | 422 | New code does not start with the parent's code, parent is missing, or parent is inactive | `POST /organizations/:id/chart-of-accounts` |
+| `CHART_ACCOUNT_INVALID_CODE` | 422 | Code is not 2 to 10 digits | `POST /organizations/:id/chart-of-accounts` |
+| `CHART_ACCOUNT_NOT_DELETABLE` | 409 | Account is reference-backed (only deactivation allowed) OR has at least one active child | `DELETE /organizations/:id/chart-of-accounts/:accountId` |
+| `CHART_ACCOUNT_IMMUTABLE_CODE` | 422 | PATCH body included `code` (immutable after creation) | `PATCH /organizations/:id/chart-of-accounts/:accountId` |
+| `ACCOUNTING_SYSTEM_REQUIRED` | 422 | `POST /organizations` body missing or has invalid `system` (must be `NORMAL`, `MINIMAL`, or `ALLEGE`) | `POST /organizations` |
+
 ## How to add a new code
 
 1. Add the literal to `ERROR_CODES` in

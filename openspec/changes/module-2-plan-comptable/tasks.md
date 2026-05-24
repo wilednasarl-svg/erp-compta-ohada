@@ -53,7 +53,7 @@
 
 - [x] 8.1 Étendre `CreateOrganizationDto` avec `system: 'NORMAL'|'MINIMAL'|'ALLEGE'` (obligatoire, validé par class-validator `IsIn`)
 - [x] 8.2 Modifier `OrganizationsService.create()` pour qu'à la création de l'org, en une seule transaction : insert org → insert accounting config → call `ChartOfAccountsService.cloneReferenceIntoOrganization()` → émet `chart_of_accounts.imported`
-- [ ] 8.3 Ajouter le champ "système comptable" au wizard `/organizations/new` du frontend (étape 2)
+- [x] 8.3 Ajouter le champ "système comptable" au wizard `/organizations/new` du frontend (étape 2)
 - [ ] 8.4 Migration des orgs existantes (le seed dev + tout cabinet déjà créé en pré-prod) : commande `pnpm seed:fix-accounting-configs` qui détecte les orgs sans config et leur applique `NORMAL` par défaut + clone
 
 ## 9. Frontend Next.js
@@ -76,10 +76,10 @@
 
 ## 11. Documentation
 
-- [ ] 11.1 `docs/accounting-plan.md` : structure SYSCOHADA AUDCIF, choix du système, distinction TITLE/POSTING, exemples d'ajout custom
-- [ ] 11.2 Mettre à jour `docs/rbac.md` avec les 2 nouvelles permissions et la matrice rôle × `chart_of_accounts.*`
-- [ ] 11.3 Mettre à jour `docs/error-codes.md` avec : `CHART_ACCOUNT_NOT_FOUND` (404), `CHART_ACCOUNT_CODE_TAKEN` (409), `CHART_ACCOUNT_INVALID_PARENT` (422), `CHART_ACCOUNT_INVALID_CODE` (422), `CHART_ACCOUNT_NOT_DELETABLE` (409), `CHART_ACCOUNT_IMMUTABLE_CODE` (422), `ACCOUNTING_SYSTEM_REQUIRED` (422)
-- [ ] 11.4 README backend : mentionner la commande de migration `0011..0014` et le seed du plan de référence
+- [x] 11.1 `docs/accounting-plan.md` : structure SYSCOHADA AUDCIF, choix du système, distinction TITLE/POSTING, exemples d'ajout custom
+- [x] 11.2 Mettre à jour `docs/rbac.md` avec les 2 nouvelles permissions et la matrice rôle × `chart_of_accounts.*`
+- [x] 11.3 Mettre à jour `docs/error-codes.md` avec : `CHART_ACCOUNT_NOT_FOUND` (404), `CHART_ACCOUNT_CODE_TAKEN` (409), `CHART_ACCOUNT_INVALID_PARENT` (422), `CHART_ACCOUNT_INVALID_CODE` (422), `CHART_ACCOUNT_NOT_DELETABLE` (409), `CHART_ACCOUNT_IMMUTABLE_CODE` (422), `ACCOUNTING_SYSTEM_REQUIRED` (422)
+- [x] 11.4 README backend : mentionner la commande de migration `0011..0014` et le seed du plan de référence
 
 ## 12. Pre-merge checks
 

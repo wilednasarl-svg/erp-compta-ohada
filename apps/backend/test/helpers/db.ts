@@ -16,6 +16,11 @@ const TABLES_TO_TRUNCATE = [
   'mfa_configs',
   'refresh_tokens',
   'memberships',
+  // Module 2 — explicit even though the CASCADE on `organizations`
+  // below would clear them: keeping them in the list makes a future
+  // schema reviewer notice the dependency immediately.
+  'organization_chart_accounts',
+  'organization_accounting_configs',
   'users',
   'organizations',
 ] as const;
