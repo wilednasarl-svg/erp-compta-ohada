@@ -251,8 +251,12 @@ function parseAmount(value: string | null | undefined): AmountResult {
   if (trimmed.length === 0) {
     return { value: 0, error: null };
   }
-  // Strip whitespace groupings, normalise comma → dot.
-  const normalised = trimmed.replace(/\s/g, '').replace(',', '.');
+  // Strip whitespace groupings, normalise all commas → dots. The /g flag
+  // is defensive: a value like '1,234,56' (ambiguous between French
+  // thousands and decimals) becomes '1.234.56' which fails the strict
+  // single-dot regex below, so the row is flagged invalid rather than
+  // silently mis-parsed if the regex is ever relaxed.
+  const normalised = trimmed.replace(/\s/g, '').replace(/,/g, '.');
   if (!/^-?\d+(\.\d+)?$/.test(normalised)) {
     return { value: 0, error: 'invalid' };
   }
