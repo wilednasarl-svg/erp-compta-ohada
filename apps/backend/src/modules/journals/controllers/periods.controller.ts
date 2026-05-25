@@ -37,7 +37,12 @@ export class PeriodsController {
   @RequirePermission('journals.read')
   @ApiOperation({ summary: 'Lister les periodes comptables' })
   async list(@Param('id', ParseUUIDPipe) _id: string, @CurrentOrg() org: CurrentOrgContext) {
-    return this.periods.listForOrg(asTenantId(org.id));
+    // Réponse enveloppée `{ periods: [...] }` — le frontend lit `data.periods`
+    // (cf. apps/frontend/src/app/accounting-periods/page.tsx). Le retour direct
+    // de l'array (tel que pratiqué auparavant) cassait avec "data is undefined"
+    // dans React Query.
+    const periods = await this.periods.listForOrg(asTenantId(org.id));
+    return { periods };
   }
 
   @Post()
@@ -52,9 +57,15 @@ export class PeriodsController {
     @Req() req: Request,
   ) {
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
-    return this.periods.createFiscalYear(asTenantId(org.id), dto.year, dto.split, user.id, ctx, {
-      startDate: dto.startDate,
-    });
+    const period = await this.periods.createFiscalYear(
+      asTenantId(org.id),
+      dto.year,
+      dto.split,
+      user.id,
+      ctx,
+      { startDate: dto.startDate },
+    );
+    return { period };
   }
 
   @Post(':periodId/close')

@@ -1,7 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
-import { IMPORT_SOURCE_TYPES, type ImportSourceType } from '../types/import-status';
+import {
+  DOCUMENT_TYPES,
+  IMPORT_SOURCE_TYPES,
+  type DocumentType,
+  type ImportSourceType,
+} from '../types/import-status';
 
 /**
  * Body de `POST /organizations/:id/imports/sessions`.
@@ -41,4 +46,13 @@ export class CreateImportSessionDto {
   @IsString()
   @MaxLength(16)
   fiscalYear?: string;
+
+  @ApiPropertyOptional({
+    enum: DOCUMENT_TYPES as readonly string[],
+    description:
+      'Nature comptable du document (écritures, grand livre, balance, relevé bancaire, etc.). Guide l\'auto-mapping.',
+  })
+  @IsOptional()
+  @IsIn(DOCUMENT_TYPES as readonly string[])
+  documentType?: DocumentType;
 }

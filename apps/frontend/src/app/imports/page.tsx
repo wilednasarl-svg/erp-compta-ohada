@@ -21,13 +21,25 @@ import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api, getAuthToken } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
-import type {
-  CommitResult,
-  ImportSourceType,
-  PreviewResult,
-  SessionSummary,
-  TargetField,
+import {
+  DOCUMENT_TYPE_DESCRIPTIONS,
+  DOCUMENT_TYPE_LABELS,
+  type CommitResult,
+  type DocumentType,
+  type ImportSourceType,
+  type PreviewResult,
+  type SessionSummary,
+  type TargetField,
 } from '@/types/imports';
+
+const DOCUMENT_TYPE_ORDER: readonly DocumentType[] = [
+  'entries',
+  'general_ledger',
+  'trial_balance',
+  'bank_statement',
+  'auxiliary_ledger',
+  'sales_purchases',
+];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
@@ -82,6 +94,7 @@ export default function ImportsPage() {
 
   // ─── Création de session ────────────────────────────────────────────
   const [createSourceType, setCreateSourceType] = useState<ImportSourceType>('csv');
+  const [createDocumentType, setCreateDocumentType] = useState<DocumentType>('entries');
   const [createLabel, setCreateLabel] = useState('');
 
   const createSession = useApiMutation(
@@ -90,6 +103,7 @@ export default function ImportsPage() {
         `/organizations/${orgId}/imports/sessions`,
         {
           sourceType: createSourceType,
+          documentType: createDocumentType,
           ...(createLabel.trim() === '' ? {} : { label: createLabel.trim() }),
         },
       );
@@ -131,45 +145,67 @@ export default function ImportsPage() {
           </CardHeader>
           <CardContent>
             <form
-              className="grid grid-cols-1 gap-4 md:grid-cols-[160px_1fr_auto] md:items-end"
+              className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 createSession.mutate(undefined);
               }}
             >
-              <div className="space-y-1">
-                <Label htmlFor="sourceType">Format source</Label>
-                <select
-                  id="sourceType"
-                  value={createSourceType}
-                  onChange={(e) => setCreateSourceType(e.target.value as ImportSourceType)}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="csv">CSV</option>
-                  <option value="excel">Excel (.xlsx / .xls)</option>
-                  <option value="pdf">PDF (tableau natif)</option>
-                  <option value="sage">Sage TXT</option>
-                  <option value="txt">Texte</option>
-                </select>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="documentType">Type de document</Label>
+                  <select
+                    id="documentType"
+                    value={createDocumentType}
+                    onChange={(e) => setCreateDocumentType(e.target.value as DocumentType)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {DOCUMENT_TYPE_ORDER.map((d) => (
+                      <option key={d} value={d}>
+                        {DOCUMENT_TYPE_LABELS[d]}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {DOCUMENT_TYPE_DESCRIPTIONS[createDocumentType]}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sourceType">Format de fichier</Label>
+                  <select
+                    id="sourceType"
+                    value={createSourceType}
+                    onChange={(e) => setCreateSourceType(e.target.value as ImportSourceType)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="csv">CSV</option>
+                    <option value="excel">Excel (.xlsx / .xls)</option>
+                    <option value="pdf">PDF (tableau natif)</option>
+                    <option value="sage">Sage TXT</option>
+                    <option value="txt">Texte</option>
+                  </select>
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="label">Libellé (optionnel)</Label>
-                <Input
-                  id="label"
-                  value={createLabel}
-                  onChange={(e) => setCreateLabel(e.target.value)}
-                  placeholder="Ex. Achats mars 2026"
-                  maxLength={200}
-                />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                <div className="space-y-1">
+                  <Label htmlFor="label">Libellé (optionnel)</Label>
+                  <Input
+                    id="label"
+                    value={createLabel}
+                    onChange={(e) => setCreateLabel(e.target.value)}
+                    placeholder="Ex. Achats mars 2026"
+                    maxLength={200}
+                  />
+                </div>
+                <Button type="submit" disabled={createSession.isPending}>
+                  {createSession.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  Créer
+                </Button>
               </div>
-              <Button type="submit" disabled={createSession.isPending}>
-                {createSession.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="mr-2 h-4 w-4" />
-                )}
-                Créer
-              </Button>
             </form>
             <FormError error={createSession.error} className="mt-3" />
           </CardContent>
@@ -210,6 +246,9 @@ export default function ImportsPage() {
                             <SessionStatusBadge status={s.status} />
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">
+                            {s.documentType !== null
+                              ? `${DOCUMENT_TYPE_LABELS[s.documentType]} · `
+                              : ''}
                             {s.sourceType.toUpperCase()} · {s.totalLines} lignes ·{' '}
                             {s.errorLines > 0
                               ? `${s.errorLines} en erreur`

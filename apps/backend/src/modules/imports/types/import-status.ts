@@ -94,6 +94,39 @@ export const IMPORT_SOURCE_TYPES: readonly ImportSourceType[] = [
 ] as const;
 
 /**
+ * Nature comptable du fichier importé — guide l'auto-mapping et la
+ * validation (un Grand Livre n'a pas besoin de `journal`, une Balance
+ * n'a pas besoin de `date`, un Relevé bancaire n'a pas besoin
+ * d'`account`, etc.).
+ *
+ * `entries` (écritures comptables) est la valeur par défaut historique
+ * — toute session créée sans documentType est traitée comme `entries`.
+ *
+ * Stocké dans le JSONB `mapping_override` sous la clé spéciale
+ * `__documentType` pour éviter une migration SQL. Le `MappingService`
+ * extrait cette clé avant de traiter les overrides de header.
+ */
+export type DocumentType =
+  | 'entries' // écritures comptables (compte + journal + date + libellé + débit/crédit)
+  | 'general_ledger' // grand livre (compte + date + libellé + débit/crédit)
+  | 'trial_balance' // balance (compte + libellé + débit/crédit, pas de date)
+  | 'bank_statement' // relevé bancaire (date + libellé + débit/crédit, pas de compte)
+  | 'auxiliary_ledger' // grand livre auxiliaire (tiers + compte + date + libellé + montants)
+  | 'sales_purchases'; // journal de ventes/achats (similar to entries mais focalisé)
+
+export const DOCUMENT_TYPES: readonly DocumentType[] = [
+  'entries',
+  'general_ledger',
+  'trial_balance',
+  'bank_statement',
+  'auxiliary_ledger',
+  'sales_purchases',
+] as const;
+
+/** Clé sentinelle utilisée dans `mapping_override` pour stocker le documentType. */
+export const DOCUMENT_TYPE_OVERRIDE_KEY = '__documentType';
+
+/**
  * Lifecycle of a single `ImportFile` row (independent of the session).
  *
  *   uploaded      — bytes written, checksum computed, parse not started.

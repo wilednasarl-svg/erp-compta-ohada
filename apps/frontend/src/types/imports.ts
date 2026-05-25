@@ -11,6 +11,42 @@
 
 export type ImportSourceType = 'csv' | 'excel' | 'sage' | 'txt' | 'pdf';
 
+/**
+ * Nature comptable du document — miroir du backend `DocumentType`.
+ * Guide l'auto-mapping et l'affichage des champs requis dans la UI.
+ */
+export type DocumentType =
+  | 'entries'
+  | 'general_ledger'
+  | 'trial_balance'
+  | 'bank_statement'
+  | 'auxiliary_ledger'
+  | 'sales_purchases';
+
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  entries: 'Écritures comptables',
+  general_ledger: 'Grand Livre',
+  trial_balance: 'Balance comptable',
+  bank_statement: 'Relevé bancaire',
+  auxiliary_ledger: 'Grand Livre auxiliaire',
+  sales_purchases: 'Journal ventes / achats',
+};
+
+export const DOCUMENT_TYPE_DESCRIPTIONS: Record<DocumentType, string> = {
+  entries:
+    'Lignes d\'écritures complètes (compte général + journal + date + libellé + débit/crédit).',
+  general_ledger:
+    'Détail par compte sur la période. Pas de code journal obligatoire — déduit du compte.',
+  trial_balance:
+    'Soldes cumulés par compte (pas de date par ligne — c\'est une photo à une date).',
+  bank_statement:
+    'Lignes d\'un relevé bancaire : date + libellé + montant. Le compte bancaire est implicite.',
+  auxiliary_ledger:
+    'Détail par tiers (clients ou fournisseurs). Compte général collectif souvent implicite.',
+  sales_purchases:
+    'Journal de ventes ou d\'achats avec tiers obligatoire et compte général.',
+};
+
 export type ImportSessionStatus =
   | 'draft'
   | 'parsing'
@@ -54,6 +90,7 @@ export interface SessionSummary {
   readonly totalLines: number;
   readonly errorLines: number;
   readonly createdAt: string;
+  readonly documentType: DocumentType | null;
 }
 
 export type MappedRow = Partial<Record<TargetField, string | null>>;

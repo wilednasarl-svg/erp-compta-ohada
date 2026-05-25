@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import type { DocumentType } from '../types/import-status';
 import {
   HEADER_SYNONYMS,
   type MappedRow,
@@ -8,6 +9,41 @@ import {
   type TargetField,
 } from '../types/mapping';
 import { parseImportDate } from './validation.service';
+
+/**
+ * Synonymes additionnels par type de document. Étendent (sans
+ * remplacer) le dictionnaire global `HEADER_SYNONYMS`. Utile pour les
+ * variations d'export Sage / Excel propres à chaque nature de document.
+ *
+ * Ex. dans un Grand Livre, "mouvement débit" et "mouvement crédit"
+ * désignent débit/crédit ; dans une Balance, "solde débit" / "solde
+ * crédit" mappent vers les mêmes targets.
+ */
+const DOCUMENT_TYPE_SYNONYMS: Readonly<
+  Record<DocumentType, Partial<Record<TargetField, readonly string[]>>>
+> = {
+  entries: {},
+  general_ledger: {
+    debit: ['mouvement debit', 'mvt debit', 'debit periode'],
+    credit: ['mouvement credit', 'mvt credit', 'credit periode'],
+  },
+  trial_balance: {
+    debit: ['solde debiteur', 'sd', 'solde debit', 'total debit'],
+    credit: ['solde crediteur', 'sc', 'solde credit', 'total credit'],
+  },
+  bank_statement: {
+    label: ['operation', 'libelle operation', 'description operation', 'motif'],
+    debit: ['debit montant', 'sortie', 'depense', 'montant debite'],
+    credit: ['credit montant', 'entree', 'recette', 'montant credite'],
+  },
+  auxiliary_ledger: {
+    partner: ['compte tiers', 'code tiers', 'reference tiers', 'cpte aux'],
+    account: ['compte general', 'cpte general', 'compte collectif'],
+  },
+  sales_purchases: {
+    partner: ['client', 'fournisseur', 'compte client', 'compte fournisseur'],
+  },
+};
 
 /**
  * `MappingService` — projette les headers d'un fichier source sur le
@@ -44,6 +80,7 @@ export class MappingService {
     headers: readonly string[],
     overrides: Record<string, TargetField> = {},
     sampleRows: ReadonlyArray<Record<string, string | null>> = [],
+    documentType: DocumentType | null = null,
   ): MappingProposal {
     const headerToTarget: Record<string, TargetField> = {};
     const usedTargets = new Set<TargetField>();
@@ -57,13 +94,28 @@ export class MappingService {
       }
     }
 
-    // Index synonyms once by normalised form for O(1) lookup.
+    // Index synonyms once by normalised form for O(1) lookup. Le
+    // documentType ajoute des synonymes spécifiques au type de fichier
+    // (ex. "mouvement debit" → debit pour un Grand Livre).
     const synonymToTarget = new Map<string, TargetField>();
     for (const target of TARGET_FIELDS) {
       for (const synonym of HEADER_SYNONYMS[target]) {
         const normalised = normaliseHeader(synonym);
         if (!synonymToTarget.has(normalised)) {
           synonymToTarget.set(normalised, target);
+        }
+      }
+    }
+    if (documentType !== null) {
+      const extra = DOCUMENT_TYPE_SYNONYMS[documentType];
+      for (const target of TARGET_FIELDS) {
+        const synonyms = extra[target];
+        if (synonyms === undefined) continue;
+        for (const synonym of synonyms) {
+          const normalised = normaliseHeader(synonym);
+          if (!synonymToTarget.has(normalised)) {
+            synonymToTarget.set(normalised, target);
+          }
         }
       }
     }

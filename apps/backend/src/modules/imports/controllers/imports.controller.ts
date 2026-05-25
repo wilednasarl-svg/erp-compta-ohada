@@ -106,6 +106,7 @@ export class ImportsController {
         label: body.label ?? null,
         companyId: body.companyId ?? null,
         fiscalYear: body.fiscalYear ?? null,
+        documentType: body.documentType ?? null,
       },
       actorUserId,
       buildAuditRequestContext(req),

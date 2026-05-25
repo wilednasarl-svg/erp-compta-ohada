@@ -42,6 +42,7 @@ export class ImportSessionRepository {
       label?: string | null;
       companyId?: string | null;
       fiscalYear?: string | null;
+      mappingOverride?: Record<string, string> | null;
     },
     manager?: EntityManager,
   ): Promise<ImportSessionEntity> {
@@ -54,6 +55,7 @@ export class ImportSessionRepository {
       label: input.label ?? null,
       companyId: input.companyId ?? null,
       fiscalYear: input.fiscalYear ?? null,
+      mappingOverride: input.mappingOverride ?? null,
       status: 'draft',
       totalLines: 0,
       errorLines: 0,

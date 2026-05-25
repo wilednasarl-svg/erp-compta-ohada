@@ -18,7 +18,12 @@ import type { ImportSessionEntity } from '../entities/import-session.entity';
 import { ImportFileRepository } from '../repositories/import-file.repository';
 import { ImportSessionRepository } from '../repositories/import-session.repository';
 import { ImportStagingEntryRepository } from '../repositories/import-staging-entry.repository';
-import type { ImportSourceType, ValidationError } from '../types/import-status';
+import {
+  DOCUMENT_TYPE_OVERRIDE_KEY,
+  type DocumentType,
+  type ImportSourceType,
+  type ValidationError,
+} from '../types/import-status';
 
 export interface CommitResult {
   readonly sessionId: string;
@@ -66,6 +71,7 @@ export interface SessionSummary {
   readonly totalLines: number;
   readonly errorLines: number;
   readonly createdAt: Date;
+  readonly documentType: DocumentType | null;
 }
 
 export interface PreviewEntry {
@@ -138,16 +144,27 @@ export class ImportSessionService {
       label?: string | null;
       companyId?: string | null;
       fiscalYear?: string | null;
+      documentType?: DocumentType | null;
     },
     actorUserId: string,
     ctx: AuditContext,
   ): Promise<SessionSummary> {
+    // Le documentType est stocké dans le JSONB `mapping_override` sous
+    // la clé sentinelle `__documentType` pour éviter une migration SQL.
+    // Le MappingService extrait cette clé avant de traiter les
+    // overrides de header — voir `MappingService.extractDocumentType`.
+    const initialOverride: Record<string, string> | null =
+      input.documentType !== null && input.documentType !== undefined
+        ? { [DOCUMENT_TYPE_OVERRIDE_KEY]: input.documentType }
+        : null;
+
     const session = await this.sessions.create({
       organizationId,
       sourceType: input.sourceType,
       label: input.label ?? null,
       companyId: input.companyId ?? null,
       fiscalYear: input.fiscalYear ?? null,
+      mappingOverride: initialOverride,
       createdById: actorUserId,
     });
 
@@ -156,7 +173,11 @@ export class ImportSessionService {
       action: 'session_created',
       entityType: 'import_session',
       entityId: session.id,
-      after: { sourceType: session.sourceType, label: session.label },
+      after: {
+        sourceType: session.sourceType,
+        label: session.label,
+        documentType: input.documentType ?? null,
+      },
       ctx: { ...ctx, userId: actorUserId, organizationId },
       legacyEventType: 'imports.session_created',
     });
@@ -440,10 +461,21 @@ export class ImportSessionService {
       offset: 0,
     });
 
+    // Extraire le documentType du JSONB (clé sentinelle) et purifier
+    // les overrides pour ne laisser que des mappings header → target.
+    const rawOverride = (session.mappingOverride as Record<string, string>) ?? {};
+    const documentType = (rawOverride[DOCUMENT_TYPE_OVERRIDE_KEY] as DocumentType | undefined) ?? null;
+    const headerOverrides: Record<string, TargetField> = {};
+    for (const [k, v] of Object.entries(rawOverride)) {
+      if (k === DOCUMENT_TYPE_OVERRIDE_KEY) continue;
+      headerOverrides[k] = v as TargetField;
+    }
+
     const proposal = this.mapping.autoMap(
       headers,
-      (session.mappingOverride as Record<string, TargetField>) ?? {},
+      headerOverrides,
       sniffSample.map((r) => r.rawValues),
+      documentType,
     );
 
     // Build chart index for validation. Loaded fresh on each preview
@@ -531,6 +563,7 @@ export class ImportSessionService {
   // ─── Helpers ────────────────────────────────────────────────────────
 
   private toSummary(s: ImportSessionEntity): SessionSummary {
+    const docType = s.mappingOverride?.[DOCUMENT_TYPE_OVERRIDE_KEY] ?? null;
     return {
       id: s.id,
       status: s.status,
@@ -539,6 +572,7 @@ export class ImportSessionService {
       totalLines: s.totalLines,
       errorLines: s.errorLines,
       createdAt: s.createdAt,
+      documentType: (docType as DocumentType | null) ?? null,
     };
   }
 
@@ -951,7 +985,17 @@ export class ImportSessionService {
       });
     }
 
-    await this.sessions.updateMappingOverride(sessionId, organizationId, mappingOverride);
+    // Préserver le `__documentType` éventuellement présent dans l'override
+    // existant — un update de mapping côté UI ne doit pas effacer la
+    // nature du document choisie à la création.
+    const existingDocType =
+      session.mappingOverride?.[DOCUMENT_TYPE_OVERRIDE_KEY] ?? null;
+    const merged: Record<string, string> = { ...mappingOverride };
+    if (existingDocType !== null && merged[DOCUMENT_TYPE_OVERRIDE_KEY] === undefined) {
+      merged[DOCUMENT_TYPE_OVERRIDE_KEY] = existingDocType;
+    }
+
+    await this.sessions.updateMappingOverride(sessionId, organizationId, merged);
 
     if (session.status === 'validated') {
       await this.sessions.updateStatus(sessionId, organizationId, 'parsed');
