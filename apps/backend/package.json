@@ -47,13 +47,15 @@
     "pg": "^8.13.0",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
-    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "tesseract.js": "^5.1.1",
     "typeorm": "^0.3.20",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "qrcode": "^1.5.4",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",
