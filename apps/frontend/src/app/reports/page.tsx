@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   Loader2,
   TrendingUp,
+  Wallet,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -28,6 +29,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 import type {
+  CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
   GeneralLedgerReport,
@@ -53,12 +55,16 @@ interface SigEnvelope {
 interface FinancialRatiosEnvelope {
   readonly report: FinancialRatiosReport;
 }
+interface CashTrendEnvelope {
+  readonly report: CashTrendReport;
+}
 
 type ReportMode =
   | 'trial-balance'
   | 'comparative-balance'
   | 'sig'
   | 'ratios'
+  | 'cash-trend'
   | 'general-ledger';
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
@@ -142,6 +148,18 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('cash-trend')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'cash-trend'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Wallet className="h-4 w-4" />
+            Trésorerie glissante
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('general-ledger')}
             className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'general-ledger'
@@ -162,6 +180,8 @@ export default function ReportsPage() {
           <SigPanel orgId={orgId} />
         ) : mode === 'ratios' ? (
           <FinancialRatiosPanel orgId={orgId} />
+        ) : mode === 'cash-trend' ? (
+          <CashTrendPanel orgId={orgId} />
         ) : (
           <GeneralLedgerPanel orgId={orgId} />
         )}
@@ -1222,6 +1242,174 @@ function SigPosteTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─── Trésorerie nette glissante ────────────────────────────────────────
+
+function CashTrendPanel({ orgId }: { readonly orgId: string }) {
+  const today = new Date();
+  const defaultTo = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+  const defaultFromYear = today.getFullYear() - 1;
+  const defaultFrom = `${defaultFromYear}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+  const [fromMonth, setFromMonth] = useState<string>(defaultFrom);
+  const [toMonth, setToMonth] = useState<string>(defaultTo);
+  const [submitted, setSubmitted] = useState<{ fromMonth: string; toMonth: string } | null>(null);
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({ fromMonth: s.fromMonth, toMonth: s.toMonth });
+
+  const query = useQuery<CashTrendReport, ApiError>({
+    queryKey: ['reports', 'cash-trend', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<CashTrendEnvelope>(
+        `/organizations/${orgId}/reports/cash-trend?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    window.open(
+      `/api/organizations/${orgId}/reports/cash-trend.xlsx?${buildParams(submitted).toString()}`,
+      '_blank',
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Trésorerie nette glissante</CardTitle>
+        <CardDescription>
+          Évolution mois par mois du solde net de la classe 5 (banques, caisses). Un solde
+          créditeur sur un compte 5 (découvert) vient en déduction de la trésorerie nette.
+          Fenêtre maximum 60 mois.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ fromMonth, toMonth });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="ct-from">Du (YYYY-MM)</Label>
+            <Input
+              id="ct-from"
+              type="month"
+              value={fromMonth}
+              onChange={(e) => setFromMonth(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="ct-to">Au (YYYY-MM)</Label>
+            <Input
+              id="ct-to"
+              type="month"
+              value={toMonth}
+              onChange={(e) => setToMonth(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Calculer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <CashTrendTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CashTrendTable({ report }: { readonly report: CashTrendReport }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard label="Trésorerie actuelle" value={report.currentNetCash} />
+        <SummaryCard label="Min sur la période" value={report.minNetCash} />
+        <SummaryCard label="Max sur la période" value={report.maxNetCash} />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2">Mois</th>
+              <th className="px-2 py-2">Coupure</th>
+              <th className="px-2 py-2 text-right">Débit cumulé</th>
+              <th className="px-2 py-2 text-right">Crédit cumulé</th>
+              <th className="px-2 py-2 text-right">Trésorerie nette</th>
+              <th className="px-2 py-2 text-right">Variation MoM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.points.map((p) => {
+              const net = Number(p.netCash);
+              const change = p.change !== null ? Number(p.change) : null;
+              return (
+                <tr key={p.yearMonth} className="border-b hover:bg-slate-50">
+                  <td className="px-2 py-1 font-mono text-xs">{p.yearMonth}</td>
+                  <td className="px-2 py-1 text-xs text-slate-500">{p.asAtDate}</td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(p.totalDebit)}</td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(p.totalCredit)}</td>
+                  <td
+                    className={`px-2 py-1 text-right font-mono font-semibold ${
+                      net < 0 ? 'text-red-600' : ''
+                    }`}
+                  >
+                    {fmt(p.netCash)}
+                  </td>
+                  <td
+                    className={`px-2 py-1 text-right font-mono ${
+                      change !== null && change < 0
+                        ? 'text-red-600'
+                        : change !== null && change > 0
+                          ? 'text-emerald-600'
+                          : ''
+                    }`}
+                  >
+                    {p.change !== null ? fmt(p.change) : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({ label, value }: { readonly label: string; readonly value: string }) {
+  const num = Number(value);
+  return (
+    <div className="rounded-md border bg-slate-50 p-3">
+      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+      <div
+        className={`mt-1 font-mono text-lg font-semibold ${
+          num < 0 ? 'text-red-600' : 'text-slate-900'
+        }`}
+      >
+        {fmt(value)}
+      </div>
     </div>
   );
 }

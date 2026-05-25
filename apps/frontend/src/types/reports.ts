@@ -35,6 +35,24 @@ export interface TrialBalanceReport {
   readonly totals: TrialBalanceTotals;
 }
 
+export interface CashTrendPoint {
+  readonly yearMonth: string;
+  readonly asAtDate: string;
+  readonly totalDebit: string;
+  readonly totalCredit: string;
+  readonly netCash: string;
+  readonly change: string | null;
+}
+
+export interface CashTrendReport {
+  readonly fromMonth: string;
+  readonly toMonth: string;
+  readonly points: ReadonlyArray<CashTrendPoint>;
+  readonly currentNetCash: string;
+  readonly minNetCash: string;
+  readonly maxNetCash: string;
+}
+
 export type RatioCategory =
   | 'STRUCTURE'
   | 'LIQUIDITE'

@@ -330,6 +330,31 @@ export interface FinancialRatiosReport {
   readonly ratios: readonly FinancialRatio[];
 }
 
+// ─── Trésorerie nette glissante ─────────────────────────────────────
+
+export interface CashTrendPoint {
+  readonly yearMonth: string;
+  readonly asAtDate: string;
+  readonly totalDebit: string;
+  readonly totalCredit: string;
+  readonly netCash: string;
+  readonly change: string | null;
+}
+
+export interface CashTrendQuery {
+  readonly fromMonth: string;
+  readonly toMonth: string;
+}
+
+export interface CashTrendReport {
+  readonly fromMonth: string;
+  readonly toMonth: string;
+  readonly points: readonly CashTrendPoint[];
+  readonly currentNetCash: string;
+  readonly minNetCash: string;
+  readonly maxNetCash: string;
+}
+
 /**
  * `ReportsService` — Module 9 accounting reports.
  *
@@ -859,6 +884,112 @@ export class ReportsService {
       fiscalYearStartDate: query.fiscalYearStartDate,
       ratios,
     };
+  }
+
+  /**
+   * Trésorerie nette glissante mois par mois sur [fromMonth, toMonth].
+   * Pour chaque mois : solde cumulé des comptes de classe 5 au dernier
+   * jour calendaire. Un solde créditeur (découvert) vient en déduction.
+   *
+   * Implémentation : N appels parallèles à `accountBalancesAsAt`. Garde-
+   * fou à 60 mois ; au-delà demander un découpage.
+   */
+  async getCashTrend(
+    organizationId: TenantId,
+    query: CashTrendQuery,
+  ): Promise<CashTrendReport> {
+    assertTenantId(organizationId);
+    if (
+      !ReportsService.isYearMonth(query.fromMonth) ||
+      !ReportsService.isYearMonth(query.toMonth)
+    ) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'fromMonth and toMonth must be YYYY-MM.',
+      });
+    }
+    if (query.fromMonth > query.toMonth) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'fromMonth must be <= toMonth.',
+      });
+    }
+    const months = ReportsService.enumerateMonths(query.fromMonth, query.toMonth);
+    if (months.length > 60) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'Cash trend window cannot exceed 60 months — split into chunks.',
+      });
+    }
+
+    const balancesByMonth = await Promise.all(
+      months.map(async (m) => {
+        const asAtDate = ReportsService.lastDayOfMonth(m);
+        const rows = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
+        let totalDebit = 0;
+        let totalCredit = 0;
+        for (const r of rows) {
+          if (r.accountClass !== 5) continue;
+          const net = Number(r.totalDebit) - Number(r.totalCredit);
+          if (net >= 0) {
+            totalDebit += net;
+          } else {
+            totalCredit += -net;
+          }
+        }
+        return { yearMonth: m, asAtDate, totalDebit, totalCredit };
+      }),
+    );
+
+    const points: CashTrendPoint[] = balancesByMonth.map((b, idx) => {
+      const net = b.totalDebit - b.totalCredit;
+      const previous =
+        idx === 0
+          ? null
+          : balancesByMonth[idx - 1].totalDebit - balancesByMonth[idx - 1].totalCredit;
+      return {
+        yearMonth: b.yearMonth,
+        asAtDate: b.asAtDate,
+        totalDebit: b.totalDebit.toFixed(2),
+        totalCredit: b.totalCredit.toFixed(2),
+        netCash: net.toFixed(2),
+        change: previous === null ? null : (net - previous).toFixed(2),
+      };
+    });
+
+    const nets = points.map((p) => Number(p.netCash));
+    return {
+      fromMonth: query.fromMonth,
+      toMonth: query.toMonth,
+      points,
+      currentNetCash: nets[nets.length - 1].toFixed(2),
+      minNetCash: Math.min(...nets).toFixed(2),
+      maxNetCash: Math.max(...nets).toFixed(2),
+    };
+  }
+
+  static isYearMonth(s: string): boolean {
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
+  }
+
+  static enumerateMonths(from: string, to: string): string[] {
+    const [fy, fm] = from.split('-').map(Number);
+    const [ty, tm] = to.split('-').map(Number);
+    const months: string[] = [];
+    let y = fy;
+    let m = fm;
+    while (y < ty || (y === ty && m <= tm)) {
+      months.push(`${y.toString().padStart(4, '0')}-${m.toString().padStart(2, '0')}`);
+      m += 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+    }
+    return months;
+  }
+
+  static lastDayOfMonth(yearMonth: string): string {
+    const [y, m] = yearMonth.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m, 0));
+    return d.toISOString().slice(0, 10);
   }
 
   private static makeRatio(args: {

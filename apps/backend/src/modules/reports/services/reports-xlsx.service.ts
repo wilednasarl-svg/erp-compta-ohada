@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 
 import type {
+  CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
   TrialBalanceReport,
@@ -464,6 +465,37 @@ export class ReportsXlsxService {
     }
 
     return this.buildWorkbook(rows, 'SIG');
+  }
+
+  // ─── Trésorerie nette glissante ──────────────────────────────────
+  cashTrendXlsx(report: CashTrendReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    rows.push([`Trésorerie nette glissante — De ${report.fromMonth} à ${report.toMonth}`]);
+    rows.push([]);
+    rows.push([
+      'Mois',
+      'Date coupure',
+      'Débit cumulé',
+      'Crédit cumulé',
+      'Trésorerie nette',
+      'Variation MoM',
+    ]);
+    for (const p of report.points) {
+      rows.push([
+        p.yearMonth,
+        p.asAtDate,
+        this.num(p.totalDebit),
+        this.num(p.totalCredit),
+        this.num(p.netCash),
+        p.change !== null ? this.num(p.change) : '',
+      ]);
+    }
+    rows.push([]);
+    rows.push(['', 'Trésorerie actuelle', '', '', this.num(report.currentNetCash), '']);
+    rows.push(['', 'Trésorerie min sur la période', '', '', this.num(report.minNetCash), '']);
+    rows.push(['', 'Trésorerie max sur la période', '', '', this.num(report.maxNetCash), '']);
+    return this.buildWorkbook(rows, 'Trésorerie glissante');
   }
 
   // ─── Ratios financiers ───────────────────────────────────────────

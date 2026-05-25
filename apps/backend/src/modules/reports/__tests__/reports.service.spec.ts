@@ -1144,6 +1144,143 @@ describe('ReportsService.getFinancialRatios', () => {
   });
 });
 
+describe('ReportsService.getCashTrend', () => {
+  function balanceRow(over: {
+    accountId?: string;
+    accountCode?: string;
+    accountClass?: number;
+    totalDebit?: string;
+    totalCredit?: string;
+  }) {
+    return {
+      accountId: over.accountId ?? 'a-x',
+      accountCode: over.accountCode ?? '521000',
+      accountLabel: 'BANQUE',
+      accountClass: over.accountClass ?? 5,
+      totalDebit: over.totalDebit ?? '0',
+      totalCredit: over.totalCredit ?? '0',
+    };
+  }
+
+  it('builds a monthly cash trend over a 3-month window', async () => {
+    const h = buildHarness();
+    // Jan : 100 débit. Feb : 150 débit cumulé. Mar : 130 débit cumulé.
+    h.repo.accountBalancesAsAt
+      .mockResolvedValueOnce([balanceRow({ totalDebit: '100' })])
+      .mockResolvedValueOnce([balanceRow({ totalDebit: '150' })])
+      .mockResolvedValueOnce([balanceRow({ totalDebit: '130' })]);
+
+    const report = await h.service.getCashTrend(ORG_ID, {
+      fromMonth: '2026-01',
+      toMonth: '2026-03',
+    });
+
+    expect(report.points).toHaveLength(3);
+    expect(report.points[0]).toMatchObject({
+      yearMonth: '2026-01',
+      asAtDate: '2026-01-31',
+      netCash: '100.00',
+      change: null,
+    });
+    expect(report.points[1]).toMatchObject({
+      yearMonth: '2026-02',
+      asAtDate: '2026-02-28',
+      netCash: '150.00',
+      change: '50.00',
+    });
+    expect(report.points[2]).toMatchObject({
+      yearMonth: '2026-03',
+      asAtDate: '2026-03-31',
+      netCash: '130.00',
+      change: '-20.00',
+    });
+    expect(report.currentNetCash).toBe('130.00');
+    expect(report.minNetCash).toBe('100.00');
+    expect(report.maxNetCash).toBe('150.00');
+  });
+
+  it('treats credit balance on class 5 account as overdraft (negative contribution)', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt.mockResolvedValueOnce([
+      balanceRow({ totalDebit: '200', totalCredit: '50' }), // banque solde +150
+      balanceRow({
+        accountId: 'a-overdraft',
+        accountCode: '521900',
+        totalCredit: '300',
+      }), // découvert -300
+    ]);
+    const report = await h.service.getCashTrend(ORG_ID, {
+      fromMonth: '2026-01',
+      toMonth: '2026-01',
+    });
+    // Net = +150 + (-300) = -150
+    expect(report.points[0].netCash).toBe('-150.00');
+  });
+
+  it('excludes accounts not in class 5', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt.mockResolvedValueOnce([
+      balanceRow({ totalDebit: '500' }), // class 5 ok
+      balanceRow({
+        accountId: 'a-cli',
+        accountCode: '411000',
+        accountClass: 4,
+        totalDebit: '99999',
+      }), // class 4 ignored
+    ]);
+    const report = await h.service.getCashTrend(ORG_ID, {
+      fromMonth: '2026-01',
+      toMonth: '2026-01',
+    });
+    expect(report.points[0].netCash).toBe('500.00');
+  });
+
+  it('rejects with REPORT_INVALID_DATE_RANGE on bad YYYY-MM format', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getCashTrend(ORG_ID, { fromMonth: '2026-1', toMonth: '2026-12' }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+  });
+
+  it('rejects when fromMonth > toMonth', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getCashTrend(ORG_ID, { fromMonth: '2026-12', toMonth: '2026-01' }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+  });
+
+  it('rejects when window exceeds 60 months', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getCashTrend(ORG_ID, { fromMonth: '2020-01', toMonth: '2026-12' }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+  });
+});
+
+describe('ReportsService static helpers', () => {
+  it('enumerates months inclusively across a year boundary', () => {
+    expect(ReportsService.enumerateMonths('2025-11', '2026-02')).toEqual([
+      '2025-11',
+      '2025-12',
+      '2026-01',
+      '2026-02',
+    ]);
+  });
+
+  it('lastDayOfMonth handles February of leap year', () => {
+    expect(ReportsService.lastDayOfMonth('2024-02')).toBe('2024-02-29');
+    expect(ReportsService.lastDayOfMonth('2025-02')).toBe('2025-02-28');
+    expect(ReportsService.lastDayOfMonth('2026-12')).toBe('2026-12-31');
+  });
+
+  it('isYearMonth rejects malformed inputs', () => {
+    expect(ReportsService.isYearMonth('2026-01')).toBe(true);
+    expect(ReportsService.isYearMonth('2026-13')).toBe(false);
+    expect(ReportsService.isYearMonth('2026-1')).toBe(false);
+    expect(ReportsService.isYearMonth('26-01')).toBe(false);
+  });
+});
+
 describe('ReportsService.percentChange (static)', () => {
   it.each([
     [100, 150, '50.00'],
