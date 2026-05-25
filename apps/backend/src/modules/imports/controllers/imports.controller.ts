@@ -34,12 +34,14 @@ import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateImportSessionDto } from '../dto/create-import-session.dto';
 import { PreviewImportDto } from '../dto/preview-import.dto';
 import { UpdateMappingOverrideDto } from '../dto/update-mapping-override.dto';
+import { ImportAnalyticsService } from '../services/import-analytics.service';
 import {
   ImportSessionService,
   type CommitResult,
   type PreviewResult,
   type SessionSummary,
 } from '../services/import-session.service';
+import type { ImportAnalytics } from '../types/import-analytics';
 
 /**
  * Local Multer file shape (subset of Express.Multer.File). Avoids a
@@ -78,7 +80,10 @@ interface UploadedMulterFile {
 @Controller('organizations/:id/imports')
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class ImportsController {
-  constructor(private readonly importSessions: ImportSessionService) {}
+  constructor(
+    private readonly importSessions: ImportSessionService,
+    private readonly importAnalytics: ImportAnalyticsService,
+  ) {}
 
   // ─── Sessions ───────────────────────────────────────────────────────
 
@@ -245,6 +250,21 @@ export class ImportsController {
       buildAuditRequestContext(req),
     );
     return { success: true };
+  }
+
+  // ─── Analytics ──────────────────────────────────────────────────────
+
+  @Get('sessions/:sessionId/analytics')
+  @RequirePermission('imports.read')
+  @HttpCode(HttpStatus.OK)
+  async getAnalytics(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+  ): Promise<{ analytics: ImportAnalytics }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    const analytics = await this.importAnalytics.compute(asTenantId(tokenOrgId), sessionId);
+    return { analytics };
   }
 
   // ─── Commit (wave 2) ────────────────────────────────────────────────

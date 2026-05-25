@@ -1,7 +1,8 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileUp, Loader2, Plus, RotateCcw, Save, Upload, XCircle } from 'lucide-react';
+import { BarChart3, CheckCircle2, FileUp, Loader2, Plus, RotateCcw, Save, Upload, XCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -191,12 +192,13 @@ export default function ImportsPage() {
               <ul className="divide-y rounded-md border">
                 {(sessionsQuery.data ?? []).map((s) => {
                   const isSelected = s.id === selectedSessionId;
+                  const canAnalyze = s.totalLines > 0;
                   return (
-                    <li key={s.id}>
+                    <li key={s.id} className="flex items-center">
                       <button
                         type="button"
                         onClick={() => setSelectedSessionId(s.id)}
-                        className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-muted/60 ${
+                        className={`flex flex-1 items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-muted/60 ${
                           isSelected ? 'bg-muted/60' : ''
                         }`}
                       >
@@ -216,6 +218,16 @@ export default function ImportsPage() {
                           </div>
                         </div>
                       </button>
+                      {canAnalyze && (
+                        <Link
+                          href={`/imports/${s.id}/dashboard`}
+                          className="mr-3 inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent"
+                          title="Voir l'analyse de cette session"
+                        >
+                          <BarChart3 className="h-3.5 w-3.5" />
+                          Analyse
+                        </Link>
+                      )}
                     </li>
                   );
                 })}
@@ -381,14 +393,27 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Détail session
-          <SessionStatusBadge status={session.status} />
-        </CardTitle>
-        <CardDescription>
-          {session.label ?? `Session ${session.id.slice(0, 8)}`} · {session.totalLines} lignes
-          {session.errorLines > 0 ? ` · ${session.errorLines} en erreur` : ''}
-        </CardDescription>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              Détail session
+              <SessionStatusBadge status={session.status} />
+            </CardTitle>
+            <CardDescription>
+              {session.label ?? `Session ${session.id.slice(0, 8)}`} · {session.totalLines} lignes
+              {session.errorLines > 0 ? ` · ${session.errorLines} en erreur` : ''}
+            </CardDescription>
+          </div>
+          {session.totalLines > 0 && (
+            <Link
+              href={`/imports/${session.id}/dashboard`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Voir l&apos;analyse
+            </Link>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Upload */}

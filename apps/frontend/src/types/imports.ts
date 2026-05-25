@@ -78,3 +78,71 @@ export interface CommitResult {
   readonly sessionId: string;
   readonly committedRows: number;
 }
+
+// ─── Analytics (mirror backend type ImportAnalytics) ─────────────────
+
+export interface ImportAnalyticsKpis {
+  readonly totalLines: number;
+  readonly validLines: number;
+  readonly errorLines: number;
+  readonly validRatePercent: number;
+  readonly totalDebit: string;
+  readonly totalCredit: string;
+  readonly netBalance: string;
+  readonly isBalanced: boolean;
+  readonly periodStart: string | null;
+  readonly periodEnd: string | null;
+  readonly distinctJournals: number;
+  readonly distinctAccounts: number;
+  readonly distinctPartners: number;
+}
+
+export interface ImportAnalyticsDailyPoint {
+  readonly date: string;
+  readonly debit: string;
+  readonly credit: string;
+  readonly net: string;
+  readonly lines: number;
+}
+
+export interface ImportAnalyticsJournalRow {
+  readonly journal: string;
+  readonly debit: string;
+  readonly credit: string;
+  readonly total: string;
+  readonly lines: number;
+}
+
+export interface ImportAnalyticsAccountRow {
+  readonly account: string;
+  readonly debit: string;
+  readonly credit: string;
+  readonly movement: string;
+  readonly lines: number;
+}
+
+export interface ImportAnalyticsClassRow {
+  readonly accountClass: string;
+  readonly classLabel: string;
+  readonly debit: string;
+  readonly credit: string;
+  readonly lines: number;
+}
+
+export interface ImportAnalyticsErrorRow {
+  readonly code: string;
+  readonly count: number;
+  readonly sharePercent: number;
+}
+
+export interface ImportAnalytics {
+  readonly sessionId: string;
+  readonly organizationId: string;
+  readonly currency: string;
+  readonly kpis: ImportAnalyticsKpis;
+  readonly daily: ReadonlyArray<ImportAnalyticsDailyPoint>;
+  readonly byJournal: ReadonlyArray<ImportAnalyticsJournalRow>;
+  readonly topAccounts: ReadonlyArray<ImportAnalyticsAccountRow>;
+  readonly byAccountClass: ReadonlyArray<ImportAnalyticsClassRow>;
+  readonly errorBreakdown: ReadonlyArray<ImportAnalyticsErrorRow>;
+}

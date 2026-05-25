@@ -23,6 +23,7 @@ import {
   FileParserService,
   buildDefaultParsers,
 } from './services/file-parser.service';
+import { ImportAnalyticsService } from './services/import-analytics.service';
 import { ImportSessionService } from './services/import-session.service';
 import { MappingService } from './services/mapping.service';
 import { ValidationService } from './services/validation.service';
@@ -86,7 +87,8 @@ import { ValidationService } from './services/validation.service';
     MappingService,
     ValidationService,
     ImportSessionService,
+    ImportAnalyticsService,
   ],
-  exports: [ImportSessionService, MappingService, ValidationService],
+  exports: [ImportSessionService, MappingService, ValidationService, ImportAnalyticsService],
 })
 export class ImportsModule {}

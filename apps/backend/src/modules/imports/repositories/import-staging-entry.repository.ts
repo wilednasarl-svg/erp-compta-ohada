@@ -112,6 +112,38 @@ export class ImportStagingEntryRepository {
     return qb.getMany();
   }
 
+  /**
+   * Stream-light fetch des staging rows d'une session pour le calcul
+   * d'analytics. Renvoie uniquement les colonnes utiles
+   * (`mappedValues`, `errors`) — pas le `rawValues` qui est lourd et
+   * inutile ici. Pas de pagination : pour 50k lignes l'objet renvoyé
+   * pèse ~10 Mo et reste sous le ceiling RAM Railway.
+   *
+   * Pourquoi pas d'agrégation SQL ? Les valeurs sont dans un JSONB
+   * (`mapped_values->>'debit'`) et certaines règles (classe SYSCOHADA
+   * depuis le 1er digit du compte) demandent du parsing. Le coût en
+   * JS reste linéaire et permet de réutiliser les conventions de
+   * normalisation (Number(), etc.) déjà testées dans ValidationService.
+   */
+  async findAllForAnalytics(
+    sessionId: string,
+    organizationId: TenantId | string,
+  ): Promise<Array<{ mappedValues: MappedRow; errors: ValidationError[] }>> {
+    assertTenantId(organizationId);
+    const rows = await this.repo
+      .createQueryBuilder('e')
+      .innerJoin(ImportSessionEntity, 's', 's.id = e.session_id')
+      .where('e.session_id = :sessionId', { sessionId })
+      .andWhere('s.organization_id = :organizationId', { organizationId })
+      .select('e.mapped_values', 'mapped_values')
+      .addSelect('e.errors', 'errors')
+      .getRawMany<{ mapped_values: MappedRow; errors: ValidationError[] }>();
+    return rows.map((r) => ({
+      mappedValues: r.mapped_values ?? {},
+      errors: r.errors ?? [],
+    }));
+  }
+
   async countBySession(
     sessionId: string,
     organizationId: TenantId | string,
