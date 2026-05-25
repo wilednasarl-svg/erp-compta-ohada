@@ -128,4 +128,110 @@ describe('OHADA SYSCOHADA AUDCIF reference chart (seed)', () => {
       expect(OHADA_REFERENCE_CHART.length).toBeGreaterThan(50);
     });
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // W1.1 — Garde-fous additionnels sur l'extension doctrinale (∼322
+  // nouveaux comptes ajoutés via migration 0089). Ces tests verrouillent
+  // les attentes minimales : pas de régression sur la couverture, pas
+  // de duplication, formats stricts.
+  // ───────────────────────────────────────────────────────────────────────
+  describe('W1.1 — extension doctrinale (migration 0089)', () => {
+    it('contains at least 470 entries (171 backbone + ≥300 W1.1 critical)', () => {
+      // 171 colonne vertébrale (0011) + 322 nouveaux (W1.1) = 493
+      // attendu. Borne basse à 470 pour laisser une marge de manœuvre
+      // en cas de refactor futur (consolidation de doublons doctrinaux).
+      expect(OHADA_REFERENCE_CHART.length).toBeGreaterThanOrEqual(470);
+    });
+
+    it('every code is composed of digits only (no leading zero)', () => {
+      // Renforce le test générique : refus explicite de tout caractère
+      // non-numérique (lettre, espace, ponctuation). La DB applique
+      // déjà cette contrainte (chk_reference_chart_accounts_code) mais
+      // on la duplique côté seed pour fail-fast en CI.
+      for (const row of OHADA_REFERENCE_CHART) {
+        expect(row.code).toMatch(/^[1-9][0-9]{0,9}$/);
+      }
+    });
+
+    it('normal_balance is strictly one of {D, C} on every row', () => {
+      for (const row of OHADA_REFERENCE_CHART) {
+        expect(row.normal_balance === 'D' || row.normal_balance === 'C').toBe(true);
+      }
+    });
+
+    it('every code with a non-root prefix has its immediate parent or an ancestor in the seed', () => {
+      // Plus strict que la règle structurelle « au moins un ancêtre » :
+      // toute feuille à 3+ chiffres DOIT avoir un ancêtre dans le seed.
+      // Vérifie que l'extension W1.1 n'a pas créé d'orphelin par typo.
+      const codes = new Set(OHADA_REFERENCE_CHART.map((r) => r.code));
+      for (const row of OHADA_REFERENCE_CHART) {
+        if (row.code.length <= 1) continue;
+        const ancestors = Array.from(
+          { length: row.code.length - 1 },
+          (_, i) => row.code.slice(0, i + 1),
+        );
+        expect(ancestors.some((p) => codes.has(p))).toBe(true);
+      }
+    });
+
+    it('class 1 has ≥ 30 entries (capitaux + provisions full coverage)', () => {
+      const c1 = OHADA_REFERENCE_CHART.filter((r) => r.class === 1);
+      expect(c1.length).toBeGreaterThanOrEqual(30);
+    });
+
+    it('class 4 has ≥ 80 entries (tiers/régularisations/FX full coverage)', () => {
+      const c4 = OHADA_REFERENCE_CHART.filter((r) => r.class === 4);
+      expect(c4.length).toBeGreaterThanOrEqual(80);
+    });
+
+    it('class 8 has ≥ 20 entries (HAO full coverage)', () => {
+      const c8 = OHADA_REFERENCE_CHART.filter((r) => r.class === 8);
+      expect(c8.length).toBeGreaterThanOrEqual(20);
+    });
+
+    it('contains the critical FX-conversion accounts (478x/479x)', () => {
+      // Écarts de conversion actif/passif — prérequis du module
+      // multi-devises et des opérations de clôture (Tome 2).
+      const codes = new Set(OHADA_REFERENCE_CHART.map((r) => r.code));
+      for (const required of ['4781', '4782', '4791', '4792']) {
+        expect(codes.has(required)).toBe(true);
+      }
+    });
+
+    it('contains the critical régularisation accounts (4081/4181/4861/4862)', () => {
+      // FNP fournisseur, factures à établir client, CCA/PCA détaillées —
+      // prérequis des écritures de clôture (Tome 1).
+      const codes = new Set(OHADA_REFERENCE_CHART.map((r) => r.code));
+      for (const required of ['4081', '4181', '4861', '4862']) {
+        expect(codes.has(required)).toBe(true);
+      }
+    });
+
+    it('contains the critical dépréciation accounts (29x/39x/49x/59x)', () => {
+      // Au moins un POSTING dans chaque famille de dépréciation —
+      // prérequis IAS 36 transposé AUDCIF.
+      const codes = new Set(OHADA_REFERENCE_CHART.map((r) => r.code));
+      for (const required of ['291', '391', '491', '591']) {
+        expect(codes.has(required)).toBe(true);
+      }
+    });
+
+    it('contains the critical provisions pour risques accounts (191..198)', () => {
+      // Litiges, garantie, pertes de change, retraite, démantèlement —
+      // prérequis IAS 37 (Tome 2).
+      const codes = new Set(OHADA_REFERENCE_CHART.map((r) => r.code));
+      for (const required of ['191', '192', '194', '196', '198', '1984']) {
+        expect(codes.has(required)).toBe(true);
+      }
+    });
+
+    it('contains the critical HAO accounts (81x/82x/85x/86x for cessions)', () => {
+      // VNC + produits de cessions + dotations/reprises dérogatoires —
+      // toute écriture de cession d'immobilisation passe par ces côtés.
+      const codes = new Set(OHADA_REFERENCE_CHART.map((r) => r.code));
+      for (const required of ['811', '812', '822', '826', '851', '861']) {
+        expect(codes.has(required)).toBe(true);
+      }
+    });
+  });
 });
