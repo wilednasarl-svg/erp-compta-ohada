@@ -1,3 +1,6 @@
+import { promises as fs } from 'fs';
+import os from 'os';
+import path from 'path';
 import type { Readable } from 'stream';
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
@@ -8,6 +11,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { TenantId } from '../../../common/persistence/tenant-scope';
 import type { AppConfig } from '../../../config/configuration';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
+import { JournalEntryRepository } from '../../journals/repositories/journal-entry.repository';
 import type { DocumentEntity } from '../entities/document.entity';
 import type { OcrStatus } from '../types/ocr-status';
 import {
@@ -18,6 +22,8 @@ import {
 import { DocumentEntryRepository } from '../repositories/document-entry.repository';
 import { DOCUMENT_STORAGE, type DocumentStorage } from './document-storage.interface';
 import { DocumentOcrService } from './document-ocr.service';
+import { extractInvoiceMetadata } from './metadata-extractor';
+import { OCR_PROVIDER, type OcrProvider } from './ocr-provider';
 
 /**
  * Plain-shape upload descriptor. The controller adapts the multer
@@ -153,6 +159,8 @@ export class DocumentsService {
     @Inject(DOCUMENT_STORAGE) private readonly storage: DocumentStorage,
     private readonly audit: AuditTrailService,
     config: ConfigService,
+    @Inject(OCR_PROVIDER) private readonly ocrProvider: OcrProvider,
+    private readonly journalEntries: JournalEntryRepository,
   ) {
     const docConfig = config.get<AppConfig['documents']>('documents');
     if (docConfig === undefined) {
@@ -309,7 +317,181 @@ export class DocumentsService {
       );
     });
 
+    // Module 10 wave 2 — inline OCR pipeline. Fire-and-forget: any
+    // OCR/extraction failure is swallowed-and-warned so a flaky engine
+    // never blocks an upload.
+    this.runOcrPipeline(row.id, organizationId, row.storageKey, row.mimeType).catch(
+      (error: unknown) => {
+        this.logger.warn(
+          `createFromUpload: OCR pipeline failed for document ${row.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      },
+    );
+
     return this.toView(row);
+  }
+
+  /**
+   * Attach an existing document to a journal entry. The
+   * `document_entries` pivot is the source of truth — this method
+   * validates that both the document and the entry belong to the
+   * caller's tenant, then upserts (idempotent) the link row.
+   *
+   * Failure modes:
+   *   - DOC_NOT_FOUND           : document missing / cross-tenant.
+   *   - JOURNAL_ENTRY_NOT_FOUND : entry missing / cross-tenant.
+   */
+  async attachEntry(
+    organizationId: TenantId,
+    documentId: string,
+    journalEntryId: string,
+    actorUserId: string,
+    ctx: AuditContext = { ipAddress: null, userAgent: null },
+  ): Promise<{ documentId: string; entryId: string }> {
+    const doc = await this.documents.findById(organizationId, documentId);
+    if (doc === null) {
+      throw new AppException(ERROR_CODES.DOC_NOT_FOUND, {
+        message: 'Document not found',
+      });
+    }
+    const entry = await this.journalEntries.findById(journalEntryId, organizationId);
+    if (entry === null) {
+      throw new AppException(ERROR_CODES.JOURNAL_ENTRY_NOT_FOUND, {
+        message: 'Journal entry not found',
+      });
+    }
+    await this.entries.link({
+      organizationId,
+      documentId,
+      entryIds: [journalEntryId],
+      createdBy: actorUserId,
+    });
+
+    await this.audit.record({
+      module: DocumentsService.MODULE,
+      action: 'linked_entry',
+      entityType: DocumentsService.ENTITY_TYPE,
+      entityId: documentId,
+      after: { entryIds: [journalEntryId] },
+      metadata: { entryCount: 1, source: 'attach-entry-endpoint' },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'documents.linked_entry',
+    });
+
+    return { documentId, entryId: journalEntryId };
+  }
+
+  /**
+   * OCR + metadata extraction pipeline. Pulls the bytes from storage
+   * into a temp file (so the provider receives a stable filesystem
+   * path), invokes the OCR provider, persists the result + the regex-
+   * extracted metadata. Best-effort — any failure leaves the document
+   * with the prior OCR state and is logged at WARN.
+   */
+  private async runOcrPipeline(
+    documentId: string,
+    organizationId: TenantId,
+    storageKey: string,
+    mimeType: string,
+  ): Promise<void> {
+    let tmpPath: string | null = null;
+    try {
+      tmpPath = await this.stageStorageBytesToTempFile(storageKey, mimeType);
+      const result = await this.ocrProvider.extract(tmpPath, mimeType);
+      if (result === null) {
+        // Provider declined to process — mark as skipped so the UI
+        // can distinguish "not yet processed" from "intentionally
+        // not OCR-ed".
+        await this.documents.updateOcrResult(organizationId, documentId, {
+          ocrStatus: 'skipped',
+          ocrProcessedAt: new Date(),
+        });
+        return;
+      }
+
+      const metadata = extractInvoiceMetadata(result.text);
+
+      await this.documents.updateOcrResult(organizationId, documentId, {
+        ocrStatus: 'processed',
+        ocrText: result.text,
+        ocrConfidence: result.confidence,
+        ocrProcessedAt: new Date(),
+        extractedMetadata: Object.keys(metadata).length > 0 ? metadata : null,
+      });
+    } catch (error: unknown) {
+      this.logger.warn(
+        `runOcrPipeline: failed for document ${documentId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      await this.documents
+        .updateOcrResult(organizationId, documentId, {
+          ocrStatus: 'failed',
+          ocrProcessedAt: new Date(),
+        })
+        .catch((updateError: unknown) => {
+          this.logger.warn(
+            `runOcrPipeline: failed to mark ocr_status=failed for ${documentId}: ${
+              updateError instanceof Error ? updateError.message : String(updateError)
+            }`,
+          );
+        });
+    } finally {
+      if (tmpPath !== null) {
+        await fs.unlink(tmpPath).catch(() => undefined);
+      }
+    }
+  }
+
+  /**
+   * Stream the storage bytes into a temp file on local disk so the
+   * OCR provider receives a stable `filePath`. The caller is
+   * responsible for unlinking the temp file once the OCR run is done.
+   */
+  private async stageStorageBytesToTempFile(
+    storageKey: string,
+    mimeType: string,
+  ): Promise<string> {
+    const stream = await this.storage.getStream(storageKey);
+    const ext = this.extensionForMime(mimeType);
+    const tmpPath = path.join(
+      os.tmpdir(),
+      `doc-ocr-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`,
+    );
+    const chunks: Buffer[] = [];
+    return new Promise<string>((resolve, reject) => {
+      stream.on('data', (chunk: Buffer | string) => {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      });
+      stream.on('error', reject);
+      stream.on('end', () => {
+        fs.writeFile(tmpPath, Buffer.concat(chunks))
+          .then(() => resolve(tmpPath))
+          .catch(reject);
+      });
+    });
+  }
+
+  private extensionForMime(mimeType: string): string {
+    switch (mimeType) {
+      case 'application/pdf':
+        return '.pdf';
+      case 'image/png':
+        return '.png';
+      case 'image/jpeg':
+      case 'image/jpg':
+        return '.jpg';
+      case 'image/webp':
+        return '.webp';
+      case 'image/tiff':
+        return '.tiff';
+      case 'image/bmp':
+        return '.bmp';
+      default:
+        return '.bin';
+    }
   }
 
   async getForOrg(organizationId: TenantId, id: string): Promise<DocumentView> {

@@ -104,6 +104,57 @@ export class EmailService {
     return `${base}/accept-invitation?token=${encodeURIComponent(token)}`;
   }
 
+  /**
+   * Generic outbound send — used by callers (Module 14 workflow
+   * notifications, signed PDF delivery) that need attachments or a
+   * subject that doesn't fit the invitation template. Honours the same
+   * dry-run / SMTP-failure semantics as `sendInvitationEmail`: failures
+   * are logged at ERROR and swallowed so the upstream business
+   * operation is not rolled back by a transient mail outage. The
+   * caller owns subject/body rendering and attachment sizing.
+   */
+  async sendMail(input: {
+    readonly to: string | string[];
+    readonly subject: string;
+    readonly text: string;
+    readonly html?: string;
+    readonly attachments?: ReadonlyArray<{
+      filename: string;
+      content: Buffer;
+      contentType?: string;
+    }>;
+  }): Promise<void> {
+    const recipients = Array.isArray(input.to) ? input.to.join(',') : input.to;
+    if (this.dryRun || this.transport === null) {
+      this.logger.log(
+        `[DRY-RUN] mail skipped — to="${recipients}" subject="${input.subject}" attachments=${
+          input.attachments?.length ?? 0
+        }`,
+      );
+      return;
+    }
+    try {
+      await this.transport.sendMail({
+        from: this.from,
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+        attachments: input.attachments?.map((a) => ({
+          filename: a.filename,
+          content: a.content,
+          contentType: a.contentType,
+        })),
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.error(
+        `sendMail: SMTP send failed — to="${recipients}" subject="${input.subject}" reason="${message}"`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
+
   async sendInvitationEmail(input: InvitationEmailInput): Promise<void> {
     if (this.dryRun || this.transport === null) {
       this.logger.log(

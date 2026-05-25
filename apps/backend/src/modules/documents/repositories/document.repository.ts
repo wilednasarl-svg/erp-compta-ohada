@@ -135,6 +135,44 @@ export class DocumentRepository {
     return (result.affected ?? 0) > 0;
   }
 
+  /**
+   * Persist OCR results + extracted metadata on a document row. Used
+   * by `DocumentsService` after the OCR provider returns. All fields
+   * are optional in the input — only the provided keys are written so
+   * the caller can update OCR text without touching the extracted
+   * metadata and vice-versa. Module 10 wave 2.
+   */
+  async updateOcrResult(
+    organizationId: TenantId | string,
+    id: string,
+    patch: {
+      readonly ocrStatus?: OcrStatus;
+      readonly ocrText?: string | null;
+      readonly ocrConfidence?: number | null;
+      readonly ocrProcessedAt?: Date | null;
+      readonly extractedMetadata?: Record<string, unknown> | null;
+    },
+  ): Promise<boolean> {
+    assertTenantId(organizationId);
+    const set: Record<string, unknown> = {};
+    if (patch.ocrStatus !== undefined) set.ocrStatus = patch.ocrStatus;
+    if (patch.ocrText !== undefined) set.ocrText = patch.ocrText;
+    if (patch.ocrConfidence !== undefined) set.ocrConfidence = patch.ocrConfidence;
+    if (patch.ocrProcessedAt !== undefined) set.ocrProcessedAt = patch.ocrProcessedAt;
+    if (patch.extractedMetadata !== undefined) set.extractedMetadata = patch.extractedMetadata;
+    if (Object.keys(set).length === 0) return false;
+
+    const result = await this.repo
+      .createQueryBuilder()
+      .update(DocumentEntity)
+      .set(set)
+      .where('id = :id', { id })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .andWhere('deleted_at IS NULL')
+      .execute();
+    return (result.affected ?? 0) > 0;
+  }
+
   async listForOrg(
     organizationId: TenantId | string,
     filters: DocumentListFilters,

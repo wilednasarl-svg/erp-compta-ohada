@@ -4,7 +4,7 @@ import { EntityManager, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { AiAnomalyEntity } from '../entities/ai-anomaly.entity';
-import type { AnomalyType } from '../types/ai.types';
+import type { AnomalySource, AnomalyType } from '../types/ai.types';
 
 export interface UpsertAnomalyInput {
   readonly organizationId: TenantId | string;
@@ -14,6 +14,8 @@ export interface UpsertAnomalyInput {
   readonly anomalyType: AnomalyType;
   readonly riskScore: number;
   readonly reasons: ReadonlyArray<string>;
+  /** Source du détecteur. Défaut `heuristic_v1` (wave 1). */
+  readonly detectedBy?: AnomalySource;
 }
 
 export interface ListAnomaliesFilters {
@@ -81,7 +83,7 @@ export class AiAnomalyRepository {
         anomalyType: input.anomalyType,
         riskScore: input.riskScore,
         reasons: [...input.reasons],
-        detectedBy: 'heuristic_v1',
+        detectedBy: input.detectedBy ?? 'heuristic_v1',
         detectedAt: new Date(),
       })
       .onConflict(

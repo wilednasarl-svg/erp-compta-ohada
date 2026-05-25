@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
+import { LLM_PROVIDER, type LlmHistoricalSample, type LlmProvider } from './llm-provider';
 
 /**
  * Module 11 wave 1 — Suggestions de compte heuristiques.
@@ -101,11 +102,15 @@ const KEYWORD_PATTERNS: ReadonlyArray<{
 @Injectable()
 export class AiSuggestionService {
   private static readonly MODULE = 'ai' as const;
+  /** Seuil minimal de confiance LLM (0..1) pour utiliser sa suggestion
+   *  au lieu de l'heuristique. En dessous, on retombe sur wave 1. */
+  private static readonly LLM_CONFIDENCE_FLOOR = 0.6;
   private readonly logger = new Logger(AiSuggestionService.name);
 
   constructor(
     private readonly dataSource: DataSource,
     private readonly audit: AuditTrailService,
+    @Inject(LLM_PROVIDER) private readonly llmProvider: LlmProvider,
   ) {}
 
   async suggestAccountForEntry(
@@ -127,12 +132,23 @@ export class AiSuggestionService {
       return null;
     }
 
-    const [patternMatch, historyMatch] = await Promise.all([
+    const [patternMatch, historyMatch, historicalSamples] = await Promise.all([
       Promise.resolve(this.matchKeywordPattern(normalised, input.side)),
       this.matchHistory(input.organizationId, normalised, input.partner ?? null),
+      this.loadHistoricalSamples(input.organizationId, normalised, input.partner ?? null),
     ]);
 
-    const suggestion = this.combine(patternMatch, historyMatch);
+    // Wave 2 : tentative LLM en premier. Le provider renvoie `null` en
+    // cas d'erreur (no key, timeout, parse), ce qui force le fallback
+    // silencieux sur l'heuristique wave 1.
+    const llmSuggestion = await this.tryLlmSuggestion({
+      description: input.description ?? '',
+      partner: input.partner ?? null,
+      side: input.side,
+      historicalSamples,
+    });
+
+    const suggestion = llmSuggestion ?? this.combine(patternMatch, historyMatch);
 
     await this.emitAudit(
       'suggestion_requested',
@@ -142,6 +158,7 @@ export class AiSuggestionService {
         partner: input.partner ?? null,
         suggested: suggestion?.suggestedAccountCode ?? null,
         confidence: suggestion?.confidence ?? 0,
+        source: llmSuggestion ? this.llmProvider.id : 'heuristic_v1',
       },
       ctx,
       actorId,
@@ -149,6 +166,75 @@ export class AiSuggestionService {
     );
 
     return suggestion;
+  }
+
+  /** Appelle le LLM ; renvoie `null` si pas d'opinion exploitable
+   *  (confiance < seuil) ou si le provider a échoué. */
+  private async tryLlmSuggestion(input: {
+    description: string;
+    partner: string | null;
+    side: 'debit' | 'credit' | undefined;
+    historicalSamples: ReadonlyArray<LlmHistoricalSample>;
+  }): Promise<AccountSuggestion | null> {
+    if (input.description.trim().length === 0) return null;
+    let raw: Awaited<ReturnType<LlmProvider['suggestAccount']>>;
+    try {
+      raw = await this.llmProvider.suggestAccount(input);
+    } catch (err: unknown) {
+      this.logger.warn(`LLM suggestAccount threw: ${String(err)} → fallback heuristique`);
+      return null;
+    }
+    if (!raw) return null;
+    if (raw.confidence <= AiSuggestionService.LLM_CONFIDENCE_FLOOR) return null;
+    return {
+      suggestedAccountCode: raw.accountCode,
+      // Conversion 0..1 → 0..100 (échelle interne).
+      confidence: Math.min(95, Math.round(raw.confidence * 100)),
+      reasons: [raw.reasoning],
+    };
+  }
+
+  /** Charge un petit échantillon d'écritures historiques pour
+   *  contextualiser le LLM. Indépendant de `matchHistory` qui fait
+   *  une agrégation. */
+  async loadHistoricalSamples(
+    organizationId: TenantId,
+    descriptionNormalised: string,
+    partner: string | null,
+  ): Promise<LlmHistoricalSample[]> {
+    const tokens = descriptionNormalised.split(/\s+/).filter((t) => t.length >= 4);
+    if (tokens.length === 0 && !partner) return [];
+    const likePatterns = tokens.map((t) => `%${t}%`);
+    try {
+      const rows = await this.dataSource.query<
+        Array<{ description: string | null; account_code: string; partner: string | null }>
+      >(
+        `SELECT l.description AS description, a.code AS account_code, NULL::text AS partner
+         FROM journal_entry_lines l
+         JOIN journal_entries e             ON e.id = l.journal_entry_id
+         JOIN organization_chart_accounts a ON a.id = l.account_id
+         WHERE l.organization_id = $1
+           AND e.status = 'validated'
+           AND e.entry_date >= (CURRENT_DATE - INTERVAL '12 months')
+           AND (
+             ($2::text[] = ARRAY[]::text[])
+             OR LOWER(l.description) ILIKE ANY ($2::text[])
+           )
+         ORDER BY e.entry_date DESC
+         LIMIT 8`,
+        [organizationId, likePatterns],
+      );
+      return rows
+        .filter((r) => r.description !== null && r.description.length > 0)
+        .map((r) => ({
+          description: r.description ?? '',
+          accountCode: r.account_code,
+          partner: r.partner,
+        }));
+    } catch (err: unknown) {
+      this.logger.warn(`loadHistoricalSamples failed: ${String(err)} → []`);
+      return [];
+    }
   }
 
   matchKeywordPattern(

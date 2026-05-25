@@ -93,6 +93,12 @@ function buildService(opts: BuildOpts = {}) {
     validate: jest.fn().mockResolvedValue({}),
   };
   const audit = { record: jest.fn().mockResolvedValue(null) };
+  const notifications = {
+    notifySubmittedForReview: jest.fn().mockResolvedValue(undefined),
+    notifyApproved: jest.fn().mockResolvedValue(undefined),
+    notifyRejected: jest.fn().mockResolvedValue(undefined),
+    notifySigned: jest.fn().mockResolvedValue(undefined),
+  };
   const dataSource = {
     transaction: jest.fn().mockImplementation(async (cb: () => Promise<unknown>) => cb()),
   };
@@ -105,9 +111,20 @@ function buildService(opts: BuildOpts = {}) {
     signatures as never,
     workflow as never,
     audit as never,
+    notifications as never,
   );
 
-  return { service, entryRepo, lineRepo, signatures, workflow, entries, audit, dataSource };
+  return {
+    service,
+    entryRepo,
+    lineRepo,
+    signatures,
+    workflow,
+    entries,
+    audit,
+    dataSource,
+    notifications,
+  };
 }
 
 describe('EntryWorkflowService.submitForReview', () => {
@@ -336,6 +353,58 @@ describe('EntryWorkflowService.sign', () => {
         ctx: CTX,
       }),
     ).rejects.toMatchObject({ code: ERROR_CODES.ENTRY_SIGNATURE_ALREADY_SIGNED });
+  });
+});
+
+describe('EntryWorkflowService notifications', () => {
+  it('fires notifySubmittedForReview after submit succeeds', async () => {
+    const { service, notifications } = buildService();
+    await service.submitForReview({
+      organizationId: asTenantId(ORG_ID),
+      entryId: ENTRY_ID,
+      actorId: USER_ID,
+      ctx: CTX,
+    });
+    expect(notifications.notifySubmittedForReview).toHaveBeenCalledWith(ENTRY_ID, ORG_ID, CTX);
+  });
+
+  it('fires notifyApproved after approve succeeds', async () => {
+    const { service, notifications } = buildService({ instance: makeInstance('in_review') });
+    await service.approve({
+      organizationId: asTenantId(ORG_ID),
+      entryId: ENTRY_ID,
+      actorId: USER_ID,
+      ctx: CTX,
+    });
+    expect(notifications.notifyApproved).toHaveBeenCalledWith(ENTRY_ID, ORG_ID, CTX);
+  });
+
+  it('fires notifyRejected with reason after reject succeeds', async () => {
+    const { service, notifications } = buildService({ instance: makeInstance('in_review') });
+    await service.reject({
+      organizationId: asTenantId(ORG_ID),
+      entryId: ENTRY_ID,
+      actorId: USER_ID,
+      reason: 'wrong account',
+      ctx: CTX,
+    });
+    expect(notifications.notifyRejected).toHaveBeenCalledWith(
+      ENTRY_ID,
+      ORG_ID,
+      'wrong account',
+      CTX,
+    );
+  });
+
+  it('fires notifySigned after sign succeeds', async () => {
+    const { service, notifications } = buildService({ instance: makeInstance('approved') });
+    await service.sign({
+      organizationId: asTenantId(ORG_ID),
+      entryId: ENTRY_ID,
+      actorId: USER_ID,
+      ctx: CTX,
+    });
+    expect(notifications.notifySigned).toHaveBeenCalledWith(ENTRY_ID, ORG_ID, CTX);
   });
 });
 

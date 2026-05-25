@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { AuditTrailService } from '../../audit/services/audit-trail.service';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import { AiSuggestionService } from '../services/ai-suggestion.service';
+import { LLM_PROVIDER, type LlmProvider } from '../services/llm-provider';
 
 describe('AiSuggestionService', () => {
   const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
@@ -13,15 +14,23 @@ describe('AiSuggestionService', () => {
   let service: AiSuggestionService;
   let dataSource: { query: jest.Mock };
   let audit: { record: jest.Mock };
+  let llmProvider: jest.Mocked<LlmProvider>;
 
   beforeEach(async () => {
     dataSource = { query: jest.fn() };
     audit = { record: jest.fn().mockResolvedValue(null) };
+    // Default: provider has no opinion → fallback path (preserves wave 1 tests).
+    llmProvider = {
+      id: 'mock_llm_v1',
+      suggestAccount: jest.fn().mockResolvedValue(null),
+      detectSemanticAnomaly: jest.fn().mockResolvedValue(null),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AiSuggestionService,
         { provide: DataSource, useValue: dataSource },
         { provide: AuditTrailService, useValue: audit },
+        { provide: LLM_PROVIDER, useValue: llmProvider },
       ],
     }).compile();
     service = module.get(AiSuggestionService);
@@ -152,6 +161,67 @@ describe('AiSuggestionService', () => {
       const call = audit.record.mock.calls[0][0] as { module: string; action: string };
       expect(call.module).toBe('ai');
       expect(call.action).toBe('suggestion_requested');
+    });
+  });
+
+  describe('LLM provider integration (wave 2)', () => {
+    it('uses LLM suggestion when confidence > 0.6', async () => {
+      dataSource.query.mockResolvedValue([]);
+      llmProvider.suggestAccount.mockResolvedValue({
+        accountCode: '627',
+        confidence: 0.85,
+        reasoning: 'Frais bancaires identifiés par contexte.',
+      });
+      const suggestion = await service.suggestAccountForEntry(
+        { organizationId: ORG_ID, description: 'Commission CIB sur virement' },
+        ACTOR_ID,
+        ctx,
+      );
+      expect(suggestion).not.toBeNull();
+      expect(suggestion!.suggestedAccountCode).toBe('627');
+      expect(suggestion!.confidence).toBe(85);
+      expect(suggestion!.reasons[0]).toContain('Frais bancaires');
+      expect(llmProvider.suggestAccount).toHaveBeenCalledTimes(1);
+      const auditCall = audit.record.mock.calls[0][0] as { after: { source: string } };
+      expect(auditCall.after.source).toBe('mock_llm_v1');
+    });
+
+    it('falls back to heuristic when LLM confidence is below floor', async () => {
+      dataSource.query.mockResolvedValue([]);
+      llmProvider.suggestAccount.mockResolvedValue({
+        accountCode: '627',
+        confidence: 0.4,
+        reasoning: 'Suggestion incertaine.',
+      });
+      const suggestion = await service.suggestAccountForEntry(
+        { organizationId: ORG_ID, description: 'Loyer immeuble Plateau', side: 'debit' },
+        ACTOR_ID,
+        ctx,
+      );
+      // Heuristic catches loyer → 6132.
+      expect(suggestion!.suggestedAccountCode).toBe('6132');
+    });
+
+    it('falls back to heuristic when LLM returns null (timeout, no key, etc.)', async () => {
+      dataSource.query.mockResolvedValue([]);
+      llmProvider.suggestAccount.mockResolvedValue(null);
+      const suggestion = await service.suggestAccountForEntry(
+        { organizationId: ORG_ID, description: 'Salaire mensuel personnel' },
+        ACTOR_ID,
+        ctx,
+      );
+      expect(suggestion!.suggestedAccountCode).toBe('661');
+    });
+
+    it('swallows LLM provider exceptions silently and falls back', async () => {
+      dataSource.query.mockResolvedValue([]);
+      llmProvider.suggestAccount.mockRejectedValue(new Error('network down'));
+      const suggestion = await service.suggestAccountForEntry(
+        { organizationId: ORG_ID, description: 'Loyer bureau' },
+        ACTOR_ID,
+        ctx,
+      );
+      expect(suggestion!.suggestedAccountCode).toBe('6132');
     });
   });
 });

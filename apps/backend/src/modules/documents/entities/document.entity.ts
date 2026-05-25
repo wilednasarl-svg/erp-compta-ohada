@@ -82,6 +82,35 @@ export class DocumentEntity {
   @Column({ name: 'ocr_text', type: 'text', nullable: true })
   ocrText!: string | null;
 
+  /**
+   * Average OCR confidence reported by the engine in [0, 1]. NULL
+   * until OCR runs. Module 10 wave 2 — migration 0086.
+   */
+  @Column({
+    name: 'ocr_confidence',
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value: number | null): number | null => value,
+      from: (value: string | number | null): number | null =>
+        value === null || value === undefined ? null : Number(value),
+    },
+  })
+  ocrConfidence!: number | null;
+
+  @Column({ name: 'ocr_processed_at', type: 'timestamptz', nullable: true })
+  ocrProcessedAt!: Date | null;
+
+  /**
+   * Invoice metadata extracted from `ocr_text` by the regex-based
+   * `MetadataExtractor`. Shape is `Partial<ExtractedInvoiceMetadata>`
+   * (see `services/metadata-extractor.ts`). NULL until extraction runs.
+   */
+  @Column({ name: 'extracted_metadata', type: 'jsonb', nullable: true })
+  extractedMetadata!: Record<string, unknown> | null;
+
   @Column({ name: 'uploaded_by', type: 'uuid' })
   uploadedBy!: string;
 

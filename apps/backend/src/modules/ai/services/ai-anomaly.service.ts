@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -12,7 +12,12 @@ import {
   type ListAnomaliesFilters,
 } from '../repositories/ai-anomaly.repository';
 import { detectAnomalies, type Finding, type ScannedLine } from './anomaly-heuristics';
-import { DEFAULT_DETECTOR_CONFIG, type AnomalyDetectorConfig } from '../types/ai.types';
+import {
+  ANOMALY_TYPE_BASE_SCORE,
+  DEFAULT_DETECTOR_CONFIG,
+  type AnomalyDetectorConfig,
+} from '../types/ai.types';
+import { LLM_PROVIDER, type LlmProvider } from './llm-provider';
 
 export interface ScanArgs {
   readonly organizationId: TenantId;
@@ -33,6 +38,12 @@ export interface ScanStats {
 @Injectable()
 export class AiAnomalyService {
   private static readonly MODULE = 'ai' as const;
+  /** Seuil minimal de confiance LLM (0..1) pour persister une anomalie
+   *  sémantique. En dessous, on l'ignore : le LLM n'est pas certain. */
+  private static readonly LLM_SEMANTIC_CONFIDENCE_FLOOR = 0.6;
+  /** Cap dur sur le nombre de lignes envoyées au LLM par scan, pour
+   *  contrôler le coût et la latence. */
+  private static readonly LLM_SEMANTIC_MAX_LINES = 50;
   private readonly logger = new Logger(AiAnomalyService.name);
 
   constructor(
@@ -40,6 +51,7 @@ export class AiAnomalyService {
     private readonly anomalyRepo: AiAnomalyRepository,
     private readonly periodRepo: AccountingPeriodRepository,
     private readonly audit: AuditTrailService,
+    @Inject(LLM_PROVIDER) private readonly llmProvider: LlmProvider,
   ) {}
 
   async scanExerciseForAnomalies(args: ScanArgs): Promise<ScanStats> {
@@ -54,17 +66,19 @@ export class AiAnomalyService {
     }
 
     const lines = await this.loadScannedLines(args.organizationId, args.periodId);
-    const findings = detectAnomalies(
+    const heuristicFindings = detectAnomalies(
       lines,
       period.startDate,
       period.endDate,
       args.config ?? DEFAULT_DETECTOR_CONFIG,
     );
-    const merged = this.mergeByTarget(findings);
+    const semanticFindings = await this.detectSemanticAnomalies(lines);
+    const merged = this.mergeByTarget([...heuristicFindings, ...semanticFindings]);
 
     await this.dataSource.transaction(async (manager) => {
       await this.anomalyRepo.deleteByPeriod(args.organizationId, args.periodId, manager);
       for (const finding of merged) {
+        const isSemantic = finding.anomalyType === 'semantic_anomaly';
         await this.anomalyRepo.upsert(
           {
             organizationId: args.organizationId,
@@ -74,6 +88,7 @@ export class AiAnomalyService {
             anomalyType: finding.anomalyType,
             riskScore: finding.riskScore,
             reasons: finding.reasons,
+            detectedBy: isSemantic ? 'llm_v1' : 'heuristic_v1',
           },
           manager,
         );
@@ -112,6 +127,53 @@ export class AiAnomalyService {
   ): Promise<{ anomalies: AiAnomalyEntity[]; total: number }> {
     assertTenantId(organizationId);
     return this.anomalyRepo.listForOrg(organizationId, filters);
+  }
+
+  /**
+   * Wave 2 — détection sémantique via LLM.
+   *
+   * On envoie chaque ligne (cappée à `LLM_SEMANTIC_MAX_LINES` pour
+   * limiter le coût) au provider. `null` ou confiance < seuil = pas
+   * d'anomalie. En cas d'exception du provider, on log et on continue
+   * avec les autres lignes — un LLM down ne doit jamais casser le scan.
+   */
+  private async detectSemanticAnomalies(lines: ReadonlyArray<ScannedLine>): Promise<Finding[]> {
+    const findings: Finding[] = [];
+    const subset = lines.slice(0, AiAnomalyService.LLM_SEMANTIC_MAX_LINES);
+    for (const line of subset) {
+      if (!line.description || line.description.trim().length === 0) continue;
+      const amount = line.debit + line.credit;
+      let result: Awaited<ReturnType<LlmProvider['detectSemanticAnomaly']>>;
+      try {
+        result = await this.llmProvider.detectSemanticAnomaly({
+          description: line.description,
+          accountCode: line.accountCode,
+          partner: line.partner,
+          amount,
+        });
+      } catch (err: unknown) {
+        this.logger.warn(`LLM detectSemanticAnomaly threw: ${String(err)} — skipping line`);
+        continue;
+      }
+      if (!result) continue;
+      if (!result.isAnomaly) continue;
+      if (result.confidence < AiAnomalyService.LLM_SEMANTIC_CONFIDENCE_FLOOR) continue;
+      const intensity = Math.min(2, result.confidence * 2);
+      const riskScore = Math.min(
+        100,
+        Math.round(ANOMALY_TYPE_BASE_SCORE.semantic_anomaly * intensity),
+      );
+      findings.push({
+        entryId: line.entryId,
+        accountId: line.accountId,
+        anomalyType: 'semantic_anomaly',
+        riskScore,
+        reasons: [
+          `LLM (confiance ${(result.confidence * 100).toFixed(0)} %) : ${result.reasoning}`,
+        ],
+      });
+    }
+    return findings;
   }
 
   private async loadScannedLines(

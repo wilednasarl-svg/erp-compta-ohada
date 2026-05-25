@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import type { AppConfig } from '../../config/configuration';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { JournalsModule } from '../journals/journals.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { DocumentsController } from './controllers/documents.controller';
 import { DocumentEntryEntity } from './entities/document-entry.entity';
@@ -19,6 +20,9 @@ import {
 import { DocumentOcrService } from './services/document-ocr.service';
 import { DOCUMENT_STORAGE } from './services/document-storage.interface';
 import { DocumentsService } from './services/documents.service';
+import { NullOcrProvider } from './services/null-ocr-provider';
+import { OCR_PROVIDER, type OcrProvider } from './services/ocr-provider';
+import { TesseractOcrProvider } from './services/tesseract-ocr-provider';
 
 /**
  * `DocumentsModule` (Module 10 — vague 1).
@@ -63,6 +67,10 @@ import { DocumentsService } from './services/documents.service';
     AuthModule,
     RbacModule,
     AuditModule,
+    // Module 10 wave 2 — `attach-entry` endpoint validates that the
+    // target journal entry exists in the same tenant via
+    // `JournalEntryRepository` (exported by JournalsModule).
+    JournalsModule,
   ],
   controllers: [DocumentsController],
   providers: [
@@ -70,6 +78,8 @@ import { DocumentsService } from './services/documents.service';
     DocumentEntryRepository,
     DocumentOcrService,
     DocumentsService,
+    TesseractOcrProvider,
+    NullOcrProvider,
     {
       provide: DOCUMENT_STORAGE_ROOT,
       inject: [ConfigService],
@@ -84,6 +94,16 @@ import { DocumentsService } from './services/documents.service';
     {
       provide: DOCUMENT_STORAGE,
       useClass: LocalFilesystemDocumentStorage,
+    },
+    // Module 10 wave 2 — OcrProvider binding. Tesseract when
+    // `OCR_ENABLED=true`, no-op (`NullOcrProvider`) otherwise.
+    {
+      provide: OCR_PROVIDER,
+      inject: [TesseractOcrProvider, NullOcrProvider],
+      useFactory: (tesseract: TesseractOcrProvider, nullProvider: NullOcrProvider): OcrProvider => {
+        const enabled = (process.env.OCR_ENABLED ?? '').toLowerCase() === 'true';
+        return enabled ? tesseract : nullProvider;
+      },
     },
   ],
   exports: [DocumentsService, DocumentRepository, DocumentEntryRepository],

@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
@@ -14,10 +12,12 @@ import type {
 } from '../../workflows/services/workflow.service';
 import { EntrySignatureEntity, type EntrySignerRole } from '../entities/entry-signature.entity';
 import type { JournalEntryEntity } from '../entities/journal-entry.entity';
+import { computeEntrySignatureHash } from '../lib/signature-hash';
 import { EntrySignatureRepository } from '../repositories/entry-signature.repository';
 import { JournalEntryLineRepository } from '../repositories/journal-entry-line.repository';
 import { JournalEntryRepository } from '../repositories/journal-entry.repository';
 import { EntriesService } from './entries.service';
+import { EntryNotificationService } from './entry-notification.service';
 
 export interface SubmitForReviewOptions {
   readonly organizationId: TenantId;
@@ -94,6 +94,7 @@ export class EntryWorkflowService {
     private readonly signatures: EntrySignatureRepository,
     private readonly workflow: WorkflowService,
     private readonly audit: AuditTrailService,
+    private readonly notifications: EntryNotificationService,
   ) {}
 
   async submitForReview(options: SubmitForReviewOptions): Promise<EntryWorkflowView> {
@@ -130,6 +131,7 @@ export class EntryWorkflowService {
     }
 
     await this.emitAudit('entry_submitted_for_review', entryId, { comment: comment ?? null }, ctx);
+    await this.notifications.notifySubmittedForReview(entryId, organizationId, ctx);
 
     return this.buildView(entry, current, organizationId);
   }
@@ -185,6 +187,7 @@ export class EntryWorkflowService {
       { signerRole: 'chef_mission', signatureHash },
       ctx,
     );
+    await this.notifications.notifyApproved(entryId, organizationId, ctx);
 
     return this.buildView(entry, next, organizationId);
   }
@@ -227,6 +230,7 @@ export class EntryWorkflowService {
       { reason, fromStatus: instance.currentStatus, toStatus },
       ctx,
     );
+    await this.notifications.notifyRejected(entryId, organizationId, reason, ctx);
 
     return this.buildView(entry, next, organizationId);
   }
@@ -295,6 +299,7 @@ export class EntryWorkflowService {
       { signerRole: 'expert_comptable', signatureHash },
       ctx,
     );
+    await this.notifications.notifySigned(entryId, organizationId, ctx);
 
     const refreshed = await this.getOrThrow(organizationId, entryId);
     return this.buildView(refreshed, next, organizationId);
@@ -353,31 +358,13 @@ export class EntryWorkflowService {
 
   /**
    * Sérialisation canonique (clés ordonnées, lignes triées par position)
-   * → SHA-256 hex (64 chars) pour matcher le CHECK SQL de la migration 0055.
+   * → SHA-256 hex (64 chars) pour matcher le CHECK SQL de la migration
+   * 0055. Délègue à `computeEntrySignatureHash` (lib partagée avec le
+   * verifier public, cf. `signature-verify.controller`).
    */
   private async computeSignatureHash(entry: JournalEntryEntity): Promise<string> {
     const lines = await this.lineRepo.listByEntry(entry.id);
-    const canonical = {
-      entryId: entry.id,
-      organizationId: entry.organizationId,
-      journalId: entry.journalId,
-      periodId: entry.periodId,
-      entryNumber: entry.entryNumber,
-      entryDate: entry.entryDate,
-      description: entry.description,
-      reference: entry.reference,
-      lines: lines
-        .slice()
-        .sort((a, b) => a.position - b.position)
-        .map((l) => ({
-          position: l.position,
-          accountId: l.accountId,
-          debit: String(l.debit),
-          credit: String(l.credit),
-          description: l.description ?? null,
-        })),
-    };
-    return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+    return computeEntrySignatureHash(entry, lines);
   }
 
   private async buildView(

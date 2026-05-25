@@ -31,6 +31,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequirePermission } from '../../rbac/decorators/require-permission.decorator';
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
+import { AttachEntryDto } from '../dto/attach-entry.dto';
 import { ListDocumentsQueryDto } from '../dto/list-documents-query.dto';
 import { UploadDocumentDto } from '../dto/upload-document.dto';
 import {
@@ -210,6 +211,34 @@ export class DocumentsController {
       res.destroy(error);
     });
     stream.pipe(res);
+  }
+
+  /**
+   * Module 10 wave 2 — attach an existing document to a journal entry.
+   *
+   * Both ids must belong to the caller's tenant. Idempotent: a
+   * repeated POST of the same `(docId, journalEntryId)` pair returns
+   * 200 without creating duplicates (composite PK + ON CONFLICT DO
+   * NOTHING).
+   */
+  @Post(':docId/attach-entry')
+  @RequirePermission('documents.write')
+  @HttpCode(HttpStatus.OK)
+  async attachEntry(
+    @Param('docId', new ParseUUIDPipe({ version: '4' })) docId: string,
+    @Body() body: AttachEntryDto,
+    @CurrentOrg() org: CurrentOrgContext | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
+  ): Promise<{ documentId: string; entryId: string }> {
+    const scope = this.assertActorScope(org, actorUserId);
+    return this.documents.attachEntry(
+      scope.organizationId,
+      docId,
+      body.journalEntryId,
+      scope.actorUserId,
+      buildAuditRequestContext(req),
+    );
   }
 
   @Delete(':id')

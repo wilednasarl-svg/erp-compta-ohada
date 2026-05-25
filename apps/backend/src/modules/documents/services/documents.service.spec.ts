@@ -13,9 +13,11 @@ import type {
   PaginationOptions,
 } from '../repositories/document.repository';
 import type { DocumentEntryRepository } from '../repositories/document-entry.repository';
+import type { JournalEntryRepository } from '../../journals/repositories/journal-entry.repository';
 import type { DocumentStorage, SaveDocumentResult } from './document-storage.interface';
 import type { DocumentOcrService } from './document-ocr.service';
 import { DocumentsService } from './documents.service';
+import type { OcrProvider } from './ocr-provider';
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB for tests
 const ORG_A = asTenantId('org_a');
@@ -73,6 +75,20 @@ function buildAuditStub(): jest.Mocked<AuditTrailService> {
   } as unknown as jest.Mocked<AuditTrailService>;
 }
 
+function buildOcrProviderStub(): jest.Mocked<OcrProvider> {
+  return {
+    extract: jest.fn().mockResolvedValue(null),
+  } as unknown as jest.Mocked<OcrProvider>;
+}
+
+function buildJournalEntriesRepoStub(): jest.Mocked<JournalEntryRepository> {
+  return {
+    findById: jest.fn(),
+    create: jest.fn(),
+    listForOrg: jest.fn(),
+  } as unknown as jest.Mocked<JournalEntryRepository>;
+}
+
 function buildDocumentRow(overrides: Partial<DocumentEntity> = {}): DocumentEntity {
   const now = new Date('2026-05-24T12:00:00.000Z');
   return {
@@ -87,6 +103,9 @@ function buildDocumentRow(overrides: Partial<DocumentEntity> = {}): DocumentEnti
     description: null,
     ocrStatus: 'pending',
     ocrText: null,
+    ocrConfidence: null,
+    ocrProcessedAt: null,
+    extractedMetadata: null,
     uploadedBy: 'user_1',
     uploadedAt: now,
     deletedAt: null,
@@ -106,15 +125,33 @@ describe('DocumentsService (BE-DOC-04)', () => {
   let ocr: jest.Mocked<DocumentOcrService>;
   let storage: jest.Mocked<DocumentStorage>;
   let audit: jest.Mocked<AuditTrailService>;
+  let ocrProvider: jest.Mocked<OcrProvider>;
+  let journalEntries: jest.Mocked<JournalEntryRepository>;
   let service: DocumentsService;
 
   beforeEach(() => {
     docs = buildDocsRepoStub();
+    // Module 10 wave 2 added `updateOcrResult` — stub it so the
+    // fire-and-forget OCR pipeline does not blow up in tests.
+    (docs as unknown as { updateOcrResult: jest.Mock }).updateOcrResult = jest
+      .fn()
+      .mockResolvedValue(true);
     entries = buildEntriesRepoStub();
     ocr = buildOcrStub();
     storage = buildStorageStub();
     audit = buildAuditStub();
-    service = new DocumentsService(docs, entries, ocr, storage, audit, buildConfigService());
+    ocrProvider = buildOcrProviderStub();
+    journalEntries = buildJournalEntriesRepoStub();
+    service = new DocumentsService(
+      docs,
+      entries,
+      ocr,
+      storage,
+      audit,
+      buildConfigService(),
+      ocrProvider,
+      journalEntries,
+    );
   });
 
   describe('createFromUpload', () => {
@@ -399,6 +436,98 @@ describe('DocumentsService (BE-DOC-04)', () => {
       expect(storage.save.mock.calls[0][0].organizationId).toBe('org_b');
       expect(docs.findActiveBySha256).toHaveBeenCalledWith('org_b', 'f'.repeat(64));
       expect(docs.createOne.mock.calls[0][0].organizationId).toBe('org_b');
+    });
+  });
+
+  describe('OCR pipeline (Module 10 wave 2)', () => {
+    const file = {
+      originalName: 'invoice.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 1234,
+      body: Buffer.from('fake-pdf-bytes'),
+    };
+
+    beforeEach(() => {
+      storage.save.mockResolvedValue({
+        storageKey: 'org_a/2026/05/sha.pdf',
+        sha256Checksum: 'a'.repeat(64),
+        sizeBytes: 1234,
+      });
+      docs.createOne.mockResolvedValue(buildDocumentRow());
+      storage.getStream.mockResolvedValue(Readable.from([Buffer.from('image-bytes')]));
+    });
+
+    // Helper: poll the mock until it has been called (or the deadline
+    // elapses). The OCR pipeline is fire-and-forget and involves a
+    // stream-to-tempfile + fs.writeFile chain, so a couple of
+    // `setImmediate` ticks aren't enough on slower runners.
+    async function waitForCall(mock: jest.Mock, deadlineMs = 2000): Promise<void> {
+      const start = Date.now();
+      while (mock.mock.calls.length === 0 && Date.now() - start < deadlineMs) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+
+    it('invokes the OCR provider after a successful upload', async () => {
+      ocrProvider.extract.mockResolvedValue({ text: 'Facture N° FAC-2026-001', confidence: 0.87 });
+
+      await service.createFromUpload(ORG_A, 'user_1', file);
+      await waitForCall(ocrProvider.extract as unknown as jest.Mock);
+
+      expect(ocrProvider.extract).toHaveBeenCalledTimes(1);
+      const [, mimeType] = ocrProvider.extract.mock.calls[0];
+      expect(mimeType).toBe('application/pdf');
+    });
+
+    it('swallows OCR failure without bricking the upload', async () => {
+      ocrProvider.extract.mockRejectedValue(new Error('tesseract boom'));
+
+      const view = await service.createFromUpload(ORG_A, 'user_1', file);
+      await waitForCall(ocrProvider.extract as unknown as jest.Mock);
+
+      expect(view.id).toBeDefined();
+      expect(ocrProvider.extract).toHaveBeenCalled();
+    });
+  });
+
+  describe('attachEntry (Module 10 wave 2)', () => {
+    it('links a document to a journal entry in the same tenant', async () => {
+      docs.findById.mockResolvedValue(buildDocumentRow());
+      journalEntries.findById.mockResolvedValue({
+        id: 'entry_1',
+        organizationId: 'org_a',
+      } as never);
+
+      const result = await service.attachEntry(ORG_A, 'doc_1', 'entry_1', 'user_1');
+
+      expect(result).toEqual({ documentId: 'doc_1', entryId: 'entry_1' });
+      expect(entries.link).toHaveBeenCalledWith({
+        organizationId: 'org_a',
+        documentId: 'doc_1',
+        entryIds: ['entry_1'],
+        createdBy: 'user_1',
+      });
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'linked_entry', entityId: 'doc_1' }),
+      );
+    });
+
+    it('throws DOC_NOT_FOUND when the document is missing or cross-tenant', async () => {
+      docs.findById.mockResolvedValue(null);
+      await expect(service.attachEntry(ORG_A, 'doc_x', 'entry_1', 'user_1')).rejects.toMatchObject({
+        code: ERROR_CODES.DOC_NOT_FOUND,
+      });
+      expect(journalEntries.findById).not.toHaveBeenCalled();
+      expect(entries.link).not.toHaveBeenCalled();
+    });
+
+    it('throws JOURNAL_ENTRY_NOT_FOUND when the entry is missing or cross-tenant', async () => {
+      docs.findById.mockResolvedValue(buildDocumentRow());
+      journalEntries.findById.mockResolvedValue(null);
+      await expect(service.attachEntry(ORG_A, 'doc_1', 'entry_x', 'user_1')).rejects.toMatchObject({
+        code: ERROR_CODES.JOURNAL_ENTRY_NOT_FOUND,
+      });
+      expect(entries.link).not.toHaveBeenCalled();
     });
   });
 

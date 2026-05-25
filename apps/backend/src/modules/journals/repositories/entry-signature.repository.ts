@@ -54,6 +54,18 @@ export class EntrySignatureRepository {
     });
   }
 
+  /**
+   * Lookup a signature by its primary key WITHOUT a tenant filter — the
+   * public `/verify-signature/:id` endpoint has no authenticated org
+   * context, and the signature row is itself the proof artefact. The
+   * caller (signature-verify controller) reads `organizationId` off the
+   * returned row and re-fetches the entry from there for hash
+   * recomputation. Returns null if the id does not exist.
+   */
+  async findById(id: string): Promise<EntrySignatureEntity | null> {
+    return this.repo.findOne({ where: { id } });
+  }
+
   async listByEntry(
     organizationId: TenantId | string,
     journalEntryId: string,

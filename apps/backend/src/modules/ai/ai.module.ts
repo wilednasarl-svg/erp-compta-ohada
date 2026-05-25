@@ -13,7 +13,10 @@ import { AiAnomalyService } from './services/ai-anomaly.service';
 import { AiAssistantService } from './services/ai-assistant.service';
 import { AiMappingService } from './services/ai-mapping.service';
 import { AiSuggestionService } from './services/ai-suggestion.service';
+import { AnthropicLlmProvider } from './services/anthropic-llm-provider';
 import { ASSISTANT_PROVIDER } from './services/assistant-provider';
+import { LLM_PROVIDER, type LlmProvider } from './services/llm-provider';
+import { NullLlmProvider } from './services/null-llm-provider';
 import { RuleBasedAssistantProvider } from './services/rule-based-assistant-provider';
 
 /**
@@ -49,6 +52,19 @@ import { RuleBasedAssistantProvider } from './services/rule-based-assistant-prov
     // class in wave 3 for a `LlmAssistantProvider`.
     RuleBasedAssistantProvider,
     { provide: ASSISTANT_PROVIDER, useExisting: RuleBasedAssistantProvider },
+    // Wave 2 LLM provider — factory swap basée sur `ANTHROPIC_API_KEY`.
+    // Si la clé est absente : `NullLlmProvider` (les services basculent
+    // sur les heuristiques sans aucun appel réseau).
+    {
+      provide: LLM_PROVIDER,
+      useFactory: (): LlmProvider => {
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        if (apiKey && apiKey.trim().length > 0) {
+          return new AnthropicLlmProvider(apiKey);
+        }
+        return new NullLlmProvider();
+      },
+    },
   ],
   exports: [AiAnomalyService, AiSuggestionService, AiMappingService, AiAssistantService],
 })
