@@ -14,11 +14,10 @@ import type { BankMatchMethod } from '../types/bank.types';
 import { BankStatementLineEntity } from './bank-statement-line.entity';
 
 @Entity({ name: 'bank_reconciliation_matches' })
-@Index('uq_brm_statement_entry_line', ['bankStatementLineId', 'journalEntryLineId'], {
-  unique: true,
-})
+@Index('ix_brm_stline_entryline', ['bankStatementLineId', 'journalEntryLineId'])
 @Index('ix_brm_org_statement_line', ['organizationId', 'bankStatementLineId'])
 @Index('ix_brm_org_entry_line', ['organizationId', 'journalEntryLineId'])
+@Index('ix_brm_match_group_id', ['matchGroupId'])
 export class BankReconciliationMatchEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -55,6 +54,27 @@ export class BankReconciliationMatchEntity {
 
   @Column({ name: 'matched_at', type: 'timestamptz' })
   matchedAt!: Date;
+
+  /**
+   * UUID partagé entre toutes les rows d'un même groupe 1:N (une ligne
+   * de relevé liée à plusieurs lignes d'écriture). NULL en 1:1.
+   */
+  @Column({ name: 'match_group_id', type: 'uuid', nullable: true })
+  matchGroupId!: string | null;
+
+  /**
+   * Taux de change appliqué (devise compte bancaire → devise comptable)
+   * lorsque les devises diffèrent. NULL en mono-devise.
+   * NUMERIC(20,10) → string en TypeORM pour préserver la précision.
+   */
+  @Column({
+    name: 'fx_rate_applied',
+    type: 'numeric',
+    precision: 20,
+    scale: 10,
+    nullable: true,
+  })
+  fxRateApplied!: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

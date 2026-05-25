@@ -5,6 +5,7 @@ import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module'
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { JournalsModule } from '../journals/journals.module';
+import { MultiCurrencyModule } from '../multi-currency/multi-currency.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { BankAccountsController } from './controllers/bank-accounts.controller';
 import { BankReconciliationController } from './controllers/bank-reconciliation.controller';
@@ -52,6 +53,7 @@ import { BankStatementsService } from './services/bank-statements.service';
     AuditModule,
     AccountingPlanModule,
     JournalsModule,
+    MultiCurrencyModule,
   ],
   controllers: [
     BankAccountsController,

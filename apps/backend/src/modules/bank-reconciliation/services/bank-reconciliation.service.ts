@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { DataSource, type EntityManager } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -7,6 +8,7 @@ import { assertTenantId, type TenantId } from '../../../common/persistence/tenan
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import { JournalEntryEntity } from '../../journals/entities/journal-entry.entity';
 import { JournalEntryLineEntity } from '../../journals/entities/journal-entry-line.entity';
+import { ExchangeRatesService } from '../../multi-currency/services/exchange-rates.service';
 import { BankAccountsRepository } from '../repositories/bank-accounts.repository';
 import { BankReconciliationMatchesRepository } from '../repositories/bank-reconciliation-matches.repository';
 import { BankStatementLinesRepository } from '../repositories/bank-statement-lines.repository';
@@ -18,13 +20,25 @@ import {
   type AutoMatchProposal,
 } from './auto-match-algorithm';
 
+/** Devise comptable par défaut (XOF, base UEMOA). */
+const ACCOUNTING_BASE_CURRENCY = 'XOF';
+/** Tolérance par défaut sur la somme des montants signés (devise du relevé). */
+const DEFAULT_AMOUNT_TOLERANCE = 0.01;
+
+export interface ApplyMatchOptions {
+  readonly amountTolerance?: number;
+}
+
 /**
- * `BankReconciliationService` — matching ligne relevé ↔ ligne écriture.
+ * `BankReconciliationService` — matching ligne relevé ↔ ligne(s) écriture.
  *
- * Trois opérations principales :
- *   - `proposeMatches` (lecture seule, exécute l'auto-match algo).
- *   - `applyMatch` (crée un match, met à jour le statut ligne + relevé).
- *   - `unmatch` (supprime un match, recalcule statuts).
+ * Wave 2 :
+ *   - `applyMatch` accepte un tableau `journalEntryLineIds` (1:N).
+ *   - Si la devise du compte bancaire diffère de la devise comptable
+ *     (XOF), on applique un taux de change via `ExchangeRatesService`
+ *     et on convertit le montant bancaire avant comparaison.
+ *   - Toutes les rows d'un match 1:N partagent un même `matchGroupId`
+ *     (UUID v4) — l'unmatch est atomique sur le groupe complet.
  */
 @Injectable()
 export class BankReconciliationService {
@@ -38,6 +52,7 @@ export class BankReconciliationService {
     private readonly linesRepo: BankStatementLinesRepository,
     private readonly matchesRepo: BankReconciliationMatchesRepository,
     private readonly audit: AuditTrailService,
+    private readonly exchangeRates: ExchangeRatesService,
   ) {}
 
   async proposeMatches(
@@ -79,16 +94,44 @@ export class BankReconciliationService {
     return proposeAutoMatches(stInputs, entryInputs);
   }
 
+  /**
+   * Apply a match: 1:1 (single journalEntryLineId) or 1:N (multiple).
+   *
+   * Validations :
+   *   - Toutes les lignes appartiennent à l'org, à des entries validées,
+   *     et au bon chart account.
+   *   - Pas de doublons dans la liste.
+   *   - |sum(signed amounts) - bankAmountInBaseCurrency| <= tolerance.
+   *   - Si devise du compte ≠ devise comptable : taux de change appliqué
+   *     via ExchangeRatesService.getRateAtDate (à la date du relevé).
+   *
+   * Toutes les rows partagent un même `matchGroupId` (NULL si 1:1).
+   */
   async applyMatch(
     organizationId: TenantId,
     statementLineId: string,
-    journalEntryLineId: string,
+    journalEntryLineIds: ReadonlyArray<string>,
     method: 'manual' | 'auto',
     confidenceScore: number | null,
     actorId: string,
     ctx: AuditContext,
-  ): Promise<void> {
+    options: ApplyMatchOptions = {},
+  ): Promise<{ matchGroupId: string | null; fxRateApplied: string | null }> {
     assertTenantId(organizationId);
+
+    if (journalEntryLineIds.length === 0) {
+      throw new AppException(ERROR_CODES.BANK_RECONCILIATION_EMPTY_ENTRY_LINES, {
+        message: 'At least one journal entry line is required.',
+      });
+    }
+    const uniqueIds = Array.from(new Set(journalEntryLineIds));
+    if (uniqueIds.length !== journalEntryLineIds.length) {
+      throw new AppException(ERROR_CODES.BANK_RECONCILIATION_DUPLICATE_ENTRY_LINES, {
+        message: 'Duplicate journal entry line ids in match request.',
+      });
+    }
+
+    const tolerance = Math.max(0, options.amountTolerance ?? DEFAULT_AMOUNT_TOLERANCE);
 
     return this.dataSource.transaction(async (manager) => {
       const stLine = await this.linesRepo.findById(statementLineId, organizationId);
@@ -114,48 +157,80 @@ export class BankReconciliationService {
       const queryResult = await entryLineRepo
         .createQueryBuilder('l')
         .innerJoinAndSelect(JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
-        .where('l.id = :id', { id: journalEntryLineId })
+        .where('l.id IN (:...ids)', { ids: uniqueIds })
         .andWhere('l.organization_id = :orgId', { orgId: organizationId })
         .getRawAndEntities();
 
-      if (queryResult.entities.length === 0) {
+      if (queryResult.entities.length !== uniqueIds.length) {
         throw new AppException(ERROR_CODES.JOURNAL_ENTRY_NOT_FOUND, {
-          message: `Journal entry line '${journalEntryLineId}' not found.`,
+          message: `One or more journal entry lines not found.`,
         });
       }
 
-      const line = queryResult.entities[0];
-      const entryStatus = queryResult.raw[0]?.e_status as string | undefined;
+      // Validate per line: status + account + accumulate signed sum.
+      let signedSum = 0;
+      for (let i = 0; i < queryResult.entities.length; i++) {
+        const line = queryResult.entities[i];
+        const entryStatus = queryResult.raw[i]?.e_status as string | undefined;
 
-      if (entryStatus !== 'validated') {
-        throw new AppException(ERROR_CODES.BANK_RECONCILIATION_ENTRY_LINE_NOT_VALIDATED, {
-          message: `Journal entry must be 'validated' to be matched (current: '${entryStatus}').`,
-        });
+        if (entryStatus !== 'validated') {
+          throw new AppException(ERROR_CODES.BANK_RECONCILIATION_ENTRY_LINE_NOT_VALIDATED, {
+            message: `Journal entry must be 'validated' to be matched (line '${line.id}' current: '${entryStatus}').`,
+          });
+        }
+        if (line.accountId !== account.chartAccountId) {
+          throw new AppException(ERROR_CODES.BANK_RECONCILIATION_ENTRY_LINE_WRONG_ACCOUNT, {
+            message: `Entry line '${line.id}' account does not match the bank account's chart account.`,
+          });
+        }
+        signedSum += Number(line.debit) - Number(line.credit);
       }
 
-      if (line.accountId !== account.chartAccountId) {
-        throw new AppException(ERROR_CODES.BANK_RECONCILIATION_ENTRY_LINE_WRONG_ACCOUNT, {
-          message: `Entry line account does not match the bank account's chart account.`,
-        });
+      // FX conversion : bank amount expressed in account.currency,
+      // accounting lines in base currency (XOF).
+      const bankCurrency = (account.currency ?? ACCOUNTING_BASE_CURRENCY).toUpperCase();
+      const bankAmountRaw = Number(stLine.amount);
+      let fxRateApplied: string | null = null;
+      let bankAmountInBase = bankAmountRaw;
+
+      if (bankCurrency !== ACCOUNTING_BASE_CURRENCY) {
+        let rateResult;
+        try {
+          rateResult = await this.exchangeRates.getRateAtDate(
+            organizationId,
+            bankCurrency,
+            ACCOUNTING_BASE_CURRENCY,
+            stLine.operationDate,
+          );
+        } catch (err) {
+          throw new AppException(ERROR_CODES.BANK_FX_RATE_NOT_FOUND, {
+            message: `No FX rate available for ${bankCurrency}→${ACCOUNTING_BASE_CURRENCY} on ${stLine.operationDate}.`,
+            cause: err,
+          });
+        }
+        fxRateApplied = rateResult.rate;
+        bankAmountInBase = bankAmountRaw * Number(rateResult.rate);
       }
 
-      const signedEntryAmount = Number(line.debit) - Number(line.credit);
-      const bankAmount = Number(stLine.amount);
-      if (signedEntryAmount.toFixed(2) !== bankAmount.toFixed(2)) {
+      if (Math.abs(signedSum - bankAmountInBase) > tolerance) {
         throw new AppException(ERROR_CODES.BANK_RECONCILIATION_AMOUNT_MISMATCH, {
-          message: `Amount mismatch: bank=${bankAmount.toFixed(2)}, entry signed=${signedEntryAmount.toFixed(2)}.`,
+          message: `Amount mismatch: bank(base)=${bankAmountInBase.toFixed(2)}, entries signed sum=${signedSum.toFixed(2)} (tolerance ${tolerance}).`,
         });
       }
 
-      await this.matchesRepo.create(
-        {
+      const matchGroupId = uniqueIds.length > 1 ? randomUUID() : null;
+
+      await this.matchesRepo.createMany(
+        uniqueIds.map((entryLineId) => ({
           organizationId,
           bankStatementLineId: statementLineId,
-          journalEntryLineId,
+          journalEntryLineId: entryLineId,
           matchMethod: method,
           confidenceScore: method === 'auto' ? confidenceScore : null,
           matchedById: actorId,
-        },
+          matchGroupId,
+          fxRateApplied,
+        })),
         manager,
       );
 
@@ -166,15 +241,19 @@ export class BankReconciliationService {
         'bank_match_applied',
         statementLineId,
         {
-          journalEntryLineId,
+          journalEntryLineIds: uniqueIds,
           method,
           confidenceScore,
           amount: stLine.amount,
+          matchGroupId,
+          fxRateApplied,
         },
         ctx,
         actorId,
         organizationId,
       );
+
+      return { matchGroupId, fxRateApplied };
     });
   }
 
@@ -201,7 +280,22 @@ export class BankReconciliationService {
         });
       }
 
-      await this.matchesRepo.delete(matchId, organizationId, manager);
+      // Si le match appartient à un groupe 1:N, on supprime toutes les
+      // rows du groupe atomiquement.
+      if (match.matchGroupId !== null) {
+        const groupRows = await this.matchesRepo.findByGroup(
+          match.matchGroupId,
+          organizationId,
+          manager,
+        );
+        await this.matchesRepo.deleteMany(
+          groupRows.map((r) => r.id),
+          organizationId,
+          manager,
+        );
+      } else {
+        await this.matchesRepo.delete(matchId, organizationId, manager);
+      }
 
       const remaining = await this.matchesRepo.countByStatementLine(
         match.bankStatementLineId,
@@ -225,6 +319,7 @@ export class BankReconciliationService {
         {
           statementLineId: match.bankStatementLineId,
           entryLineId: match.journalEntryLineId,
+          matchGroupId: match.matchGroupId,
         },
         ctx,
         actorId,

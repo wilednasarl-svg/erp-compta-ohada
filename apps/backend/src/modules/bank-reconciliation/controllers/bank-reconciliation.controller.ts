@@ -61,17 +61,21 @@ export class BankReconciliationController {
   ) {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
-    const [entryLineId] = body.journalEntryLineIds;
-    await this.service.applyMatch(
+    const result = await this.service.applyMatch(
       asTenantId(tokenOrgId),
       statementLineId,
-      entryLineId,
+      body.journalEntryLineIds,
       'manual',
       null,
       actorUserId,
       buildAuditRequestContext(req),
+      { amountTolerance: body.amountTolerance },
     );
-    return { status: 'matched' };
+    return {
+      status: 'matched',
+      matchGroupId: result.matchGroupId,
+      fxRateApplied: result.fxRateApplied,
+    };
   }
 
   @Delete('matches/:matchId')

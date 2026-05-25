@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, FileUp, Link2, Link2Off, Loader2, Plus } from 'lucide-react';
+import { Banknote, FileUp, Layers, Link2, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -100,12 +100,41 @@ export default function BankReconciliationPage() {
     enabled: activeAccountId !== null,
   });
 
-  const matchMut = useApiMutation(async (input: { statementLineId: string; journalEntryLineId: string }) => {
-    return api.post(
-      `/organizations/${orgId}/bank-reconciliation/statement-lines/${input.statementLineId}/match`,
-      { journalEntryLineIds: [input.journalEntryLineId] },
-    );
-  });
+  const [multiLineEnabled, setMultiLineEnabled] = useState(false);
+  const [amountTolerance, setAmountTolerance] = useState<string>('');
+  const [selectedByLine, setSelectedByLine] = useState<Record<string, ReadonlyArray<string>>>({});
+
+  const matchMut = useApiMutation(
+    async (input: {
+      statementLineId: string;
+      journalEntryLineIds: ReadonlyArray<string>;
+    }): Promise<{ matchGroupId: string | null; fxRateApplied: string | null }> => {
+      const body: Record<string, unknown> = {
+        journalEntryLineIds: input.journalEntryLineIds,
+      };
+      if (multiLineEnabled) body.enableMultiLine = true;
+      const tol = Number(amountTolerance);
+      if (amountTolerance !== '' && Number.isFinite(tol) && tol >= 0) {
+        body.amountTolerance = tol;
+      }
+      return api.post<{ matchGroupId: string | null; fxRateApplied: string | null }>(
+        `/organizations/${orgId}/bank-reconciliation/statement-lines/${input.statementLineId}/match`,
+        body,
+      );
+    },
+  );
+
+  function toggleCandidate(statementLineId: string, entryLineId: string): void {
+    setSelectedByLine((prev) => {
+      const current = prev[statementLineId] ?? [];
+      const next = current.includes(entryLineId)
+        ? current.filter((id) => id !== entryLineId)
+        : [...current, entryLineId];
+      return { ...prev, [statementLineId]: next };
+    });
+  }
+
+  const activeAccount = accountsQuery.data?.find((a) => a.id === activeAccountId) ?? null;
 
   return (
     <AppShell>
@@ -173,8 +202,39 @@ export default function BankReconciliationPage() {
             <CardHeader>
               <CardTitle className="text-base">Lignes de relevé à rapprocher</CardTitle>
               <CardDescription>
-                Les propositions sont triées par score Jaro-Winkler (libellé) + écart de date (≤ 5 jours).
+                Tri par score Jaro-Winkler (libellé) + écart date (≤ 5 j). Mode multi-lignes (1:N) optionnel.
               </CardDescription>
+              {activeAccountId !== null && (
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={multiLineEnabled}
+                      onChange={(e) => setMultiLineEnabled(e.target.checked)}
+                      className="h-3.5 w-3.5"
+                    />
+                    <Layers className="h-3.5 w-3.5" />
+                    Multi-lignes (1:N)
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    Tolérance
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={amountTolerance}
+                      onChange={(e) => setAmountTolerance(e.target.value)}
+                      placeholder="0.01"
+                      className="h-7 w-24 text-xs"
+                    />
+                  </label>
+                  {activeAccount && activeAccount.currency !== 'XOF' && (
+                    <Badge variant="outline">
+                      Devise compte : {activeAccount.currency} (FX requis)
+                    </Badge>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {!activeAccountId ? (
@@ -200,30 +260,77 @@ export default function BankReconciliationPage() {
                         <div className="text-xs text-muted-foreground italic">Aucune écriture candidate.</div>
                       ) : (
                         <div className="space-y-1">
-                          {p.proposals.slice(0, 3).map((c) => (
-                            <div key={c.journalEntryLineId} className="flex items-center justify-between gap-2 bg-muted/40 rounded px-2 py-1.5 text-xs">
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate">
-                                  <Badge className="mr-1" variant="outline">{c.journalCode}/{c.entryNumber}</Badge>
-                                  {c.description}
+                          {p.proposals.slice(0, 6).map((c) => {
+                            const selected = selectedByLine[p.statementLineId] ?? [];
+                            const isChecked = selected.includes(c.journalEntryLineId);
+                            return (
+                              <div key={c.journalEntryLineId} className="flex items-center justify-between gap-2 bg-muted/40 rounded px-2 py-1.5 text-xs">
+                                {multiLineEnabled && (
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleCandidate(p.statementLineId, c.journalEntryLineId)}
+                                    className="h-3.5 w-3.5"
+                                  />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate">
+                                    <Badge className="mr-1" variant="outline">{c.journalCode}/{c.entryNumber}</Badge>
+                                    {c.description}
+                                  </div>
+                                  <div className="text-muted-foreground">{c.entryDate} · score {(c.score * 100).toFixed(0)}%</div>
                                 </div>
-                                <div className="text-muted-foreground">{c.entryDate} · score {(c.score * 100).toFixed(0)}%</div>
+                                {!multiLineEnabled && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      void matchMut.mutateAsync({
+                                        statementLineId: p.statementLineId,
+                                        journalEntryLineIds: [c.journalEntryLineId],
+                                      }).then((res) => {
+                                        if (res?.matchGroupId) {
+                                          // eslint-disable-next-line no-console
+                                          console.info('Match group:', res.matchGroupId.slice(0, 6));
+                                        }
+                                        return qc.invalidateQueries({ queryKey: ['bank-proposals'] });
+                                      });
+                                    }}
+                                    disabled={matchMut.isPending}
+                                  >
+                                    <Link2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {multiLineEnabled && (selectedByLine[p.statementLineId]?.length ?? 0) > 0 && (
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="text-xs text-muted-foreground">
+                                {selectedByLine[p.statementLineId]?.length} ligne(s) sélectionnée(s)
                               </div>
                               <Button
                                 size="sm"
-                                variant="outline"
                                 onClick={() => {
+                                  const ids = selectedByLine[p.statementLineId] ?? [];
                                   void matchMut.mutateAsync({
                                     statementLineId: p.statementLineId,
-                                    journalEntryLineId: c.journalEntryLineId,
-                                  }).then(() => qc.invalidateQueries({ queryKey: ['bank-proposals'] }));
+                                    journalEntryLineIds: ids,
+                                  }).then((res) => {
+                                    if (res?.matchGroupId) {
+                                      // eslint-disable-next-line no-console
+                                      console.info('Match group:', res.matchGroupId.slice(0, 6), 'FX:', res.fxRateApplied ?? 'n/a');
+                                    }
+                                    setSelectedByLine((prev) => ({ ...prev, [p.statementLineId]: [] }));
+                                    return qc.invalidateQueries({ queryKey: ['bank-proposals'] });
+                                  });
                                 }}
                                 disabled={matchMut.isPending}
                               >
-                                <Link2 className="h-3.5 w-3.5" />
+                                <Link2 className="mr-1 h-3.5 w-3.5" /> Rapprocher (groupe)
                               </Button>
                             </div>
-                          ))}
+                          )}
                         </div>
                       )}
                     </div>
