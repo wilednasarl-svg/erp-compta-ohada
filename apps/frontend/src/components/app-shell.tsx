@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRightLeft, BarChart3, BookOpen, BookText, Building2, Calendar, Coins, FileUp, GitBranch, History, LayoutDashboard, LogOut, Mail, Package, Paperclip, Percent, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
+import { ArrowRightLeft, BarChart3, BookOpen, BookText, Brain, Building2, Calendar, Coins, FileUp, GitBranch, History, LayoutDashboard, LogOut, Mail, Package, Paperclip, Percent, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -42,6 +42,7 @@ const NAV: ReadonlyArray<NavItem> = [
   { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft },
   { href: '/rules', label: 'Règles', icon: Sparkles },
   { href: '/workflows', label: 'Workflows', icon: GitBranch },
+  { href: '/ai', label: 'IA — Anomalies', icon: Brain },
   { href: '/audit-logs', label: 'Audit', icon: History },
   { href: '/members', label: 'Membres', icon: Users },
   { href: '/invitations', label: 'Invitations', icon: Mail },
