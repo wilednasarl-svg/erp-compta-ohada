@@ -10,6 +10,7 @@ import type { AccountingSystem } from '../../accounting-plan/types/accounting-sy
 import type { AuthEventContext } from '../../audit/services/auth-events.service';
 import { AuthEventsService } from '../../audit/services/auth-events.service';
 import { JournalsService } from '../../journals/services/journals.service';
+import { CurrenciesService } from '../../multi-currency/services/currencies.service';
 import { TvaCodesService } from '../../tva/services/tva-codes.service';
 import { MembershipEntity } from '../../rbac/entities/membership.entity';
 import { MembershipRepository } from '../../rbac/repositories/membership.repository';
@@ -90,6 +91,7 @@ export class OrganizationsService {
     private readonly chartOfAccounts: ChartOfAccountsService,
     private readonly journals: JournalsService,
     private readonly tvaCodes: TvaCodesService,
+    private readonly currencies: CurrenciesService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -172,6 +174,11 @@ export class OrganizationsService {
 
         // Module 13 — seed les codes TVA standard (TVA-N-18, TVA-N-09, TVA-EXO, TVA-EXP)
         await this.tvaCodes.seedDefaultCodes(asTenantId(persistedOrg.id), manager);
+
+        // Module 16 — seed les devises ISO 4217 standards UEMOA (XOF base
+        // + EUR, USD, GBP au minimum). Sans ces seeds, ExchangeRatesService
+        // ne peut résoudre `findByCodeOrThrow` au premier POST de taux.
+        await this.currencies.seedDefaults(asTenantId(persistedOrg.id), manager);
 
         return { organization: persistedOrg, membership: persistedMembership, cloneResult: clone };
       },

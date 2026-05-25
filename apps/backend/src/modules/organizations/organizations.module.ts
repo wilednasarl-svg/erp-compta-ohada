@@ -6,6 +6,7 @@ import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { JournalsModule } from '../journals/journals.module';
+import { MultiCurrencyModule } from '../multi-currency/multi-currency.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { TvaModule } from '../tva/tva.module';
 import { AcceptInvitationController } from './controllers/accept-invitation.controller';
@@ -56,6 +57,9 @@ import { OrganizationsService } from './services/organizations.service';
     // Module 13 — pour `TvaCodesService.seedDefaultCodes` appelé
     // dans la transaction de création d'org.
     TvaModule,
+    // Module 16 — pour `CurrenciesService.seedDefaults` appelé dans la
+    // même transaction (devises ISO 4217 standards UEMOA).
+    MultiCurrencyModule,
   ],
   controllers: [
     OrganizationsController,

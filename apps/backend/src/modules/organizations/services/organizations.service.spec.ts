@@ -4,6 +4,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { ChartOfAccountsService } from '../../accounting-plan/services/chart-of-accounts.service';
 import type { AuthEventContext, AuthEventsService } from '../../audit/services/auth-events.service';
 import type { JournalsService } from '../../journals/services/journals.service';
+import type { CurrenciesService } from '../../multi-currency/services/currencies.service';
 import type { TvaCodesService } from '../../tva/services/tva-codes.service';
 import type { AuthEventEntity } from '../../audit/entities/auth-event.entity';
 import type { MembershipEntity } from '../../rbac/entities/membership.entity';
@@ -45,6 +46,7 @@ interface Harness {
     [string, AuthEventContext, Record<string, unknown>?]
   >;
   seedDefaultCodes: jest.Mock;
+  seedDefaultCurrencies: jest.Mock;
 }
 
 function buildHarness(): Harness {
@@ -117,6 +119,9 @@ function buildHarness(): Harness {
   const tvaCodes = {
     seedDefaultCodes: jest.fn().mockResolvedValue(undefined),
   } as unknown as TvaCodesService;
+  const currencies = {
+    seedDefaults: jest.fn().mockResolvedValue(undefined),
+  } as unknown as CurrenciesService;
   const dataSource = {
     transaction: (cb: (m: EntityManager) => Promise<unknown>) => cb(fakeManager),
   } as unknown as DataSource;
@@ -129,6 +134,7 @@ function buildHarness(): Harness {
     chartOfAccounts,
     journals,
     tvaCodes,
+    currencies,
     dataSource,
   );
 
@@ -143,6 +149,7 @@ function buildHarness(): Harness {
     findRoleByCode,
     recordEvent,
     seedDefaultCodes: tvaCodes.seedDefaultCodes as jest.Mock,
+    seedDefaultCurrencies: currencies.seedDefaults as jest.Mock,
   };
 }
 
@@ -186,6 +193,11 @@ describe('OrganizationsService (BE-ORG-01..03 + BE-PC-08)', () => {
       expect(h.seedDefaultCodes).toHaveBeenCalledTimes(1);
       expect(h.seedDefaultCodes.mock.calls[0][0]).toBe('org-new');
       expect(h.seedDefaultCodes.mock.calls[0][1]).toBeDefined(); // manager
+
+      // Seed default currencies joins the same transaction.
+      expect(h.seedDefaultCurrencies).toHaveBeenCalledTimes(1);
+      expect(h.seedDefaultCurrencies.mock.calls[0][0]).toBe('org-new');
+      expect(h.seedDefaultCurrencies.mock.calls[0][1]).toBeDefined(); // manager
 
       // Two audit events, in order: organizations.updated (with action=created) + chart_of_accounts.imported.
       expect(h.recordEvent).toHaveBeenCalledTimes(2);
