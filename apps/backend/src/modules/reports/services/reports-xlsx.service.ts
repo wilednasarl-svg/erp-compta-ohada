@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 
 import type {
+  ComparativeBalanceReport,
   TrialBalanceReport,
   GeneralLedgerReport,
   ProfitLossReport,
@@ -337,6 +338,68 @@ export class ReportsXlsxService {
     }
 
     return this.buildWorkbook(rows, 'Bilan');
+  }
+
+  // ─── Comparative balance N / N-1 ─────────────────────────────────
+  /**
+   * Reproduces the typical Sage SYSCOHADA "Balance pluri-exercices"
+   * column layout:
+   *   Compte | Intitulé | Mvt N-1 D | Mvt N-1 C | Mvt N D | Mvt N C |
+   *   Solde D | Solde C | Variation nette | % Évolution
+   */
+  comparativeBalanceXlsx(report: ComparativeBalanceReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+
+    rows.push([orgName]);
+    rows.push([
+      `Balance comparative — N : ${report.fromDate} → ${report.toDate} | ` +
+        `N-1 : ${report.previousFromDate} → ${report.previousToDate}`,
+    ]);
+    rows.push([]);
+
+    rows.push([
+      'Compte',
+      'Intitulé',
+      `Mvt N-1 Débit`,
+      `Mvt N-1 Crédit`,
+      `Mvt N Débit`,
+      `Mvt N Crédit`,
+      'Solde Débit',
+      'Solde Crédit',
+      'Variation nette',
+      '% Évolution',
+    ]);
+
+    for (const r of report.rows) {
+      rows.push([
+        r.accountCode,
+        r.accountLabel,
+        this.num(r.previousPeriodDebit),
+        this.num(r.previousPeriodCredit),
+        this.num(r.periodDebit),
+        this.num(r.periodCredit),
+        this.num(r.endingDebit),
+        this.num(r.endingCredit),
+        this.num(r.netVariation),
+        r.netVariationPercent !== null ? `${r.netVariationPercent}%` : '',
+      ]);
+    }
+
+    const t = report.totals;
+    rows.push([
+      '',
+      'TOTAUX',
+      this.num(t.previousPeriodDebit),
+      this.num(t.previousPeriodCredit),
+      this.num(t.periodDebit),
+      this.num(t.periodCredit),
+      this.num(t.endingDebit),
+      this.num(t.endingCredit),
+      '',
+      '',
+    ]);
+
+    return this.buildWorkbook(rows, 'Balance comparative');
   }
 
   // ─── Internal helpers ────────────────────────────────────────────

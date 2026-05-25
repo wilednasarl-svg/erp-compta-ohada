@@ -735,6 +735,176 @@ describe('ReportsService.getBalanceSheet — auto-consolidation + comparative', 
   });
 });
 
+describe('ReportsService.getComparativeBalance', () => {
+  it('merges N and N-1 trial balances by accountId with mouvement + solde columns', async () => {
+    const h = buildHarness();
+    // First call → N (2026)
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({
+        accountId: 'a-1',
+        accountCode: '411000',
+        periodDebit: '2000.00',
+        periodCredit: '500.00',
+        endingDebit: '6000.00', // cumul à toDate
+        endingCredit: '0.00',
+      }),
+    ]);
+    // Second call → N-1 (2025)
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({
+        accountId: 'a-1',
+        accountCode: '411000',
+        periodDebit: '1200.00',
+        periodCredit: '300.00',
+        endingDebit: '4500.00',
+        endingCredit: '0.00',
+      }),
+    ]);
+
+    const result = await h.service.getComparativeBalance(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      previousFromDate: '2025-01-01',
+      previousToDate: '2025-12-31',
+    });
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toEqual({
+      accountId: 'a-1',
+      accountCode: '411000',
+      accountLabel: 'CLIENT X',
+      accountClass: 4,
+      previousPeriodDebit: '1200.00',
+      previousPeriodCredit: '300.00',
+      periodDebit: '2000.00',
+      periodCredit: '500.00',
+      endingDebit: '6000.00',
+      endingCredit: '0.00',
+      // netVariation = (2000-500) - (1200-300) = 1500 - 900 = 600
+      netVariation: '600.00',
+      // 600 / |900| * 100 = 66.67
+      netVariationPercent: '66.67',
+    });
+    expect(result.totals.periodDebit).toBe('2000.00');
+    expect(result.totals.previousPeriodDebit).toBe('1200.00');
+    expect(result.totals.endingDebit).toBe('6000.00');
+  });
+
+  it('zero-fills accounts that exist in N-1 only', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValueOnce([]); // N empty
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({
+        accountId: 'a-2',
+        accountCode: '601000',
+        periodDebit: '800.00',
+        endingDebit: '800.00',
+      }),
+    ]);
+
+    const result = await h.service.getComparativeBalance(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      previousFromDate: '2025-01-01',
+      previousToDate: '2025-12-31',
+    });
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      accountCode: '601000',
+      previousPeriodDebit: '800.00',
+      periodDebit: '0.00',
+      periodCredit: '0.00',
+      // SOLDE fallback = N-1 ending (account not seen in N)
+      endingDebit: '800.00',
+      netVariation: '-800.00',
+    });
+  });
+
+  it('zero-fills accounts that exist in N only', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({
+        accountId: 'a-3',
+        accountCode: '707000',
+        periodCredit: '5000.00',
+        endingCredit: '5000.00',
+      }),
+    ]);
+    h.repo.trialBalance.mockResolvedValueOnce([]); // N-1 empty
+
+    const result = await h.service.getComparativeBalance(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      previousFromDate: '2025-01-01',
+      previousToDate: '2025-12-31',
+    });
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      accountCode: '707000',
+      previousPeriodDebit: '0.00',
+      previousPeriodCredit: '0.00',
+      periodCredit: '5000.00',
+      endingCredit: '5000.00',
+      netVariationPercent: null, // base N-1 nulle
+    });
+  });
+
+  it('sorts rows by accountCode ASC', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({ accountId: 'a-7', accountCode: '707000', periodCredit: '100.00' }),
+      tbRow({ accountId: 'a-4', accountCode: '411000', periodDebit: '100.00' }),
+    ]);
+    h.repo.trialBalance.mockResolvedValueOnce([]);
+
+    const result = await h.service.getComparativeBalance(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      previousFromDate: '2025-01-01',
+      previousToDate: '2025-12-31',
+    });
+
+    expect(result.rows.map((r) => r.accountCode)).toEqual(['411000', '707000']);
+  });
+
+  it('hideEmpty drops accounts with zero everywhere', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '500.00' }),
+      tbRow({ accountId: 'a-2', accountCode: '512000' }), // all zeros, both calls
+    ]);
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({ accountId: 'a-2', accountCode: '512000' }),
+    ]);
+
+    const result = await h.service.getComparativeBalance(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      previousFromDate: '2025-01-01',
+      previousToDate: '2025-12-31',
+      hideEmpty: true,
+    });
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].accountCode).toBe('411000');
+  });
+
+  it('rejects with REPORT_INVALID_DATE_RANGE when previous range is inverted', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getComparativeBalance(ORG_ID, {
+        fromDate: '2026-01-01',
+        toDate: '2026-12-31',
+        previousFromDate: '2025-12-31',
+        previousToDate: '2025-01-01',
+      }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+    expect(h.repo.trialBalance).not.toHaveBeenCalled();
+  });
+});
+
 describe('ReportsService.percentChange (static)', () => {
   it.each([
     [100, 150, '50.00'],

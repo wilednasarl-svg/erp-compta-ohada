@@ -35,6 +35,39 @@ export interface TrialBalanceReport {
   readonly totals: TrialBalanceTotals;
 }
 
+export interface ComparativeBalanceRow {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly accountClass: number;
+  readonly previousPeriodDebit: string;
+  readonly previousPeriodCredit: string;
+  readonly periodDebit: string;
+  readonly periodCredit: string;
+  readonly endingDebit: string;
+  readonly endingCredit: string;
+  readonly netVariation: string;
+  readonly netVariationPercent: string | null;
+}
+
+export interface ComparativeBalanceTotals {
+  readonly previousPeriodDebit: string;
+  readonly previousPeriodCredit: string;
+  readonly periodDebit: string;
+  readonly periodCredit: string;
+  readonly endingDebit: string;
+  readonly endingCredit: string;
+}
+
+export interface ComparativeBalanceReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly previousFromDate: string;
+  readonly previousToDate: string;
+  readonly rows: ReadonlyArray<ComparativeBalanceRow>;
+  readonly totals: ComparativeBalanceTotals;
+}
+
 export interface GeneralLedgerLine {
   readonly lineId: string;
   readonly entryId: string;

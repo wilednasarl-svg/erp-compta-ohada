@@ -20,12 +20,14 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
+import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
 import { GeneralLedgerQueryDto } from '../dto/general-ledger-query.dto';
 import { ProfitLossQueryDto } from '../dto/profit-loss-query.dto';
 import { TrialBalanceQueryDto } from '../dto/trial-balance-query.dto';
 import {
   ReportsService,
   type BalanceSheetReport,
+  type ComparativeBalanceReport,
   type GeneralLedgerReport,
   type ProfitLossReport,
   type TrialBalanceReport,
@@ -79,6 +81,30 @@ export class ReportsController {
     const report = await this.reports.getTrialBalance(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
+      accountClass: query.accountClass,
+      accountCodeFrom: query.accountCodeFrom,
+      accountCodeTo: query.accountCodeTo,
+      hideEmpty: query.hideEmpty,
+    });
+    return { report };
+  }
+
+  @Get('comparative-balance')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Balance comparative N / N-1 (mouvements deux exercices + solde cumulé)',
+  })
+  async comparativeBalance(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: ComparativeBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: ComparativeBalanceReport }> {
+    const report = await this.reports.getComparativeBalance(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      previousFromDate: query.previousFromDate,
+      previousToDate: query.previousToDate,
       accountClass: query.accountClass,
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
@@ -295,6 +321,41 @@ export class ReportsController {
       buffer,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       this.filename(org.name, 'balance-generale', query.fromDate, query.toDate, 'xlsx'),
+    );
+  }
+
+  @Get('comparative-balance.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Balance comparative N / N-1' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async comparativeBalanceXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: ComparativeBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getComparativeBalance(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      previousFromDate: query.previousFromDate,
+      previousToDate: query.previousToDate,
+      accountClass: query.accountClass,
+      accountCodeFrom: query.accountCodeFrom,
+      accountCodeTo: query.accountCodeTo,
+      hideEmpty: query.hideEmpty,
+    });
+    const buffer = this.xlsx.comparativeBalanceXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(
+        org.name,
+        'balance-comparative',
+        query.previousFromDate,
+        query.toDate,
+        'xlsx',
+      ),
     );
   }
 
