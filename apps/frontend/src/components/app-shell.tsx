@@ -1,61 +1,31 @@
 'use client';
 
-import { Award, ArrowRightLeft, Banknote, BarChart3, BookOpen, BookText, Brain, Building2, Calendar, Coins, FileUp, GitBranch, Gauge, Handshake, History, LayoutDashboard, Link2, LogOut, Mail, Package, Paperclip, PenLine, Percent, ShieldCheck, Sparkles, User as UserIcon, Users, Warehouse } from 'lucide-react';
+import { Building2, ChevronsUpDown, LogOut, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
-import { Button } from '@/components/ui/button';
+import { CommandPalette, useCommandPalette } from '@/components/command-palette';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { api } from '@/lib/api-client';
+import { NAV_GROUPS } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { useAuthStore, useCurrentOrg, useCurrentUser } from '@/stores/auth-store';
 
 /**
- * `AppShell` — shared layout for every authenticated route (dashboard,
- * members, invitations, settings). Encapsulates:
+ * `AppShell` — authenticated layout.
  *
- *   - top nav with org name + user email + logout
- *   - left rail with the tenant-scoped routes
- *   - the `<main>` slot that hosts each page's body
+ *   ┌── topbar ────────────────────────────────────────────────┐
+ *   │ wordmark · org switcher · period chip · ⌘K · user menu   │
+ *   ├── sidebar ──────┬── main ─────────────────────────────────┤
+ *   │ grouped by      │                                         │
+ *   │ domain          │  page content (full width)              │
+ *   │ 240px fixed     │                                         │
+ *   └─────────────────┴─────────────────────────────────────────┘
  *
- * Kept as a client component because it reads from the Zustand auth
- * store and owns the logout mutation. Page bodies remain free to
- * mix server and client components as needed.
+ * Visual direction follows DESIGN.md: paper-ivory tones, editorial
+ * serif reserved for page H1s (handled by individual pages), tabular
+ * figures via globals.css, accent green only on active/CTA states.
  */
-interface NavItem {
-  readonly href: string;
-  readonly label: string;
-  readonly icon: React.ComponentType<{ className?: string }>;
-}
-
-const NAV: ReadonlyArray<NavItem> = [
-  { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-  { href: '/dashboards', label: 'Dashboards', icon: Gauge },
-  { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen },
-  { href: '/accounting-periods', label: 'Périodes', icon: Calendar },
-  { href: '/imports', label: 'Imports', icon: FileUp },
-  { href: '/journals', label: 'Journaux', icon: BookText },
-  { href: '/entry-workflow', label: 'Workflow écritures', icon: PenLine },
-  { href: '/lettering', label: 'Lettrage', icon: Link2 },
-  { href: '/bank-reconciliation', label: 'Rapprochement', icon: Banknote },
-  { href: '/inventory', label: 'Inventaire', icon: Warehouse },
-  { href: '/assets', label: 'Immobilisations', icon: Package },
-  { href: '/reports', label: 'États financiers', icon: BarChart3 },
-  { href: '/tva', label: 'TVA', icon: Percent },
-  { href: '/currencies', label: 'Devises', icon: Coins },
-  { href: '/documents', label: 'Documents', icon: Paperclip },
-  { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft },
-  { href: '/rules', label: 'Règles', icon: Sparkles },
-  { href: '/workflows', label: 'Workflows', icon: GitBranch },
-  { href: '/ai', label: 'IA — Anomalies', icon: Brain },
-  { href: '/accounting-score', label: 'Score santé', icon: Award },
-  { href: '/collaboration', label: 'Collaboration', icon: Handshake },
-  { href: '/audit-logs', label: 'Audit', icon: History },
-  { href: '/members', label: 'Membres', icon: Users },
-  { href: '/invitations', label: 'Invitations', icon: Mail },
-  { href: '/settings/mfa', label: 'MFA', icon: ShieldCheck },
-];
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -63,11 +33,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const currentOrg = useCurrentOrg();
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const signout = useAuthStore((s) => s.signout);
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
 
   const logout = useApiMutation(async () => {
     if (typeof refreshToken === 'string') {
-      // Best-effort: a network error here just means the access token
-      // expires naturally; the local session is cleared either way.
       await api.post('/auth/logout', { refreshToken }).catch(() => undefined);
     }
     return undefined;
@@ -79,57 +48,188 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.replace('/login');
   };
 
+  const userInitials = (user?.firstName ?? user?.email ?? '?')
+    .split(/[ @.]/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? '')
+    .join('');
+
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="border-b bg-background">
-        <div className="container flex h-14 items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 text-sm font-medium">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            {currentOrg?.name ?? 'Organisation'}
-          </Link>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="hidden items-center gap-2 text-muted-foreground sm:flex">
-              <UserIcon className="h-4 w-4" />
-              {user?.email ?? '—'}
+    <div className="min-h-screen bg-canvas">
+      {/* ─── Topbar ────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur supports-[backdrop-filter]:bg-paper/70">
+        <div className="flex h-14 items-center gap-4 px-6">
+          {/* Wordmark */}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 font-display text-base font-medium tracking-tight text-ink"
+          >
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-xs bg-ink text-[10px] font-mono font-medium text-canvas">
+              EC
             </span>
-            <Button size="sm" variant="outline" onClick={() => void handleLogout()}>
-              <LogOut className="mr-2 h-3.5 w-3.5" /> Déconnexion
-            </Button>
+            <span className="hidden sm:inline">Compta</span>
+            <span className="hidden text-2xs uppercase tracking-wider text-ink-mute sm:inline">
+              · OHADA
+            </span>
+          </Link>
+
+          <Separator />
+
+          {/* Org switcher (placeholder UI — full switcher lands with Module 1 polish) */}
+          <button
+            type="button"
+            className="group flex items-center gap-2 rounded-sm border border-line-strong/60 bg-canvas px-2.5 py-1.5 text-sm text-ink transition-colors duration-fast hover:border-line-strong hover:bg-sunk"
+          >
+            <Building2 className="h-3.5 w-3.5 text-ink-mute" strokeWidth={1.5} />
+            <span className="max-w-[200px] truncate font-medium">
+              {currentOrg?.name ?? 'Aucune organisation'}
+            </span>
+            <span className="hidden text-2xs uppercase tracking-wider text-ink-mute md:inline">
+              {currentOrg?.role ?? ''}
+            </span>
+            <ChevronsUpDown className="h-3 w-3 text-ink-mute" strokeWidth={1.5} />
+          </button>
+
+          {/* Active period chip (placeholder until period selector ships) */}
+          <span className="hidden items-center gap-1.5 rounded-xs bg-sunk px-2 py-1 text-2xs uppercase tracking-wider text-ink-soft lg:inline-flex">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+            Exercice 2026
+          </span>
+
+          <div className="flex-1" />
+
+          {/* Search trigger — opens ⌘K palette */}
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="flex items-center gap-2 rounded-sm border border-line-strong/60 bg-canvas px-2.5 py-1.5 text-xs text-ink-mute transition-colors duration-fast hover:border-line-strong hover:bg-sunk"
+            aria-label="Recherche rapide"
+          >
+            <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <span className="hidden sm:inline">Rechercher</span>
+            <kbd className="hidden rounded-xs border border-line-strong bg-paper px-1 font-mono text-[10px] text-ink-soft sm:inline-block">
+              ⌘K
+            </kbd>
+          </button>
+
+          <Separator />
+
+          {/* User */}
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-2xs font-medium uppercase tracking-wider text-accent-ink"
+            >
+              {userInitials || '?'}
+            </span>
+            <div className="hidden text-right md:block">
+              <div className="text-xs font-medium text-ink leading-tight">
+                {user?.firstName ?? user?.email ?? '—'}
+              </div>
+              <div className="text-2xs text-ink-mute">{user?.email}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-sm text-ink-mute transition-colors duration-fast hover:bg-sunk hover:text-ink"
+              aria-label="Déconnexion"
+              title="Déconnexion"
+            >
+              <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
           </div>
         </div>
       </header>
 
-      <div className="container grid gap-6 py-6 md:grid-cols-[200px_1fr]">
-        <nav aria-label="Navigation principale" className="md:sticky md:top-6 md:self-start">
-          <ul className="flex gap-1 overflow-x-auto md:flex-col md:gap-0.5">
-            {NAV.map((item) => {
-              const active =
-                item.href === '/dashboard'
-                  ? pathname === '/dashboard'
-                  : pathname.startsWith(item.href);
-              const Icon = item.icon;
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors',
-                      active
-                        ? 'bg-secondary text-secondary-foreground'
-                        : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+      {/* ─── Body ──────────────────────────────────────────── */}
+      <div className="flex">
+        {/* Sidebar */}
+        <aside
+          aria-label="Navigation principale"
+          className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-paper md:block"
+        >
+          <nav className="py-4">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title} className="mb-4 px-3">
+                <div className="eyebrow mb-1.5 px-2">{group.title}</div>
+                <ul className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active =
+                      item.href === '/dashboard'
+                        ? pathname === '/dashboard'
+                        : pathname.startsWith(item.href);
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            'group relative flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
+                            active
+                              ? 'bg-accent-soft font-medium text-accent-ink'
+                              : 'text-ink-soft hover:bg-sunk hover:text-ink',
+                          )}
+                        >
+                          <Icon
+                            className={cn(
+                              'h-4 w-4 shrink-0 transition-colors',
+                              active ? 'text-accent-ink' : 'text-ink-mute group-hover:text-ink-soft',
+                            )}
+                            strokeWidth={1.5}
+                          />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+
+          <div className="border-t border-line p-4">
+            <p className="text-2xs uppercase tracking-wider text-ink-mute">Version</p>
+            <p className="mt-0.5 font-mono text-xs text-ink-soft">v1.0 · wave 2</p>
+          </div>
+        </aside>
+
+        {/* Mobile horizontal nav — only top-level groups */}
+        <nav
+          aria-label="Navigation mobile"
+          className="sticky top-14 z-20 flex w-full gap-1 overflow-x-auto border-b border-line bg-paper px-4 py-2 md:hidden"
+        >
+          {NAV_GROUPS.flatMap((g) => g.items.slice(0, 1)).map((item) => {
+            const active =
+              item.href === '/dashboard'
+                ? pathname === '/dashboard'
+                : pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1 text-xs',
+                  active ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        <main className="min-w-0">{children}</main>
+        {/* Main */}
+        <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
       </div>
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
+}
+
+function Separator() {
+  return <span aria-hidden className="hidden h-5 w-px bg-line md:inline-block" />;
 }

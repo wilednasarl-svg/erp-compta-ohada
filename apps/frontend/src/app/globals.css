@@ -3,46 +3,167 @@
 @tailwind utilities;
 
 /**
- * Neutral light theme with a single accent. Variables follow the
- * shadcn/ui convention so future component installs (alert, dialog,
- * table) drop in without touching the palette.
+ * ERP Compta OHADA — Editorial paper-ivory direction.
+ *
+ * Tokens follow OKLCH and are tinted toward warm hues (~85deg, low chroma)
+ * to evoke aged ivory paper rather than a clinical SaaS white.
+ * Single accent (deep validation green), restrained color strategy.
+ *
+ * Token names map to shadcn/ui semantic slots so existing primitives
+ * (button, card, input) consume them via tailwind.config.ts.
  */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    /* Surfaces — warm paper-ivory tints */
+    --canvas: 98.5% 0.005 85;       /* app background */
+    --paper: 99.2% 0.004 85;        /* elevated surfaces (cards, popovers) */
+    --sunk: 96.5% 0.006 85;         /* recessed surfaces (table headers, inputs bg) */
+
+    /* Ink — cool-tinted near-black for crisp legibility on warm paper */
+    --ink: 18% 0.008 270;
+    --ink-soft: 38% 0.010 270;
+    --ink-mute: 58% 0.012 270;
+
+    /* Lines */
+    --line: 90% 0.006 85;
+    --line-strong: 82% 0.008 85;
+
+    /* Accent — deep validation green */
+    --accent: 45% 0.10 155;
+    --accent-soft: 94% 0.025 155;
+    --accent-ink: 28% 0.08 155;
+
+    /* Critical — brick red */
+    --critical: 52% 0.18 25;
+    --critical-soft: 95% 0.035 25;
+    --critical-ink: 32% 0.12 25;
+
+    /* Warn — ochre */
+    --warn: 68% 0.13 75;
+    --warn-soft: 95% 0.030 75;
+    --warn-ink: 38% 0.09 75;
+
+    /* Info — ink blue */
+    --info: 52% 0.09 240;
+    --info-soft: 95% 0.020 240;
+    --info-ink: 32% 0.08 240;
+
+    /* shadcn semantic mapping — preserves Button/Card/Input drop-in compat */
+    --background: var(--canvas);
+    --foreground: var(--ink);
+    --card: var(--paper);
+    --card-foreground: var(--ink);
+    --popover: var(--paper);
+    --popover-foreground: var(--ink);
+    --primary: var(--accent);
+    --primary-foreground: 98% 0.004 85;
+    --secondary: var(--sunk);
+    --secondary-foreground: var(--ink);
+    --muted: var(--sunk);
+    --muted-foreground: var(--ink-mute);
+    --destructive: var(--critical);
+    --destructive-foreground: 98% 0.004 85;
+    --border: var(--line);
+    --input: var(--line-strong);
+    --ring: var(--accent);
+
+    --radius: 0.375rem; /* 6px — radius-md */
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: oklch(var(--border));
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-background text-foreground;
-    font-family:
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      Roboto,
-      Oxygen,
-      Ubuntu,
-      Cantarell,
-      sans-serif;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    background-color: oklch(var(--canvas));
+    color: oklch(var(--ink));
+    font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+    /* Tabular figures + stylistic alternates (Geist) — accountant-grade numerals everywhere */
+    font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss01' 1, 'calt' 1;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Editorial serif reserved for major page-level headings.
+     Anything else uses Geist Sans for UI consistency. */
+  h1, h2 {
+    font-family: var(--font-fraunces), Georgia, serif;
+    font-feature-settings: 'tnum' 1, 'ss01' 1;
+    font-variation-settings: 'opsz' 36, 'SOFT' 30, 'WONK' 0;
+    letter-spacing: -0.015em;
+  }
+
+  /* Monospace block — amounts, account codes, IDs */
+  code, kbd, samp, pre, .font-mono {
+    font-family: var(--font-geist-mono), ui-monospace, 'SF Mono', monospace;
+    font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1;
+  }
+
+  /* Quiet focus ring — accent green, slim */
+  :focus-visible {
+    outline: 2px solid oklch(var(--accent));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Selection picks up the accent at low chroma so it doesn't shout */
+  ::selection {
+    background-color: oklch(var(--accent-soft));
+    color: oklch(var(--accent-ink));
+  }
+
+  /* Scrollbars — slim, ink-tinted, never colorful */
+  @supports (scrollbar-width: thin) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: oklch(var(--line-strong)) transparent;
+    }
+  }
+}
+
+@layer utilities {
+  /* Amount display — for any element rendering a FCFA/EUR/USD amount */
+  .num {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+  }
+
+  /* Display serif — page H1 helper */
+  .font-display {
+    font-family: var(--font-fraunces), Georgia, serif;
+    font-feature-settings: 'tnum' 1, 'ss01' 1;
+    font-variation-settings: 'opsz' 48, 'SOFT' 30;
+    letter-spacing: -0.02em;
+  }
+
+  /* Section eyebrow — uppercase microlabel */
+  .eyebrow {
+    font-size: 11px;
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: oklch(var(--ink-mute));
+    font-weight: 500;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
