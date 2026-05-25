@@ -29,9 +29,17 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { AgingQueryDto } from '../dto/aging-query.dto';
 import { SummaryQueryDto } from '../dto/summary-query.dto';
+import { TopAccountsQueryDto } from '../dto/top-accounts-query.dto';
 import { DashboardAgingService } from '../services/dashboard-aging.service';
+import { DashboardAnalyticsService } from '../services/dashboard-analytics.service';
 import { DashboardSummaryService } from '../services/dashboard-summary.service';
-import type { DashboardAging, DashboardSummary } from '../types/dashboard-types';
+import type {
+  DashboardAging,
+  DashboardCashflow,
+  DashboardEvolution,
+  DashboardSummary,
+  DashboardTopAccounts,
+} from '../types/dashboard-types';
 
 /**
  * `DashboardsController` (Module 19 wave 1) — endpoints d'agrégation
@@ -63,6 +71,7 @@ export class DashboardsController {
   constructor(
     private readonly summary: DashboardSummaryService,
     private readonly aging: DashboardAgingService,
+    private readonly analytics: DashboardAnalyticsService,
     private readonly audit: AuditTrailService,
   ) {}
 
@@ -139,6 +148,105 @@ export class DashboardsController {
     });
 
     return { aging: result };
+  }
+
+  // ─── Wave 2 — analytics ───────────────────────────────────────────
+
+  @Get('cashflow')
+  @RequirePermission('dashboards.read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Évolution mensuelle des flux de trésorerie' })
+  async getCashflow(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Query() query: SummaryQueryDto,
+    @Req() req: Request,
+  ): Promise<{ cashflow: DashboardCashflow }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const result = await this.analytics.getCashflow(asTenantId(tokenOrgId), query.exerciseId);
+
+    void this.audit.record({
+      module: DashboardsController.MODULE,
+      action: 'view_cashflow',
+      entityType: 'accounting_period',
+      entityId: query.exerciseId,
+      metadata: { pointsCount: result.points.length },
+      ctx: {
+        ...buildAuditRequestContext(req),
+        userId: actorUserId,
+        organizationId: tokenOrgId,
+      },
+    });
+
+    return { cashflow: result };
+  }
+
+  @Get('evolution')
+  @RequirePermission('dashboards.read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Évolution mensuelle produits / charges / résultat' })
+  async getEvolution(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Query() query: SummaryQueryDto,
+    @Req() req: Request,
+  ): Promise<{ evolution: DashboardEvolution }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const result = await this.analytics.getEvolution(asTenantId(tokenOrgId), query.exerciseId);
+
+    void this.audit.record({
+      module: DashboardsController.MODULE,
+      action: 'view_evolution',
+      entityType: 'accounting_period',
+      entityId: query.exerciseId,
+      metadata: { pointsCount: result.points.length },
+      ctx: {
+        ...buildAuditRequestContext(req),
+        userId: actorUserId,
+        organizationId: tokenOrgId,
+      },
+    });
+
+    return { evolution: result };
+  }
+
+  @Get('top-accounts')
+  @RequirePermission('dashboards.read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Top N comptes par flux dans une catégorie' })
+  async getTopAccounts(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Query() query: TopAccountsQueryDto,
+    @Req() req: Request,
+  ): Promise<{ topAccounts: DashboardTopAccounts }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const result = await this.analytics.getTopAccounts(asTenantId(tokenOrgId), {
+      exerciseId: query.exerciseId,
+      category: query.category,
+      limit: query.limit,
+    });
+
+    void this.audit.record({
+      module: DashboardsController.MODULE,
+      action: 'view_top_accounts',
+      entityType: 'accounting_period',
+      entityId: query.exerciseId,
+      metadata: { category: query.category, limit: query.limit ?? 10, rowsCount: result.rows.length },
+      ctx: {
+        ...buildAuditRequestContext(req),
+        userId: actorUserId,
+        organizationId: tokenOrgId,
+      },
+    });
+
+    return { topAccounts: result };
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────

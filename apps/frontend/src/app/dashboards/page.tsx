@@ -2,16 +2,31 @@
 
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowDown,
   ArrowUp,
   Banknote,
   Coins,
   Loader2,
-  Minus,
   TrendingUp,
   Users,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +48,11 @@ import {
   AGING_BUCKET_LABELS,
   type AgingType,
   type DashboardAging,
+  type DashboardCashflow,
+  type DashboardEvolution,
   type DashboardSummary,
+  type DashboardTopAccounts,
+  type TopAccountCategory,
 } from '@/types/dashboards';
 
 interface PeriodsResponse {
@@ -141,6 +160,9 @@ export default function DashboardsPage() {
         {effectiveExerciseId && (
           <>
             <SummarySection orgId={orgId} exerciseId={effectiveExerciseId} />
+            <CashflowSection orgId={orgId} exerciseId={effectiveExerciseId} />
+            <EvolutionSection orgId={orgId} exerciseId={effectiveExerciseId} />
+            <TopAccountsSection orgId={orgId} exerciseId={effectiveExerciseId} />
             <AgingSection orgId={orgId} exerciseId={effectiveExerciseId} />
           </>
         )}
@@ -627,10 +649,345 @@ function PartnerAgingTable({
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// WAVE 2 — CASHFLOW (AreaChart)
+// ─────────────────────────────────────────────────────────────────────
+
+function CashflowSection({ orgId, exerciseId }: { orgId: string; exerciseId: string }) {
+  const cashflowQuery = useQuery<{ cashflow: DashboardCashflow }, ApiError>({
+    queryKey: ['dashboard-cashflow', orgId, exerciseId],
+    queryFn: async () =>
+      api.get(`/organizations/${orgId}/dashboards/cashflow?exerciseId=${exerciseId}`),
+  });
+
+  const c = cashflowQuery.data?.cashflow;
+  const points = useMemo(
+    () =>
+      (c?.points ?? []).map((p) => ({
+        label: p.label,
+        inflow: Number(p.inflow),
+        outflow: Number(p.outflow),
+        netFlow: Number(p.netFlow),
+        closingBalance: Number(p.closingBalance),
+      })),
+    [c],
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Flux de trésorerie</CardTitle>
+        <CardDescription>
+          Encaissements / décaissements mensuels et solde de trésorerie cumulé
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {cashflowQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+            Chargement…
+          </p>
+        ) : cashflowQuery.error ? (
+          <FormError error={cashflowQuery.error} />
+        ) : points.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucun mouvement sur les comptes de trésorerie pour cet exercice.
+          </p>
+        ) : (
+          <>
+            <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
+              <MiniStat label="Total encaissements" value={Number(c?.totals.inflow ?? 0)} tone="positive" currency={c?.currency} />
+              <MiniStat label="Total décaissements" value={Number(c?.totals.outflow ?? 0)} tone="negative" currency={c?.currency} />
+              <MiniStat label="Net" value={Number(c?.totals.netFlow ?? 0)} tone="signed" currency={c?.currency} />
+            </div>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={points} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradClosing" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={shortNumber} />
+                  <Tooltip formatter={(v) => formatAmount(Number(v))} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="closingBalance"
+                    name="Solde cumulé"
+                    stroke="#10b981"
+                    fill="url(#gradClosing)"
+                    strokeWidth={2}
+                  />
+                  <Line type="monotone" dataKey="inflow" name="Encaissements" stroke="#3b82f6" dot={false} />
+                  <Line type="monotone" dataKey="outflow" name="Décaissements" stroke="#ef4444" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// WAVE 2 — EVOLUTION P&L (BarChart + Line)
+// ─────────────────────────────────────────────────────────────────────
+
+function EvolutionSection({ orgId, exerciseId }: { orgId: string; exerciseId: string }) {
+  const evolutionQuery = useQuery<{ evolution: DashboardEvolution }, ApiError>({
+    queryKey: ['dashboard-evolution', orgId, exerciseId],
+    queryFn: async () =>
+      api.get(`/organizations/${orgId}/dashboards/evolution?exerciseId=${exerciseId}`),
+  });
+
+  const e = evolutionQuery.data?.evolution;
+  const points = useMemo(
+    () =>
+      (e?.points ?? []).map((p) => ({
+        label: p.label,
+        revenue: Number(p.revenue),
+        expenses: Number(p.expenses),
+        netResult: Number(p.netResult),
+      })),
+    [e],
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Évolution Produits / Charges</CardTitle>
+        <CardDescription>Barres mensuelles + courbe du résultat net</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {evolutionQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+            Chargement…
+          </p>
+        ) : evolutionQuery.error ? (
+          <FormError error={evolutionQuery.error} />
+        ) : points.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucun produit/charge sur cet exercice.
+          </p>
+        ) : (
+          <>
+            <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
+              <MiniStat label="Produits totaux" value={Number(e?.totals.revenue ?? 0)} tone="positive" currency={e?.currency} />
+              <MiniStat label="Charges totales" value={Number(e?.totals.expenses ?? 0)} tone="negative" currency={e?.currency} />
+              <MiniStat label="Résultat net" value={Number(e?.totals.netResult ?? 0)} tone="signed" currency={e?.currency} />
+            </div>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={points} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={shortNumber} />
+                  <Tooltip formatter={(v) => formatAmount(Number(v))} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="revenue" name="Produits" fill="#10b981" />
+                  <Bar dataKey="expenses" name="Charges" fill="#ef4444" />
+                  <Line type="monotone" dataKey="netResult" name="Résultat" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// WAVE 2 — TOP ACCOUNTS (PieChart avec toggle expenses/revenue)
+// ─────────────────────────────────────────────────────────────────────
+
+const PIE_COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
+];
+
+function TopAccountsSection({ orgId, exerciseId }: { orgId: string; exerciseId: string }) {
+  const [category, setCategory] = useState<TopAccountCategory>('expenses');
+
+  const topQuery = useQuery<{ topAccounts: DashboardTopAccounts }, ApiError>({
+    queryKey: ['dashboard-top-accounts', orgId, exerciseId, category],
+    queryFn: async () =>
+      api.get(
+        `/organizations/${orgId}/dashboards/top-accounts?exerciseId=${exerciseId}&category=${category}&limit=10`,
+      ),
+  });
+
+  const top = topQuery.data?.topAccounts;
+  const pieData = useMemo(
+    () =>
+      (top?.rows ?? []).map((r) => ({
+        name: `${r.accountCode} ${r.accountLabel}`,
+        value: Number(r.amount),
+        sharePercent: r.sharePercent,
+      })),
+    [top],
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle>Top comptes</CardTitle>
+            <CardDescription>
+              {category === 'expenses' ? 'Top 10 charges' : 'Top 10 produits'} de l&apos;exercice
+            </CardDescription>
+          </div>
+          <div className="flex gap-1 rounded-md border bg-muted/30 p-0.5">
+            <Button
+              type="button"
+              size="sm"
+              variant={category === 'expenses' ? 'default' : 'outline'}
+              onClick={() => setCategory('expenses')}
+              className={category === 'expenses' ? '' : 'border-0 bg-transparent'}
+            >
+              Charges
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={category === 'revenue' ? 'default' : 'outline'}
+              onClick={() => setCategory('revenue')}
+              className={category === 'revenue' ? '' : 'border-0 bg-transparent'}
+            >
+              Produits
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {topQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+            Chargement…
+          </p>
+        ) : topQuery.error ? (
+          <FormError error={topQuery.error} />
+        ) : pieData.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucune écriture sur cette catégorie pour l&apos;exercice.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    label={(p) => {
+                      const entry = pieData[(p as unknown as { index: number }).index];
+                      return entry ? `${entry.sharePercent}%` : '';
+                    }}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => formatAmount(Number(v))} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Compte</th>
+                    <th className="px-3 py-2 text-right">Montant</th>
+                    <th className="px-3 py-2 text-right">Part</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(top?.rows ?? []).map((r, i) => (
+                    <tr key={r.accountId} className="border-t">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                          />
+                          <span className="font-mono text-xs">{r.accountCode}</span>
+                          <span className="truncate">{r.accountLabel}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">{formatAmount(Number(r.amount))}</td>
+                      <td className="px-3 py-2 text-right text-xs text-muted-foreground">{r.sharePercent}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t bg-muted/30 text-sm font-medium">
+                  <tr>
+                    <td className="px-3 py-2">Total catégorie</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatAmount(Number(top?.totalAmount ?? 0))}</td>
+                    <td className="px-3 py-2 text-right">{top?.currency}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  tone,
+  currency,
+}: {
+  label: string;
+  value: number;
+  tone: 'positive' | 'negative' | 'signed';
+  currency?: string;
+}) {
+  const color =
+    tone === 'positive'
+      ? 'text-emerald-700'
+      : tone === 'negative'
+        ? 'text-destructive'
+        : value >= 0
+          ? 'text-emerald-700'
+          : 'text-destructive';
+  return (
+    <div className="rounded-md border bg-muted/20 px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`font-mono text-sm font-semibold ${color}`}>
+        {formatAmount(value)} {currency && <span className="text-xs">{currency}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────
 
 function formatAmount(n: number): string {
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Format compact pour YAxis : 1.5M, 250k, 1.2B. */
+function shortNumber(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
+  return n.toFixed(0);
 }

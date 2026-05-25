@@ -9,6 +9,7 @@ import { RbacModule } from '../rbac/rbac.module';
 import { DashboardsController } from './controllers/dashboards.controller';
 import { DashboardsRepository } from './repositories/dashboards.repository';
 import { DashboardAgingService } from './services/dashboard-aging.service';
+import { DashboardAnalyticsService } from './services/dashboard-analytics.service';
 import { DashboardSummaryService } from './services/dashboard-summary.service';
 
 /**
@@ -50,6 +51,11 @@ import { DashboardSummaryService } from './services/dashboard-summary.service';
     JournalsModule,
   ],
   controllers: [DashboardsController],
-  providers: [DashboardsRepository, DashboardSummaryService, DashboardAgingService],
+  providers: [
+    DashboardsRepository,
+    DashboardSummaryService,
+    DashboardAgingService,
+    DashboardAnalyticsService,
+  ],
 })
 export class DashboardsModule {}
