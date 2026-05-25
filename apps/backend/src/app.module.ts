@@ -26,6 +26,7 @@ import { AssetsModule } from './modules/assets/assets.module';
 import { MultiCurrencyModule } from './modules/multi-currency/multi-currency.module';
 import { BankReconciliationModule } from './modules/bank-reconciliation/bank-reconciliation.module';
 import { AiModule } from './modules/ai/ai.module';
+import { DashboardsModule } from './modules/dashboards/dashboards.module';
 // Module 14 (signatures électroniques) est embarqué dans JournalsModule
 // via EntryWorkflowService — pas de module séparé. Module 17
 // (InventoryModule) est en cours sur sa branche dédiée et sera câblé
@@ -120,6 +121,11 @@ import { AiModule } from './modules/ai/ai.module';
     // remplacer la couche heuristique par un modèle en wave 2.
     // Permissions : ai.scan, ai.read, ai.suggest.
     AiModule,
+    // Module 19 wave 1 — Dashboards comptables. Endpoints d'agrégation
+    // orientés UI (summary KPIs, aging clients/fournisseurs). Pas
+    // d'export PDF/PNG en wave 1 — JSON consommé par Recharts côté
+    // Next.js. Permission unique : dashboards.read (tous rôles métier).
+    DashboardsModule,
   ],
   controllers: [],
   providers: [
