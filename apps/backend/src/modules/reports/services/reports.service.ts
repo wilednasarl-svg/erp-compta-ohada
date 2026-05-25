@@ -387,6 +387,37 @@ export interface CashTrendReport {
   readonly maxNetCash: string;
 }
 
+export type AgingSide = 'CLIENT' | 'FOURNISSEUR';
+
+export interface AgingBucket {
+  readonly upperDays: number | null;
+  readonly label: string;
+  readonly amount: string;
+}
+
+export interface AgingAccountRow {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly total: string;
+  readonly buckets: readonly AgingBucket[];
+}
+
+export interface AgingBalanceQuery {
+  readonly side: AgingSide;
+  readonly asAtDate: string;
+  readonly bucketBoundaries?: readonly number[];
+}
+
+export interface AgingBalanceReport {
+  readonly side: AgingSide;
+  readonly asAtDate: string;
+  readonly bucketBoundaries: readonly number[];
+  readonly rows: readonly AgingAccountRow[];
+  readonly bucketTotals: readonly string[];
+  readonly grandTotal: string;
+}
+
 /**
  * `ReportsService` — Module 9 accounting reports.
  *
@@ -994,6 +1025,116 @@ export class ReportsService {
       currentNetCash: nets[nets.length - 1].toFixed(2),
       minNetCash: Math.min(...nets).toFixed(2),
       maxNetCash: Math.max(...nets).toFixed(2),
+    };
+  }
+
+  async getAgingBalance(
+    organizationId: TenantId,
+    query: AgingBalanceQuery,
+  ): Promise<AgingBalanceReport> {
+    assertTenantId(organizationId);
+    if (!ReportsService.isYmd(query.asAtDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'asAtDate must be YYYY-MM-DD.',
+      });
+    }
+    const boundaries = query.bucketBoundaries ?? [30, 60, 90, 180];
+    if (boundaries.length === 0 || boundaries.some((b) => !Number.isInteger(b) || b <= 0)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'bucketBoundaries must be positive integers.',
+      });
+    }
+    const sortedBoundaries = [...boundaries].sort((a, b) => a - b);
+    const prefix = query.side === 'CLIENT' ? '411' : '401';
+
+    const balances = await this.repo.accountBalancesAsAt(organizationId, query.asAtDate);
+    const partners = balances.filter(
+      (b) =>
+        b.accountCode.startsWith(prefix) &&
+        (Number(b.totalDebit) !== 0 || Number(b.totalCredit) !== 0),
+    );
+    const asAt = new Date(`${query.asAtDate}T00:00:00Z`).getTime();
+    const openCreatesDebit = query.side === 'CLIENT';
+
+    const rows: AgingAccountRow[] = await Promise.all(
+      partners.map(async (p) => {
+        const lines = await this.repo.generalLedger(organizationId, {
+          accountId: p.accountId,
+          fromDate: '1900-01-01',
+          toDate: query.asAtDate,
+        });
+        const opens: { date: number; amount: number }[] = [];
+        for (const ln of lines) {
+          const net = Number(ln.debit) - Number(ln.credit);
+          if (net === 0) continue;
+          const isOpen = openCreatesDebit ? net > 0 : net < 0;
+          const amt = Math.abs(net);
+          const date = new Date(`${ln.entryDate}T00:00:00Z`).getTime();
+          if (isOpen) {
+            opens.push({ date, amount: amt });
+          } else {
+            let remaining = amt;
+            while (remaining > 0 && opens.length > 0) {
+              const head = opens[0];
+              if (head.amount <= remaining) {
+                remaining -= head.amount;
+                opens.shift();
+              } else {
+                head.amount -= remaining;
+                remaining = 0;
+              }
+            }
+          }
+        }
+        const bucketAmounts = new Array(sortedBoundaries.length + 1).fill(0);
+        for (const o of opens) {
+          const ageDays = Math.max(0, Math.floor((asAt - o.date) / (1000 * 60 * 60 * 24)));
+          let placed = false;
+          for (let i = 0; i < sortedBoundaries.length; i += 1) {
+            if (ageDays <= sortedBoundaries[i]) {
+              bucketAmounts[i] += o.amount;
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) bucketAmounts[bucketAmounts.length - 1] += o.amount;
+        }
+        const bucketLabels = sortedBoundaries.map((b, i) => {
+          const lower = i === 0 ? 0 : sortedBoundaries[i - 1] + 1;
+          return `${lower}-${b}j`;
+        });
+        bucketLabels.push(`> ${sortedBoundaries[sortedBoundaries.length - 1]}j`);
+        const buckets: AgingBucket[] = bucketAmounts.map((amt, i) => ({
+          upperDays: i < sortedBoundaries.length ? sortedBoundaries[i] : null,
+          label: bucketLabels[i],
+          amount: amt.toFixed(2),
+        }));
+        const total = bucketAmounts.reduce((s, x) => s + x, 0);
+        return {
+          accountId: p.accountId,
+          accountCode: p.accountCode,
+          accountLabel: p.accountLabel,
+          total: total.toFixed(2),
+          buckets,
+        };
+      }),
+    );
+    const filtered = rows.filter((r) => Number(r.total) > 0.005);
+    filtered.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+    const bucketTotals = new Array(sortedBoundaries.length + 1).fill(0);
+    for (const r of filtered) {
+      r.buckets.forEach((b, i) => {
+        bucketTotals[i] += Number(b.amount);
+      });
+    }
+    const grandTotal = bucketTotals.reduce((s, x) => s + x, 0);
+    return {
+      side: query.side,
+      asAtDate: query.asAtDate,
+      bucketBoundaries: sortedBoundaries,
+      rows: filtered,
+      bucketTotals: bucketTotals.map((n) => n.toFixed(2)),
+      grandTotal: grandTotal.toFixed(2),
     };
   }
 
