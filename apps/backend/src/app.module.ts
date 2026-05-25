@@ -22,6 +22,8 @@ import { RulesModule } from './modules/rules/rules.module';
 import { TransformationsModule } from './modules/transformations/transformations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { TvaModule } from './modules/tva/tva.module';
+import { AssetsModule } from './modules/assets/assets.module';
+import { JournalSignaturesModule } from './modules/journal-signatures/journal-signatures.module';
 
 @Module({
   imports: [
@@ -85,6 +87,17 @@ import { TvaModule } from './modules/tva/tva.module';
     ReportsModule,
     // Module 13 wave 1 — TVA & Déclarations fiscales.
     TvaModule,
+    // Module 12 — Immobilisations & Amortissements SYSCOHADA.
+    // Registre des assets, calcul d'échéancier (linéaire / dégressif),
+    // comptabilisation des dotations comme écritures journal (via
+    // EntriesService). Permissions : assets.read, assets.write,
+    // assets.post_depreciation.
+    AssetsModule,
+    // Module 14 wave 1 — Workflow d'approbation + signatures électroniques
+    // pour les écritures journal. Réutilise le moteur Module 6 sur la cible
+    // 'journal_entry' (draft → in_review → approved → locked). Permissions :
+    // journals.review (chef de mission), journals.sign (expert-comptable).
+    JournalSignaturesModule,
   ],
   controllers: [],
   providers: [

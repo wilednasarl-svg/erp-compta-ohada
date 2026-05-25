@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PDFDocument = require('pdfkit');
+import PDFDocument from 'pdfkit';
 
 import type {
-  TrialBalanceReport,
-  GeneralLedgerReport,
-  ProfitLossReport,
+  BalanceSheetGroup,
   BalanceSheetReport,
+  GeneralLedgerReport,
+  ProfitLossAccountLine,
+  ProfitLossReport,
+  TrialBalanceReport,
 } from './reports.service';
 
 /**
@@ -428,7 +429,7 @@ export class ReportsPdfService {
       previousAmount?: string;
       variation?: string;
       variationPercent?: string | null;
-      accounts: readonly any[];
+      accounts: ReadonlyArray<ProfitLossAccountLine>;
     },
     y: number,
     hasComparison: boolean,
@@ -477,7 +478,7 @@ export class ReportsPdfService {
     section: {
       key: string;
       label: string;
-      groups: readonly any[];
+      groups: ReadonlyArray<BalanceSheetGroup>;
       total: string;
       previousTotal?: string;
     },

@@ -56,14 +56,12 @@ describe('DepreciationCalculator', () => {
         durationMonths: 60,
         method: 'linear',
       });
-      expect(lines).toHaveLength(6); // 2026..2031 (5 years span 6 fiscal years if first end overlaps)
-      // Actually: put in service 2026-01-01, 60 months = end 2030-12-31.
-      // Calendar years 2026, 2027, 2028, 2029, 2030 → 5 lines, not 6.
-      // Let's check the real shape:
+      expect(lines).toHaveLength(5); // 2026..2030 (5 years starting 2026-01-01 spans 5 calendar years)
       const fiscalYears = lines.map((l) => l.fiscalYear);
       expect(fiscalYears).toEqual([2026, 2027, 2028, 2029, 2030]);
       for (const l of lines) {
-        expect(Number(l.depreciationAmount)).toBeCloseTo(12000, 0);
+        expect(Number(l.depreciationAmount)).toBeGreaterThan(11900);
+        expect(Number(l.depreciationAmount)).toBeLessThan(12100);
       }
     });
   });

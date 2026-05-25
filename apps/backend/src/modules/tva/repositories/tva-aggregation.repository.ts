@@ -61,11 +61,7 @@ export class TvaAggregationRepository {
       .createQueryBuilder('l')
       .innerJoin('journal_entries', 'e', 'e.id = l.journal_entry_id')
       .innerJoin('organization_chart_accounts', 'a', 'a.id = l.account_id')
-      .innerJoin(
-        '(SELECT UNNEST(:prefixes::text[]) AS prefix)',
-        'p',
-        `a.code LIKE p.prefix || '%'`,
-      )
+      .innerJoin('(SELECT UNNEST(:prefixes::text[]) AS prefix)', 'p', `a.code LIKE p.prefix || '%'`)
       .where('l.organization_id = :organizationId', { organizationId })
       .andWhere(`e.status = 'validated'`)
       .andWhere(`e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date`, {

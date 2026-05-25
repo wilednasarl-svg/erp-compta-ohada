@@ -54,7 +54,13 @@ describe('PermissionsGuard (BE-RBAC-04)', () => {
     const guard = new PermissionsGuard(reflector, buildCache(roleHasPermission));
     withPermission(reflector, 'organizations.update');
     const { ctx } = buildExecutionContext({
-      currentOrg: { id: 'o', name: 'Test Org', roleId: 'r_admin_id', role: 'admin', membershipId: 'm' },
+      currentOrg: {
+        id: 'o',
+        name: 'Test Org',
+        roleId: 'r_admin_id',
+        role: 'admin',
+        membershipId: 'm',
+      },
     });
 
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
@@ -66,7 +72,13 @@ describe('PermissionsGuard (BE-RBAC-04)', () => {
     const guard = new PermissionsGuard(reflector, buildCache(roleHasPermission));
     withPermission(reflector, 'organizations.delete');
     const { ctx } = buildExecutionContext({
-      currentOrg: { id: 'o', name: 'Test Org', roleId: 'r_comptable_id', role: 'comptable', membershipId: 'm' },
+      currentOrg: {
+        id: 'o',
+        name: 'Test Org',
+        roleId: 'r_comptable_id',
+        role: 'comptable',
+        membershipId: 'm',
+      },
     });
 
     try {

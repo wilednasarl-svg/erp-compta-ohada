@@ -100,7 +100,7 @@ export class TvaDeclarationsService {
         direction = 'collected';
         // Sens crédit: crédit - débit
         netAmount = credit - debit;
-      } else if (deductibleBsPrefixes.includes(row.accountPrefix as any)) {
+      } else if ((deductibleBsPrefixes as readonly string[]).includes(row.accountPrefix)) {
         direction = 'deductible_bs';
         // Sens débit: débit - crédit
         netAmount = debit - credit;
@@ -166,7 +166,7 @@ export class TvaDeclarationsService {
       if (lines.length > 0) {
         const savedLines = await lineRepo.save(lines);
         for (const line of savedLines) {
-          delete (line as any).declaration;
+          delete (line as Partial<TvaDeclarationLineEntity>).declaration;
         }
         savedDecl.lines = savedLines;
       } else {

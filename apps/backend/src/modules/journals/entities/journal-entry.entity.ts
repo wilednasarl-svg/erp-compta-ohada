@@ -16,7 +16,7 @@ import { AccountingPeriodEntity } from './accounting-period.entity';
 import { JournalEntity } from './journal.entity';
 import { JournalEntryLineEntity } from './journal-entry-line.entity';
 
-export type JournalEntrySourceType = 'manual' | 'import';
+export type JournalEntrySourceType = 'manual' | 'import' | 'depreciation';
 
 /**
  * `journal_entries` row — voir migration 0038.

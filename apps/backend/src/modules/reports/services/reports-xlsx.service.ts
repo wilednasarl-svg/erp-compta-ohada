@@ -355,7 +355,7 @@ export class ReportsXlsxService {
     }
 
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
     return Buffer.from(buf);
   }
 

@@ -1,13 +1,16 @@
-import { DataSource, EntityManager } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
-import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
+import type { AuditContext, AuditTrailService } from '../../audit/services/audit-trail.service';
 import { TvaDeclarationEntity } from '../entities/tva-declaration.entity';
 import { TvaDeclarationLineEntity } from '../entities/tva-declaration-line.entity';
-import { TvaDeclarationRepository } from '../repositories/tva-declaration.repository';
-import { TvaAggregationRepository, type TvaAggregationRow } from '../repositories/tva-aggregation.repository';
+import type { TvaDeclarationRepository } from '../repositories/tva-declaration.repository';
+import type {
+  TvaAggregationRepository,
+  TvaAggregationRow,
+} from '../repositories/tva-aggregation.repository';
 import { TvaDeclarationsService } from './tva-declarations.service';
 
 const ORG_ID = asTenantId('00000000-0000-4000-a000-000000000001');
@@ -32,20 +35,22 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
 
   // Mock repositories inside transaction manager
   const mockDeclRepoInTx = {
-    create: jest.fn().mockImplementation((dto) => ({
+    create: jest.fn().mockImplementation((dto: Partial<TvaDeclarationEntity>) => ({
       ...dto,
       id: 'decl-new-uuid',
     })),
-    save: jest.fn().mockImplementation(async (decl) => decl),
+    save: jest.fn().mockImplementation((decl: TvaDeclarationEntity) => Promise.resolve(decl)),
   };
 
   const mockLineRepoInTx = {
-    save: jest.fn().mockImplementation(async (lines) => {
-      return lines.map((line: any, index: number) => ({
-        ...line,
-        id: `line-uuid-${index}`,
-      }));
-    }),
+    save: jest.fn().mockImplementation((lines: TvaDeclarationLineEntity[]) =>
+      Promise.resolve(
+        lines.map((line, index) => ({
+          ...line,
+          id: `line-uuid-${index}`,
+        })),
+      ),
+    ),
   };
 
   beforeEach(() => {
@@ -54,7 +59,7 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
 
     // Reset mocks for each test
     mockEntityManager = {
-      getRepository: jest.fn().mockImplementation((entityClass) => {
+      getRepository: jest.fn().mockImplementation((entityClass: { name: string }) => {
         if (entityClass === TvaDeclarationEntity) {
           return mockDeclRepoInTx;
         }
@@ -66,20 +71,20 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
     } as unknown as EntityManager;
 
     mockDataSource = {
-      transaction: jest.fn().mockImplementation(async (cb) => {
-        return cb(mockEntityManager);
-      }),
+      transaction: jest
+        .fn()
+        .mockImplementation((cb: (m: EntityManager) => Promise<unknown>) => cb(mockEntityManager)),
     } as unknown as DataSource;
 
     mockTvaDeclarationRepo = {
-      findActiveByPeriod: jest.fn().mockImplementation(async () => activeDeclaration),
+      findActiveByPeriod: jest.fn().mockImplementation(() => Promise.resolve(activeDeclaration)),
       listByOrganization: jest.fn(),
       findById: jest.fn(),
-      save: jest.fn().mockImplementation(async (decl) => decl),
+      save: jest.fn().mockImplementation((decl: TvaDeclarationEntity) => Promise.resolve(decl)),
     } as unknown as TvaDeclarationRepository;
 
     mockTvaAggregationRepo = {
-      aggregateByPrefixes: jest.fn().mockImplementation(async () => aggregationRows),
+      aggregateByPrefixes: jest.fn().mockImplementation(() => Promise.resolve(aggregationRows)),
     } as unknown as TvaAggregationRepository;
 
     mockAudit = {
@@ -247,23 +252,23 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
 
   // 5. Validation error on period
   it('throws validation error if period year or month is out of valid ranges', async () => {
-    let err1: any;
+    let err1: unknown;
     try {
       await service.computeDeclaration(ORG_ID, { periodYear: 2026, periodMonth: 13 }, USER_ID, CTX);
     } catch (e) {
       err1 = e;
     }
     expect(err1).toBeInstanceOf(AppException);
-    expect(err1.code).toBe(ERROR_CODES.TVA_DECLARATION_INVALID_PERIOD);
+    expect((err1 as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_INVALID_PERIOD);
 
-    let err2: any;
+    let err2: unknown;
     try {
       await service.computeDeclaration(ORG_ID, { periodYear: 1999, periodMonth: 5 }, USER_ID, CTX);
     } catch (e) {
       err2 = e;
     }
     expect(err2).toBeInstanceOf(AppException);
-    expect(err2.code).toBe(ERROR_CODES.TVA_DECLARATION_INVALID_PERIOD);
+    expect((err2 as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_INVALID_PERIOD);
   });
 
   // 6. Already exists error
@@ -273,14 +278,14 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
       status: 'calculated',
     } as unknown as TvaDeclarationEntity;
 
-    let err: any;
+    let err: unknown;
     try {
       await service.computeDeclaration(ORG_ID, { periodYear: 2026, periodMonth: 5 }, USER_ID, CTX);
     } catch (e) {
       err = e;
     }
     expect(err).toBeInstanceOf(AppException);
-    expect(err.code).toBe(ERROR_CODES.TVA_DECLARATION_ALREADY_EXISTS);
+    expect((err as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_ALREADY_EXISTS);
   });
 
   // 7. Cancellation logic
@@ -318,13 +323,13 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
 
     jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(decl);
 
-    let err: any;
+    let err: unknown;
     try {
       await service.cancelDeclaration('decl-already-cancelled', ORG_ID, {}, USER_ID, CTX);
     } catch (e) {
       err = e;
     }
     expect(err).toBeInstanceOf(AppException);
-    expect(err.code).toBe(ERROR_CODES.TVA_DECLARATION_NOT_CALCULATED);
+    expect((err as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_NOT_CALCULATED);
   });
 });

@@ -167,9 +167,9 @@ export function computeLinearSchedule(input: DepreciationInput): DepreciationLin
   const cost = toCents(input.acquisitionCost);
   const residual = toCents(input.residualValue);
   const depreciable = cost - residual;
-  if (depreciable < 0) {
+  if (depreciable <= 0) {
     throw new Error(
-      `residualValue (${input.residualValue}) cannot exceed acquisitionCost (${input.acquisitionCost})`,
+      `residualValue (${input.residualValue}) cannot exceed or equal acquisitionCost (${input.acquisitionCost})`,
     );
   }
   if (input.durationMonths <= 0) {
@@ -178,15 +178,9 @@ export function computeLinearSchedule(input: DepreciationInput): DepreciationLin
 
   const start = parseYmd(input.putInServiceDate);
   // End-of-amortization date = start + durationMonths - 1 day (inclusive).
-  const endMonthAbs = start.month + input.durationMonths - 1;
-  const endYearAdd = Math.floor((endMonthAbs - 1) / 12);
-  const endMonth = ((endMonthAbs - 1) % 12) + 1;
-  const endYear = start.year + endYearAdd;
-  // Same day-of-month minus one day. If start day = 1, end day = last
-  // day of (endMonth - 1). Pragmatic: use the same day, then subtract
-  // one calendar day.
-  const startDayClamped = Math.min(start.day, daysInMonth(endYear, endMonth));
-  const lastDate = new Date(Date.UTC(endYear, endMonth - 1, startDayClamped));
+  const lastDate = new Date(
+    Date.UTC(start.year, start.month - 1 + input.durationMonths, start.day),
+  );
   lastDate.setUTCDate(lastDate.getUTCDate() - 1);
   const finalEnd = formatYmd(
     lastDate.getUTCFullYear(),
@@ -271,7 +265,8 @@ export function computeDecliningSchedule(input: DepreciationInput): Depreciation
   if (input.decliningRate === null || input.decliningRate === undefined) {
     throw new Error('decliningRate is required for declining method');
   }
-  const rate = typeof input.decliningRate === 'number' ? input.decliningRate : Number(input.decliningRate);
+  const rate =
+    typeof input.decliningRate === 'number' ? input.decliningRate : Number(input.decliningRate);
   if (!Number.isFinite(rate) || rate <= 0 || rate >= 1) {
     throw new Error(`decliningRate must be in (0, 1), got ${input.decliningRate}`);
   }
@@ -279,8 +274,8 @@ export function computeDecliningSchedule(input: DepreciationInput): Depreciation
   const cost = toCents(input.acquisitionCost);
   const residual = toCents(input.residualValue);
   const depreciable = cost - residual;
-  if (depreciable < 0) {
-    throw new Error('residualValue cannot exceed acquisitionCost');
+  if (depreciable <= 0) {
+    throw new Error('residualValue cannot exceed or equal acquisitionCost');
   }
 
   const start = parseYmd(input.putInServiceDate);
@@ -295,8 +290,7 @@ export function computeDecliningSchedule(input: DepreciationInput): Depreciation
   let safety = 0;
   while (remaining > 0 && safety++ < 200) {
     yearIndex += 1;
-    const segStart =
-      cursor.start < input.putInServiceDate ? input.putInServiceDate : cursor.start;
+    const segStart = cursor.start < input.putInServiceDate ? input.putInServiceDate : cursor.start;
     const segEnd = cursor.end;
     if (segStart > segEnd) {
       cursor = nextFiscalYear(cursor.start, cursor.end);
@@ -349,7 +343,5 @@ export function computeDecliningSchedule(input: DepreciationInput): Depreciation
 
 /** Dispatch sur la méthode déclarée. */
 export function computeSchedule(input: DepreciationInput): DepreciationLine[] {
-  return input.method === 'linear'
-    ? computeLinearSchedule(input)
-    : computeDecliningSchedule(input);
+  return input.method === 'linear' ? computeLinearSchedule(input) : computeDecliningSchedule(input);
 }
