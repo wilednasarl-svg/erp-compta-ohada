@@ -9,36 +9,32 @@ import { resetTables } from './helpers/db';
 /**
  * Module 12 — Immobilisations & Amortissements.
  *
- * The asset DTO accepts UUIDs (not codes) for the three chart-of-account
- * references. The org is created with the NORMAL system, which clones the
- * full SYSCOHADA reference chart, so we resolve the three required
- * account UUIDs by joining on `code` before each test phase.
+ * L'API expose les 3 comptes SYSCOHADA par leur CODE (string), cohérent
+ * avec `EntriesService.createDraft` qui parle aussi en codes. Le service
+ * résout chaque code → UUID via `OrganizationAccountRepository.findByCode`
+ * au moment du POST.
  *
- * Codes used:
- *   - 24    → matériel informatique (compte brut)
- *   - 284   → amortissements du matériel (cumul, sens crédit)
- *   - 6811  → dotation aux amortissements (charge, sens débit)
+ * Le seed SYSCOHADA ne descend pas jusqu'aux POSTING accounts qu'on doit
+ * agiter ici (2411, 2841, 6811) — il s'arrête aux racines TITLE (24, 28,
+ * 681). Donc avant chaque scénario on crée les 3 comptes POSTING via
+ * SQL direct. Sans eux : `JOURNAL_ENTRY_NON_POSTING_ACCOUNT` au moment
+ * de poster la dotation.
  */
-async function resolveAccountIds(
+async function seedAssetPostingAccounts(
   dataSource: DataSource,
   organizationId: string,
-  codes: ReadonlyArray<string>,
-): Promise<Record<string, string>> {
-  const rows = await dataSource.query<Array<{ id: string; code: string }>>(
-    `SELECT id, code FROM organization_chart_accounts
-     WHERE organization_id = $1 AND code = ANY($2::text[])`,
-    [organizationId, codes],
+): Promise<void> {
+  await dataSource.query(
+    `INSERT INTO "organization_chart_accounts"
+       ("id", "organization_id", "code", "label", "class", "account_type", "normal_balance",
+        "parent_id", "reference_account_id", "is_active")
+     VALUES
+       (gen_random_uuid(), $1, '2411', 'Matériel informatique',           2, 'POSTING', 'D', NULL, NULL, TRUE),
+       (gen_random_uuid(), $1, '2841', 'Amort. matériel informatique',    2, 'POSTING', 'C', NULL, NULL, TRUE),
+       (gen_random_uuid(), $1, '6811', 'Dotations aux amortissements',    6, 'POSTING', 'D', NULL, NULL, TRUE)
+     ON CONFLICT ("organization_id", "code") DO NOTHING`,
+    [organizationId],
   );
-  const map: Record<string, string> = {};
-  for (const r of rows) map[r.code] = r.id;
-  for (const c of codes) {
-    if (!map[c]) {
-      throw new Error(
-        `Account code '${c}' not found in chart of accounts for org ${organizationId}`,
-      );
-    }
-  }
-  return map;
 }
 
 describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
@@ -63,12 +59,7 @@ describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
   it('handles asset lifecycle: creation, schedule, update, posting, disposal (12.1)', async () => {
     const alice = await seedUserAndLogin(app, 'alice-assets@e2e.test');
     const org = await createOrgAndSwitch(app, alice, 'Cabinet Konan');
-
-    const accounts = await resolveAccountIds(dataSource, org.organizationId, [
-      '24',
-      '284',
-      '6811',
-    ]);
+    await seedAssetPostingAccounts(dataSource, org.organizationId);
 
     // ─── 1. Create asset (linear, 5 years) ──────────────────────────────
     const createRes = await authedJson(
@@ -84,9 +75,9 @@ describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
       acquisitionCost: '12000000.00',
       depreciationMethod: 'linear',
       durationMonths: 60,
-      assetAccountId: accounts['24'],
-      depreciationAccountId: accounts['284'],
-      expenseAccountId: accounts['6811'],
+      assetAccountCode: '2411',
+      depreciationAccountCode: '2841',
+      expenseAccountCode: '6811',
     });
 
     expect(createRes.status).toBe(HttpStatus.CREATED);
@@ -126,9 +117,9 @@ describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
       acquisitionCost: '5000000.00',
       depreciationMethod: 'linear',
       durationMonths: 36,
-      assetAccountId: accounts['24'],
-      depreciationAccountId: accounts['284'],
-      expenseAccountId: accounts['6811'],
+      assetAccountCode: '2411',
+      depreciationAccountCode: '2841',
+      expenseAccountCode: '6811',
     });
     expect(dupRes.status).toBe(HttpStatus.CONFLICT);
     expect(dupRes.body.error.code).toBe(ERROR_CODES.ASSET_CODE_TAKEN);
@@ -208,9 +199,7 @@ describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
       org.scopedAccessToken,
     );
     expect(postDupRes.status).toBe(HttpStatus.CONFLICT);
-    expect(postDupRes.body.error.code).toBe(
-      ERROR_CODES.DEPRECIATION_SCHEDULE_ALREADY_POSTED,
-    );
+    expect(postDupRes.body.error.code).toBe(ERROR_CODES.DEPRECIATION_SCHEDULE_ALREADY_POSTED);
 
     // ─── 6. Dispose the asset ───────────────────────────────────────────
     const disposeRes = await authedJson(
@@ -240,15 +229,11 @@ describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
   it('enforces tenant isolation strictly for Assets (12.2)', async () => {
     const alice = await seedUserAndLogin(app, 'alice-iso@e2e.test');
     const orgA = await createOrgAndSwitch(app, alice, 'Org A');
+    await seedAssetPostingAccounts(dataSource, orgA.organizationId);
 
     const bob = await seedUserAndLogin(app, 'bob-iso@e2e.test');
     const orgB = await createOrgAndSwitch(app, bob, 'Org B');
-
-    const orgBAccounts = await resolveAccountIds(dataSource, orgB.organizationId, [
-      '24',
-      '284',
-      '6811',
-    ]);
+    await seedAssetPostingAccounts(dataSource, orgB.organizationId);
 
     // Bob creates an asset in Org B.
     const createRes = await authedJson(
@@ -264,9 +249,9 @@ describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
       acquisitionCost: '5000000.00',
       depreciationMethod: 'linear',
       durationMonths: 36,
-      assetAccountId: orgBAccounts['24'],
-      depreciationAccountId: orgBAccounts['284'],
-      expenseAccountId: orgBAccounts['6811'],
+      assetAccountCode: '2411',
+      depreciationAccountCode: '2841',
+      expenseAccountCode: '6811',
     });
     expect(createRes.status).toBe(HttpStatus.CREATED);
     const bobAssetId = createRes.body.data.asset.id;
