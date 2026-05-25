@@ -35,6 +35,26 @@ export interface TrialBalanceReport {
   readonly totals: TrialBalanceTotals;
 }
 
+export interface MultiYearPeriod {
+  readonly fromDate: string;
+  readonly toDate: string;
+}
+
+export interface MultiYearBalanceRow {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly accountClass: number;
+  readonly netByPeriod: ReadonlyArray<string>;
+  readonly endingDebit: string;
+  readonly endingCredit: string;
+}
+
+export interface MultiYearBalanceReport {
+  readonly periods: ReadonlyArray<MultiYearPeriod>;
+  readonly rows: ReadonlyArray<MultiYearBalanceRow>;
+}
+
 export interface CashTrendPoint {
   readonly yearMonth: string;
   readonly asAtDate: string;

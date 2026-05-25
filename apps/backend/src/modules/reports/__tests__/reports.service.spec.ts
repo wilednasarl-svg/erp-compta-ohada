@@ -1296,3 +1296,46 @@ describe('ReportsService.percentChange (static)', () => {
     expect(ReportsService.percentChange(0.001, 100)).toBeNull();
   });
 });
+
+describe('ReportsService.getMultiYearBalance', () => {
+  it('merges N periods by accountId with one net per period + final solde', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance
+      .mockResolvedValueOnce([
+        tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '100', periodCredit: '20', endingDebit: '80' }),
+      ])
+      .mockResolvedValueOnce([
+        tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '200', periodCredit: '50', endingDebit: '230' }),
+      ])
+      .mockResolvedValueOnce([
+        tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '300', periodCredit: '100', endingDebit: '430.00' }),
+      ]);
+    const report = await h.service.getMultiYearBalance(ORG_ID, {
+      periods: [
+        { fromDate: '2024-01-01', toDate: '2024-12-31' },
+        { fromDate: '2025-01-01', toDate: '2025-12-31' },
+        { fromDate: '2026-01-01', toDate: '2026-12-31' },
+      ],
+    });
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].netByPeriod).toEqual(['80.00', '150.00', '200.00']);
+    expect(report.rows[0].endingDebit).toBe('430.00');
+  });
+
+  it('rejects when fewer than 2 or more than 5 periods', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getMultiYearBalance(ORG_ID, {
+        periods: [{ fromDate: '2026-01-01', toDate: '2026-12-31' }],
+      }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+    await expect(
+      h.service.getMultiYearBalance(ORG_ID, {
+        periods: Array.from({ length: 6 }, (_, i) => ({
+          fromDate: `${2020 + i}-01-01`,
+          toDate: `${2020 + i}-12-31`,
+        })),
+      }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+  });
+});

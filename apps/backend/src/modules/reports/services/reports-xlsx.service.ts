@@ -5,6 +5,7 @@ import type {
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
+  MultiYearBalanceReport,
   TrialBalanceReport,
   GeneralLedgerReport,
   ProfitLossReport,
@@ -465,6 +466,33 @@ export class ReportsXlsxService {
     }
 
     return this.buildWorkbook(rows, 'SIG');
+  }
+
+  // ─── Balance pluri-exercices ─────────────────────────────────────
+  multiYearBalanceXlsx(report: MultiYearBalanceReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    const periodsLabel = report.periods.map((p) => `${p.fromDate} → ${p.toDate}`).join(' | ');
+    rows.push([`Balance pluri-exercices — ${periodsLabel}`]);
+    rows.push([]);
+    const header = [
+      'Compte',
+      'Intitulé',
+      ...report.periods.map((p) => `Net ${p.fromDate.slice(0, 4)}`),
+      'Solde Débit',
+      'Solde Crédit',
+    ];
+    rows.push(header);
+    for (const r of report.rows) {
+      rows.push([
+        r.accountCode,
+        r.accountLabel,
+        ...r.netByPeriod.map((n) => this.num(n)),
+        this.num(r.endingDebit),
+        this.num(r.endingCredit),
+      ]);
+    }
+    return this.buildWorkbook(rows, 'Balance pluri-exercices');
   }
 
   // ─── Trésorerie nette glissante ──────────────────────────────────

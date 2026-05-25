@@ -241,6 +241,38 @@ export interface ComparativeBalanceReport {
   readonly totals: ComparativeBalanceTotals;
 }
 
+// ─── Balance pluri-exercices (N, N-1, N-2) ──────────────────────────
+
+export interface MultiYearPeriod {
+  readonly fromDate: string;
+  readonly toDate: string;
+}
+
+export interface MultiYearBalanceQuery {
+  readonly periods: readonly MultiYearPeriod[];
+  readonly accountClass?: number;
+  readonly accountCodeFrom?: string;
+  readonly accountCodeTo?: string;
+  readonly hideEmpty?: boolean;
+}
+
+export interface MultiYearBalanceRow {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly accountClass: number;
+  /** Un mouvement net par période (length = periods.length). */
+  readonly netByPeriod: readonly string[];
+  /** Solde cumulé débit/crédit à la fin de la DERNIÈRE période. */
+  readonly endingDebit: string;
+  readonly endingCredit: string;
+}
+
+export interface MultiYearBalanceReport {
+  readonly periods: readonly MultiYearPeriod[];
+  readonly rows: readonly MultiYearBalanceRow[];
+}
+
 // ─── Soldes Intermédiaires de Gestion (SIG) ─────────────────────────
 
 /**
@@ -1094,6 +1126,77 @@ export class ReportsService {
       endingDebit: sum('endingDebit').toFixed(2),
       endingCredit: sum('endingCredit').toFixed(2),
     };
+  }
+
+  /**
+   * Balance pluri-exercices : généralisation de la balance comparative à
+   * N périodes (typiquement N, N-1, N-2 pour les audits SYSCOHADA).
+   * Solde = endingDebit/Credit à la fin de la DERNIÈRE période.
+   */
+  async getMultiYearBalance(
+    organizationId: TenantId,
+    query: MultiYearBalanceQuery,
+  ): Promise<MultiYearBalanceReport> {
+    assertTenantId(organizationId);
+    if (query.periods.length < 2 || query.periods.length > 5) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'Multi-year balance requires 2 to 5 periods.',
+      });
+    }
+    for (const p of query.periods) {
+      this.assertDateRange(p.fromDate, p.toDate);
+    }
+    const filters = {
+      accountClass: query.accountClass,
+      accountCodeFrom: query.accountCodeFrom,
+      accountCodeTo: query.accountCodeTo,
+    };
+    const perPeriodRows = await Promise.all(
+      query.periods.map((p) =>
+        this.repo.trialBalance(organizationId, { ...filters, fromDate: p.fromDate, toDate: p.toDate }),
+      ),
+    );
+    const lastIdx = perPeriodRows.length - 1;
+    const indexByAccount = perPeriodRows.map(
+      (rows) => new Map(rows.map((r) => [r.accountId, r])),
+    );
+    const allAccountIds = new Set<string>();
+    for (const rows of perPeriodRows) {
+      for (const r of rows) allAccountIds.add(r.accountId);
+    }
+    const merged: MultiYearBalanceRow[] = [];
+    for (const accountId of allAccountIds) {
+      const sample = indexByAccount.find((m) => m.has(accountId))?.get(accountId);
+      if (sample === undefined) continue;
+      const netByPeriod = indexByAccount.map((m) => {
+        const r = m.get(accountId);
+        if (r === undefined) return '0.00';
+        return (Number(r.periodDebit) - Number(r.periodCredit)).toFixed(2);
+      });
+      const last = indexByAccount[lastIdx].get(accountId);
+      const endingDebit = last?.endingDebit ?? '0.00';
+      const endingCredit = last?.endingCredit ?? '0.00';
+      merged.push({
+        accountId,
+        accountCode: sample.accountCode,
+        accountLabel: sample.accountLabel,
+        accountClass: sample.accountClass,
+        netByPeriod,
+        endingDebit,
+        endingCredit,
+      });
+    }
+    merged.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+    const filtered =
+      query.hideEmpty === true
+        ? merged.filter(
+            (r) =>
+              r.netByPeriod.some((n) => Number(n) !== 0) ||
+              Number(r.endingDebit) !== 0 ||
+              Number(r.endingCredit) !== 0,
+          )
+        : merged;
+    return { periods: query.periods, rows: filtered };
   }
 
   async getGeneralLedger(

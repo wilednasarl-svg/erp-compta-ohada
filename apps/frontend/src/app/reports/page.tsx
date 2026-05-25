@@ -6,6 +6,7 @@ import {
   BookText,
   Calculator,
   FileSpreadsheet,
+  History,
   Loader2,
   TrendingUp,
   Wallet,
@@ -33,6 +34,7 @@ import type {
   ComparativeBalanceReport,
   FinancialRatiosReport,
   GeneralLedgerReport,
+  MultiYearBalanceReport,
   SigReport,
   TrialBalanceReport,
 } from '@/types/reports';
@@ -58,10 +60,14 @@ interface FinancialRatiosEnvelope {
 interface CashTrendEnvelope {
   readonly report: CashTrendReport;
 }
+interface MultiYearBalanceEnvelope {
+  readonly report: MultiYearBalanceReport;
+}
 
 type ReportMode =
   | 'trial-balance'
   | 'comparative-balance'
+  | 'multi-year-balance'
   | 'sig'
   | 'ratios'
   | 'cash-trend'
@@ -124,6 +130,18 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('multi-year-balance')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'multi-year-balance'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <History className="h-4 w-4" />
+            Balance pluri-exercices
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('sig')}
             className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'sig'
@@ -176,6 +194,8 @@ export default function ReportsPage() {
           <TrialBalancePanel orgId={orgId} />
         ) : mode === 'comparative-balance' ? (
           <ComparativeBalancePanel orgId={orgId} />
+        ) : mode === 'multi-year-balance' ? (
+          <MultiYearBalancePanel orgId={orgId} />
         ) : mode === 'sig' ? (
           <SigPanel orgId={orgId} />
         ) : mode === 'ratios' ? (
@@ -1238,6 +1258,179 @@ function SigPosteTable({
                   {fmt(p.previousAmount ?? '0')}
                 </td>
               ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Balance pluri-exercices ───────────────────────────────────────────
+
+function MultiYearBalancePanel({ orgId }: { readonly orgId: string }) {
+  const year = new Date().getFullYear();
+  const [periods, setPeriods] = useState<Array<{ fromDate: string; toDate: string }>>([
+    { fromDate: `${year - 2}-01-01`, toDate: `${year - 2}-12-31` },
+    { fromDate: `${year - 1}-01-01`, toDate: `${year - 1}-12-31` },
+    { fromDate: `${year}-01-01`, toDate: `${year}-12-31` },
+  ]);
+  const [submitted, setSubmitted] = useState<typeof periods | null>(null);
+
+  const buildParams = (ps: typeof periods): URLSearchParams => {
+    const p = new URLSearchParams();
+    ps.forEach((per, i) => {
+      p.set(`period${i + 1}FromDate`, per.fromDate);
+      p.set(`period${i + 1}ToDate`, per.toDate);
+    });
+    return p;
+  };
+
+  const query = useQuery<MultiYearBalanceReport, ApiError>({
+    queryKey: ['reports', 'multi-year-balance', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<MultiYearBalanceEnvelope>(
+        `/organizations/${orgId}/reports/multi-year-balance?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    window.open(
+      `/api/organizations/${orgId}/reports/multi-year-balance.xlsx?${buildParams(submitted).toString()}`,
+      '_blank',
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Balance pluri-exercices</CardTitle>
+        <CardDescription>
+          Jusqu&apos;à 5 exercices côte à côte avec mouvement net par période + solde cumulé en
+          fin de dernière période. Utile pour les audits et les comparaisons inter-exercices.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted(periods);
+          }}
+        >
+          {periods.map((p, i) => (
+            <div key={i} className="grid gap-2 sm:grid-cols-3">
+              <div className="sm:col-span-1 flex items-center text-sm font-medium">
+                Exercice {i + 1}
+              </div>
+              <Input
+                type="date"
+                value={p.fromDate}
+                onChange={(e) =>
+                  setPeriods(
+                    periods.map((per, j) =>
+                      j === i ? { fromDate: e.target.value, toDate: per.toDate } : per,
+                    ),
+                  )
+                }
+                required
+              />
+              <Input
+                type="date"
+                value={p.toDate}
+                onChange={(e) =>
+                  setPeriods(
+                    periods.map((per, j) =>
+                      j === i ? { fromDate: per.fromDate, toDate: e.target.value } : per,
+                    ),
+                  )
+                }
+                required
+              />
+            </div>
+          ))}
+          <div className="flex items-center gap-2">
+            {periods.length < 5 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setPeriods([
+                    { fromDate: `${year - periods.length}-01-01`, toDate: `${year - periods.length}-12-31` },
+                    ...periods,
+                  ])
+                }
+              >
+                + Ajouter un exercice antérieur
+              </Button>
+            ) : null}
+            {periods.length > 2 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPeriods(periods.slice(1))}
+              >
+                − Retirer le plus ancien
+              </Button>
+            ) : null}
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Générer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <MultiYearBalanceTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MultiYearBalanceTable({ report }: { readonly report: MultiYearBalanceReport }) {
+  if (report.rows.length === 0) {
+    return <p className="text-sm text-slate-500">Aucun mouvement sur ces périodes.</p>;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+            <th className="px-2 py-2">Compte</th>
+            <th className="px-2 py-2">Intitulé</th>
+            {report.periods.map((p, i) => (
+              <th key={i} className="px-2 py-2 text-right">
+                Net {p.fromDate.slice(0, 4)}
+              </th>
+            ))}
+            <th className="px-2 py-2 text-right">Solde Débit</th>
+            <th className="px-2 py-2 text-right">Solde Crédit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.rows.map((row) => (
+            <tr key={row.accountId} className="border-b hover:bg-slate-50">
+              <td className="px-2 py-1 font-mono text-xs">{row.accountCode}</td>
+              <td className="px-2 py-1">{row.accountLabel}</td>
+              {row.netByPeriod.map((n, i) => (
+                <td key={i} className="px-2 py-1 text-right font-mono">
+                  {fmt(n)}
+                </td>
+              ))}
+              <td className="px-2 py-1 text-right font-mono">{fmt(row.endingDebit)}</td>
+              <td className="px-2 py-1 text-right font-mono">{fmt(row.endingCredit)}</td>
             </tr>
           ))}
         </tbody>

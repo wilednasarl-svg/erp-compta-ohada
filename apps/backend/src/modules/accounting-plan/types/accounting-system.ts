@@ -47,4 +47,14 @@ export interface ReferenceAccountSeed {
   readonly account_type: AccountType;
   readonly normal_balance: NormalBalance;
   readonly applicable_systems: ReadonlyArray<AccountingSystem>;
+  /**
+   * `is_opposing = true` → compte au sens normal opposé à sa classe
+   * (sous-classes 29x/39x/49x/59x, 109, 121, 129, 409). Optionnel —
+   * non spécifié = false. Voir migration 0090 et `ReferenceAccountEntity.isOpposing`.
+   *
+   * Le backfill est fait par la migration 0090 elle-même (sur tous
+   * les comptes déjà insérés). Cette propriété sert aux seeds neufs
+   * qui seront ajoutés après 0090.
+   */
+  readonly is_opposing?: boolean;
 }

@@ -22,6 +22,7 @@ import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
+import { MultiYearBalanceQueryDto } from '../dto/multi-year-balance-query.dto';
 import { FinancialRatiosQueryDto } from '../dto/financial-ratios-query.dto';
 import { GeneralLedgerQueryDto } from '../dto/general-ledger-query.dto';
 import { ProfitLossQueryDto } from '../dto/profit-loss-query.dto';
@@ -32,6 +33,7 @@ import {
   type BalanceSheetReport,
   type CashTrendReport,
   type ComparativeBalanceReport,
+  type MultiYearBalanceReport,
   type FinancialRatiosReport,
   type GeneralLedgerReport,
   type ProfitLossReport,
@@ -117,6 +119,78 @@ export class ReportsController {
       hideEmpty: query.hideEmpty,
     });
     return { report };
+  }
+
+  @Get('multi-year-balance')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Balance pluri-exercices (2 à 5 périodes côte à côte)' })
+  async multiYearBalance(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: MultiYearBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: MultiYearBalanceReport }> {
+    const report = await this.reports.getMultiYearBalance(
+      asTenantId(org.id),
+      this.buildMultiYearQuery(query),
+    );
+    return { report };
+  }
+
+  @Get('multi-year-balance.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Balance pluri-exercices' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async multiYearBalanceXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: MultiYearBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getMultiYearBalance(
+      asTenantId(org.id),
+      this.buildMultiYearQuery(query),
+    );
+    const buffer = this.xlsx.multiYearBalanceXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(
+        org.name,
+        'balance-pluri-exercices',
+        report.periods[0].fromDate,
+        report.periods[report.periods.length - 1].toDate,
+        'xlsx',
+      ),
+    );
+  }
+
+  private buildMultiYearQuery(q: MultiYearBalanceQueryDto): {
+    periods: Array<{ fromDate: string; toDate: string }>;
+    accountClass?: number;
+    accountCodeFrom?: string;
+    accountCodeTo?: string;
+    hideEmpty?: boolean;
+  } {
+    const periods = [{ fromDate: q.period1FromDate, toDate: q.period1ToDate }];
+    periods.push({ fromDate: q.period2FromDate, toDate: q.period2ToDate });
+    if (q.period3FromDate !== undefined && q.period3ToDate !== undefined) {
+      periods.push({ fromDate: q.period3FromDate, toDate: q.period3ToDate });
+    }
+    if (q.period4FromDate !== undefined && q.period4ToDate !== undefined) {
+      periods.push({ fromDate: q.period4FromDate, toDate: q.period4ToDate });
+    }
+    if (q.period5FromDate !== undefined && q.period5ToDate !== undefined) {
+      periods.push({ fromDate: q.period5FromDate, toDate: q.period5ToDate });
+    }
+    return {
+      periods,
+      accountClass: q.accountClass,
+      accountCodeFrom: q.accountCodeFrom,
+      accountCodeTo: q.accountCodeTo,
+      hideEmpty: q.hideEmpty,
+    };
   }
 
   @Get('general-ledger/:accountId')

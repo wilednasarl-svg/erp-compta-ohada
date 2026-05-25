@@ -64,6 +64,19 @@ export class OrganizationAccountEntity {
   @Column({ type: 'char', length: 1, name: 'normal_balance' })
   normalBalance!: NormalBalance;
 
+  /**
+   * `is_opposing = true` → compte au sens normal opposé à sa classe
+   * (Tome 1 OHADA, G02). Hérité du `referenceAccount.isOpposing` lors
+   * du clone du plan à la création de l'organisation, et backfillé
+   * par préfixe de code pour les comptes custom (un 4912XXX reste
+   * une dépréciation client même sans ligne de référence).
+   *
+   * Sous-classes concernées : 29x, 39x, 49x, 59x, 109, 121, 129, 409.
+   * Voir `ReferenceAccountEntity.isOpposing` et migration 0090.
+   */
+  @Column({ type: 'boolean', name: 'is_opposing', default: false })
+  isOpposing!: boolean;
+
   @Column({ name: 'parent_id', type: 'uuid', nullable: true })
   parentId!: string | null;
 
