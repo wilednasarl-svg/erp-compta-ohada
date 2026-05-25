@@ -429,6 +429,35 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     session.errorLines === 0 &&
     session.totalLines > 0;
 
+  // Reset the local preview state whenever the selected session changes —
+  // without this, switching from a session that already had its preview
+  // rendered to a different one would short-circuit the auto-trigger below.
+  useEffect(() => {
+    setPreview(null);
+    setCommitDone(null);
+  }, [session.id]);
+
+  // Auto-trigger preview on mount (and on session swap) when the session
+  // is already in a state where preview is meaningful. The
+  // `MappingOverridePanel` only renders once `preview` is non-null, so
+  // without this effect the override UI would be invisible after a
+  // page refresh until the user manually clicks "Générer la preview".
+  // Guards: only fire when no preview is loaded, no fetch in flight, no
+  // prior error (to avoid an infinite retry loop on a persistent failure)
+  // and the session is in `parsed` or `validated`.
+  useEffect(() => {
+    if (!canPreview) return;
+    if (preview !== null) return;
+    if (previewMutation.isPending) return;
+    if (previewMutation.error !== null) return;
+    previewMutation.mutate(undefined);
+    // We deliberately omit `previewMutation` from deps — react-query
+    // mutation objects are stable enough across renders that adding
+    // them would cause a re-run loop. The session id / status guards
+    // above are the meaningful triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id, canPreview, preview, previewMutation.isPending, previewMutation.error]);
+
   return (
     <Card>
       <CardHeader>

@@ -30,6 +30,7 @@ describe('ImportSessionService', () => {
       updateStatus: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       updateCounters: jest.fn().mockResolvedValue(undefined),
+      updateMappingOverride: jest.fn().mockResolvedValue(undefined),
     };
     const filesRepo = {
       create: jest.fn(),
@@ -603,6 +604,97 @@ describe('ImportSessionService', () => {
           userAgent: null,
         }),
       ).rejects.toMatchObject({ code: 'IMPORT_SESSION_NOT_FOUND' });
+    });
+  });
+
+  // ─── updateMappingOverride ────────────────────────────────────────
+  //
+  // Wave 2 — surface UI lets the user fix columns the auto-mapper got
+  // wrong (issue projet-ferme-3wy). Three contracts matter here:
+  //   1. The override JSONB is persisted as-given (mapping retention).
+  //   2. A `validated` session is rewound to `parsed` so the user is
+  //      forced to re-run preview after changing the mapping — without
+  //      this the stale `errorLines` counter would mislead the commit
+  //      gate.
+  //   3. The repository call is scoped by `organizationId`, so a session
+  //      belonging to another org surfaces as `IMPORT_SESSION_NOT_FOUND`
+  //      (we deliberately do not distinguish the two cases to avoid
+  //      leaking session existence across tenants).
+  describe('updateMappingOverride', () => {
+    it('persists the override JSONB on a parsed session and keeps the status', async () => {
+      const { service, sessionsRepo, audit } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'parsed' }));
+
+      const override = { 'N°DE COMPTE': 'account', LIBELLE: 'label' };
+      await service.updateMappingOverride(
+        asTenantId(ORG_ID),
+        SESSION_ID,
+        override,
+        USER_ID,
+        { ipAddress: null, userAgent: null },
+      );
+
+      expect(sessionsRepo.updateMappingOverride).toHaveBeenCalledWith(
+        SESSION_ID,
+        ORG_ID,
+        // documentType key wasn't present on the source session, so the
+        // merged payload equals the user-supplied override verbatim.
+        override,
+      );
+      // No status transition expected from `parsed`.
+      expect(sessionsRepo.updateStatus).not.toHaveBeenCalled();
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'mapping_override_updated',
+          legacyEventType: 'imports.mapping_updated',
+        }),
+      );
+    });
+
+    it('rewinds a validated session back to parsed so the user must re-run preview', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'validated' }));
+
+      await service.updateMappingOverride(
+        asTenantId(ORG_ID),
+        SESSION_ID,
+        { date: 'date' },
+        USER_ID,
+        { ipAddress: null, userAgent: null },
+      );
+
+      expect(sessionsRepo.updateMappingOverride).toHaveBeenCalled();
+      expect(sessionsRepo.updateStatus).toHaveBeenCalledWith(SESSION_ID, ORG_ID, 'parsed');
+    });
+
+    it('refuses to update a session from another org (findById scoped → not found)', async () => {
+      const { service, sessionsRepo } = buildService();
+      // Tenant scoping is enforced inside the repository — from the
+      // service perspective this manifests as `findById` returning null
+      // when the session belongs to another org.
+      sessionsRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateMappingOverride(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          { account: 'account' },
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toBeInstanceOf(AppException);
+      await expect(
+        service.updateMappingOverride(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          { account: 'account' },
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_FOUND });
+
+      expect(sessionsRepo.updateMappingOverride).not.toHaveBeenCalled();
+      expect(sessionsRepo.updateStatus).not.toHaveBeenCalled();
     });
   });
 });
