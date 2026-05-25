@@ -19,59 +19,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
+import type {
+  ListTvaCodes,
+  ListTvaDeclarations,
+  TvaCode,
+  TvaCodeKind,
+  TvaCodeType,
+  TvaDeclaration,
+  TvaDeclarationEnvelope,
+  TvaDeclarationLine,
+  TvaDeclarationStatus,
+} from '@/lib/api/types';
 import { useCurrentOrg } from '@/stores/auth-store';
-
-type TvaType = 'sales' | 'purchase' | 'both';
-type TvaKind = 'normal' | 'reduced' | 'exempt' | 'exonerated' | 'export';
-// Backend (TvaDeclarationEntity) émet `'calculated'`, pas `'computed'`.
-type DeclarationStatus = 'draft' | 'calculated' | 'cancelled';
-
-interface TvaCode {
-  readonly id: string;
-  readonly code: string;
-  readonly label: string;
-  readonly rate: string; // DECIMAL string for precision
-  readonly type: TvaType;
-  readonly kind: TvaKind;
-  readonly isActive: boolean;
-}
-
-// Shape MIROIR de `TvaDeclarationEntity` (snake_case en DB, camelCase
-// via TypeORM). N'invente PAS de champs `year`/`totalCollected` qui
-// n'existent pas — c'est la cause des `NaN` et `-undefined` côté UI.
-interface TvaDeclaration {
-  readonly id: string;
-  readonly periodYear: number;
-  readonly periodMonth: number;
-  readonly status: DeclarationStatus;
-  readonly tvaCollecteeTotal: string;
-  readonly tvaDeductibleBsTotal: string;
-  readonly tvaDeductibleImmoTotal: string;
-  readonly tvaADecaisser: string;
-  readonly creditTvaReportable: string;
-  readonly computedAt: string | null;
-  readonly cancelledAt: string | null;
-  readonly cancelledReason: string | null;
-}
-
-interface TvaDeclarationLine {
-  readonly id: string;
-  readonly direction: 'collected' | 'deductible';
-  readonly accountPrefix: string;
-  readonly accountLabel: string | null;
-  readonly amount: string;
-}
-
-interface DeclarationDetail extends TvaDeclaration {
-  readonly lines: ReadonlyArray<TvaDeclarationLine>;
-}
-
-interface CodesResponse {
-  readonly codes: ReadonlyArray<TvaCode>;
-}
-interface DeclarationsResponse {
-  readonly declarations: ReadonlyArray<TvaDeclaration>;
-}
 
 /**
  * `/tva` — Module 13 : codes TVA + déclarations mensuelles OHADA.
@@ -93,7 +52,7 @@ export default function TvaPage() {
   const codesQuery = useQuery<ReadonlyArray<TvaCode>, ApiError>({
     queryKey: ['tva', 'codes', orgId],
     queryFn: async () => {
-      const data = await api.get<CodesResponse>(`/organizations/${orgId}/tva/codes`);
+      const data = await api.get<ListTvaCodes>(`/organizations/${orgId}/tva/codes`);
       return data.codes;
     },
     enabled: orgId !== '',
@@ -102,7 +61,7 @@ export default function TvaPage() {
   const declarationsQuery = useQuery<ReadonlyArray<TvaDeclaration>, ApiError>({
     queryKey: ['tva', 'declarations', orgId],
     queryFn: async () => {
-      const data = await api.get<DeclarationsResponse>(
+      const data = await api.get<ListTvaDeclarations>(
         `/organizations/${orgId}/tva/declarations`,
       );
       return data.declarations;
@@ -114,8 +73,8 @@ export default function TvaPage() {
   const [codeCode, setCodeCode] = useState('');
   const [codeLabel, setCodeLabel] = useState('');
   const [codeRate, setCodeRate] = useState('');
-  const [codeType, setCodeType] = useState<TvaType>('both');
-  const [codeKind, setCodeKind] = useState<TvaKind>('normal');
+  const [codeType, setCodeType] = useState<TvaCodeType>('both');
+  const [codeKind, setCodeKind] = useState<TvaCodeKind>('normal');
 
   const createCode = useApiMutation(
     async () =>
@@ -222,7 +181,7 @@ export default function TvaPage() {
                 <select
                   id="c-type"
                   value={codeType}
-                  onChange={(e) => setCodeType(e.target.value as TvaType)}
+                  onChange={(e) => setCodeType(e.target.value as TvaCodeType)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                 >
                   <option value="both">Vente + Achat</option>
@@ -235,7 +194,7 @@ export default function TvaPage() {
                 <select
                   id="c-kind"
                   value={codeKind}
-                  onChange={(e) => setCodeKind(e.target.value as TvaKind)}
+                  onChange={(e) => setCodeKind(e.target.value as TvaCodeKind)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                 >
                   <option value="normal">Normale</option>
@@ -448,19 +407,19 @@ function DeclarationDetailPanel({
 }: {
   orgId: string;
   declarationId: string;
-  status: DeclarationStatus;
+  status: TvaDeclarationStatus;
   onMutated: () => void;
   onClose: () => void;
 }) {
-  const detailQuery = useQuery<DeclarationDetail, ApiError>({
+  const detailQuery = useQuery<TvaDeclaration, ApiError>({
     queryKey: ['tva', 'declaration', orgId, declarationId],
     queryFn: async () => {
-      const data = await api.get<{ declaration: DeclarationDetail } | DeclarationDetail>(
+      // Contrat OpenAPI : `GET /organizations/:id/tva/declarations/:declarationId`
+      // renvoie `TvaDeclarationEnvelopeResponse = { declaration: ... }`.
+      const data = await api.get<TvaDeclarationEnvelope>(
         `/organizations/${orgId}/tva/declarations/${declarationId}`,
       );
-      return 'declaration' in (data as { declaration?: unknown })
-        ? (data as { declaration: DeclarationDetail }).declaration
-        : (data as DeclarationDetail);
+      return data.declaration;
     },
   });
 
@@ -480,7 +439,13 @@ function DeclarationDetailPanel({
 
   const lines = detailQuery.data?.lines ?? [];
   const collected = lines.filter((l) => l.direction === 'collected');
-  const deductible = lines.filter((l) => l.direction === 'deductible');
+  // Le backend agrège la déductible en deux directions séparées
+  // (`deductible_bs` biens & services, `deductible_immo` immobilisations) —
+  // c'est le contrat OpenAPI. On les regroupe côté UI pour conserver
+  // l'affichage "Déductible (achats)".
+  const deductible = lines.filter(
+    (l) => l.direction === 'deductible_bs' || l.direction === 'deductible_immo',
+  );
 
   return (
     <div className="space-y-4 border-t bg-muted/20 p-4">
