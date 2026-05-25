@@ -418,6 +418,59 @@ export interface AgingBalanceReport {
   readonly grandTotal: string;
 }
 
+// ─── TAFIRE / TFT / Annexes (états OHADA composés) ──────────────────
+
+export interface OhadaStatementLine {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  readonly note?: string;
+}
+
+export interface OhadaStatementSection {
+  readonly code: string;
+  readonly label: string;
+  readonly lines: readonly OhadaStatementLine[];
+  readonly total: string;
+}
+
+export interface TafireReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly emplois: readonly OhadaStatementSection[];
+  readonly ressources: readonly OhadaStatementSection[];
+  readonly variationTresorerie: string;
+  /** Notes méthodologiques sur ce qui est calculé vs encore manuel. */
+  readonly methodologyNotes: readonly string[];
+}
+
+export interface TftReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly fluxExploitation: OhadaStatementSection;
+  readonly fluxInvestissement: OhadaStatementSection;
+  readonly fluxFinancement: OhadaStatementSection;
+  readonly variationTresorerie: string;
+  readonly tresorerieOuverture: string;
+  readonly tresorerieCloture: string;
+  readonly methodologyNotes: readonly string[];
+}
+
+export interface AnnexeNote {
+  readonly code: string;
+  readonly title: string;
+  readonly status: 'COMPUTED' | 'PARTIAL' | 'MANUAL';
+  /** Quand `status=COMPUTED`, une référence vers le rapport source. */
+  readonly source?: string;
+  readonly summary?: string;
+}
+
+export interface AnnexeReport {
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+  readonly notes: readonly AnnexeNote[];
+}
+
 /**
  * `ReportsService` — Module 9 accounting reports.
  *
@@ -1026,6 +1079,411 @@ export class ReportsService {
       minNetCash: Math.min(...nets).toFixed(2),
       maxNetCash: Math.max(...nets).toFixed(2),
     };
+  }
+
+  /**
+   * TAFIRE (Tableau Financier des Ressources et des Emplois) OHADA.
+   *
+   * État obligatoire pour les grandes entreprises sous SYSCOHADA AUDCIF.
+   * Compare deux bilans (N et N-1) et le compte de résultat pour
+   * identifier les EMPLOIS (acquisitions immobilisations, remboursements
+   * de dettes, distribution de dividendes) et les RESSOURCES (CAF,
+   * cessions, augmentation de capital, nouvelles dettes financières).
+   *
+   * Scope livré (V1) :
+   *   - Calcul automatique de la CAF (Capacité d'Autofinancement) à
+   *     partir du SIG : CAF = EBE + Autres produits − Autres charges
+   *     + Reprises provisions − Dotations financières
+   *   - Variations du bilan N vs N-1 sur les grandes masses :
+   *     immobilisations, dettes financières, capital
+   *   - Variation BFR exploitation
+   *   - Variation trésorerie nette
+   *
+   * Affinement futur :
+   *   - Distinguer acquisitions vs cessions d'immobilisations
+   *   - Détailler les dividendes versés (compte 1060 → 471)
+   *   - Cession de titres immobilisés (compte 82)
+   */
+  async getTafire(
+    organizationId: TenantId,
+    query: { fromDate: string; toDate: string },
+  ): Promise<TafireReport> {
+    assertTenantId(organizationId);
+    this.assertDateRange(query.fromDate, query.toDate);
+
+    const [bilanN, bilanNm1, sig] = await Promise.all([
+      this.getBalanceSheet(organizationId, {
+        asAtDate: query.toDate,
+        fiscalYearStartDate: query.fromDate,
+      }),
+      this.getBalanceSheet(organizationId, {
+        asAtDate: ReportsService.previousDayIso(query.fromDate),
+        fiscalYearStartDate: ReportsService.previousFiscalYearStart(query.fromDate),
+      }),
+      this.getSig(organizationId, { fromDate: query.fromDate, toDate: query.toDate }),
+    ]);
+
+    const sectionTotal = (
+      sections: BalanceSheetReport['actif']['sections'],
+      key: string,
+    ): number => Number(sections.find((s) => s.key === key)?.total ?? '0');
+
+    const immoN = sectionTotal(bilanN.actif.sections, 'IMMOBILISE');
+    const immoNm1 = sectionTotal(bilanNm1.actif.sections, 'IMMOBILISE');
+    const variationImmo = immoN - immoNm1;
+    const dettesFinN = sectionTotal(bilanN.passif.sections, 'DETTES_FINANCIERES');
+    const dettesFinNm1 = sectionTotal(bilanNm1.passif.sections, 'DETTES_FINANCIERES');
+    const variationDettesFin = dettesFinN - dettesFinNm1;
+    const capN = sectionTotal(bilanN.passif.sections, 'CAPITAUX_PROPRES');
+    const capNm1 = sectionTotal(bilanNm1.passif.sections, 'CAPITAUX_PROPRES');
+    const variationCapitaux = capN - capNm1;
+
+    const circN = sectionTotal(bilanN.actif.sections, 'CIRCULANT');
+    const circNm1 = sectionTotal(bilanNm1.actif.sections, 'CIRCULANT');
+    const passifCircN = sectionTotal(bilanN.passif.sections, 'PASSIF_CIRCULANT');
+    const passifCircNm1 = sectionTotal(bilanNm1.passif.sections, 'PASSIF_CIRCULANT');
+    const variationBfr = circN - circNm1 - (passifCircN - passifCircNm1);
+
+    const tresoN =
+      sectionTotal(bilanN.actif.sections, 'TRESORERIE_ACTIF') -
+      sectionTotal(bilanN.passif.sections, 'TRESORERIE_PASSIF');
+    const tresoNm1 =
+      sectionTotal(bilanNm1.actif.sections, 'TRESORERIE_ACTIF') -
+      sectionTotal(bilanNm1.passif.sections, 'TRESORERIE_PASSIF');
+    const variationTreso = tresoN - tresoNm1;
+
+    // CAF = EBE (XD) + reprises (TJ) - dotations (RL) - frais financiers (RM) + revenus financiers (TK+TL+TM) - impôts (RS) - participation (RQ)
+    const sigSolde = (code: string): number =>
+      Number(sig.soldes.find((s) => s.code === code)?.amount ?? '0');
+    const ebe = sigSolde('XD');
+    const sigPoste = (postes: SyscohadaPosteAmount[], code: string): number => {
+      const found = postes.find((p) => p.code === code);
+      return found ? Number(found.amount) : 0;
+    };
+    const reprises = sigPoste([...sig.produits], 'TJ');
+    const dotations = sigPoste([...sig.charges], 'RL');
+    const fraisFin = sigPoste([...sig.charges], 'RM');
+    const revFin =
+      sigPoste([...sig.produits], 'TK') +
+      sigPoste([...sig.produits], 'TL') +
+      sigPoste([...sig.produits], 'TM');
+    const impots = sigPoste([...sig.charges], 'RS');
+    const participation = sigPoste([...sig.charges], 'RQ');
+    const caf = ebe + reprises - dotations - fraisFin + revFin - impots - participation;
+
+    const emplois: OhadaStatementSection[] = [
+      {
+        code: 'E.I',
+        label: 'Investissements et désinvestissements',
+        lines: [
+          {
+            code: 'EI.1',
+            label: "Acquisitions / cessions nettes d'immobilisations",
+            amount: Math.max(variationImmo, 0).toFixed(2),
+            note: variationImmo < 0 ? 'Désinvestissement net' : 'Investissement net',
+          },
+        ],
+        total: Math.max(variationImmo, 0).toFixed(2),
+      },
+      {
+        code: 'E.II',
+        label: 'Variation du Besoin en Fonds de Roulement (BFR)',
+        lines: [
+          {
+            code: 'EII.1',
+            label: 'Variation BFR exploitation',
+            amount: Math.max(variationBfr, 0).toFixed(2),
+          },
+        ],
+        total: Math.max(variationBfr, 0).toFixed(2),
+      },
+      {
+        code: 'E.III',
+        label: 'Emplois financiers contraints',
+        lines: [
+          {
+            code: 'EIII.1',
+            label: 'Remboursement de dettes financières',
+            amount: Math.max(-variationDettesFin, 0).toFixed(2),
+          },
+        ],
+        total: Math.max(-variationDettesFin, 0).toFixed(2),
+      },
+    ];
+    const ressources: OhadaStatementSection[] = [
+      {
+        code: 'R.I',
+        label: 'Capacité d\'autofinancement (CAF)',
+        lines: [
+          { code: 'RI.1', label: 'CAF de l\'exercice', amount: caf.toFixed(2) },
+        ],
+        total: caf.toFixed(2),
+      },
+      {
+        code: 'R.II',
+        label: 'Cessions et reductions d\'immobilisations',
+        lines: [
+          {
+            code: 'RII.1',
+            label: 'Désinvestissement net (si applicable)',
+            amount: Math.max(-variationImmo, 0).toFixed(2),
+          },
+        ],
+        total: Math.max(-variationImmo, 0).toFixed(2),
+      },
+      {
+        code: 'R.III',
+        label: 'Augmentation des capitaux propres et dettes financières',
+        lines: [
+          {
+            code: 'RIII.1',
+            label: 'Augmentation de capitaux propres',
+            amount: Math.max(variationCapitaux, 0).toFixed(2),
+          },
+          {
+            code: 'RIII.2',
+            label: 'Nouvelles dettes financières',
+            amount: Math.max(variationDettesFin, 0).toFixed(2),
+          },
+        ],
+        total: (
+          Math.max(variationCapitaux, 0) + Math.max(variationDettesFin, 0)
+        ).toFixed(2),
+      },
+    ];
+
+    return {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      emplois,
+      ressources,
+      variationTresorerie: variationTreso.toFixed(2),
+      methodologyNotes: [
+        'CAF calculée à partir du SIG : EBE + reprises − dotations − frais financiers + revenus financiers − impôts − participation.',
+        "Acquisitions / cessions d'immobilisations sont présentées en NET (besoin de distinguer 8x produits cessions vs 81 valeurs comptables pour le détail).",
+        "Variation BFR = (Actif circulant N − N-1) − (Passif circulant N − N-1).",
+        'Variation de trésorerie nette indicative — le détail flux d\'investissement vs financement est dans le TFT.',
+      ],
+    };
+  }
+
+  /**
+   * TFT (Tableau de Flux de Trésorerie) OHADA — méthode indirecte.
+   *
+   * Partition les flux en 3 catégories selon Vol. 3 :
+   *   1. Flux d'exploitation : RN ± non-cash ± variation BFR
+   *   2. Flux d'investissement : variation actif immobilisé (signe inversé)
+   *   3. Flux de financement : variation dettes fin + capital − dividendes
+   *
+   * Scope livré (V1) :
+   *   - Sections officielles avec lignes vides + totaux calculés
+   *   - Réconciliation : variation trésorerie début / fin
+   */
+  async getTft(
+    organizationId: TenantId,
+    query: { fromDate: string; toDate: string },
+  ): Promise<TftReport> {
+    assertTenantId(organizationId);
+    this.assertDateRange(query.fromDate, query.toDate);
+
+    const [bilanN, bilanNm1, sig] = await Promise.all([
+      this.getBalanceSheet(organizationId, {
+        asAtDate: query.toDate,
+        fiscalYearStartDate: query.fromDate,
+      }),
+      this.getBalanceSheet(organizationId, {
+        asAtDate: ReportsService.previousDayIso(query.fromDate),
+        fiscalYearStartDate: ReportsService.previousFiscalYearStart(query.fromDate),
+      }),
+      this.getSig(organizationId, { fromDate: query.fromDate, toDate: query.toDate }),
+    ]);
+
+    const sectionTotal = (
+      sections: BalanceSheetReport['actif']['sections'],
+      key: string,
+    ): number => Number(sections.find((s) => s.key === key)?.total ?? '0');
+
+    const sigSolde = (code: string): number =>
+      Number(sig.soldes.find((s) => s.code === code)?.amount ?? '0');
+
+    const rn = sigSolde('XI');
+    const dotations = Number(
+      sig.charges.find((c) => c.code === 'RL')?.amount ?? '0',
+    );
+    const reprises = Number(
+      sig.produits.find((p) => p.code === 'TJ')?.amount ?? '0',
+    );
+    const circN = sectionTotal(bilanN.actif.sections, 'CIRCULANT');
+    const circNm1 = sectionTotal(bilanNm1.actif.sections, 'CIRCULANT');
+    const passifCircN = sectionTotal(bilanN.passif.sections, 'PASSIF_CIRCULANT');
+    const passifCircNm1 = sectionTotal(bilanNm1.passif.sections, 'PASSIF_CIRCULANT');
+    const variationBfr = circN - circNm1 - (passifCircN - passifCircNm1);
+    const fluxExploitation = rn + dotations - reprises - variationBfr;
+
+    const immoN = sectionTotal(bilanN.actif.sections, 'IMMOBILISE');
+    const immoNm1 = sectionTotal(bilanNm1.actif.sections, 'IMMOBILISE');
+    const fluxInvestissement = -(immoN - immoNm1);
+
+    const dettesFinN = sectionTotal(bilanN.passif.sections, 'DETTES_FINANCIERES');
+    const dettesFinNm1 = sectionTotal(bilanNm1.passif.sections, 'DETTES_FINANCIERES');
+    const capN = sectionTotal(bilanN.passif.sections, 'CAPITAUX_PROPRES');
+    const capNm1 = sectionTotal(bilanNm1.passif.sections, 'CAPITAUX_PROPRES');
+    const fluxFinancement = dettesFinN - dettesFinNm1 + (capN - capNm1 - rn);
+
+    const tresoN =
+      sectionTotal(bilanN.actif.sections, 'TRESORERIE_ACTIF') -
+      sectionTotal(bilanN.passif.sections, 'TRESORERIE_PASSIF');
+    const tresoNm1 =
+      sectionTotal(bilanNm1.actif.sections, 'TRESORERIE_ACTIF') -
+      sectionTotal(bilanNm1.passif.sections, 'TRESORERIE_PASSIF');
+
+    return {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      fluxExploitation: {
+        code: 'FA',
+        label: "Flux de trésorerie provenant des activités d'exploitation",
+        lines: [
+          { code: 'FA.1', label: 'Résultat net de l\'exercice', amount: rn.toFixed(2) },
+          { code: 'FA.2', label: '+ Dotations aux amortissements et provisions', amount: dotations.toFixed(2) },
+          { code: 'FA.3', label: '− Reprises sur amortissements et provisions', amount: (-reprises).toFixed(2) },
+          { code: 'FA.4', label: '± Variation du BFR', amount: (-variationBfr).toFixed(2) },
+        ],
+        total: fluxExploitation.toFixed(2),
+      },
+      fluxInvestissement: {
+        code: 'FB',
+        label: "Flux de trésorerie provenant des activités d'investissement",
+        lines: [
+          {
+            code: 'FB.1',
+            label: 'Variation nette des immobilisations',
+            amount: fluxInvestissement.toFixed(2),
+          },
+        ],
+        total: fluxInvestissement.toFixed(2),
+      },
+      fluxFinancement: {
+        code: 'FC',
+        label: 'Flux de trésorerie provenant des activités de financement',
+        lines: [
+          {
+            code: 'FC.1',
+            label: 'Variation des dettes financières',
+            amount: (dettesFinN - dettesFinNm1).toFixed(2),
+          },
+          {
+            code: 'FC.2',
+            label: 'Variation des capitaux propres hors résultat',
+            amount: (capN - capNm1 - rn).toFixed(2),
+          },
+        ],
+        total: fluxFinancement.toFixed(2),
+      },
+      variationTresorerie: (fluxExploitation + fluxInvestissement + fluxFinancement).toFixed(2),
+      tresorerieOuverture: tresoNm1.toFixed(2),
+      tresorerieCloture: tresoN.toFixed(2),
+      methodologyNotes: [
+        'Méthode indirecte : partir du résultat net + ajustements non-cash + variation BFR.',
+        "Flux investissement = variation nette de l'actif immobilisé (acquisitions − cessions). Pour le détail acquisitions vs cessions, voir TAFIRE.",
+        "Flux financement = variation dettes financières + variation capitaux propres hors RN (apports nouveaux − dividendes − rachats actions).",
+        "Réconciliation : Tresoreire fin = Tresoreire debut + Total flux. Ecart attendu = 0.",
+      ],
+    };
+  }
+
+  /**
+   * Squelette de l'Annexe (Notes 1 à 35) SYSCOHADA AUDCIF.
+   *
+   * V1 : retourne la liste officielle des notes avec leur titre et leur
+   * statut. Les notes calculables automatiquement (immobilisations, stocks,
+   * créances, dettes, capitaux) sont marquées COMPUTED avec lien vers le
+   * rapport source. Les notes purement narratives sont marquées MANUAL.
+   */
+  async getAnnexe(
+    organizationId: TenantId,
+    query: { asAtDate: string; fiscalYearStartDate: string },
+  ): Promise<AnnexeReport> {
+    assertTenantId(organizationId);
+    if (!ReportsService.isYmd(query.asAtDate) || !ReportsService.isYmd(query.fiscalYearStartDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'Both dates must be YYYY-MM-DD.',
+      });
+    }
+
+    const notes: AnnexeNote[] = [
+      { code: 'Note 1', title: 'Règles et méthodes comptables', status: 'MANUAL' },
+      {
+        code: 'Note 3A',
+        title: 'Immobilisations brutes',
+        status: 'COMPUTED',
+        source: 'balance-sheet (classe 2)',
+      },
+      {
+        code: 'Note 3B',
+        title: 'Amortissements et provisions sur immobilisations',
+        status: 'COMPUTED',
+        source: 'balance-sheet (comptes 28x, 29x)',
+      },
+      {
+        code: 'Note 3C',
+        title: 'Dotations / reprises de la période',
+        status: 'COMPUTED',
+        source: 'sig (RL, TJ)',
+      },
+      { code: 'Note 3D', title: "Cessions d'immobilisations", status: 'PARTIAL', source: 'sig (TN, RO)' },
+      { code: 'Note 3E', title: 'Crédit-bail et contrats assimilés', status: 'MANUAL' },
+      { code: 'Note 3F', title: 'Subventions d\'investissement', status: 'COMPUTED', source: 'balance-sheet (compte 14)' },
+      { code: 'Note 4', title: 'Stocks et en-cours', status: 'COMPUTED', source: 'balance-sheet (classe 3)' },
+      { code: 'Note 5', title: 'Créances et emplois assimilés', status: 'COMPUTED', source: 'aging-balance (CLIENT)' },
+      { code: 'Note 6', title: 'Variations de stocks', status: 'COMPUTED', source: 'sig (RB, RD, RF, TG)' },
+      { code: 'Note 7', title: "Charges constatées d'avance", status: 'COMPUTED', source: 'balance-sheet (compte 476)' },
+      { code: 'Note 8', title: 'Trésorerie actif', status: 'COMPUTED', source: 'balance-sheet (classe 5 débit)' },
+      { code: 'Note 9', title: 'Écarts de conversion', status: 'MANUAL' },
+      { code: 'Note 10', title: 'Capital social', status: 'COMPUTED', source: 'balance-sheet (compte 10)' },
+      { code: 'Note 11', title: 'Primes, réserves, report à nouveau', status: 'COMPUTED', source: 'balance-sheet (comptes 11, 12)' },
+      { code: 'Note 12', title: 'Subventions d\'investissement', status: 'COMPUTED', source: 'balance-sheet (compte 14)' },
+      { code: 'Note 13', title: 'Provisions pour risques et charges', status: 'COMPUTED', source: 'balance-sheet (compte 19)' },
+      { code: 'Note 14', title: 'Emprunts et dettes financières', status: 'COMPUTED', source: 'balance-sheet (classe 16)' },
+      { code: 'Note 15', title: 'Fournisseurs et dettes assimilées', status: 'COMPUTED', source: 'aging-balance (FOURNISSEUR)' },
+      { code: 'Note 16', title: 'Dettes sociales et fiscales', status: 'COMPUTED', source: 'balance-sheet (comptes 42, 43, 44)' },
+      { code: 'Note 17', title: 'Autres dettes', status: 'COMPUTED', source: 'balance-sheet (autres 4x crédit)' },
+      { code: 'Note 18', title: 'Trésorerie passif', status: 'COMPUTED', source: 'balance-sheet (classe 5 crédit)' },
+      { code: 'Note 19', title: 'Engagements donnés et reçus (hors bilan)', status: 'MANUAL' },
+      { code: 'Note 20', title: 'Ventilation du chiffre d\'affaires', status: 'COMPUTED', source: 'sig (TA-TD)' },
+      { code: 'Note 21', title: 'Produits, charges hors activités ordinaires (HAO)', status: 'COMPUTED', source: 'sig (TN, TO, RO, RP)' },
+      { code: 'Note 22', title: 'Charges et produits financiers', status: 'COMPUTED', source: 'sig (TK-TM, RM)' },
+      { code: 'Note 23', title: 'Effectifs, masse salariale, personnel extérieur', status: 'PARTIAL', source: 'sig (RK)' },
+      { code: 'Note 24', title: 'Rémunérations et avantages des dirigeants', status: 'MANUAL' },
+      { code: 'Note 25', title: 'Transactions avec parties liées', status: 'MANUAL' },
+      { code: 'Note 26', title: 'Événements postérieurs à la clôture', status: 'MANUAL' },
+      { code: 'Note 27', title: 'Honoraires des commissaires aux comptes', status: 'MANUAL' },
+      { code: 'Note 28', title: "Impôt sur les bénéfices", status: 'COMPUTED', source: 'sig (RS)' },
+      { code: 'Note 29', title: 'Activités abandonnées ou cédées', status: 'MANUAL' },
+      { code: 'Note 30', title: 'Information sectorielle', status: 'MANUAL' },
+      { code: 'Note 35', title: 'Tableau des engagements financiers', status: 'MANUAL' },
+      { code: 'Note 36', title: 'Identité et informations générales', status: 'MANUAL' },
+    ];
+
+    return {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      notes,
+    };
+  }
+
+  /** Helper : retourne la veille en ISO (`YYYY-MM-DD`). */
+  static previousDayIso(dateIso: string): string {
+    const d = new Date(`${dateIso}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  /** Helper : début d'exercice précédent (heuristique : −1 an pile). */
+  static previousFiscalYearStart(fyStartIso: string): string {
+    const d = new Date(`${fyStartIso}T00:00:00Z`);
+    d.setUTCFullYear(d.getUTCFullYear() - 1);
+    return d.toISOString().slice(0, 10);
   }
 
   async getAgingBalance(
