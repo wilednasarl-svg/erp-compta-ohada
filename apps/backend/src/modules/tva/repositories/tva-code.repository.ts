@@ -51,10 +51,7 @@ export class TvaCodeRepository {
     return this.repo.findOne({ where: { id, organizationId } });
   }
 
-  async findByCode(
-    organizationId: TenantId | string,
-    code: string,
-  ): Promise<TvaCodeEntity | null> {
+  async findByCode(organizationId: TenantId | string, code: string): Promise<TvaCodeEntity | null> {
     assertTenantId(organizationId);
     return this.repo.findOne({ where: { organizationId, code } });
   }
@@ -64,9 +61,7 @@ export class TvaCodeRepository {
     options: { activeOnly?: boolean } = {},
   ): Promise<TvaCodeEntity[]> {
     assertTenantId(organizationId);
-    const where = options.activeOnly
-      ? { organizationId, isActive: true }
-      : { organizationId };
+    const where = options.activeOnly ? { organizationId, isActive: true } : { organizationId };
     return this.repo.find({ where, order: { code: 'ASC' } });
   }
 

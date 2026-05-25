@@ -22,7 +22,13 @@ import { RulesModule } from './modules/rules/rules.module';
 import { TransformationsModule } from './modules/transformations/transformations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { TvaModule } from './modules/tva/tva.module';
-import { BankReconciliationModule } from './modules/bank-reconciliation/bank-reconciliation.module';
+// Module 12 (AssetsModule), Module 14 (JournalSignaturesModule, déplacé
+// dans JournalsModule via EntryWorkflowService) et Module 15
+// (BankReconciliationModule) sont en cours de reconstruction parallèle
+// (issues bd projet-ferme-2fo + suivantes). On les recâble ici dès que
+// `assets.module.ts` et `bank-reconciliation.module.ts` sont re-livrés.
+// Les entités, services et migrations existants ne sont pas chargés tant
+// qu'aucun module ne les référence — Nest n'enregistre rien d'orphelin.
 
 @Module({
   imports: [
@@ -59,6 +65,8 @@ import { BankReconciliationModule } from './modules/bank-reconciliation/bank-rec
     // journaux, ecritures double-partie, periodes comptables, invariant
     // d'equilibre, machine a etats draft/validated/cancelled,
     // contre-passation, numeros de piece sequentiels et immutables.
+    // Embarque aussi Module 14 wave 1 (EntryWorkflow + signatures) en
+    // tirant sur `WorkflowsModule` pour la cible 'journal_entry'.
     JournalsModule,
     // Module 4 wave 1 — Transformation Engine. Retraitement comptable :
     // reclassement, ajustement, historique. Les écritures sources
@@ -80,17 +88,11 @@ import { BankReconciliationModule } from './modules/bank-reconciliation/bank-rec
     // justificatifs) avec un `DocumentStorageService` abstrait (driver
     // local-FS par défaut) et un hook OCR stub à câbler en vague 2.
     DocumentsModule,
-    // Module 9 wave 1 — Financial reports. Balance générale + grand
-    // livre en lecture seule, projections agrégées sur les écritures
-    // validated. Compte de résultat + bilan + PDF arrivent en vague 2.
+    // Module 9 — Financial reports. Balance générale + grand livre,
+    // compte de résultat + bilan, exports PDF/Excel.
     ReportsModule,
     // Module 13 wave 1 — TVA & Déclarations fiscales.
     TvaModule,
-    // Module 15 wave 1 — Rapprochement bancaire. Import relevés CSV,
-    // auto-matching ligne relevé ↔ ligne écriture (compte 521x),
-    // matching manuel, lettrage banque. Permissions : bank.read,
-    // bank.import, bank.reconcile, bank.admin.
-    BankReconciliationModule,
   ],
   controllers: [],
   providers: [

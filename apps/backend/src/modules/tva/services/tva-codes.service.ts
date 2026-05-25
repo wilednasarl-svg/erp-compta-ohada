@@ -25,7 +25,10 @@ export class TvaCodesService {
    * Seed Côte d'Ivoire standard TVA codes for a new organization.
    * Called inside the OrganizationsService.create transaction.
    */
-  async seedDefaultCodes(organizationId: TenantId, manager: EntityManager): Promise<TvaCodeEntity[]> {
+  async seedDefaultCodes(
+    organizationId: TenantId,
+    manager: EntityManager,
+  ): Promise<TvaCodeEntity[]> {
     assertTenantId(organizationId);
     const seeded: TvaCodeEntity[] = [];
     for (const codeSpec of DEFAULT_TVA_CODES_CI) {
@@ -43,7 +46,9 @@ export class TvaCodesService {
       );
       seeded.push(created);
     }
-    this.logger.log(`Seeded ${DEFAULT_TVA_CODES_CI.length} standard TVA codes for org ${organizationId}`);
+    this.logger.log(
+      `Seeded ${DEFAULT_TVA_CODES_CI.length} standard TVA codes for org ${organizationId}`,
+    );
     return seeded;
   }
 

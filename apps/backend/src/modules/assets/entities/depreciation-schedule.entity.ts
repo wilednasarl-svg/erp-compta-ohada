@@ -30,11 +30,7 @@ import { AssetEntity } from './asset.entity';
  */
 @Entity({ name: 'depreciation_schedules' })
 @Index('uq_depreciation_schedules_asset_year', ['assetId', 'fiscalYear'], { unique: true })
-@Index('ix_depreciation_schedules_org_year_status', [
-  'organizationId',
-  'fiscalYear',
-  'status',
-])
+@Index('ix_depreciation_schedules_org_year_status', ['organizationId', 'fiscalYear', 'status'])
 export class DepreciationScheduleEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

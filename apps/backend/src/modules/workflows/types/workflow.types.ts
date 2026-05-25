@@ -12,10 +12,10 @@
 export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'locked';
 
 /**
- * Wave 1 covers `import_session` only.  Extend this union (and add a
- * migration for any new FK constraint) when further target types arrive.
+ * Wave 1 covered `import_session`.  Module 14 (wave 1) adds
+ * `journal_entry` for accountant approval + electronic signature flow.
  */
-export type WorkflowTargetType = 'import_session';
+export type WorkflowTargetType = 'import_session' | 'journal_entry';
 
 /**
  * Static transition graph.  Lookup: `ALLOWED_TRANSITIONS[from]` gives

@@ -178,6 +178,11 @@ describe('HTTP status mapping', () => {
       ASSET_CODE_TAKEN: 409,
       DEPRECIATION_SCHEDULE_NOT_FOUND: 404,
       DEPRECIATION_SCHEDULE_ALREADY_POSTED: 409,
+      // Module 14 — Journal entry workflow & electronic signatures.
+      ENTRY_SIGNATURE_INVALID_STATUS: 409,
+      ENTRY_SIGNATURE_ALREADY_SIGNED: 409,
+      ENTRY_SIGNATURE_WRONG_ROLE: 403,
+      ENTRY_SIGNATURE_REJECT_REASON_REQUIRED: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

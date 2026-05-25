@@ -173,6 +173,22 @@ export class WorkflowService {
   }
 
   /**
+   * Read-only lookup of an existing workflow instance for a given target.
+   * Returns `null` if no workflow has been started yet. Used by Module 14
+   * (`JournalSignatureService.getStatus`) and any module that needs to
+   * inspect workflow state without side-effects (unlike `startWorkflow`
+   * which idempotently creates one).
+   */
+  async findInstanceByTarget(
+    organizationId: string,
+    targetType: WorkflowTargetType,
+    targetId: string,
+  ): Promise<WorkflowInstanceView | null> {
+    const instance = await this.instances.findByTarget(organizationId, targetType, targetId);
+    return instance ? this.toView(instance) : null;
+  }
+
+  /**
    * Guard consommé par d'autres modules : lève `WORKFLOW_LOCKED` si l'objet
    * cible a un workflow en état `locked`.  Les modules qui n'ont pas encore
    * de workflow démarré passent silencieusement.
