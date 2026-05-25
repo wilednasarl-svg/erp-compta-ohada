@@ -53,9 +53,11 @@ export interface ListLetteringFilters {
  *   - all lines belong to THIS tenant and SAME partner account;
  *   - parent journal entries are status `validated` (a draft line
  *     would mutate, breaking the lettrage invariant);
- *   - the partner account class is 40 or 41 (fournisseurs / clients) —
- *     wave 2.1 will extend to 43 (organismes sociaux) once the
- *     accounting team confirms;
+ *   - the partner account class is 40 (fournisseurs), 41 (clients),
+ *     43 (organismes sociaux) or 44 (État, impôts et taxes). Classes
+ *     43 and 44 are required to lettrer les soldes résiduels après
+ *     contre-passation des charges à payer / produits à recevoir en
+ *     N+1 (4281, 4287, 4381-4387, 4486, 4493-4496, 4498…);
  *   - sum(debit) == sum(credit) over the group;
  *   - no line already attached to an active lettering — `attachLettering`
  *     uses `WHERE lettering_id IS NULL` so a concurrent attach loses
@@ -69,7 +71,7 @@ export interface ListLetteringFilters {
 @Injectable()
 export class LetteringService {
   private static readonly MODULE = 'journals' as const;
-  private static readonly PARTNER_ACCOUNT_CLASSES: ReadonlySet<number> = new Set([40, 41]);
+  private static readonly PARTNER_ACCOUNT_CLASSES: ReadonlySet<number> = new Set([40, 41, 43, 44]);
   private static readonly BALANCE_TOLERANCE = 0.005;
 
   private readonly logger = new Logger(LetteringService.name);
@@ -115,12 +117,12 @@ export class LetteringService {
     }
     const partnerAccountId = fetched[0].line.accountId;
 
-    // The shared account must be a partner account (class 40 or 41).
+    // The shared account must be a partner account (class 40, 41, 43 or 44).
     const partnerAccount = fetched[0].line.account;
     const accountClass = this.classFromAccount(partnerAccount?.code, partnerAccount?.class);
     if (!LetteringService.PARTNER_ACCOUNT_CLASSES.has(accountClass)) {
       throw new AppException(ERROR_CODES.LETTERING_NOT_PARTNER_ACCOUNT, {
-        message: `Account class ${accountClass} is not a partner account (40 or 41 required).`,
+        message: `Account class ${accountClass} is not a partner account (40, 41, 43 or 44 required).`,
         details: { partnerAccountId, accountClass },
       });
     }
@@ -280,8 +282,9 @@ export class LetteringService {
     // the first 2 digits of the code which is the SYSCOHADA classifier.
     if (typeof klass === 'number' && Number.isFinite(klass)) {
       // `class` is the OHADA top-level class (1-9). Partner accounts
-      // live in class 4; the sub-class (40 fournisseurs / 41 clients)
-      // requires the first 2 digits of the code.
+      // live in class 4; the sub-class (40 fournisseurs, 41 clients,
+      // 43 organismes sociaux, 44 État) requires the first 2 digits of
+      // the code.
       if (klass === 4 && typeof code === 'string' && code.length >= 2) {
         return Number.parseInt(code.slice(0, 2), 10);
       }

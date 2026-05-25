@@ -232,6 +232,90 @@ describe('LetteringService.create', () => {
     });
   });
 
+  it('creates a balanced lettering on a class-43 organismes-sociaux account (4381 URSSAF)', async () => {
+    const h = buildHarness();
+    const urssaf = { id: ACCOUNT_ID, code: '438100', label: 'URSSAF charges à payer', class: 4 };
+    h.lineRepo.listForLetteringCheck.mockResolvedValue([
+      {
+        line: buildLine('line-1', { account: urssaf as never, debit: '500.00', credit: '0' }),
+        entryStatus: 'validated',
+      },
+      {
+        line: buildLine('line-2', { account: urssaf as never, debit: '0', credit: '500.00' }),
+        entryStatus: 'validated',
+      },
+    ]);
+    h.letteringRepo.create.mockResolvedValue({
+      id: 'lettering-43',
+      letteringCode: 'A0001',
+      partnerAccountId: ACCOUNT_ID,
+      partnerAccount: urssaf,
+      partnerLabel: '438100 URSSAF charges à payer',
+      totalAmount: '500.00',
+      status: 'complete',
+      createdById: USER_ID,
+      createdAt: new Date(),
+      completedAt: new Date(),
+      brokenAt: null,
+      brokenReason: null,
+      brokenById: null,
+      organizationId: ORG_ID,
+    } as unknown as PartnerLetteringEntity);
+
+    const result = await h.service.create(
+      ORG_ID,
+      { journalEntryLineIds: ['line-1', 'line-2'] },
+      USER_ID,
+      CTX,
+    );
+
+    expect(result.totalAmount).toBe('500.00');
+    expect(result.status).toBe('complete');
+    expect(h.lineRepo.attachLettering).toHaveBeenCalled();
+  });
+
+  it('creates a balanced lettering on a class-44 État account (4441 TVA due)', async () => {
+    const h = buildHarness();
+    const tva = { id: ACCOUNT_ID, code: '444100', label: 'TVA due', class: 4 };
+    h.lineRepo.listForLetteringCheck.mockResolvedValue([
+      {
+        line: buildLine('line-1', { account: tva as never, debit: '1200.00', credit: '0' }),
+        entryStatus: 'validated',
+      },
+      {
+        line: buildLine('line-2', { account: tva as never, debit: '0', credit: '1200.00' }),
+        entryStatus: 'validated',
+      },
+    ]);
+    h.letteringRepo.create.mockResolvedValue({
+      id: 'lettering-44',
+      letteringCode: 'A0001',
+      partnerAccountId: ACCOUNT_ID,
+      partnerAccount: tva,
+      partnerLabel: '444100 TVA due',
+      totalAmount: '1200.00',
+      status: 'complete',
+      createdById: USER_ID,
+      createdAt: new Date(),
+      completedAt: new Date(),
+      brokenAt: null,
+      brokenReason: null,
+      brokenById: null,
+      organizationId: ORG_ID,
+    } as unknown as PartnerLetteringEntity);
+
+    const result = await h.service.create(
+      ORG_ID,
+      { journalEntryLineIds: ['line-1', 'line-2'] },
+      USER_ID,
+      CTX,
+    );
+
+    expect(result.totalAmount).toBe('1200.00');
+    expect(result.status).toBe('complete');
+    expect(h.lineRepo.attachLettering).toHaveBeenCalled();
+  });
+
   it('accepts a multi-line lettering (3 invoices paid by 1 receipt) when the sum balances', async () => {
     const h = buildHarness();
     h.lineRepo.listForLetteringCheck.mockResolvedValue([
