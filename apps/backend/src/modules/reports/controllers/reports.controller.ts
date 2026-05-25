@@ -21,6 +21,8 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
 import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
+import { AnnexeQueryDto } from '../dto/annexe-query.dto';
+import { PeriodQueryDto } from '../dto/period-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
 import { MultiYearBalanceQueryDto } from '../dto/multi-year-balance-query.dto';
@@ -33,7 +35,10 @@ import {
   ReportsService,
   type BalanceSheetReport,
   type AgingBalanceReport,
+  type AnnexeReport,
   type CashTrendReport,
+  type TafireReport,
+  type TftReport,
   type ComparativeBalanceReport,
   type MultiYearBalanceReport,
   type FinancialRatiosReport,
@@ -285,6 +290,54 @@ export class ReportsController {
     return { report };
   }
 
+  @Get('tafire')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'TAFIRE (Tableau Financier Ressources/Emplois) — OHADA Vol. 3' })
+  async tafire(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: PeriodQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: TafireReport }> {
+    const report = await this.reports.getTafire(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    return { report };
+  }
+
+  @Get('tft')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3' })
+  async tft(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: PeriodQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: TftReport }> {
+    const report = await this.reports.getTft(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    return { report };
+  }
+
+  @Get('annexe')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Annexe (Notes 1-36 SYSCOHADA AUDCIF) — squelette + statut' })
+  async annexe(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: AnnexeQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: AnnexeReport }> {
+    const report = await this.reports.getAnnexe(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+    });
+    return { report };
+  }
+
   @Get('aging-balance')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
@@ -300,6 +353,75 @@ export class ReportsController {
       bucketBoundaries: query.bucketBoundaries,
     });
     return { report };
+  }
+
+  @Get('tafire.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — TAFIRE OHADA' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async tafireXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: PeriodQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getTafire(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    const buffer = this.xlsx.tafireXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'tafire', query.fromDate, query.toDate, 'xlsx'),
+    );
+  }
+
+  @Get('tft.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — TFT OHADA (méthode indirecte)' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async tftXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: PeriodQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getTft(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    const buffer = this.xlsx.tftXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'tft', query.fromDate, query.toDate, 'xlsx'),
+    );
+  }
+
+  @Get('annexe.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Annexe (Notes 1-36)' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async annexeXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: AnnexeQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getAnnexe(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+    });
+    const buffer = this.xlsx.annexeXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'annexe', query.asAtDate, undefined, 'xlsx'),
+    );
   }
 
   @Get('aging-balance.xlsx')

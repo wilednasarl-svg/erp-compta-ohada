@@ -3,7 +3,10 @@ import * as XLSX from 'xlsx';
 
 import type {
   AgingBalanceReport,
+  AnnexeReport,
   CashTrendReport,
+  TafireReport,
+  TftReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
   MultiYearBalanceReport,
@@ -405,6 +408,86 @@ export class ReportsXlsxService {
     ]);
 
     return this.buildWorkbook(rows, 'Balance comparative');
+  }
+
+  // ─── TAFIRE ──────────────────────────────────────────────────────
+  tafireXlsx(report: TafireReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    rows.push([`TAFIRE — Du ${report.fromDate} au ${report.toDate}`]);
+    rows.push([]);
+    rows.push(['Réf.', 'Libellé', 'Montant']);
+    rows.push(['', 'EMPLOIS']);
+    for (const s of report.emplois) {
+      rows.push([s.code, s.label, '']);
+      for (const ln of s.lines) {
+        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount)]);
+      }
+      rows.push(['', `  TOTAL ${s.label}`, this.num(s.total)]);
+    }
+    rows.push([]);
+    rows.push(['', 'RESSOURCES']);
+    for (const s of report.ressources) {
+      rows.push([s.code, s.label, '']);
+      for (const ln of s.lines) {
+        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount)]);
+      }
+      rows.push(['', `  TOTAL ${s.label}`, this.num(s.total)]);
+    }
+    rows.push([]);
+    rows.push(['', 'Variation de trésorerie', this.num(report.variationTresorerie)]);
+    rows.push([]);
+    rows.push(['', 'NOTES MÉTHODOLOGIQUES']);
+    for (const n of report.methodologyNotes) {
+      rows.push(['', n, '']);
+    }
+    return this.buildWorkbook(rows, 'TAFIRE');
+  }
+
+  // ─── TFT ─────────────────────────────────────────────────────────
+  tftXlsx(report: TftReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    rows.push([`TFT (méthode indirecte) — Du ${report.fromDate} au ${report.toDate}`]);
+    rows.push([]);
+    rows.push(['Réf.', 'Libellé', 'Montant']);
+
+    const pushSection = (s: TftReport['fluxExploitation']) => {
+      rows.push([s.code, s.label, '']);
+      for (const ln of s.lines) {
+        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount)]);
+      }
+      rows.push(['', `  TOTAL ${s.label}`, this.num(s.total)]);
+      rows.push([]);
+    };
+    pushSection(report.fluxExploitation);
+    pushSection(report.fluxInvestissement);
+    pushSection(report.fluxFinancement);
+
+    rows.push(['', 'Variation de trésorerie (Σ flux)', this.num(report.variationTresorerie)]);
+    rows.push(['', 'Trésorerie à l\'ouverture', this.num(report.tresorerieOuverture)]);
+    rows.push(['', 'Trésorerie à la clôture', this.num(report.tresorerieCloture)]);
+    rows.push([]);
+    rows.push(['', 'NOTES MÉTHODOLOGIQUES']);
+    for (const n of report.methodologyNotes) {
+      rows.push(['', n, '']);
+    }
+    return this.buildWorkbook(rows, 'TFT');
+  }
+
+  // ─── Annexe (Notes 1-36) ─────────────────────────────────────────
+  annexeXlsx(report: AnnexeReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    rows.push([
+      `Annexe SYSCOHADA AUDCIF — Au ${report.asAtDate} (exercice ${report.fiscalYearStartDate})`,
+    ]);
+    rows.push([]);
+    rows.push(['Note', 'Titre', 'Statut', 'Source / Référence', 'Résumé']);
+    for (const n of report.notes) {
+      rows.push([n.code, n.title, n.status, n.source ?? '', n.summary ?? '']);
+    }
+    return this.buildWorkbook(rows, 'Annexe');
   }
 
   // ─── Bilan officiel SYSCOHADA avec codes postes AA-DZ ────────────
