@@ -32,3 +32,6 @@ apps/backend/*.log
 apps/backend/uploads/
 .vercel
 .env*.local
+
+# Local-only files (PDF sources, scratch notes — never committed)
+.local/
