@@ -429,9 +429,21 @@ export class ImportSessionService {
       await this.files.updateDetectedHeaders(firstFile.id, organizationId, headers);
     }
 
+    // Échantillon pour la détection par contenu : on charge les ~50
+    // premières lignes en plus de la page demandée, pour que l'auto-
+    // mapping puisse sniffer les valeurs même si l'utilisateur consulte
+    // la page 2/3/N (où les rows demandées ne couvrent plus le début
+    // du fichier). Coût négligeable (limit 50, scope tenant déjà
+    // appliqué dans le repo).
+    const sniffSample = await this.stagingEntries.listBySession(sessionId, organizationId, {
+      limit: 50,
+      offset: 0,
+    });
+
     const proposal = this.mapping.autoMap(
       headers,
       (session.mappingOverride as Record<string, TargetField>) ?? {},
+      sniffSample.map((r) => r.rawValues),
     );
 
     // Build chart index for validation. Loaded fresh on each preview

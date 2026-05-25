@@ -185,6 +185,11 @@ export class ValidationService {
  *   - `DD/MM/YYYY`
  *   - `DD-MM-YYYY`
  *   - ISO complet (`2024-03-15T00:00:00Z`)
+ *   - Numéro de série Excel (entier 1..80000), ex. `45658` → 2025-01-25.
+ *     Cas fréquent quand l'utilisateur a converti un .xlsx en .csv sans
+ *     reformater la colonne date — Excel sérialise alors la date comme
+ *     un entier (jours depuis 1900-01-00, avec le bug de l'année
+ *     bissextile 1900 hérité de Lotus 1-2-3).
  *
  * Renvoie `null` si aucune forme ne matche ou si la date résulte
  * invalide (ex. `31/02/2024`).
@@ -216,7 +221,35 @@ export function parseImportDate(value: string): Date | null {
     return makeDate(year, month, day);
   }
 
+  // Excel serial date (entier sans séparateur). Plage 1..80000 couvre
+  // de 1900-01-01 à 2118-12-30, suffisamment large pour la durée de
+  // vie de cette appli sans risquer de confondre un entier "ID" 5 avec
+  // une date 1900-01-04.
+  const serialMatch = /^(\d{1,5})$/.exec(trimmed);
+  if (serialMatch) {
+    const serial = Number(serialMatch[1]);
+    if (serial >= 1 && serial <= 80000) {
+      return excelSerialToDate(serial);
+    }
+  }
+
   return null;
+}
+
+/**
+ * Convertit un numéro de série Excel en `Date` UTC.
+ *
+ * Détail subtil : Excel considère à tort que 1900 est bissextile (bug
+ * historique). On compense en utilisant l'offset 25569 (= nombre de
+ * jours entre 1900-01-01 et 1970-01-01 dans le calendrier Excel) qui
+ * absorbe ce décalage pour toutes les dates >= 1900-03-01 — soit
+ * l'écrasante majorité des fichiers comptables réels.
+ */
+function excelSerialToDate(serial: number): Date | null {
+  const ms = (serial - 25569) * 86_400_000;
+  const d = new Date(ms);
+  if (!Number.isFinite(d.getTime())) return null;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
 function makeDate(year: number, month: number, day: number): Date | null {
