@@ -23,6 +23,7 @@ import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
 import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
 import { AnnexeNoteDetailQueryDto } from '../dto/annexe-note-detail-query.dto';
 import { AnnexeQueryDto } from '../dto/annexe-query.dto';
+import { AnnualPackageQueryDto } from '../dto/annual-package-query.dto';
 import { PeriodQueryDto } from '../dto/period-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
@@ -49,6 +50,7 @@ import {
   type SigReport,
   type TrialBalanceReport,
 } from '../services/reports.service';
+import { ReportsPackageService } from '../services/reports-package.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
 import { ReportsXlsxService } from '../services/reports-xlsx.service';
 
@@ -82,9 +84,36 @@ export class ReportsController {
     private readonly reports: ReportsService,
     private readonly pdf: ReportsPdfService,
     private readonly xlsx: ReportsXlsxService,
+    private readonly packageBuilder: ReportsPackageService,
   ) {}
 
   // ─── JSON endpoints (existing waves 1-2) ─────────────────────────
+
+  @Get('annual-package.zip')
+  @RequirePermission('journals.reports')
+  @ApiOperation({
+    summary: 'Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TAFIRE + TFT + Annexe + Aging clients/fournisseurs)',
+  })
+  @ApiProduces('application/zip')
+  async annualPackage(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: AnnualPackageQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.packageBuilder.buildAnnualPackage(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      orgName: org.name,
+    });
+    this.sendFile(
+      res,
+      buffer,
+      'application/zip',
+      this.filename(org.name, 'dossier-annuel', query.fromDate, query.toDate, 'zip'),
+    );
+  }
 
   @Get('trial-balance')
   @RequirePermission('journals.reports')

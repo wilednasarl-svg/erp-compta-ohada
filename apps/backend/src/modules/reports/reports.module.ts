@@ -8,6 +8,7 @@ import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.
 import { RbacModule } from '../rbac/rbac.module';
 import { ReportsController } from './controllers/reports.controller';
 import { ReportsRepository } from './repositories/reports.repository';
+import { ReportsPackageService } from './services/reports-package.service';
 import { ReportsPdfService } from './services/reports-pdf.service';
 import { ReportsService } from './services/reports.service';
 import { ReportsXlsxService } from './services/reports-xlsx.service';
@@ -41,7 +42,13 @@ import { ReportsXlsxService } from './services/reports-xlsx.service';
     AccountingPlanModule,
   ],
   controllers: [ReportsController],
-  providers: [ReportsRepository, ReportsService, ReportsPdfService, ReportsXlsxService],
+  providers: [
+    ReportsRepository,
+    ReportsService,
+    ReportsPdfService,
+    ReportsXlsxService,
+    ReportsPackageService,
+  ],
   exports: [ReportsService],
 })
 export class ReportsModule {}
