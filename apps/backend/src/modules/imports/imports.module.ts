@@ -12,6 +12,7 @@ import { ImportFileEntity } from './entities/import-file.entity';
 import { ImportSessionEntity } from './entities/import-session.entity';
 import { ImportStagingEntryEntity } from './entities/import-staging-entry.entity';
 import { CsvFileParser } from './parsers/csv-file.parser';
+import { PdfFileParser } from './parsers/pdf-file.parser';
 import { SageFileParser } from './parsers/sage-file.parser';
 import { XlsxFileParser } from './parsers/xlsx-file.parser';
 import { ImportFileRepository } from './repositories/import-file.repository';
@@ -70,11 +71,16 @@ import { ValidationService } from './services/validation.service';
     CsvFileParser,
     XlsxFileParser,
     SageFileParser,
+    PdfFileParser,
     {
       provide: FILE_PARSERS,
-      useFactory: (csv: CsvFileParser, xlsx: XlsxFileParser, sage: SageFileParser) =>
-        buildDefaultParsers({ csv, xlsx, sage }),
-      inject: [CsvFileParser, XlsxFileParser, SageFileParser],
+      useFactory: (
+        csv: CsvFileParser,
+        xlsx: XlsxFileParser,
+        sage: SageFileParser,
+        pdf: PdfFileParser,
+      ) => buildDefaultParsers({ csv, xlsx, sage, pdf }),
+      inject: [CsvFileParser, XlsxFileParser, SageFileParser, PdfFileParser],
     },
     FileParserService,
     MappingService,

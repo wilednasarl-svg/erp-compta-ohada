@@ -4,6 +4,7 @@ import { open as fsOpen } from 'node:fs/promises';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { CsvFileParser } from '../parsers/csv-file.parser';
+import { PdfFileParser } from '../parsers/pdf-file.parser';
 import { SageFileParser } from '../parsers/sage-file.parser';
 import { XlsxFileParser } from '../parsers/xlsx-file.parser';
 import {
@@ -123,6 +124,19 @@ export class FileParserService {
       return;
     }
 
+    if (parser.id === 'pdf') {
+      // PDF doit commencer par `%PDF`. Refuser tout autre format
+      // (zip-bomb déguisé, exe renommé .pdf, etc.) avant de laisser
+      // pdfjs charger le doc en mémoire.
+      if (!isPdf) {
+        throw new AppException(ERROR_CODES.IMPORT_UNSUPPORTED_FORMAT, {
+          message: "Le fichier déclaré PDF n'a pas la signature %PDF attendue.",
+          details: { originalName: fileMeta.originalName, mimeType: fileMeta.mimeType },
+        });
+      }
+      return;
+    }
+
     // Text-based parsers (csv, sage). Any binary signature is an
     // immediate reject — we never legitimately parse a ZIP/EXE/ELF/PDF/PNG
     // as text-based accounting input.
@@ -144,9 +158,10 @@ export function buildDefaultParsers(deps: {
   csv: CsvFileParser;
   xlsx: XlsxFileParser;
   sage: SageFileParser;
+  pdf: PdfFileParser;
 }): readonly IFileParser[] {
-  // Order: XLSX first (specific extension), then Sage (claims .txt
-  // before CSV's generic delimiter fallback), then CSV (catch-all for
-  // tabular text).
-  return [deps.xlsx, deps.sage, deps.csv];
+  // Order: PDF and XLSX first (extensions sans ambiguïté), puis Sage
+  // (claims .txt avant le fallback générique CSV), puis CSV (catch-all
+  // pour tout texte tabulaire restant).
+  return [deps.pdf, deps.xlsx, deps.sage, deps.csv];
 }

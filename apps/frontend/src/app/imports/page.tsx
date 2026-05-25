@@ -1,8 +1,8 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileUp, Loader2, Plus, Upload, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCircle2, FileUp, Loader2, Plus, RotateCcw, Save, Upload, XCircle } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,7 @@ import type {
   ImportSourceType,
   PreviewResult,
   SessionSummary,
+  TargetField,
 } from '@/types/imports';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
@@ -112,8 +113,9 @@ export default function ImportsPage() {
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">Imports</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Importer des écritures depuis un fichier comptable (CSV, Excel, export Sage). Les
-            lignes passent par une étape de staging avant écriture définitive au journal.
+            Importer des écritures depuis un fichier comptable (CSV, Excel, PDF natif, export
+            Sage). Les lignes passent par une étape de staging avant écriture définitive au
+            journal.
           </p>
         </header>
 
@@ -143,7 +145,8 @@ export default function ImportsPage() {
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="csv">CSV</option>
-                  <option value="excel">Excel</option>
+                  <option value="excel">Excel (.xlsx / .xls)</option>
+                  <option value="pdf">PDF (tableau natif)</option>
                   <option value="sage">Sage TXT</option>
                   <option value="txt">Texte</option>
                 </select>
@@ -395,7 +398,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Input
                 type="file"
-                accept=".csv,.xlsx,.xls,.txt"
+                accept=".csv,.xlsx,.xls,.txt,.pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="cursor-pointer file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1 file:text-sm"
               />
@@ -445,6 +448,28 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
             Générer la preview
           </Button>
           <FormError error={previewMutation.error} />
+
+          {/* Mapping override panel — wave 2 (projet-ferme-3wy).
+              Affiché dès qu'on a une preview pour permettre de corriger
+              les colonnes que l'auto-mapping n'a pas reconnues (ex.
+              "N°DE COMPTE" → account). Sauvegarde via PATCH ; la
+              session repasse en `parsed` côté backend, donc on
+              re-déclenche immédiatement la preview pour re-projeter
+              et re-valider les staging rows. */}
+          {preview && (
+            <MappingOverridePanel
+              orgId={orgId}
+              sessionId={session.id}
+              headers={preview.headers}
+              currentMapping={preview.headerMapping}
+              unmappedTargets={preview.unmappedTargets}
+              onSaved={() => {
+                previewMutation.mutate(undefined);
+                onMutated();
+              }}
+            />
+          )}
+
           {preview && (
             <div className="space-y-3">
               <div className="flex flex-wrap gap-3 text-sm">
@@ -520,6 +545,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
         </section>
 
         {/* Commit */}
+        {/* (le panneau Commit suit ; voir plus bas) */}
         <section className="space-y-3">
           <h3 className="text-sm font-medium">3. Commit définitif vers le journal</h3>
           <p className="text-xs text-muted-foreground">
@@ -557,4 +583,251 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
       </CardContent>
     </Card>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Mapping override panel — wave 2 (projet-ferme-3wy)
+//
+// Pour chaque header détecté dans le fichier source, propose un dropdown
+// vers une `TargetField` canonique (ou "(ignorer)"). L'état local est
+// initialisé sur le `currentMapping` reçu de la dernière preview.
+//
+// Contrainte backend (MappingService) : un même TargetField ne peut être
+// mappé qu'à UN header — on désactive en grisé les options déjà prises
+// par un autre header pour éviter une erreur 422 côté serveur.
+// ─────────────────────────────────────────────────────────────────────
+
+const TARGET_LABEL: Record<TargetField, string> = {
+  account: 'Compte',
+  journal: 'Journal',
+  date: 'Date',
+  debit: 'Débit',
+  credit: 'Crédit',
+  label: 'Libellé',
+  partner: 'Tiers',
+  currency: 'Devise',
+};
+
+const ALL_TARGETS: ReadonlyArray<TargetField> = [
+  'account',
+  'journal',
+  'date',
+  'debit',
+  'credit',
+  'label',
+  'partner',
+  'currency',
+];
+
+const REQUIRED_TARGETS: ReadonlySet<TargetField> = new Set<TargetField>([
+  'account',
+  'journal',
+  'date',
+  'label',
+]);
+
+interface MappingOverridePanelProps {
+  readonly orgId: string;
+  readonly sessionId: string;
+  readonly headers: ReadonlyArray<string>;
+  readonly currentMapping: Readonly<Record<string, TargetField>>;
+  readonly unmappedTargets: ReadonlyArray<TargetField>;
+  readonly onSaved: () => void;
+}
+
+function MappingOverridePanel({
+  orgId,
+  sessionId,
+  headers,
+  currentMapping,
+  unmappedTargets,
+  onSaved,
+}: MappingOverridePanelProps) {
+  // Etat local : header → TargetField ou '' (ignoré). Initialisé sur
+  // currentMapping ; resynchronisé à chaque changement de preview pour
+  // que l'utilisateur voie immédiatement l'effet d'un Save côté backend.
+  const [draft, setDraft] = useState<Record<string, TargetField | ''>>(() =>
+    buildDraft(headers, currentMapping),
+  );
+
+  useEffect(() => {
+    setDraft(buildDraft(headers, currentMapping));
+  }, [headers, currentMapping]);
+
+  // Pour chaque header, lister les targets DÉJÀ pris par un autre header
+  // dans le draft — on les désactive en option pour éviter de proposer
+  // un mapping qui crasherait au save.
+  const takenByOtherHeader = useMemo(() => {
+    const taken: Record<string, ReadonlySet<TargetField>> = {};
+    for (const h of headers) {
+      const s = new Set<TargetField>();
+      for (const [other, t] of Object.entries(draft)) {
+        if (other !== h && t !== '') {
+          s.add(t);
+        }
+      }
+      taken[h] = s;
+    }
+    return taken;
+  }, [headers, draft]);
+
+  const save = useApiMutation(
+    async () => {
+      const payload: Record<string, string> = {};
+      for (const [header, target] of Object.entries(draft)) {
+        if (target !== '') {
+          payload[header] = target;
+        }
+      }
+      await api.patch(
+        `/organizations/${orgId}/imports/sessions/${sessionId}/mapping`,
+        { mappingOverride: payload },
+      );
+    },
+    {
+      onSuccess: () => onSaved(),
+    },
+  );
+
+  const reset = useApiMutation(
+    async () => {
+      await api.patch(
+        `/organizations/${orgId}/imports/sessions/${sessionId}/mapping`,
+        { mappingOverride: {} },
+      );
+    },
+    {
+      onSuccess: () => onSaved(),
+    },
+  );
+
+  // Champs requis encore non mappés dans le draft courant.
+  const missingRequired = useMemo(() => {
+    const used = new Set(Object.values(draft).filter((v) => v !== ''));
+    return ALL_TARGETS.filter((t) => REQUIRED_TARGETS.has(t) && !used.has(t));
+  }, [draft]);
+
+  const hasChanges = useMemo(() => {
+    for (const h of headers) {
+      const current = currentMapping[h] ?? '';
+      if ((draft[h] ?? '') !== current) {
+        return true;
+      }
+    }
+    return false;
+  }, [headers, draft, currentMapping]);
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h4 className="text-sm font-medium">Mapping des colonnes</h4>
+          <p className="text-xs text-muted-foreground">
+            Associer chaque colonne du fichier source à un champ canonique. Les modifications
+            relancent automatiquement la preview pour recalculer les erreurs.
+          </p>
+        </div>
+        {unmappedTargets.length > 0 && (
+          <Badge variant="destructive">
+            {unmappedTargets.length} champ(s) canonique(s) non mappé(s) :{' '}
+            {unmappedTargets.map((t) => TARGET_LABEL[t]).join(', ')}
+          </Badge>
+        )}
+      </div>
+
+      <div className="overflow-x-auto rounded-md border bg-background">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-left">Colonne source</th>
+              <th className="px-3 py-2 text-left">Mappé vers</th>
+            </tr>
+          </thead>
+          <tbody>
+            {headers.map((h) => {
+              const value = draft[h] ?? '';
+              const taken = takenByOtherHeader[h] ?? new Set<TargetField>();
+              return (
+                <tr key={h} className="border-t">
+                  <td className="px-3 py-1.5 font-mono text-xs">{h}</td>
+                  <td className="px-3 py-1.5">
+                    <select
+                      value={value}
+                      onChange={(e) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          [h]: e.target.value as TargetField | '',
+                        }))
+                      }
+                      className="h-8 w-full max-w-[240px] rounded-md border border-input bg-background px-2 py-0 text-sm"
+                    >
+                      <option value="">— Ignorer —</option>
+                      {ALL_TARGETS.map((t) => {
+                        const isTakenElsewhere = taken.has(t);
+                        return (
+                          <option key={t} value={t} disabled={isTakenElsewhere}>
+                            {TARGET_LABEL[t]}
+                            {isTakenElsewhere ? ' (déjà utilisé)' : ''}
+                            {REQUIRED_TARGETS.has(t) ? ' *' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={!hasChanges || save.isPending}
+          onClick={() => save.mutate(undefined)}
+        >
+          {save.isPending ? (
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-3.5 w-3.5" />
+          )}
+          Enregistrer le mapping
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={reset.isPending}
+          onClick={() => reset.mutate(undefined)}
+        >
+          {reset.isPending ? (
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RotateCcw className="mr-2 h-3.5 w-3.5" />
+          )}
+          Réinitialiser (auto-mapping)
+        </Button>
+        {missingRequired.length > 0 && (
+          <span className="text-xs text-destructive">
+            Champs requis manquants : {missingRequired.map((t) => TARGET_LABEL[t]).join(', ')}
+          </span>
+        )}
+      </div>
+      <FormError error={save.error} className="mt-2" />
+      <FormError error={reset.error} className="mt-2" />
+    </div>
+  );
+}
+
+function buildDraft(
+  headers: ReadonlyArray<string>,
+  currentMapping: Readonly<Record<string, TargetField>>,
+): Record<string, TargetField | ''> {
+  const out: Record<string, TargetField | ''> = {};
+  for (const h of headers) {
+    out[h] = currentMapping[h] ?? '';
+  }
+  return out;
 }

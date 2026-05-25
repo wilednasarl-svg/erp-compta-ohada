@@ -9,7 +9,7 @@
  *   - apps/backend/src/modules/imports/services/import-session.service.ts
  */
 
-export type ImportSourceType = 'csv' | 'excel' | 'sage' | 'txt';
+export type ImportSourceType = 'csv' | 'excel' | 'sage' | 'txt' | 'pdf';
 
 export type ImportSessionStatus =
   | 'draft'

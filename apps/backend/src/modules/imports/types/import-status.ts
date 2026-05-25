@@ -83,13 +83,14 @@ export function canTransitionTo(from: ImportSessionStatus, to: ImportSessionStat
  * the MIME at runtime — `sourceType` is the user's *intent*, not the
  * runtime authority. Useful for dashboards ("imports Sage du mois").
  */
-export type ImportSourceType = 'csv' | 'excel' | 'sage' | 'txt';
+export type ImportSourceType = 'csv' | 'excel' | 'sage' | 'txt' | 'pdf';
 
 export const IMPORT_SOURCE_TYPES: readonly ImportSourceType[] = [
   'csv',
   'excel',
   'sage',
   'txt',
+  'pdf',
 ] as const;
 
 /**
