@@ -22,7 +22,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * Pas de soft-delete : un asset cédé/rebut passe en `status='disposed'`
  * via `AssetsService.dispose` et son échéancier pending est purgé.
  */
-export class CreateAssets1700000000046 implements MigrationInterface {
+export class CreateAssets1700000000050 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "assets" (

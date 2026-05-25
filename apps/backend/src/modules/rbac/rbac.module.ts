@@ -61,6 +61,7 @@ import { PermissionsCacheService } from './services/permissions-cache.service';
     PermissionRepository,
     RolePermissionRepository,
     MembershipRepository,
+    OrganizationRepository,
     MembershipsService,
     PermissionsCacheService,
     TenantGuard,

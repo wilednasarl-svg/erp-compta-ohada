@@ -16,7 +16,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  *
  * Idempotent via ON CONFLICT DO NOTHING.
  */
-export class AddAssetsPermissions1700000000049 implements MigrationInterface {
+export class AddAssetsPermissions1700000000053 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       INSERT INTO "permissions" ("code", "description") VALUES

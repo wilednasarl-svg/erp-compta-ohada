@@ -26,7 +26,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * un jour on autorisait la suppression, ce qui n'est pas le cas.
  * (Pour rester strict, on ajoute quand même la FK SET NULL.)
  */
-export class CreateDepreciationSchedules1700000000047 implements MigrationInterface {
+export class CreateDepreciationSchedules1700000000051 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "depreciation_schedules" (

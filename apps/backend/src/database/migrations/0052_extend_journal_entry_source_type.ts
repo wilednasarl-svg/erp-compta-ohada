@@ -11,7 +11,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * Conserve les valeurs existantes (`manual`, `import`) pour ne pas
  * casser les écritures déjà persistées.
  */
-export class ExtendJournalEntrySourceType1700000000048 implements MigrationInterface {
+export class ExtendJournalEntrySourceType1700000000052 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "journal_entries"
