@@ -1383,3 +1383,208 @@ describe('ReportsService.getMultiYearBalance', () => {
     ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// W2.1 — Bilan SYSCOHADA AUDCIF : hiérarchie 35 postes lettrés
+// (masse → rubrique → poste). Tests sur le nouveau shape `actifMasses`
+// / `passifMasses` / `totals` / `unclassified`.
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés', () => {
+  function buildRow(o: {
+    accountId?: string;
+    accountCode: string;
+    accountLabel?: string;
+    accountClass: number;
+    isOpposing?: boolean;
+    totalDebit?: string;
+    totalCredit?: string;
+  }) {
+    return {
+      accountId: o.accountId ?? `acc-${o.accountCode}`,
+      accountCode: o.accountCode,
+      accountLabel: o.accountLabel ?? `Compte ${o.accountCode}`,
+      accountClass: o.accountClass,
+      isOpposing: o.isOpposing ?? false,
+      totalDebit: o.totalDebit ?? '0.00',
+      totalCredit: o.totalCredit ?? '0.00',
+    };
+  }
+
+  it('classe un compte 411 (client) dans le poste BI, agrégé dans la masse BK via la sous-masse BG', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '8000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+
+    // Le poste BI est rattaché à sa sous-masse directe BG (« Créances
+    // et emplois assimilés »), elle-même incluse dans la masse BK.
+    const allActifPostes = result.actifMasses.flatMap((m) =>
+      m.rubriques.flatMap((r) => r.postes),
+    );
+    const bi = allActifPostes.find((p) => p.code === 'BI');
+    expect(bi).toMatchObject({ code: 'BI', net: '8000.00' });
+
+    // Les deux masses (BG sous-total, BK total) propagent la valeur.
+    const bg = result.actifMasses.find((m) => m.code === 'BG');
+    const bk = result.actifMasses.find((m) => m.code === 'BK');
+    expect(bg?.total).toBe('8000.00');
+    expect(bk?.total).toBe('8000.00');
+  });
+
+  it('soustrait un compte 281x (amortissement) en déduction du poste AD via deductionPrefixes', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      // Frais de développement brut 100 000 (préfixe 211 → poste AE)
+      buildRow({ accountCode: '211000', accountClass: 2, totalDebit: '100000' }),
+      // Amortissement frais de dev 30 000 (préfixe 2811 → AE deduction)
+      buildRow({ accountCode: '281100', accountClass: 2, totalCredit: '30000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+
+    const ad = result.actifMasses.find((m) => m.code === 'AZ');
+    const postes = ad?.rubriques.flatMap((r) => r.postes) ?? [];
+    const ae = postes.find((p) => p.code === 'AE');
+    expect(ae?.net).toBe('70000.00');
+    expect(ae?.brut).toBe('100000.00');
+    expect(ae?.deduction).toBe('30000.00');
+  });
+
+  it('soustrait un compte 4912 (dépréciation client opposante) du poste actif au lieu de gonfler le passif', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '200000' }),
+      buildRow({
+        accountCode: '491200',
+        accountClass: 4,
+        isOpposing: true,
+        totalCredit: '50000',
+      }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+
+    // Le 4912 NE DOIT PAS apparaître dans le passif (DP doit être vide ou absent).
+    const dp = result.passifMasses.find((m) => m.code === 'DP');
+    const passifPostes = dp?.rubriques.flatMap((r) => r.postes) ?? [];
+    // Aucun poste passif ne doit contenir la dépréciation.
+    expect(passifPostes.every((p) => Number(p.net) >= 0 || p.code !== 'DJ')).toBe(true);
+
+    // Actif : 200 000 − 50 000 = 150 000 net.
+    const bk = result.actifMasses.find((m) => m.code === 'BK');
+    expect(bk?.total).toBe('150000.00');
+  });
+
+  it('classe un compte hors plan dans `unclassified` sans crasher', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '999999', accountClass: 2, totalDebit: '1234' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    expect(result.unclassified.length).toBeGreaterThanOrEqual(1);
+    expect(result.unclassified[0].code).toBe('999999');
+  });
+
+  it('smoke : bilan minimal 5 comptes — calcule les masses AZ, BK, BT, BZ et CP, DD, DF, DP, DZ', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '60000' }), // AK (bâtiment) → AI → AZ
+      buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '20000' }), // BI → BG → BK
+      buildRow({ accountCode: '512000', accountClass: 5, totalDebit: '10000' }), // BS → BT
+      buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '70000' }), // CA → CP → DF
+      buildRow({ accountCode: '161000', accountClass: 1, totalCredit: '20000' }), // DA → DD → DF
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+
+    const masseTotal = (side: 'actif' | 'passif', code: string): string =>
+      (side === 'actif' ? result.actifMasses : result.passifMasses).find((m) => m.code === code)
+        ?.total ?? '0.00';
+
+    expect(masseTotal('actif', 'AZ')).toBe('60000.00');
+    expect(masseTotal('actif', 'BK')).toBe('20000.00');
+    expect(masseTotal('actif', 'BT')).toBe('10000.00');
+    expect(masseTotal('actif', 'BZ')).toBe('90000.00');
+    expect(masseTotal('passif', 'CP')).toBe('70000.00');
+    expect(masseTotal('passif', 'DD')).toBe('20000.00');
+    expect(masseTotal('passif', 'DF')).toBe('90000.00');
+    expect(masseTotal('passif', 'DZ')).toBe('90000.00');
+  });
+
+  it('totals.difference ≈ 0 sur un bilan équilibré', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '50000' }),
+      buildRow({ accountCode: '512000', accountClass: 5, totalDebit: '20000' }),
+      buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '70000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    expect(result.totals.actif).toBe('70000.00');
+    expect(result.totals.passif).toBe('70000.00');
+    expect(result.totals.difference).toBe('0.00');
+  });
+
+  it('expose totals.actif et totals.passif identiques à `actif.total` / `passif.total` (cohérence legacy)', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '5000' }),
+      buildRow({ accountCode: '401000', accountClass: 4, totalCredit: '3000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    expect(result.totals.actif).toBe(result.actif.total);
+    expect(result.totals.passif).toBe(result.passif.total);
+  });
+
+  it('incorporation du résultat net : ajoute le bénéfice au poste CJ sous CP', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '50000' }),
+      buildRow({ accountCode: '512000', accountClass: 5, totalDebit: '52000' }),
+    ]);
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '8000' }),
+      tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '10000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, {
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    const cp = result.passifMasses.find((m) => m.code === 'CP');
+    const postes = cp?.rubriques.flatMap((r) => r.postes) ?? [];
+    const cj = postes.find((p) => p.code === 'CJ');
+    expect(cj?.net).toBe('2000.00');
+    expect(cp?.total).toBe('52000.00');
+    expect(result.totals.difference).toBe('0.00');
+  });
+
+  it('enrichit les postes avec netPrevious et netChange quand compareWith est fourni', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValueOnce([
+        buildRow({ accountCode: '521000', accountClass: 5, totalDebit: '8000' }),
+      ])
+      .mockResolvedValueOnce([
+        buildRow({ accountCode: '521000', accountClass: 5, totalDebit: '5000' }),
+      ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, {
+      asAtDate: '2026-12-31',
+      compareWith: { asAtDate: '2025-12-31' },
+    });
+    const bt = result.actifMasses.find((m) => m.code === 'BT');
+    expect(bt?.totalPrevious).toBe('5000.00');
+    const postes = bt?.rubriques.flatMap((r) => r.postes) ?? [];
+    const bs = postes.find((p) => p.code === 'BS');
+    expect(bs?.netPrevious).toBe('5000.00');
+    expect(bs?.netChange).toBe('3000.00');
+  });
+
+  it('préserve la rétro-compat : `actif.sections` (legacy 4 buckets) reste exposé', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '60000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    expect(result.actif.sections).toBeDefined();
+    expect(result.actif.sections.find((s) => s.key === 'IMMOBILISE')?.total).toBe('60000.00');
+  });
+});

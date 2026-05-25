@@ -175,3 +175,98 @@ export const PASSIF_SECTION_LABELS: Record<BalanceSheetPassifKey, string> = {
   PASSIF_CIRCULANT: 'Passif circulant',
   TRESORERIE_PASSIF: 'Trésorerie — Passif',
 };
+
+// ─── W2.1 — 35 postes lettrés SYSCOHADA Révisé (AD…BZ, CA…DZ) ──────────
+//
+// Mapping fin (compte → poste lettré). Itère sur le référentiel
+// BILAN_POSTES et choisit le préfixe de compte LE PLUS LONG qui matche
+// dans `sourceAccountPrefixes` (contribution brute) ou `deductionPrefixes`
+// (contribution en déduction — typique des amortissements 28x/29x et des
+// comptes opposants 49x/59x).
+//
+// Convention pour la disposition Actif/Passif :
+//   - Un poste « ACTIF » avec match dans `deductionPrefixes` → la
+//     contribution est SOUSTRAITE du brut du poste (cas standard amort.).
+//   - Pour un compte marqué `isOpposing = true` (cf. Tome 1 G02), on
+//     considère qu'il est déjà reclassé doctrinairement comme « contre-
+//     partie » du poste source ; on force donc `asDeduction = true`
+//     même s'il a matché un `sourceAccountPrefixes` (rare).
+//
+// Postes sans `sourceAccountPrefixes` (sous-totaux _TOTAL_ : AZ, BG, BK,
+// BT, BZ, CP, DD, DF, DP, DT, DZ) ne sont jamais retournés ici : ils
+// sont calculés par sommation lors de l'agrégation.
+
+import { BILAN_POSTES, type BilanPosteRef, type BilanSide } from './postes/bilan-postes';
+
+export interface BilanPosteClassification {
+  /** Code lettré officiel (ex. 'AE', 'BJ', 'DD'). */
+  readonly posteCode: string;
+  /** Côté du bilan. */
+  readonly side: BilanSide;
+  /**
+   * `true` lorsque le montant doit venir EN DÉDUCTION du brut du poste
+   * (amortissements 28x/29x, dépréciations 39x/49x/59x, compte opposant
+   * Tome 1 G02). `false` pour une contribution standard.
+   */
+  readonly asDeduction: boolean;
+}
+
+/** Marqueur retourné pour les comptes sans poste lettré matché. */
+export const UNCLASSIFIED_POSTE = '_UNCLASSIFIED_';
+
+/**
+ * Identifie le poste lettré du Bilan AUDCIF qui doit absorber le solde
+ * d'un compte donné. Retourne `null` si le compte n'appartient pas au
+ * Bilan (classes 6/7/8/9 → vont au compte de résultat).
+ *
+ * L'algorithme :
+ *   1. Pour chaque poste de `BILAN_POSTES` (postes feuilles uniquement,
+ *      pas les sous-totaux `_TOTAL_`), trouve le préfixe le plus long
+ *      dans `sourceAccountPrefixes` qui matche `accountCode` et garde
+ *      en mémoire le meilleur match brut.
+ *   2. Idem pour `deductionPrefixes` (le meilleur match déduction).
+ *   3. On choisit le match avec le préfixe LE PLUS LONG (toutes
+ *      catégories confondues). En cas d'égalité de longueur, on
+ *      privilégie le match en déduction (logique : 2811 est plus
+ *      spécifique pour un amort. que 21 pour l'incorporel parent).
+ *   4. Si aucun match → retourne `null` (le caller décide de
+ *      bucketer en `UNCLASSIFIED_POSTE` ou ignorer).
+ *   5. Si `isOpposing = true`, force `asDeduction = true`.
+ */
+export function classifyToPoste(
+  accountCode: string,
+  isOpposing = false,
+): BilanPosteClassification | null {
+  if (!accountCode || accountCode.length === 0) return null;
+
+  let bestPoste: BilanPosteRef | null = null;
+  let bestLen = 0;
+  let bestIsDeduction = false;
+
+  for (const poste of BILAN_POSTES) {
+    if (poste.section === '_TOTAL_') continue;
+
+    for (const prefix of poste.sourceAccountPrefixes) {
+      if (accountCode.startsWith(prefix) && prefix.length > bestLen) {
+        bestPoste = poste;
+        bestLen = prefix.length;
+        bestIsDeduction = false;
+      }
+    }
+    for (const prefix of poste.deductionPrefixes) {
+      if (accountCode.startsWith(prefix) && prefix.length >= bestLen) {
+        // >= : à longueur égale, le match déduction l'emporte (cf. note 3).
+        bestPoste = poste;
+        bestLen = prefix.length;
+        bestIsDeduction = true;
+      }
+    }
+  }
+
+  if (bestPoste === null) return null;
+  return {
+    posteCode: bestPoste.code,
+    side: bestPoste.side,
+    asDeduction: bestIsDeduction || isOpposing,
+  };
+}

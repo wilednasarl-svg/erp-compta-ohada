@@ -1,4 +1,4 @@
-import { classifyForBilan } from '../services/ohada-classifier';
+import { classifyForBilan, classifyToPoste } from '../services/ohada-classifier';
 
 describe('classifyForBilan', () => {
   it('class 2 → ACTIF immobilisé regardless of sign', () => {
@@ -168,5 +168,133 @@ describe('classifyForBilan', () => {
         contraSign: 1,
       });
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// W2.1 — classifyToPoste : mapping compte → poste lettré officiel
+// (35 postes AD-BZ / CA-DZ, SYSCOHADA Révisé Tome 3 p. 32)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('classifyToPoste', () => {
+  it('compte 411xxx (créance client) → poste BI côté ACTIF, contribution standard', () => {
+    expect(classifyToPoste('411000')).toEqual({
+      posteCode: 'BI',
+      side: 'ACTIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 401xxx (fournisseur exploitation) → poste DJ côté PASSIF', () => {
+    expect(classifyToPoste('401000')).toEqual({
+      posteCode: 'DJ',
+      side: 'PASSIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 101 (capital) → poste CA côté PASSIF', () => {
+    expect(classifyToPoste('101')).toEqual({
+      posteCode: 'CA',
+      side: 'PASSIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 161 (emprunt) → poste DA côté PASSIF', () => {
+    expect(classifyToPoste('161000')).toEqual({
+      posteCode: 'DA',
+      side: 'PASSIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 245 (matériel transport) — préfixe 245 plus spécifique que 22/23/24 → poste AN', () => {
+    expect(classifyToPoste('245000')).toEqual({
+      posteCode: 'AN',
+      side: 'ACTIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 281x (amortissement matériel) → poste correspondant en DÉDUCTION (asDeduction=true)', () => {
+    // 2811 est dans `deductionPrefixes` de AE (frais dev) — préfixe 4 chars
+    // beat le préfixe `21` (2 chars) de AD pour le brut.
+    const result = classifyToPoste('281100');
+    expect(result?.asDeduction).toBe(true);
+    expect(result?.side).toBe('ACTIF');
+  });
+
+  it('compte 4912 (dépréciation client) avec isOpposing=true → asDeduction=true côté ACTIF', () => {
+    // 491 est dans deductionPrefixes de BI (clients) → match déduction direct.
+    const result = classifyToPoste('491200', true);
+    expect(result?.asDeduction).toBe(true);
+    expect(result?.side).toBe('ACTIF');
+    // Doit cibler le poste BI ou BJ (selon préfixe). Tolérance : ACTIF.
+    expect(['BI', 'BJ']).toContain(result?.posteCode);
+  });
+
+  it('compte 109 (capital non appelé) → poste CB côté PASSIF (signe -1 géré par le poste)', () => {
+    expect(classifyToPoste('109')).toMatchObject({
+      posteCode: 'CB',
+      side: 'PASSIF',
+    });
+  });
+
+  it('compte 521xxx (banque locale) → poste BS côté ACTIF', () => {
+    // Préfixe 52 (BS) > préfixe 51 (BR) → BS l'emporte.
+    expect(classifyToPoste('521000')).toEqual({
+      posteCode: 'BS',
+      side: 'ACTIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 512xxx (valeurs à encaisser, sous-classe 51) → poste BR', () => {
+    // 512 matche `51` (préfixe BR) ; aucun préfixe BS plus long.
+    expect(classifyToPoste('512000')).toEqual({
+      posteCode: 'BR',
+      side: 'ACTIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 311xxx (stocks marchandises) → poste BB côté ACTIF', () => {
+    expect(classifyToPoste('311000')).toEqual({
+      posteCode: 'BB',
+      side: 'ACTIF',
+      asDeduction: false,
+    });
+  });
+
+  it('compte 4012 — préfixe 401 (4 chars) plus spécifique que 42/43/44 → poste DJ et non DK', () => {
+    expect(classifyToPoste('401200')).toMatchObject({ posteCode: 'DJ' });
+  });
+
+  it('compte hors plan (xyz) → null (caller doit bucketer en UNCLASSIFIED)', () => {
+    expect(classifyToPoste('zzz999')).toBeNull();
+  });
+
+  it('compte de classe 6 (charge, ex. 601000) → null (pas au bilan)', () => {
+    // 601 ne matche aucun préfixe du référentiel BILAN_POSTES.
+    expect(classifyToPoste('601000')).toBeNull();
+  });
+
+  it('compte 39x (dépréciation stocks) → asDeduction=true sur poste BB', () => {
+    const result = classifyToPoste('391000');
+    expect(result?.posteCode).toBe('BB');
+    expect(result?.asDeduction).toBe(true);
+  });
+
+  it('compte 131 (résultat bénéfice) → poste CJ côté PASSIF', () => {
+    expect(classifyToPoste('131')).toEqual({
+      posteCode: 'CJ',
+      side: 'PASSIF',
+      asDeduction: false,
+    });
+  });
+
+  it('empty code → null', () => {
+    expect(classifyToPoste('')).toBeNull();
   });
 });

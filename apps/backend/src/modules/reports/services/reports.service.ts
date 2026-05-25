@@ -15,9 +15,11 @@ import {
   PL_CHARGE_SECTIONS,
   PL_PRODUIT_SECTIONS,
   classifyForBilan,
+  classifyToPoste,
   type BalanceSheetActifKey,
   type BalanceSheetPassifKey,
 } from './ohada-classifier';
+import { BILAN_POSTES, type BilanPosteRef } from './postes/bilan-postes';
 import {
   CHARGE_POSTES,
   PRODUIT_POSTES,
@@ -133,6 +135,52 @@ export interface BalanceSheetPreviousSummary {
   readonly difference: string;
 }
 
+/* ────── W2.1 — Hiérarchie 35 postes lettrés (SYSCOHADA Révisé) ────── */
+
+/**
+ * Poste lettré (feuille de la hiérarchie). Le code et le label sont
+ * exactement ceux du référentiel `BILAN_POSTES` (doctrine OHADA Tome 3
+ * p. 32). `net` est le montant DECIMAL signé (string) après éventuelle
+ * déduction des amort./dépréc. / comptes opposants.
+ */
+export interface BilanPoste {
+  readonly code: string;
+  readonly label: string;
+  readonly side: 'ACTIF' | 'PASSIF';
+  readonly net: string;
+  /** Brut (avant déductions). Optionnel — `undefined` si pas pertinent. */
+  readonly brut?: string;
+  /** Amortissements / dépréciations / comptes opposants. */
+  readonly deduction?: string;
+  readonly netPrevious?: string;
+  readonly netChange?: string;
+}
+
+/**
+ * Rubrique = regroupement éditorial (ex. « Actif immobilisé »,
+ * « Capitaux propres »). Identifiée par la valeur `section` du
+ * référentiel.
+ */
+export interface BilanRubrique {
+  readonly label: string;
+  readonly postes: ReadonlyArray<BilanPoste>;
+  readonly subtotal: string;
+  readonly subtotalPrevious?: string;
+}
+
+/**
+ * Masse = sous-total lettré (ex. AZ Total actif immobilisé, CP Total
+ * capitaux propres, DZ Total général passif). Les codes de masses sont
+ * tirés du référentiel (postes marqués `section: '_TOTAL_'`).
+ */
+export interface BilanMasse {
+  readonly code: string;
+  readonly label: string;
+  readonly rubriques: ReadonlyArray<BilanRubrique>;
+  readonly total: string;
+  readonly totalPrevious?: string;
+}
+
 export interface BalanceSheetReport {
   readonly asAtDate: string;
   readonly actif: {
@@ -142,6 +190,33 @@ export interface BalanceSheetReport {
   readonly passif: {
     readonly sections: ReadonlyArray<BalanceSheetSection>;
     readonly total: string;
+  };
+  /**
+   * W2.1 — Hiérarchie officielle 3 niveaux (masse → rubrique → poste)
+   * sur les 35 postes lettrés AD-BZ (actif) et CA-DZ (passif) issus du
+   * référentiel `BILAN_POSTES`. Ce champ EXISTE TOUJOURS et est la
+   * source de vérité pour les exports DSF et les imprimés DGI.
+   *
+   * Le champ legacy `actif.sections` / `passif.sections` (4 buckets
+   * fourre-tout) est conservé pour la compatibilité ascendante avec
+   * les exports XLSX/PDF, le calcul des ratios financiers
+   * (`getFinancialRatios`) et l'ancienne UI ; il sera retiré une
+   * fois la migration frontend terminée (wave 5).
+   */
+  readonly actifMasses: ReadonlyArray<BilanMasse>;
+  readonly passifMasses: ReadonlyArray<BilanMasse>;
+  /**
+   * Comptes qui n'ont matché AUCUN poste lettré du référentiel. Doit
+   * rester vide pour un PCG OHADA standard ; remplit ce bucket signale
+   * un compte hors plan (warning log mais le bilan n'échoue pas).
+   */
+  readonly unclassified: ReadonlyArray<BilanPoste>;
+  /** Totaux racine (W2.1) — actif vs passif, écart d'équilibrage. */
+  readonly totals: {
+    readonly actif: string;
+    readonly passif: string;
+    /** actif − passif. Doit être ~0 sur un bilan équilibré. */
+    readonly difference: string;
   };
   /**
    * Net result for the fiscal year ending at `asAtDate`, incorporated
@@ -154,6 +229,9 @@ export interface BalanceSheetReport {
    * Bilan equilibre check: actif − passif. Wave 2 returned the raw
    * unbalanced figure; wave 3 closes the loop when
    * `fiscalYearStartDate` is provided so this column should be ~0.00.
+   *
+   * Alias historique de `totals.difference` — conservé pour la
+   * compatibilité.
    */
   readonly difference: string;
   readonly previous?: BalanceSheetPreviousSummary;
@@ -2155,11 +2233,226 @@ export class ReportsService {
     const totalActif = actifSections.reduce((s, sect) => s + Number(sect.total), 0);
     const totalPassif = passifSections.reduce((s, sect) => s + Number(sect.total), 0);
 
+    // ── W2.1 — Construction de la hiérarchie 35 postes lettrés ──────
+    const hierarchy = this.buildBilanHierarchy(rows, netResultIncorporated);
+
     return {
       asAtDate,
       actif: { sections: actifSections, total: totalActif.toFixed(2) },
       passif: { sections: passifSections, total: totalPassif.toFixed(2) },
+      actifMasses: hierarchy.actifMasses,
+      passifMasses: hierarchy.passifMasses,
+      unclassified: hierarchy.unclassified,
+      totals: {
+        actif: hierarchy.totalActif,
+        passif: hierarchy.totalPassif,
+        difference: hierarchy.difference,
+      },
       netResultIncorporated,
+      difference: (totalActif - totalPassif).toFixed(2),
+    };
+  }
+
+  /**
+   * W2.1 — Agrégation des soldes par poste lettré officiel SYSCOHADA
+   * AUDCIF (35 postes AD-BZ pour l'actif, CA-DZ pour le passif).
+   *
+   * Algo :
+   *  1. Pour chaque ligne de solde, identifier le poste lettré via
+   *     `classifyToPoste` (prefix-longest-match sur le référentiel).
+   *  2. Accumuler `brut` (contribution standard) / `deduction`
+   *     (amortissements, dépréciations, opposants).
+   *  3. Sommer les postes par RUBRIQUE (champ `section` du référentiel).
+   *  4. Sommer les rubriques par MASSE via le chaînage `parentGroup`
+   *     (les masses sont les postes `section === '_TOTAL_'`).
+   *  5. Si le P&L a été incorporé (netResultIncorporated non null), le
+   *     mécanisme legacy a déjà ajouté la ligne au bucket CAPITAUX_PROPRES :
+   *     on l'incorpore ici dans le poste CJ « Résultat net de
+   *     l'exercice » pour la même cohérence.
+   */
+  private buildBilanHierarchy(
+    rows: ReadonlyArray<{
+      readonly accountId: string;
+      readonly accountCode: string;
+      readonly accountLabel: string;
+      readonly accountClass: number;
+      readonly isOpposing: boolean;
+      readonly totalDebit: string;
+      readonly totalCredit: string;
+    }>,
+    netResultIncorporated: string | null,
+  ): {
+    actifMasses: ReadonlyArray<BilanMasse>;
+    passifMasses: ReadonlyArray<BilanMasse>;
+    unclassified: ReadonlyArray<BilanPoste>;
+    totalActif: string;
+    totalPassif: string;
+    difference: string;
+  } {
+    type PosteAcc = { brut: number; deduction: number };
+    const posteAccs = new Map<string, PosteAcc>(); // posteCode → acc
+    const unclassifiedRows: BilanPoste[] = [];
+
+    const addToPoste = (posteCode: string, asDeduction: boolean, amount: number): void => {
+      const acc = posteAccs.get(posteCode) ?? { brut: 0, deduction: 0 };
+      if (asDeduction) acc.deduction += amount;
+      else acc.brut += amount;
+      posteAccs.set(posteCode, acc);
+    };
+
+    for (const row of rows) {
+      const debit = Number(row.totalDebit);
+      const credit = Number(row.totalCredit);
+      const net = debit - credit;
+      if (Math.abs(net) < 0.005) continue;
+
+      const classification = classifyToPoste(row.accountCode, row.isOpposing);
+      if (classification === null) {
+        // Bilan-relevant class (1-5) mais aucun préfixe matché → bucket
+        // dédié pour visibilité. Les classes 6-9 retournent aussi null
+        // mais on les ignore (elles vont au P&L).
+        if (row.accountClass >= 1 && row.accountClass <= 5) {
+          unclassifiedRows.push({
+            code: row.accountCode,
+            label: row.accountLabel,
+            side: row.accountClass === 1 ? 'PASSIF' : 'ACTIF',
+            net: net.toFixed(2),
+          });
+        }
+        continue;
+      }
+      // Convention : on stocke le montant en valeur absolue ; le côté
+      // (actif/passif) est déjà encodé par le poste cible. Pour un
+      // compte de classe 4 à solde créditeur classifié dans un poste
+      // ACTIF (cas opposant ou avance), `asDeduction` fait le travail.
+      addToPoste(classification.posteCode, classification.asDeduction, Math.abs(net));
+    }
+
+    // Incorporation du résultat net (réutilise la valeur déjà calculée
+    // par le bloc legacy) dans le poste lettré CJ « Résultat net ».
+    if (netResultIncorporated !== null) {
+      const net = Number(netResultIncorporated);
+      if (Math.abs(net) >= 0.005) {
+        // Bénéfice → contribution standard ; perte → déduction (signe -).
+        addToPoste('CJ', net < 0, Math.abs(net));
+      }
+    }
+
+    // Index posteCode → BilanPosteRef pour résolution rapide.
+    const posteByCode = new Map<string, BilanPosteRef>();
+    for (const p of BILAN_POSTES) posteByCode.set(p.code, p);
+
+    // Construction des postes-feuilles (avec leur net signé).
+    const builtPostes = new Map<string, BilanPoste>();
+    for (const [code, acc] of posteAccs) {
+      const ref = posteByCode.get(code);
+      if (!ref) continue; // référentiel changé entre temps — safeguard
+      const net = (acc.brut - acc.deduction) * ref.sign;
+      const poste: BilanPoste = {
+        code: ref.code,
+        label: ref.label,
+        side: ref.side,
+        net: net.toFixed(2),
+        brut: acc.brut > 0 ? acc.brut.toFixed(2) : undefined,
+        deduction: acc.deduction > 0 ? acc.deduction.toFixed(2) : undefined,
+      };
+      builtPostes.set(code, poste);
+    }
+
+    // Calcul des sous-totaux pour chaque masse `_TOTAL_` via parentGroup.
+    // Algorithme : pour chaque poste-feuille, on remonte `parentGroup`
+    // jusqu'à la masse racine et on accumule son `net` dans toutes les
+    // masses intermédiaires.
+    const masseTotals = new Map<string, number>();
+    for (const poste of builtPostes.values()) {
+      let cursor: string | undefined = posteByCode.get(poste.code)?.parentGroup;
+      const seen = new Set<string>();
+      while (cursor !== undefined && !seen.has(cursor)) {
+        seen.add(cursor);
+        const ref = posteByCode.get(cursor);
+        if (!ref) break;
+        if (ref.section === '_TOTAL_') {
+          masseTotals.set(cursor, (masseTotals.get(cursor) ?? 0) + Number(poste.net));
+        }
+        cursor = ref.parentGroup;
+      }
+    }
+
+    // Regroupement par RUBRIQUE (postes-feuilles ayant le même
+    // `section` éditorial, hors `_TOTAL_`). Puis rattachement de
+    // chaque rubrique à la masse qui contient ses postes (via le
+    // premier ancêtre _TOTAL_ rencontré). On préserve l'ordre du
+    // référentiel.
+    type RubriqueAcc = { label: string; postes: BilanPoste[]; masseCode: string };
+    const rubriquesByKey = new Map<string, RubriqueAcc>(); // key = `${masseCode}::${section}`
+
+    for (const ref of BILAN_POSTES) {
+      if (ref.section === '_TOTAL_') continue;
+      const built = builtPostes.get(ref.code);
+      if (!built) continue;
+      // Trouve la masse parente directe (premier ancêtre _TOTAL_).
+      let cursor: string | undefined = ref.parentGroup;
+      let masseCode = '';
+      const seen = new Set<string>();
+      while (cursor !== undefined && !seen.has(cursor)) {
+        seen.add(cursor);
+        const r = posteByCode.get(cursor);
+        if (r?.section === '_TOTAL_') {
+          masseCode = cursor;
+          break;
+        }
+        cursor = r?.parentGroup;
+      }
+      if (!masseCode) continue; // poste orphelin — skip défensif
+      const key = `${masseCode}::${ref.section}`;
+      const existing = rubriquesByKey.get(key);
+      if (existing) existing.postes.push(built);
+      else
+        rubriquesByKey.set(key, { label: ref.section, postes: [built], masseCode });
+    }
+
+    // Construction finale des masses, dans l'ordre du référentiel.
+    const buildMasses = (side: 'ACTIF' | 'PASSIF'): BilanMasse[] => {
+      const masseRefs = BILAN_POSTES.filter(
+        (p) => p.section === '_TOTAL_' && p.side === side,
+      );
+      return masseRefs
+        .map((ref) => {
+          const rubs: BilanRubrique[] = [];
+          for (const [key, rub] of rubriquesByKey) {
+            if (rub.masseCode !== ref.code) continue;
+            // Tri des postes par code lettré (AE < AF < AG…).
+            const sortedPostes = [...rub.postes].sort((a, b) => a.code.localeCompare(b.code));
+            const subtotal = sortedPostes.reduce((s, p) => s + Number(p.net), 0);
+            rubs.push({ label: rub.label, postes: sortedPostes, subtotal: subtotal.toFixed(2) });
+            // Suppression du marquer 'key' inutilisé (lint).
+            void key;
+          }
+          const total = masseTotals.get(ref.code) ?? 0;
+          return {
+            code: ref.code,
+            label: ref.label,
+            rubriques: rubs,
+            total: total.toFixed(2),
+          };
+        });
+      // On expose toutes les masses du référentiel (y compris les masses
+      // racine BZ/DZ et les masses parents BK/DF qui n'ont pas de
+      // rubriques propres mais dont le total agrège leurs enfants).
+    };
+
+    const actifMasses = buildMasses('ACTIF');
+    const passifMasses = buildMasses('PASSIF');
+
+    const totalActif = masseTotals.get('BZ') ?? 0;
+    const totalPassif = masseTotals.get('DZ') ?? 0;
+
+    return {
+      actifMasses,
+      passifMasses,
+      unclassified: unclassifiedRows,
+      totalActif: totalActif.toFixed(2),
+      totalPassif: totalPassif.toFixed(2),
       difference: (totalActif - totalPassif).toFixed(2),
     };
   }
@@ -2196,6 +2489,40 @@ export class ReportsService {
       };
     };
 
+    // W2.1 — Enrichir la hiérarchie postes lettrés avec les valeurs N-1.
+    const enrichMasses = (
+      current35: ReadonlyArray<BilanMasse>,
+      previous35: ReadonlyArray<BilanMasse>,
+    ): ReadonlyArray<BilanMasse> => {
+      const prevMasseIdx = new Map(previous35.map((m) => [m.code, m]));
+      return current35.map((m) => {
+        const prevM = prevMasseIdx.get(m.code);
+        const prevRubIdx = new Map((prevM?.rubriques ?? []).map((r) => [r.label, r]));
+        return {
+          ...m,
+          totalPrevious: prevM ? prevM.total : '0.00',
+          rubriques: m.rubriques.map((r) => {
+            const prevR = prevRubIdx.get(r.label);
+            const prevPosteIdx = new Map((prevR?.postes ?? []).map((p) => [p.code, p]));
+            return {
+              ...r,
+              subtotalPrevious: prevR ? prevR.subtotal : '0.00',
+              postes: r.postes.map((p) => {
+                const prevP = prevPosteIdx.get(p.code);
+                const prevNet = prevP ? Number(prevP.net) : 0;
+                const curNet = Number(p.net);
+                return {
+                  ...p,
+                  netPrevious: prevNet.toFixed(2),
+                  netChange: (curNet - prevNet).toFixed(2),
+                };
+              }),
+            };
+          }),
+        };
+      });
+    };
+
     return {
       ...current,
       actif: {
@@ -2206,6 +2533,8 @@ export class ReportsService {
         ...current.passif,
         sections: current.passif.sections.map((s) => enrichSection(s, prevPassifIdx)),
       },
+      actifMasses: enrichMasses(current.actifMasses, previous.actifMasses),
+      passifMasses: enrichMasses(current.passifMasses, previous.passifMasses),
       previous: {
         asAtDate: previous.asAtDate,
         totalActif: previous.actif.total,
