@@ -648,6 +648,42 @@ export class ReportsController {
     );
   }
 
+  @Get('profit-loss-official.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({
+    summary: 'Export Excel — Compte de Résultat OFFICIEL (cascade Vol. 3 SYSCOHADA)',
+  })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async profitLossOfficialXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: SigQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith =
+      query.compareFromDate !== undefined && query.compareToDate !== undefined
+        ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
+        : undefined;
+    const report = await this.reports.getSig(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      compareWith,
+    });
+    const buffer = this.xlsx.profitLossOfficialXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(
+        org.name,
+        'compte-resultat-officiel',
+        query.fromDate,
+        query.toDate,
+        'xlsx',
+      ),
+    );
+  }
+
   @Get('sig.xlsx')
   @RequirePermission('journals.reports')
   @ApiOperation({ summary: 'Export Excel — Soldes Intermédiaires de Gestion' })

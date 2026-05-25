@@ -407,6 +407,98 @@ export class ReportsXlsxService {
     return this.buildWorkbook(rows, 'Balance comparative');
   }
 
+  // ─── Compte de Résultat officiel SYSCOHADA (Vol. 3) ──────────────
+  /**
+   * Mise en forme officielle du CR selon le Guide d'application Vol. 3
+   * (lignes 1174-1208 de l'extrait txt). Cascade verticale :
+   *   TA - Ventes marchandises
+   *   RA - Achats marchandises
+   *   RB - Variation stocks marchandises
+   *   XA - MARGE COMMERCIALE
+   *   TB ... TD
+   *   XB - CHIFFRE D'AFFAIRES
+   *   ... etc jusqu'à XI - RÉSULTAT NET
+   * Reutilise les données d'un SigReport.
+   */
+  profitLossOfficialXlsx(report: SigReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    const hasComp = report.previous !== undefined;
+    rows.push([orgName]);
+    rows.push([
+      `Compte de Résultat OFFICIEL (Vol. 3 SYSCOHADA) — Du ${report.fromDate} au ${report.toDate}` +
+        (hasComp
+          ? ` (N-1 : ${report.previous.fromDate} → ${report.previous.toDate})`
+          : ''),
+    ]);
+    rows.push([]);
+    const header = hasComp
+      ? ['Réf.', 'Libellé', 'Montant N', 'Montant N-1']
+      : ['Réf.', 'Libellé', 'Montant N'];
+    rows.push(header);
+
+    // Index helpers
+    const chargeBy = new Map(report.charges.map((c) => [c.code, c]));
+    const produitBy = new Map(report.produits.map((p) => [p.code, p]));
+    const soldeBy = new Map(report.soldes.map((s) => [s.code, s]));
+
+    const line = (code: string) => {
+      const item = chargeBy.get(code) ?? produitBy.get(code) ?? soldeBy.get(code);
+      if (item === undefined) return;
+      const labelRaw = item.label;
+      const isSolde = code.startsWith('X');
+      const label = isSolde ? labelRaw.toUpperCase() : labelRaw;
+      const row = hasComp
+        ? [code, label, this.num(item.amount), this.num(item.previousAmount)]
+        : [code, label, this.num(item.amount)];
+      rows.push(row);
+    };
+
+    // Cascade officielle Vol. 3 (ordre exact)
+    line('TA');
+    line('RA');
+    line('RB');
+    line('XA');
+    line('TB');
+    line('TC');
+    line('TD');
+    line('XB');
+    line('TE');
+    line('TF');
+    line('TG');
+    line('TH');
+    line('TI');
+    line('RC');
+    line('RD');
+    line('RE');
+    line('RF');
+    line('RG');
+    line('RH');
+    line('RI');
+    line('RJ');
+    line('XC');
+    line('RK');
+    line('XD');
+    line('TJ');
+    line('RL');
+    line('XE');
+    line('TK');
+    line('TL');
+    line('TM');
+    line('RM');
+    line('XF');
+    line('XG');
+    line('TN');
+    line('TO');
+    line('RO');
+    line('RP');
+    line('XH');
+    line('RQ');
+    line('RS');
+    line('XI');
+
+    return this.buildWorkbook(rows, 'CR officiel');
+  }
+
   // ─── Soldes Intermédiaires de Gestion (SIG) ──────────────────────
   /**
    * Mise en page SYSCOHADA AUDCIF : détail des postes RA→RS + TA→TO
