@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRightLeft, BarChart3, BookOpen, BookText, Brain, Building2, Calendar, Coins, FileUp, GitBranch, History, LayoutDashboard, LogOut, Mail, Package, Paperclip, Percent, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
+import { ArrowRightLeft, BarChart3, BookOpen, BookText, Brain, Building2, Calendar, Coins, FileUp, GitBranch, Gauge, History, LayoutDashboard, LogOut, Mail, Package, Paperclip, Percent, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -30,6 +30,7 @@ interface NavItem {
 
 const NAV: ReadonlyArray<NavItem> = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+  { href: '/dashboards', label: 'Dashboards', icon: Gauge },
   { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen },
   { href: '/accounting-periods', label: 'Périodes', icon: Calendar },
   { href: '/imports', label: 'Imports', icon: FileUp },
