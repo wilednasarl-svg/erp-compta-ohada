@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Vercel webhook sanity check: bumped 2026-05-25 after pnpm-lock sync
+// (commit 1a5b838) to confirm GitHub-triggered builds succeed end-to-end.
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
