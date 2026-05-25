@@ -111,9 +111,29 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       signout: () => {
+        // Zustand `set` est un merge partiel — il faut explicitement
+        // remettre chaque champ persisté à undefined / null, sinon
+        // accessToken survit en localStorage et AuthHydrationGate
+        // renvoie sur /dashboard au lieu de /login.
         setAuthToken(null);
         setRefreshToken(null);
-        set({ isHydrated: true });
+        set({
+          isHydrated: true,
+          accessToken: undefined,
+          refreshToken: undefined,
+          user: undefined,
+          organizations: undefined,
+          currentOrg: null,
+        });
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.removeItem('erp-compta-auth/v1');
+          } catch {
+            // localStorage indisponible (mode privé bloqué) — on a déjà
+            // vidé le store en mémoire, le redirect /login fonctionnera
+            // pour la session courante.
+          }
+        }
       },
     }),
     {

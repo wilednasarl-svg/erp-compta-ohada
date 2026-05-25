@@ -315,6 +315,10 @@ function TrialBalanceTable({ report }: { readonly report: TrialBalanceReport }) 
 
 function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
   const [accountId, setAccountId] = useState<string>('');
+  const [codeQuery, setCodeQuery] = useState<string>('');
+  const [accountClass, setAccountClass] = useState<string>('');
+  const [codeFrom, setCodeFrom] = useState<string>('');
+  const [codeTo, setCodeTo] = useState<string>('');
   const [fromDate, setFromDate] = useState<string>(yearStartIso());
   const [toDate, setToDate] = useState<string>(todayIso());
   const [submitted, setSubmitted] = useState<{
@@ -352,13 +356,41 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
     enabled: orgId !== '' && submitted !== null,
   });
 
-  const sortedAccounts = useMemo(
-    () =>
-      (accountsQuery.data ?? [])
-        .slice()
-        .sort((a, b) => a.code.localeCompare(b.code)),
-    [accountsQuery.data],
-  );
+  // Filtre côté client : classe + plage code de/à + recherche libre.
+  // Le backend `/general-ledger/:accountId` n'accepte qu'un compte unique,
+  // donc on filtre la liste de sélection ici plutôt que d'envoyer une
+  // plage au serveur (qui exigerait un autre endpoint).
+  const filteredAccounts = useMemo(() => {
+    const all = (accountsQuery.data ?? []).slice().sort((a, b) => a.code.localeCompare(b.code));
+    return all.filter((a) => {
+      if (accountClass !== '' && !a.code.startsWith(accountClass)) {
+        return false;
+      }
+      if (codeFrom !== '' && a.code < codeFrom) {
+        return false;
+      }
+      if (codeTo !== '' && a.code > codeTo) {
+        return false;
+      }
+      if (codeQuery !== '') {
+        const q = codeQuery.toLowerCase();
+        if (!a.code.toLowerCase().includes(q) && !a.label.toLowerCase().includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [accountsQuery.data, accountClass, codeFrom, codeTo, codeQuery]);
+
+  // Si la saisie libre matche exactement un seul compte (par code), le
+  // pré-sélectionner pour éviter un aller-retour vers le dropdown.
+  const matchedByCode = useMemo(() => {
+    if (codeQuery === '') return null;
+    const exact = filteredAccounts.find((a) => a.code === codeQuery.trim());
+    return exact ?? null;
+  }, [codeQuery, filteredAccounts]);
+
+  const effectiveAccountId = accountId !== '' ? accountId : (matchedByCode?.id ?? '');
 
   return (
     <Card>
@@ -371,26 +403,94 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
       </CardHeader>
       <CardContent className="space-y-5">
         <form
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
           onSubmit={(e) => {
             e.preventDefault();
-            if (accountId === '') {
+            if (effectiveAccountId === '') {
               return;
             }
-            setSubmitted({ accountId, fromDate, toDate });
+            setSubmitted({ accountId: effectiveAccountId, fromDate, toDate });
           }}
         >
-          <div className="space-y-1 lg:col-span-2">
-            <Label htmlFor="gl-account">Compte</Label>
+          <div className="space-y-1">
+            <Label htmlFor="gl-class">Classe</Label>
+            <select
+              id="gl-class"
+              value={accountClass}
+              onChange={(e) => {
+                setAccountClass(e.target.value);
+                setAccountId('');
+              }}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+            >
+              <option value="">Toutes</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
+                <option key={c} value={c}>
+                  Classe {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="gl-code-from">Code de</Label>
+            <Input
+              id="gl-code-from"
+              placeholder="ex. 411"
+              value={codeFrom}
+              onChange={(e) => {
+                setCodeFrom(e.target.value);
+                setAccountId('');
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="gl-code-to">Code à</Label>
+            <Input
+              id="gl-code-to"
+              placeholder="ex. 419"
+              value={codeTo}
+              onChange={(e) => {
+                setCodeTo(e.target.value);
+                setAccountId('');
+              }}
+            />
+          </div>
+          <div className="space-y-1 lg:col-span-3">
+            <Label htmlFor="gl-search">Recherche (code ou libellé)</Label>
+            <Input
+              id="gl-search"
+              placeholder="Saisir un code (ex. 411000) ou libellé"
+              value={codeQuery}
+              onChange={(e) => {
+                setCodeQuery(e.target.value);
+                setAccountId('');
+              }}
+              list="gl-account-codes"
+            />
+            <datalist id="gl-account-codes">
+              {filteredAccounts.slice(0, 50).map((a) => (
+                <option key={a.id} value={a.code}>
+                  {a.label}
+                </option>
+              ))}
+            </datalist>
+          </div>
+          <div className="space-y-1 lg:col-span-4">
+            <Label htmlFor="gl-account">Compte sélectionné</Label>
             <select
               id="gl-account"
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
+              value={effectiveAccountId}
+              onChange={(e) => {
+                setAccountId(e.target.value);
+                setCodeQuery('');
+              }}
               className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               required
             >
-              <option value="">— Choisir un compte —</option>
-              {sortedAccounts.map((a) => (
+              <option value="">
+                — {filteredAccounts.length} compte(s) disponible(s) —
+              </option>
+              {filteredAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.code} — {a.label}
                 </option>
@@ -417,8 +517,8 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
               required
             />
           </div>
-          <div className="sm:col-span-2 lg:col-span-4">
-            <Button type="submit" disabled={ledgerQuery.isFetching || accountId === ''}>
+          <div className="sm:col-span-2 lg:col-span-6">
+            <Button type="submit" disabled={ledgerQuery.isFetching || effectiveAccountId === ''}>
               {ledgerQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Afficher
             </Button>
@@ -430,7 +530,9 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
         {ledgerQuery.data !== undefined ? (
           <GeneralLedgerTable report={ledgerQuery.data} />
         ) : submitted === null ? (
-          <p className="text-sm text-slate-500">Choisissez un compte puis cliquez sur « Afficher ».</p>
+          <p className="text-sm text-slate-500">
+            Filtrez puis choisissez un compte (ou tapez son code) et cliquez sur « Afficher ».
+          </p>
         ) : null}
       </CardContent>
     </Card>

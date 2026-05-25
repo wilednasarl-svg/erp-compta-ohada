@@ -27,10 +27,11 @@ import { MultiCurrencyModule } from './modules/multi-currency/multi-currency.mod
 import { BankReconciliationModule } from './modules/bank-reconciliation/bank-reconciliation.module';
 import { AiModule } from './modules/ai/ai.module';
 import { DashboardsModule } from './modules/dashboards/dashboards.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { AccountingScoreModule } from './modules/accounting-score/accounting-score.module';
+import { CollaborationModule } from './modules/collaboration/collaboration.module';
 // Module 14 (signatures électroniques) est embarqué dans JournalsModule
-// via EntryWorkflowService — pas de module séparé. Module 17
-// (InventoryModule) est en cours sur sa branche dédiée et sera câblé
-// lors du merge.
+// via EntryWorkflowService — pas de module séparé.
 
 @Module({
   imports: [
@@ -126,6 +127,31 @@ import { DashboardsModule } from './modules/dashboards/dashboards.module';
     // d'export PDF/PNG en wave 1 — JSON consommé par Recharts côté
     // Next.js. Permission unique : dashboards.read (tous rôles métier).
     DashboardsModule,
+    // Module 17 wave 1 — Inventaire & Stock. Registre articles +
+    // mouvements append-only + valorisation CMP SYSCOHADA. Importe
+    // AccountingPlanModule pour valider l'appartenance tenant des
+    // 3 comptes (31x stock, 60x achat, 70x vente). Les guards
+    // (TenantGuard) résolvent AuthEventsService via RbacModule →
+    // forwardRef(AuditModule). Pas d'audit direct côté service en
+    // wave 1 — l'invariant cross-tenant est porté par TenantGuard +
+    // OrganizationAccountRepository.findById.
+    // Permissions : inventory.read, inventory.write, inventory.movement.
+    InventoryModule,
+    // Module 20 wave 1 — Accounting Score. Score de santé comptable
+    // 0-100 par exercice agrégé sur 4 critères pondérés (anomalies,
+    // justificatifs manquants, rapprochements bancaires, retards
+    // workflow). Heuristique pure (wave 1) — loose-coupling SQL brut
+    // sur ai_anomalies / document_entries / bank_statement_lines /
+    // accounting_periods, donc le module compile et tourne même sans
+    // Module 11 / 15 cablés dans la DB cible. Permissions :
+    // accounting_score.recalculate, accounting_score.read.
+    AccountingScoreModule,
+    // Module 21 wave 1 — Collaboration cabinet ↔ client. Demandes de
+    // pièces justificatives + commentaires fils. State machine
+    // open → answered → closed. Notifications stubbées (logger) en
+    // wave 1 — emails + websocket arrivent en wave 2. Permissions :
+    // collaboration.read, collaboration.write, collaboration.respond.
+    CollaborationModule,
   ],
   controllers: [],
   providers: [

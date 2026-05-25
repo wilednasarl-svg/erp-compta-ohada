@@ -23,7 +23,8 @@ import { useCurrentOrg } from '@/stores/auth-store';
 
 type TvaType = 'sales' | 'purchase' | 'both';
 type TvaKind = 'normal' | 'reduced' | 'exempt' | 'exonerated' | 'export';
-type DeclarationStatus = 'draft' | 'computed' | 'cancelled';
+// Backend (TvaDeclarationEntity) émet `'calculated'`, pas `'computed'`.
+type DeclarationStatus = 'draft' | 'calculated' | 'cancelled';
 
 interface TvaCode {
   readonly id: string;
@@ -35,25 +36,30 @@ interface TvaCode {
   readonly isActive: boolean;
 }
 
+// Shape MIROIR de `TvaDeclarationEntity` (snake_case en DB, camelCase
+// via TypeORM). N'invente PAS de champs `year`/`totalCollected` qui
+// n'existent pas — c'est la cause des `NaN` et `-undefined` côté UI.
 interface TvaDeclaration {
   readonly id: string;
-  readonly year: number;
-  readonly month: number;
+  readonly periodYear: number;
+  readonly periodMonth: number;
   readonly status: DeclarationStatus;
-  readonly totalCollected: string;
-  readonly totalDeductible: string;
-  readonly netDue: string;
+  readonly tvaCollecteeTotal: string;
+  readonly tvaDeductibleBsTotal: string;
+  readonly tvaDeductibleImmoTotal: string;
+  readonly tvaADecaisser: string;
+  readonly creditTvaReportable: string;
   readonly computedAt: string | null;
   readonly cancelledAt: string | null;
-  readonly cancelReason: string | null;
+  readonly cancelledReason: string | null;
 }
 
 interface TvaDeclarationLine {
   readonly id: string;
-  readonly tvaCodeId: string;
   readonly direction: 'collected' | 'deductible';
-  readonly baseAmount: string;
-  readonly taxAmount: string;
+  readonly accountPrefix: string;
+  readonly accountLabel: string | null;
+  readonly amount: string;
 }
 
 interface DeclarationDetail extends TvaDeclaration {
@@ -365,13 +371,13 @@ export default function TvaPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-mono">
-                              {d.year}-{String(d.month).padStart(2, '0')}
+                              {d.periodYear}-{String(d.periodMonth).padStart(2, '0')}
                             </span>
                             <Badge
                               variant={
                                 d.status === 'cancelled'
                                   ? 'destructive'
-                                  : d.status === 'computed'
+                                  : d.status === 'calculated'
                                     ? 'default'
                                     : 'muted'
                               }
@@ -379,18 +385,30 @@ export default function TvaPage() {
                               {d.status}
                             </Badge>
                           </div>
-                          <div className="mt-0.5 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                          <div className="mt-0.5 grid grid-cols-4 gap-3 text-xs text-muted-foreground">
                             <span>
                               Collectée :{' '}
-                              <span className="font-mono">{Number(d.totalCollected).toFixed(2)}</span>
+                              <span className="font-mono">{fmtAmount(d.tvaCollecteeTotal)}</span>
                             </span>
                             <span>
-                              Déductible :{' '}
-                              <span className="font-mono">{Number(d.totalDeductible).toFixed(2)}</span>
+                              Déductible B&amp;S :{' '}
+                              <span className="font-mono">{fmtAmount(d.tvaDeductibleBsTotal)}</span>
+                            </span>
+                            <span>
+                              Déductible Immo :{' '}
+                              <span className="font-mono">{fmtAmount(d.tvaDeductibleImmoTotal)}</span>
                             </span>
                             <span className="font-medium">
-                              Net dû :{' '}
-                              <span className="font-mono">{Number(d.netDue).toFixed(2)}</span>
+                              {Number(d.creditTvaReportable) > 0
+                                ? 'Crédit reportable : '
+                                : 'À décaisser : '}
+                              <span className="font-mono">
+                                {fmtAmount(
+                                  Number(d.creditTvaReportable) > 0
+                                    ? d.creditTvaReportable
+                                    : d.tvaADecaisser,
+                                )}
+                              </span>
                             </span>
                           </div>
                         </div>
@@ -480,7 +498,7 @@ function DeclarationDetailPanel({
           <LineTable title="Déductible (achats)" lines={deductible} />
         </div>
       )}
-      {status === 'computed' && (
+      {status === 'calculated' && (
         <div className="flex flex-col gap-2 md:flex-row md:items-end">
           <div className="flex-1 space-y-1">
             <Label htmlFor="cancel-reason">Motif d&apos;annulation</Label>
@@ -507,9 +525,9 @@ function DeclarationDetailPanel({
           </Button>
         </div>
       )}
-      {status === 'cancelled' && detailQuery.data?.cancelReason && (
+      {status === 'cancelled' && detailQuery.data?.cancelledReason && (
         <p className="text-sm text-destructive">
-          Annulée — motif : {detailQuery.data.cancelReason}
+          Annulée — motif : {detailQuery.data.cancelledReason}
         </p>
       )}
       <FormError error={detailQuery.error} />
@@ -525,8 +543,7 @@ function LineTable({
   title: string;
   lines: ReadonlyArray<TvaDeclarationLine>;
 }) {
-  const totalBase = lines.reduce((s, l) => s + Number(l.baseAmount), 0);
-  const totalTax = lines.reduce((s, l) => s + Number(l.taxAmount), 0);
+  const total = lines.reduce((s, l) => s + Number(l.amount), 0);
   return (
     <div>
       <div className="mb-1 text-xs font-medium uppercase text-muted-foreground">{title}</div>
@@ -534,9 +551,9 @@ function LineTable({
         <table className="w-full text-xs">
           <thead className="bg-muted/30">
             <tr>
-              <th className="px-2 py-1 text-left">Code</th>
-              <th className="px-2 py-1 text-right">Base</th>
-              <th className="px-2 py-1 text-right">Taxe</th>
+              <th className="px-2 py-1 text-left">Préfixe compte</th>
+              <th className="px-2 py-1 text-left">Libellé</th>
+              <th className="px-2 py-1 text-right">Montant</th>
             </tr>
           </thead>
           <tbody>
@@ -550,25 +567,20 @@ function LineTable({
             ) : (
               lines.map((l) => (
                 <tr key={l.id} className="border-t">
-                  <td className="px-2 py-1 font-mono">{l.tvaCodeId.slice(0, 8)}…</td>
-                  <td className="px-2 py-1 text-right font-mono">
-                    {Number(l.baseAmount).toFixed(2)}
-                  </td>
-                  <td className="px-2 py-1 text-right font-mono">
-                    {Number(l.taxAmount).toFixed(2)}
-                  </td>
+                  <td className="px-2 py-1 font-mono">{l.accountPrefix}</td>
+                  <td className="px-2 py-1">{l.accountLabel ?? '—'}</td>
+                  <td className="px-2 py-1 text-right font-mono">{fmtAmount(l.amount)}</td>
                 </tr>
               ))
             )}
           </tbody>
           <tfoot className="border-t bg-muted/20">
             <tr>
-              <td className="px-2 py-1 font-medium">Total</td>
-              <td className="px-2 py-1 text-right font-mono font-medium">
-                {totalBase.toFixed(2)}
+              <td className="px-2 py-1 font-medium" colSpan={2}>
+                Total
               </td>
               <td className="px-2 py-1 text-right font-mono font-medium">
-                {totalTax.toFixed(2)}
+                {fmtAmount(total)}
               </td>
             </tr>
           </tfoot>
@@ -576,4 +588,12 @@ function LineTable({
       </div>
     </div>
   );
+}
+
+function fmtAmount(value: string | number): string {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) {
+    return '0,00';
+  }
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
