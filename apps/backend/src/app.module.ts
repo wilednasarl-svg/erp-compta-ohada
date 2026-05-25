@@ -22,13 +22,13 @@ import { RulesModule } from './modules/rules/rules.module';
 import { TransformationsModule } from './modules/transformations/transformations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { TvaModule } from './modules/tva/tva.module';
-// Module 12 (AssetsModule), Module 14 (JournalSignaturesModule, déplacé
-// dans JournalsModule via EntryWorkflowService) et Module 15
-// (BankReconciliationModule) sont en cours de reconstruction parallèle
-// (issues bd projet-ferme-2fo + suivantes). On les recâble ici dès que
-// `assets.module.ts` et `bank-reconciliation.module.ts` sont re-livrés.
-// Les entités, services et migrations existants ne sont pas chargés tant
-// qu'aucun module ne les référence — Nest n'enregistre rien d'orphelin.
+import { AssetsModule } from './modules/assets/assets.module';
+import { MultiCurrencyModule } from './modules/multi-currency/multi-currency.module';
+// Module 14 (signatures électroniques) est embarqué dans JournalsModule
+// via EntryWorkflowService — pas de module séparé. Module 15
+// (BankReconciliationModule) est en cours sur sa branche dédiée
+// (`feat/module-15-bank-recon`, bd projet-ferme-wj4) et sera câblé
+// lors du merge. Module 17 (InventoryModule) idem.
 
 @Module({
   imports: [
@@ -93,6 +93,18 @@ import { TvaModule } from './modules/tva/tva.module';
     ReportsModule,
     // Module 13 wave 1 — TVA & Déclarations fiscales.
     TvaModule,
+    // Module 12 wave 1 — Immobilisations & Amortissements SYSCOHADA.
+    // Registre des assets, calcul d'échéancier (linéaire / dégressif),
+    // comptabilisation des dotations comme écritures journal via
+    // EntriesService (Module 4). Permissions : assets.read, assets.write,
+    // assets.post_depreciation.
+    AssetsModule,
+    // Module 16 wave 1 — Multi-devises (XOF base UEMOA). Catalogue
+    // ISO 4217 par organisation + historique des taux de change +
+    // conversion pure. Exporte CurrenciesService + ExchangeRatesService
+    // pour futur impact FX sur journals (wave 2) et banking
+    // multi-devises (Module 15 wave 2). Pas d'AuditModule en wave 1.
+    MultiCurrencyModule,
   ],
   controllers: [],
   providers: [
