@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRightLeft, BarChart3, BookOpen, BookText, Brain, Building2, Calendar, Coins, FileUp, GitBranch, Gauge, History, LayoutDashboard, LogOut, Mail, Package, Paperclip, Percent, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
+import { Award, ArrowRightLeft, Banknote, BarChart3, BookOpen, BookText, Brain, Building2, Calendar, Coins, FileUp, GitBranch, Gauge, Handshake, History, LayoutDashboard, Link2, LogOut, Mail, Package, Paperclip, PenLine, Percent, ShieldCheck, Sparkles, User as UserIcon, Users, Warehouse } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -35,6 +35,10 @@ const NAV: ReadonlyArray<NavItem> = [
   { href: '/accounting-periods', label: 'Périodes', icon: Calendar },
   { href: '/imports', label: 'Imports', icon: FileUp },
   { href: '/journals', label: 'Journaux', icon: BookText },
+  { href: '/entry-workflow', label: 'Workflow écritures', icon: PenLine },
+  { href: '/lettering', label: 'Lettrage', icon: Link2 },
+  { href: '/bank-reconciliation', label: 'Rapprochement', icon: Banknote },
+  { href: '/inventory', label: 'Inventaire', icon: Warehouse },
   { href: '/assets', label: 'Immobilisations', icon: Package },
   { href: '/reports', label: 'États financiers', icon: BarChart3 },
   { href: '/tva', label: 'TVA', icon: Percent },
@@ -44,6 +48,8 @@ const NAV: ReadonlyArray<NavItem> = [
   { href: '/rules', label: 'Règles', icon: Sparkles },
   { href: '/workflows', label: 'Workflows', icon: GitBranch },
   { href: '/ai', label: 'IA — Anomalies', icon: Brain },
+  { href: '/accounting-score', label: 'Score santé', icon: Award },
+  { href: '/collaboration', label: 'Collaboration', icon: Handshake },
   { href: '/audit-logs', label: 'Audit', icon: History },
   { href: '/members', label: 'Membres', icon: Users },
   { href: '/invitations', label: 'Invitations', icon: Mail },
