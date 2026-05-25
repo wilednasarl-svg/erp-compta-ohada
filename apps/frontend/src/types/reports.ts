@@ -35,6 +35,31 @@ export interface TrialBalanceReport {
   readonly totals: TrialBalanceTotals;
 }
 
+export type AgingSide = 'CLIENT' | 'FOURNISSEUR';
+
+export interface AgingBucket {
+  readonly upperDays: number | null;
+  readonly label: string;
+  readonly amount: string;
+}
+
+export interface AgingAccountRow {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly total: string;
+  readonly buckets: ReadonlyArray<AgingBucket>;
+}
+
+export interface AgingBalanceReport {
+  readonly side: AgingSide;
+  readonly asAtDate: string;
+  readonly bucketBoundaries: ReadonlyArray<number>;
+  readonly rows: ReadonlyArray<AgingAccountRow>;
+  readonly bucketTotals: ReadonlyArray<string>;
+  readonly grandTotal: string;
+}
+
 export interface MultiYearPeriod {
   readonly fromDate: string;
   readonly toDate: string;

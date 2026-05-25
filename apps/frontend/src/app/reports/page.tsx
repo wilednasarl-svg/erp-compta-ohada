@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookText,
   Calculator,
+  Clock,
   FileSpreadsheet,
   History,
   Loader2,
@@ -30,6 +31,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 import type {
+  AgingBalanceReport,
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
@@ -63,6 +65,9 @@ interface CashTrendEnvelope {
 interface MultiYearBalanceEnvelope {
   readonly report: MultiYearBalanceReport;
 }
+interface AgingBalanceEnvelope {
+  readonly report: AgingBalanceReport;
+}
 
 type ReportMode =
   | 'trial-balance'
@@ -71,6 +76,7 @@ type ReportMode =
   | 'sig'
   | 'ratios'
   | 'cash-trend'
+  | 'aging-balance'
   | 'general-ledger';
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
@@ -178,6 +184,18 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('aging-balance')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'aging-balance'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Clock className="h-4 w-4" />
+            Balance âgée
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('general-ledger')}
             className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'general-ledger'
@@ -202,6 +220,8 @@ export default function ReportsPage() {
           <FinancialRatiosPanel orgId={orgId} />
         ) : mode === 'cash-trend' ? (
           <CashTrendPanel orgId={orgId} />
+        ) : mode === 'aging-balance' ? (
+          <AgingBalancePanel orgId={orgId} />
         ) : (
           <GeneralLedgerPanel orgId={orgId} />
         )}
@@ -1434,6 +1454,175 @@ function MultiYearBalanceTable({ report }: { readonly report: MultiYearBalanceRe
             </tr>
           ))}
         </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Balance âgée ──────────────────────────────────────────────────────
+
+function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
+  const [side, setSide] = useState<'CLIENT' | 'FOURNISSEUR'>('CLIENT');
+  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
+  const [bucketBoundaries, setBucketBoundaries] = useState<string>('30,60,90,180');
+  const [submitted, setSubmitted] = useState<{
+    side: 'CLIENT' | 'FOURNISSEUR';
+    asAtDate: string;
+    bucketBoundaries: string;
+  } | null>(null);
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams => {
+    const p = new URLSearchParams({ side: s.side, asAtDate: s.asAtDate });
+    if (s.bucketBoundaries.trim() !== '') p.set('bucketBoundaries', s.bucketBoundaries);
+    return p;
+  };
+
+  const query = useQuery<AgingBalanceReport, ApiError>({
+    queryKey: ['reports', 'aging-balance', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<AgingBalanceEnvelope>(
+        `/organizations/${orgId}/reports/aging-balance?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    window.open(
+      `/api/organizations/${orgId}/reports/aging-balance.xlsx?${buildParams(submitted).toString()}`,
+      '_blank',
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Balance âgée</CardTitle>
+        <CardDescription>
+          Vieillissement des créances clients (411xxx) ou des dettes fournisseurs (401xxx) par
+          buckets d&apos;âge. Imputation FIFO automatique des règlements sur les factures les
+          plus anciennes (sans nécessiter de lettrage explicite). Buckets configurables.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ side, asAtDate, bucketBoundaries });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="ag-side">Tiers</Label>
+            <select
+              id="ag-side"
+              value={side}
+              onChange={(e) => setSide(e.target.value as 'CLIENT' | 'FOURNISSEUR')}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+            >
+              <option value="CLIENT">Clients (411)</option>
+              <option value="FOURNISSEUR">Fournisseurs (401)</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="ag-at">Au</Label>
+            <Input
+              id="ag-at"
+              type="date"
+              value={asAtDate}
+              onChange={(e) => setAsAtDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="ag-buckets">Buckets (jours)</Label>
+            <Input
+              id="ag-buckets"
+              type="text"
+              placeholder="30,60,90,180"
+              value={bucketBoundaries}
+              onChange={(e) => setBucketBoundaries(e.target.value)}
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Calculer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <AgingBalanceTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AgingBalanceTable({ report }: { readonly report: AgingBalanceReport }) {
+  if (report.rows.length === 0) {
+    return (
+      <p className="text-sm text-slate-500">
+        Aucun en-cours {report.side === 'CLIENT' ? 'client' : 'fournisseur'} ouvert à cette date.
+      </p>
+    );
+  }
+  const bucketLabels = (report.rows[0]?.buckets ?? []).map((b) => b.label);
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+            <th className="px-2 py-2">Compte</th>
+            <th className="px-2 py-2">Intitulé</th>
+            {bucketLabels.map((lab, i) => (
+              <th key={i} className="px-2 py-2 text-right">
+                {lab}
+              </th>
+            ))}
+            <th className="px-2 py-2 text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.rows.map((row) => (
+            <tr key={row.accountId} className="border-b hover:bg-slate-50">
+              <td className="px-2 py-1 font-mono text-xs">{row.accountCode}</td>
+              <td className="px-2 py-1">{row.accountLabel}</td>
+              {row.buckets.map((b, i) => (
+                <td
+                  key={i}
+                  className={`px-2 py-1 text-right font-mono ${i === row.buckets.length - 1 && Number(b.amount) > 0 ? 'text-red-600 font-semibold' : ''}`}
+                >
+                  {fmt(b.amount)}
+                </td>
+              ))}
+              <td className="px-2 py-1 text-right font-mono font-semibold">{fmt(row.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 bg-slate-100 font-medium">
+            <td className="px-2 py-2" colSpan={2}>
+              TOTAUX
+            </td>
+            {report.bucketTotals.map((t, i) => (
+              <td key={i} className="px-2 py-2 text-right font-mono">
+                {fmt(t)}
+              </td>
+            ))}
+            <td className="px-2 py-2 text-right font-mono">{fmt(report.grandTotal)}</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
