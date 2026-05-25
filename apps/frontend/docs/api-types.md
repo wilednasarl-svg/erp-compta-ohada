@@ -56,8 +56,21 @@ git add apps/frontend/src/lib/api/openapi.types.ts apps/frontend/src/lib/api/typ
 
 - Le typecheck CI doit pouvoir tourner sans démarrer le backend.
 - Le diff Git rend visible tout changement de contrat dans la PR backend.
-- Recommandation : un job CI (à venir) regénérera les types et fail si
-  diff vs commit, garantissant que `openapi.types.ts` reste sync.
+- Le job CI `api-types-sync` regénère les types et fail si diff vs commit,
+  garantissant que `openapi.types.ts` reste sync.
+
+## CI — comprendre les jobs
+
+Voir `.github/workflows/ci.yml`. Les jobs bloquants sont agrégés par
+`ci-gate` (le seul status check à exiger en branch protection).
+
+| Job | Rôle | Action si rouge |
+|---|---|---|
+| `lint-frontend` | `next lint` | `pnpm --filter frontend lint` localement. |
+| `typecheck-frontend` | `tsc --noEmit` | `pnpm --filter frontend typecheck`. |
+| `build-frontend` | `next build` | Reproduire avec `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001 pnpm --filter frontend build`. |
+| `bundle-size` | Budget 200 kB gzip par chunk critique (cf. `.size-limit.cjs`) | `pnpm --filter frontend build && pnpm --filter frontend size` — investiguer la dépendance lourde avant de bumper le budget. |
+| `api-types-sync` | Vérifie que `openapi.types.ts` est sync avec `/docs-json` | Démarrer le backend (`pnpm --filter backend start:dev`), puis `pnpm --filter frontend generate:api-types`, puis committer le diff sur `apps/frontend/src/lib/api/openapi.types.ts`. |
 
 ## Ajouter un nouveau module
 
