@@ -35,6 +35,7 @@ import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 import type {
   AgingBalanceReport,
+  AnnexeNoteDetailReport,
   AnnexeReport,
   CashTrendReport,
   ComparativeBalanceReport,
@@ -2350,13 +2351,20 @@ function AnnexePanel({ orgId }: { readonly orgId: string }) {
 
         {query.isError ? <FormError error={query.error} /> : null}
 
-        {query.data !== undefined ? <AnnexeTable report={query.data} /> : null}
+        {query.data !== undefined ? <AnnexeTable report={query.data} orgId={orgId} /> : null}
       </CardContent>
     </Card>
   );
 }
 
-function AnnexeTable({ report }: { readonly report: AnnexeReport }) {
+function AnnexeTable({
+  report,
+  orgId,
+}: {
+  readonly report: AnnexeReport;
+  readonly orgId: string;
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const statusColors: Record<'COMPUTED' | 'PARTIAL' | 'MANUAL', string> = {
     COMPUTED: 'bg-emerald-100 text-emerald-800',
     PARTIAL: 'bg-amber-100 text-amber-800',
@@ -2366,6 +2374,7 @@ function AnnexeTable({ report }: { readonly report: AnnexeReport }) {
     (acc, n) => ({ ...acc, [n.status]: (acc[n.status] ?? 0) + 1 }),
     {} as Record<string, number>,
   );
+  const supportedNotes = new Set(['Note 3A', 'Note 5', 'Note 15', 'Note 20']);
   return (
     <div className="space-y-4">
       <div className="flex gap-3 text-xs">
@@ -2377,6 +2386,9 @@ function AnnexeTable({ report }: { readonly report: AnnexeReport }) {
         </span>
         <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">
           {counts.MANUAL ?? 0} MANUAL
+        </span>
+        <span className="text-slate-500">
+          • Cliquer sur une note pour afficher son détail (4 notes implémentées : 3A, 5, 15, 20)
         </span>
       </div>
       <div className="overflow-x-auto">
@@ -2390,23 +2402,149 @@ function AnnexeTable({ report }: { readonly report: AnnexeReport }) {
             </tr>
           </thead>
           <tbody>
-            {report.notes.map((n) => (
-              <tr key={n.code} className="border-b hover:bg-slate-50">
-                <td className="px-2 py-1 font-mono text-xs font-semibold">{n.code}</td>
-                <td className="px-2 py-1">{n.title}</td>
-                <td className="px-2 py-1">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[n.status]}`}
+            {report.notes.map((n) => {
+              const supported = supportedNotes.has(n.code);
+              const isExpanded = expanded === n.code;
+              return (
+                <Fragment key={n.code}>
+                  <tr
+                    className={`border-b ${supported ? 'cursor-pointer hover:bg-slate-100' : 'hover:bg-slate-50'} ${isExpanded ? 'bg-slate-50' : ''}`}
+                    onClick={() => {
+                      if (supported) setExpanded(isExpanded ? null : n.code);
+                    }}
                   >
-                    {n.status}
-                  </span>
-                </td>
-                <td className="px-2 py-1 text-xs text-slate-500">{n.source ?? '—'}</td>
-              </tr>
-            ))}
+                    <td className="px-2 py-1 font-mono text-xs font-semibold">
+                      {supported ? (isExpanded ? '▼ ' : '▶ ') : '  '}
+                      {n.code}
+                    </td>
+                    <td className="px-2 py-1">{n.title}</td>
+                    <td className="px-2 py-1">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[n.status]}`}
+                      >
+                        {n.status}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1 text-xs text-slate-500">{n.source ?? '—'}</td>
+                  </tr>
+                  {isExpanded ? (
+                    <tr className="border-b bg-slate-50">
+                      <td colSpan={4} className="px-4 py-3">
+                        <AnnexeNoteDetailInline
+                          orgId={orgId}
+                          noteCode={n.code}
+                          asAtDate={report.asAtDate}
+                          fiscalYearStartDate={report.fiscalYearStartDate}
+                        />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function AnnexeNoteDetailInline({
+  orgId,
+  noteCode,
+  asAtDate,
+  fiscalYearStartDate,
+}: {
+  readonly orgId: string;
+  readonly noteCode: string;
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+}) {
+  const detailQuery = useQuery<AnnexeNoteDetailReport, ApiError>({
+    queryKey: ['reports', 'annexe-note', orgId, noteCode, asAtDate, fiscalYearStartDate],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        noteCode,
+        asAtDate,
+        fiscalYearStartDate,
+      });
+      const data = await api.get<{ report: AnnexeNoteDetailReport }>(
+        `/organizations/${orgId}/reports/annexe/note?${params.toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '',
+  });
+
+  if (detailQuery.isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-slate-500">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Chargement du détail…
+      </div>
+    );
+  }
+  if (detailQuery.isError) {
+    return <FormError error={detailQuery.error} />;
+  }
+  const detail = detailQuery.data;
+  if (detail === undefined) return null;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <h5 className="text-sm font-semibold">{detail.title}</h5>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            detail.coverage === 'COMPLETE'
+              ? 'bg-emerald-100 text-emerald-800'
+              : detail.coverage === 'PARTIAL'
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-slate-200 text-slate-700'
+          }`}
+        >
+          {detail.coverage}
+        </span>
+      </div>
+      {detail.rows.length === 0 ? (
+        <p className="text-xs text-slate-500">Aucune donnée pour cette note.</p>
+      ) : (
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b text-left text-slate-500">
+              <th className="px-2 py-1">Code</th>
+              <th className="px-2 py-1">Libellé</th>
+              <th className="px-2 py-1 text-right">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {detail.rows.map((r) => (
+              <Fragment key={r.code}>
+                <tr className="border-b font-medium">
+                  <td className="px-2 py-1 font-mono">{r.code}</td>
+                  <td className="px-2 py-1">{r.label}</td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(r.amount)}</td>
+                </tr>
+                {r.subRows?.map((sr) => (
+                  <tr key={sr.code} className="border-b text-slate-600">
+                    <td className="px-2 py-1 pl-6 font-mono">{sr.code}</td>
+                    <td className="px-2 py-1 pl-6">{sr.label}</td>
+                    <td className="px-2 py-1 text-right font-mono">{fmt(sr.amount)}</td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+            <tr className="border-t-2 bg-slate-100 font-semibold">
+              <td className="px-2 py-1" colSpan={2}>
+                Total
+              </td>
+              <td className="px-2 py-1 text-right font-mono">{fmt(detail.total)}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      {detail.methodology !== undefined ? (
+        <p className="text-xs italic text-slate-500">{detail.methodology}</p>
+      ) : null}
     </div>
   );
 }

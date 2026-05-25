@@ -21,6 +21,7 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
 import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
+import { AnnexeNoteDetailQueryDto } from '../dto/annexe-note-detail-query.dto';
 import { AnnexeQueryDto } from '../dto/annexe-query.dto';
 import { PeriodQueryDto } from '../dto/period-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
@@ -35,6 +36,7 @@ import {
   ReportsService,
   type BalanceSheetReport,
   type AgingBalanceReport,
+  type AnnexeNoteDetailReport,
   type AnnexeReport,
   type CashTrendReport,
   type TafireReport,
@@ -332,6 +334,23 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
   ): Promise<{ report: AnnexeReport }> {
     const report = await this.reports.getAnnexe(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+    });
+    return { report };
+  }
+
+  @Get('annexe/note')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Détail d'une note d'annexe (3A, 5, 15, 20 implémentés)" })
+  async annexeNoteDetail(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: AnnexeNoteDetailQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: AnnexeNoteDetailReport }> {
+    const report = await this.reports.getAnnexeNoteDetail(asTenantId(org.id), {
+      noteCode: query.noteCode,
       asAtDate: query.asAtDate,
       fiscalYearStartDate: query.fiscalYearStartDate,
     });

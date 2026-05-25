@@ -84,6 +84,24 @@ export interface AnnexeReport {
   readonly notes: ReadonlyArray<AnnexeNote>;
 }
 
+export interface AnnexeNoteDetailRow {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  readonly subRows?: ReadonlyArray<AnnexeNoteDetailRow>;
+}
+
+export interface AnnexeNoteDetailReport {
+  readonly noteCode: string;
+  readonly title: string;
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+  readonly rows: ReadonlyArray<AnnexeNoteDetailRow>;
+  readonly total: string;
+  readonly coverage: 'COMPLETE' | 'PARTIAL' | 'UNSUPPORTED';
+  readonly methodology?: string;
+}
+
 export type AgingSide = 'CLIENT' | 'FOURNISSEUR';
 
 export interface AgingBucket {
