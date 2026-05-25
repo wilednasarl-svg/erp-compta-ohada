@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { InventoryItemsController } from './controllers/inventory-items.controller';
@@ -36,6 +37,15 @@ import { InventoryMovementsService } from './services/inventory-movements.servic
     TypeOrmModule.forFeature([InventoryItemEntity, InventoryMovementEntity]),
     AuthModule,
     RbacModule,
+    // TenantGuard (consommé par les controllers via @UseGuards) dépend
+    // d'AuthEventsService, exporté par AuditModule. Sans cet import, le
+    // boot Nest crash avec "Nest can't resolve dependencies of the
+    // TenantGuard ... AuthEventsService at index [3] is available in
+    // the InventoryModule context" (cf. mémoire
+    // `nest-useguards-requires-module-imports` — bug récurrent, déjà
+    // corrigé sur MultiCurrencyModule, c'est ce qui a tenu prod down
+    // toute la journée depuis le wiring d'InventoryModule).
+    AuditModule,
     AccountingPlanModule,
   ],
   controllers: [InventoryItemsController, InventoryMovementsController],
