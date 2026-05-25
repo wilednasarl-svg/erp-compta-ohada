@@ -712,6 +712,35 @@ export class ReportsController {
     );
   }
 
+  @Get('balance-sheet-official.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({
+    summary: 'Export Excel — Bilan OFFICIEL avec codes de poste OHADA (AE/AI/AM/AZ/CH/CL/CR/CU/DZ)',
+  })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async balanceSheetOfficialXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: BalanceSheetQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith = query.compareAsAtDate
+      ? { asAtDate: query.compareAsAtDate, fiscalYearStartDate: query.compareFiscalYearStartDate }
+      : undefined;
+    const report = await this.reports.getBalanceSheet(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      compareWith,
+    });
+    const buffer = this.xlsx.balanceSheetOfficialXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'bilan-officiel', query.asAtDate, undefined, 'xlsx'),
+    );
+  }
+
   @Get('balance-sheet.xlsx')
   @RequirePermission('journals.reports')
   @ApiOperation({ summary: 'Export Excel — Bilan OHADA' })

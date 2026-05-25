@@ -407,6 +407,103 @@ export class ReportsXlsxService {
     return this.buildWorkbook(rows, 'Balance comparative');
   }
 
+  // ─── Bilan officiel SYSCOHADA avec codes postes AA-DZ ────────────
+  /**
+   * Export XLSX du bilan avec les codes de poste officiels OHADA.
+   * Mapping section → code de poste totaliseur :
+   *   ACTIF  : AE = Total Immobilisé, AI = Total Circulant,
+   *            AM = Total Trésorerie Actif, AZ = TOTAL GÉNÉRAL ACTIF
+   *   PASSIF : CH = Total Capitaux Propres, CL = Total Dettes Fin.,
+   *            CR = Total Passif Circulant, CU = Total Trésorerie Passif,
+   *            DZ = TOTAL GÉNÉRAL PASSIF
+   * Les sous-comptes individuels gardent leur code OHADA (8 chiffres) ;
+   * ce sont les TOTAUX qui portent le code de poste officiel.
+   */
+  balanceSheetOfficialXlsx(report: BalanceSheetReport, orgName: string): Buffer {
+    const sectionPostCodeActif: Record<string, string> = {
+      IMMOBILISE: 'AE',
+      CIRCULANT: 'AI',
+      TRESORERIE_ACTIF: 'AM',
+    };
+    const sectionPostCodePassif: Record<string, string> = {
+      CAPITAUX_PROPRES: 'CH',
+      DETTES_FINANCIERES: 'CL',
+      PASSIF_CIRCULANT: 'CR',
+      TRESORERIE_PASSIF: 'CU',
+    };
+    const rows: unknown[][] = [];
+    const hasComp = report.previous !== undefined;
+    rows.push([orgName]);
+    rows.push([
+      `Bilan OFFICIEL SYSCOHADA AUDCIF (Vol. 3, codes AA-DZ) — Au ${report.asAtDate}` +
+        (hasComp ? ` (N-1 : ${report.previous.asAtDate})` : ''),
+    ]);
+    rows.push([]);
+    const header = hasComp
+      ? ['Réf.', 'Intitulé', 'Montant N', 'Montant N-1']
+      : ['Réf.', 'Intitulé', 'Montant N'];
+    rows.push(header);
+
+    const pushRow = (
+      ref: string,
+      label: string,
+      amount: string,
+      previousAmount: string | undefined,
+    ): void => {
+      const row = hasComp
+        ? [ref, label, this.num(amount), this.num(previousAmount ?? '0')]
+        : [ref, label, this.num(amount)];
+      rows.push(row);
+    };
+
+    rows.push(['', 'ACTIF']);
+    for (const section of report.actif.sections) {
+      pushRow('', `  ${section.label}`, '', undefined);
+      for (const group of section.groups) {
+        pushRow(
+          group.code,
+          `    ${group.label}`,
+          group.amount,
+          group.previousAmount,
+        );
+      }
+      const code = sectionPostCodeActif[section.key] ?? '';
+      pushRow(code, `  TOTAL ${section.label.toUpperCase()}`, section.total, section.previousTotal);
+    }
+    pushRow(
+      'AZ',
+      'TOTAL GÉNÉRAL ACTIF',
+      report.actif.total,
+      report.previous?.totalActif,
+    );
+
+    rows.push([]);
+    rows.push(['', 'PASSIF']);
+    for (const section of report.passif.sections) {
+      pushRow('', `  ${section.label}`, '', undefined);
+      for (const group of section.groups) {
+        pushRow(
+          group.code,
+          `    ${group.label}`,
+          group.amount,
+          group.previousAmount,
+        );
+      }
+      const code = sectionPostCodePassif[section.key] ?? '';
+      pushRow(code, `  TOTAL ${section.label.toUpperCase()}`, section.total, section.previousTotal);
+    }
+    pushRow(
+      'DZ',
+      'TOTAL GÉNÉRAL PASSIF',
+      report.passif.total,
+      report.previous?.totalPassif,
+    );
+
+    rows.push([]);
+    rows.push(['', `Écart Actif − Passif : ${this.num(report.difference)}`]);
+    return this.buildWorkbook(rows, 'Bilan officiel');
+  }
+
   // ─── Compte de Résultat officiel SYSCOHADA (Vol. 3) ──────────────
   /**
    * Mise en forme officielle du CR selon le Guide d'application Vol. 3
