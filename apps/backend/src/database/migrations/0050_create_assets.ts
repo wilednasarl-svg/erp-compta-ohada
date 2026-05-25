@@ -24,8 +24,13 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  */
 export class CreateAssets1700000000050 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // IF NOT EXISTS — la table peut déjà exister si l'ancienne
+    // migration CreateAssets1700000000046 (renommée en 0050) a tourné
+    // sur une instance prod avant le rename. La structure étant
+    // identique on est safe à no-op-er ; les CHECK constraints et
+    // indexes ci-dessous utilisent aussi IF NOT EXISTS.
     await queryRunner.query(`
-      CREATE TABLE "assets" (
+      CREATE TABLE IF NOT EXISTS "assets" (
         "id"                         UUID         NOT NULL DEFAULT gen_random_uuid(),
         "organization_id"            UUID         NOT NULL,
         "code"                       TEXT         NOT NULL,
@@ -92,11 +97,11 @@ export class CreateAssets1700000000050 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "ix_assets_org_status"
+      CREATE INDEX IF NOT EXISTS "ix_assets_org_status"
         ON "assets" ("organization_id", "status")
     `);
     await queryRunner.query(`
-      CREATE INDEX "ix_assets_org_asset_account"
+      CREATE INDEX IF NOT EXISTS "ix_assets_org_asset_account"
         ON "assets" ("organization_id", "asset_account_id")
     `);
   }

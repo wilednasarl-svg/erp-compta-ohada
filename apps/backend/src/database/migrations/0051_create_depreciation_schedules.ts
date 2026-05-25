@@ -28,8 +28,11 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  */
 export class CreateDepreciationSchedules1700000000051 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // IF NOT EXISTS — mêmes raisons que 0050_create_assets : la table
+    // peut déjà exister si l'ancienne classe CreateDepreciationSchedules1700000000047
+    // (renommée en 0051) a été appliquée avant le rename.
     await queryRunner.query(`
-      CREATE TABLE "depreciation_schedules" (
+      CREATE TABLE IF NOT EXISTS "depreciation_schedules" (
         "id"                       UUID         NOT NULL DEFAULT gen_random_uuid(),
         "organization_id"          UUID         NOT NULL,
         "asset_id"                 UUID         NOT NULL,
@@ -77,7 +80,7 @@ export class CreateDepreciationSchedules1700000000051 implements MigrationInterf
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "ix_depreciation_schedules_org_year_status"
+      CREATE INDEX IF NOT EXISTS "ix_depreciation_schedules_org_year_status"
         ON "depreciation_schedules" ("organization_id", "fiscal_year", "status")
     `);
   }
