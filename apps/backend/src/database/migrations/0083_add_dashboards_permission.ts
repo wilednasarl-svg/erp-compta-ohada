@@ -13,8 +13,17 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  *
  * Idempotent via ON CONFLICT DO NOTHING (pattern identique aux autres
  * migrations de permissions du projet).
+ *
+ * Renumber 0076 → 0083 (timestamp 1700000000083) : la version
+ * précédente collisionnait avec `0076_create_ai_anomalies` (Module 11)
+ * qui portait `1700000000076`. Le premier à tourner en prod marquait
+ * ce timestamp comme appliqué, le second était silencieusement skippé
+ * par TypeORM — laissant la permission `dashboards.read` absente de
+ * la matrice. La migration étant idempotente (ON CONFLICT DO NOTHING),
+ * la rejouer avec un nouveau timestamp insère simplement les lignes
+ * manquantes sans casser les bases où elle avait fonctionné.
  */
-export class AddDashboardsPermission1700000000076 implements MigrationInterface {
+export class AddDashboardsPermission1700000000083 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       INSERT INTO "permissions" ("code", "description") VALUES
