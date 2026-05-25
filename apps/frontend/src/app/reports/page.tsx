@@ -12,6 +12,7 @@ import {
   History,
   Landmark,
   Loader2,
+  Package,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -125,7 +126,10 @@ export default function ReportsPage() {
       <div className="space-y-6">
         <header className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold">États financiers</h1>
-          <Badge variant="outline">Module 9 — wave 1</Badge>
+          <Badge variant="outline">Module 9 — wave 3</Badge>
+          <div className="ml-auto">
+            <AnnualPackageButton orgId={orgId} />
+          </div>
         </header>
 
         <div className="inline-flex rounded-md border bg-white p-1">
@@ -288,6 +292,88 @@ export default function ReportsPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+// ─── Dossier annuel ZIP (générateur all-in-one) ────────────────────────
+
+function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
+  const [open, setOpen] = useState<boolean>(false);
+  const [fromDate, setFromDate] = useState<string>(yearStartIso());
+  const [toDate, setToDate] = useState<string>(todayIso());
+  const [downloading, setDownloading] = useState<boolean>(false);
+
+  const triggerDownload = async (): Promise<void> => {
+    setDownloading(true);
+    try {
+      const params = new URLSearchParams({ fromDate, toDate });
+      // Window.open avec URL avec params déclenche le download dans
+      // l'onglet courant — l'attribut Content-Disposition côté backend
+      // assure la sauvegarde sur disque sans naviguer.
+      window.open(
+        `/api/organizations/${orgId}/reports/annual-package.zip?${params.toString()}`,
+        '_self',
+      );
+      setOpen(false);
+    } finally {
+      // Re-enable button after a brief delay — the download is async.
+      setTimeout(() => setDownloading(false), 2000);
+    }
+  };
+
+  if (!open) {
+    return (
+      <Button
+        onClick={() => setOpen(true)}
+        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+      >
+        <Package className="mr-2 h-4 w-4" />
+        Télécharger le dossier annuel
+      </Button>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-md border bg-white p-3 shadow-sm">
+      <div className="space-y-1">
+        <Label htmlFor="pkg-from" className="text-xs">
+          Du
+        </Label>
+        <Input
+          id="pkg-from"
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
+          className="h-8"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="pkg-to" className="text-xs">
+          Au
+        </Label>
+        <Input
+          id="pkg-to"
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="h-8"
+        />
+      </div>
+      <Button
+        onClick={triggerDownload}
+        disabled={downloading}
+        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+      >
+        {downloading ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Package className="mr-2 h-4 w-4" />
+        )}
+        Générer ZIP
+      </Button>
+      <Button variant="outline" onClick={() => setOpen(false)}>
+        Annuler
+      </Button>
+    </div>
   );
 }
 
