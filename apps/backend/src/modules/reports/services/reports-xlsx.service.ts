@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 
 import type {
+  AgingBalanceReport,
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
@@ -493,6 +494,33 @@ export class ReportsXlsxService {
       ]);
     }
     return this.buildWorkbook(rows, 'Balance pluri-exercices');
+  }
+
+  // ─── Balance âgée ────────────────────────────────────────────────
+  agingBalanceXlsx(report: AgingBalanceReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    const sideLabel = report.side === 'CLIENT' ? 'Clients (créances)' : 'Fournisseurs (dettes)';
+    rows.push([orgName]);
+    rows.push([`Balance âgée — ${sideLabel} — Au ${report.asAtDate}`]);
+    rows.push([]);
+    const bucketLabels = report.rows[0]?.buckets.map((b) => b.label) ?? [];
+    rows.push(['Compte', 'Intitulé', ...bucketLabels, 'Total']);
+    for (const r of report.rows) {
+      rows.push([
+        r.accountCode,
+        r.accountLabel,
+        ...r.buckets.map((b) => this.num(b.amount)),
+        this.num(r.total),
+      ]);
+    }
+    rows.push([]);
+    rows.push([
+      '',
+      'TOTAUX',
+      ...report.bucketTotals.map((b) => this.num(b)),
+      this.num(report.grandTotal),
+    ]);
+    return this.buildWorkbook(rows, 'Balance âgée');
   }
 
   // ─── Trésorerie nette glissante ──────────────────────────────────

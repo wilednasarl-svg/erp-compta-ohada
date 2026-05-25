@@ -20,6 +20,7 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
+import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
 import { MultiYearBalanceQueryDto } from '../dto/multi-year-balance-query.dto';
@@ -31,6 +32,7 @@ import { TrialBalanceQueryDto } from '../dto/trial-balance-query.dto';
 import {
   ReportsService,
   type BalanceSheetReport,
+  type AgingBalanceReport,
   type CashTrendReport,
   type ComparativeBalanceReport,
   type MultiYearBalanceReport,
@@ -281,6 +283,53 @@ export class ReportsController {
       compareWith,
     });
     return { report };
+  }
+
+  @Get('aging-balance')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Balance âgée clients ou fournisseurs (FIFO sur lignes)' })
+  async agingBalance(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: AgingBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: AgingBalanceReport }> {
+    const report = await this.reports.getAgingBalance(asTenantId(org.id), {
+      side: query.side,
+      asAtDate: query.asAtDate,
+      bucketBoundaries: query.bucketBoundaries,
+    });
+    return { report };
+  }
+
+  @Get('aging-balance.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Balance âgée' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async agingBalanceXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: AgingBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getAgingBalance(asTenantId(org.id), {
+      side: query.side,
+      asAtDate: query.asAtDate,
+      bucketBoundaries: query.bucketBoundaries,
+    });
+    const buffer = this.xlsx.agingBalanceXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(
+        org.name,
+        `balance-agee-${query.side.toLowerCase()}`,
+        query.asAtDate,
+        undefined,
+        'xlsx',
+      ),
+    );
   }
 
   @Get('cash-trend')
