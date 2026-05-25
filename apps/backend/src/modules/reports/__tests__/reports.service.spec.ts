@@ -361,6 +361,7 @@ describe('ReportsService.getBalanceSheet', () => {
       accountCode: string;
       accountLabel: string;
       accountClass: number;
+      isOpposing?: boolean;
       totalDebit: string;
       totalCredit: string;
     }>,
@@ -370,6 +371,7 @@ describe('ReportsService.getBalanceSheet', () => {
       accountCode: o.accountCode,
       accountLabel: o.accountLabel,
       accountClass: o.accountClass,
+      isOpposing: o.isOpposing ?? false,
       totalDebit: o.totalDebit,
       totalCredit: o.totalCredit,
     }));
@@ -508,6 +510,48 @@ describe('ReportsService.getBalanceSheet', () => {
     const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
     const tresoPassif = result.passif.sections.find((s) => s.key === 'TRESORERIE_PASSIF');
     expect(tresoPassif?.total).toBe('3000.00');
+  });
+
+  // ── W1.4 — comptes opposants (Tome 1 OHADA G02) ───────────────────
+  it('soustrait une dépréciation 4912 créditrice du poste ACTIF circulant (et ne la pousse pas au passif)', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue(
+      balancesAsAt([
+        // Créance client de 200 000 (sens normal débiteur)
+        {
+          accountCode: '411000',
+          accountLabel: 'CLIENT X',
+          accountClass: 4,
+          totalDebit: '200000.00',
+          totalCredit: '0.00',
+        },
+        // Dépréciation client de 50 000 (sens normal CRÉDITEUR pour
+        // un compte opposant — vient en DÉDUCTION du poste actif).
+        {
+          accountId: 'opp-4912',
+          accountCode: '491200',
+          accountLabel: 'Dépréciation client X',
+          accountClass: 4,
+          isOpposing: true,
+          totalDebit: '0.00',
+          totalCredit: '50000.00',
+        },
+      ]),
+    );
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+
+    // Le 4912 N'apparaît PAS au passif (bug avant W1.4).
+    const passifCirc = result.passif.sections.find((s) => s.key === 'PASSIF_CIRCULANT');
+    expect(passifCirc?.groups ?? []).toHaveLength(0);
+    expect(passifCirc?.total).toBe('0.00');
+
+    // Il apparaît bien au poste actif circulant, listé, mais soustrait
+    // au total : 200 000 − 50 000 = 150 000.
+    const actifCirc = result.actif.sections.find((s) => s.key === 'CIRCULANT');
+    const codes = (actifCirc?.groups ?? []).map((g) => g.code).sort();
+    expect(codes).toEqual(['411000', '491200']);
+    expect(actifCirc?.total).toBe('150000.00');
+    expect(result.actif.total).toBe('150000.00');
   });
 });
 

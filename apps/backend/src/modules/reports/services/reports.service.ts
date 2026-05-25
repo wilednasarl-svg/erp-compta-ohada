@@ -1440,13 +1440,23 @@ export class ReportsService {
     const actifBuckets = new Map<BalanceSheetActifKey, BalanceSheetGroup[]>();
     const passifBuckets = new Map<BalanceSheetPassifKey, BalanceSheetGroup[]>();
 
+    // Le set des account-ids opposants (contraSign = -1) — réutilisé
+    // plus bas par le réducteur de total de section pour soustraire
+    // ces montants au lieu de les additionner.
+    const opposingAccountIds = new Set<string>();
+
     for (const row of rows) {
       const debit = Number(row.totalDebit);
       const credit = Number(row.totalCredit);
       const net = debit - credit;
       if (Math.abs(net) < 0.005) continue;
       const netSign: 'D' | 'C' = net > 0 ? 'D' : 'C';
-      const classification = classifyForBilan(row.accountCode, row.accountClass, netSign);
+      const classification = classifyForBilan(
+        row.accountCode,
+        row.accountClass,
+        netSign,
+        row.isOpposing,
+      );
       if (classification === null) continue;
       const group: BalanceSheetGroup = {
         accountId: row.accountId,
@@ -1454,14 +1464,19 @@ export class ReportsService {
         label: row.accountLabel,
         amount: Math.abs(net).toFixed(2),
       };
+      if (classification.contraSign === -1) {
+        opposingAccountIds.add(row.accountId);
+      }
       if (classification.side === 'ACTIF') {
-        const bucket = actifBuckets.get(classification.key) ?? [];
+        const k = classification.key as BalanceSheetActifKey;
+        const bucket = actifBuckets.get(k) ?? [];
         bucket.push(group);
-        actifBuckets.set(classification.key, bucket);
+        actifBuckets.set(k, bucket);
       } else {
-        const bucket = passifBuckets.get(classification.key) ?? [];
+        const k = classification.key as BalanceSheetPassifKey;
+        const bucket = passifBuckets.get(k) ?? [];
         bucket.push(group);
-        passifBuckets.set(classification.key, bucket);
+        passifBuckets.set(k, bucket);
       }
     }
 
@@ -1500,7 +1515,12 @@ export class ReportsService {
       Object.keys(ACTIF_SECTION_LABELS) as BalanceSheetActifKey[]
     ).map((key) => {
       const groups = actifBuckets.get(key) ?? [];
-      const total = groups.reduce((s, g) => s + Number(g.amount), 0);
+      // Comptes opposants (29x/39x/49x/59x, 109, 121, 129, 409) :
+      // leur montant absolu vient EN DÉDUCTION du total de section.
+      const total = groups.reduce((s, g) => {
+        const signed = opposingAccountIds.has(g.accountId) ? -Number(g.amount) : Number(g.amount);
+        return s + signed;
+      }, 0);
       return {
         key,
         label: ACTIF_SECTION_LABELS[key],
@@ -1517,11 +1537,12 @@ export class ReportsService {
       // a signed amount embedded in a positive `amount` string +
       // negative-flagged code. We compute the sectional total with the
       // sign reapplied so a loss shrinks capitaux propres correctly.
+      // Comptes opposants (109, 121, 129 par ex.) sont également
+      // soustraits.
       const total = groups.reduce((s, g) => {
-        const signed =
-          g.accountId === RESULTAT_GROUP_ID && g.code === '129'
-            ? -Number(g.amount)
-            : Number(g.amount);
+        const isLossMarker = g.accountId === RESULTAT_GROUP_ID && g.code === '129';
+        const isOpposingAcc = opposingAccountIds.has(g.accountId);
+        const signed = isLossMarker || isOpposingAcc ? -Number(g.amount) : Number(g.amount);
         return s + signed;
       }, 0);
       return {

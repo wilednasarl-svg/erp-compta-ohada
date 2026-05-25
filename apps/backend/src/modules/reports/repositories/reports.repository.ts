@@ -252,6 +252,7 @@ export class ReportsRepository {
       accountCode: string;
       accountLabel: string;
       accountClass: number;
+      isOpposing: boolean;
       totalDebit: string;
       totalCredit: string;
     }>
@@ -268,18 +269,21 @@ export class ReportsRepository {
       .addSelect('a.code', 'accountCode')
       .addSelect('a.label', 'accountLabel')
       .addSelect('a.class', 'accountClass')
+      .addSelect('a.is_opposing', 'isOpposing')
       .addSelect('COALESCE(SUM(l.debit), 0)', 'totalDebit')
       .addSelect('COALESCE(SUM(l.credit), 0)', 'totalCredit')
       .groupBy('a.id')
       .addGroupBy('a.code')
       .addGroupBy('a.label')
       .addGroupBy('a.class')
+      .addGroupBy('a.is_opposing')
       .orderBy('a.code', 'ASC')
       .getRawMany<{
         accountId: string;
         accountCode: string;
         accountLabel: string;
         accountClass: string | number;
+        isOpposing: boolean | string | null;
         totalDebit: string;
         totalCredit: string;
       }>();
@@ -289,6 +293,9 @@ export class ReportsRepository {
       accountCode: r.accountCode,
       accountLabel: r.accountLabel,
       accountClass: Number(r.accountClass),
+      // PG renvoie `boolean` via le driver, mais on défensivement
+      // coerce le string 't'/'f' au cas où (driver alternatif).
+      isOpposing: r.isOpposing === true || r.isOpposing === 't' || r.isOpposing === 'true',
       totalDebit: Number(r.totalDebit).toFixed(2),
       totalCredit: Number(r.totalCredit).toFixed(2),
     }));
