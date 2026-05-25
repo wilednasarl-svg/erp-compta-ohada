@@ -175,7 +175,7 @@ export class WorkflowService {
   /**
    * Read-only lookup of an existing workflow instance for a given target.
    * Returns `null` if no workflow has been started yet. Used by Module 14
-   * (`JournalSignatureService.getStatus`) and any module that needs to
+   * (consommé par `EntryWorkflowService.getHistory` de Module 14) et
    * inspect workflow state without side-effects (unlike `startWorkflow`
    * which idempotently creates one).
    */
