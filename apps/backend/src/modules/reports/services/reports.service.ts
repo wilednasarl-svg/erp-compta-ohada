@@ -550,6 +550,31 @@ export interface AnnexeReport {
 }
 
 /**
+ * Une ligne du détail d'une note d'annexe : un compte ou un poste +
+ * son intitulé + son montant à la date du rapport. `subRows` permet
+ * de représenter les hiérarchies (ex. Note 3A regroupe par classe
+ * d'immobilisation).
+ */
+export interface AnnexeNoteDetailRow {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  readonly subRows?: readonly AnnexeNoteDetailRow[];
+}
+
+export interface AnnexeNoteDetailReport {
+  readonly noteCode: string;
+  readonly title: string;
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+  readonly rows: readonly AnnexeNoteDetailRow[];
+  readonly total: string;
+  /** Indique si le détail est complet, partiel ou non disponible. */
+  readonly coverage: 'COMPLETE' | 'PARTIAL' | 'UNSUPPORTED';
+  readonly methodology?: string;
+}
+
+/**
  * `ReportsService` — Module 9 accounting reports.
  *
  *   - `getTrialBalance`  : balance générale (one row per account).
@@ -1602,6 +1627,207 @@ export class ReportsService {
       asAtDate: query.asAtDate,
       fiscalYearStartDate: query.fiscalYearStartDate,
       notes,
+    };
+  }
+
+  /**
+   * Détail concret d'une note d'annexe. V1 implémente 4 notes phares :
+   *   - Note 3A : Immobilisations brutes par catégorie (préfixe 21/22/23/24/25)
+   *   - Note 5  : Créances et emplois assimilés par sous-compte (411)
+   *   - Note 15 : Dettes fournisseurs par sous-compte (401)
+   *   - Note 20 : Ventilation du chiffre d'affaires (postes TA/TB/TC/TD)
+   *
+   * Pour les autres notes, retourne `coverage: 'UNSUPPORTED'` avec une
+   * indication de la méthodologie attendue.
+   */
+  async getAnnexeNoteDetail(
+    organizationId: TenantId,
+    query: { noteCode: string; asAtDate: string; fiscalYearStartDate: string },
+  ): Promise<AnnexeNoteDetailReport> {
+    assertTenantId(organizationId);
+    if (!ReportsService.isYmd(query.asAtDate) || !ReportsService.isYmd(query.fiscalYearStartDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'Both dates must be YYYY-MM-DD.',
+      });
+    }
+
+    switch (query.noteCode) {
+      case 'Note 3A':
+        return this.computeNote3A(organizationId, query.asAtDate, query.fiscalYearStartDate);
+      case 'Note 5':
+        return this.computeNote5(organizationId, query.asAtDate, query.fiscalYearStartDate);
+      case 'Note 15':
+        return this.computeNote15(organizationId, query.asAtDate, query.fiscalYearStartDate);
+      case 'Note 20':
+        return this.computeNote20(organizationId, query.asAtDate, query.fiscalYearStartDate);
+      default:
+        return {
+          noteCode: query.noteCode,
+          title: 'Note non implémentée en détail (V1)',
+          asAtDate: query.asAtDate,
+          fiscalYearStartDate: query.fiscalYearStartDate,
+          rows: [],
+          total: '0.00',
+          coverage: 'UNSUPPORTED',
+          methodology:
+            'Cette note n\'a pas encore de calcul détaillé. Voir la liste générale via /annexe pour le statut COMPUTED/PARTIAL/MANUAL et la source.',
+        };
+    }
+  }
+
+  private async computeNote3A(
+    organizationId: TenantId,
+    asAtDate: string,
+    fyStart: string,
+  ): Promise<AnnexeNoteDetailReport> {
+    const balances = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
+    // Immobilisations brutes : préfixes 20-26 (incorporel, corporel,
+    // financier). On EXCLUT les amortissements (28x) et dépréciations
+    // (29x) — la note 3A traite la valeur brute.
+    const categories: ReadonlyArray<{ prefix: string; label: string }> = [
+      { prefix: '21', label: 'Immobilisations incorporelles' },
+      { prefix: '22', label: 'Terrains' },
+      { prefix: '23', label: 'Bâtiments, installations techniques et agencements' },
+      { prefix: '24', label: 'Matériel, mobilier et actifs biologiques' },
+      { prefix: '25', label: 'Avances et acomptes versés sur immobilisations' },
+      { prefix: '26', label: 'Titres de participation' },
+      { prefix: '27', label: 'Autres immobilisations financières' },
+    ];
+    const rows: AnnexeNoteDetailRow[] = [];
+    let total = 0;
+    for (const cat of categories) {
+      const subBalances = balances.filter(
+        (b) =>
+          b.accountCode.startsWith(cat.prefix) &&
+          !b.accountCode.startsWith('28') &&
+          !b.accountCode.startsWith('29'),
+      );
+      if (subBalances.length === 0) continue;
+      const subRows: AnnexeNoteDetailRow[] = subBalances.map((b) => ({
+        code: b.accountCode,
+        label: b.accountLabel,
+        amount: (Number(b.totalDebit) - Number(b.totalCredit)).toFixed(2),
+      }));
+      const catTotal = subRows.reduce((s, r) => s + Number(r.amount), 0);
+      total += catTotal;
+      rows.push({
+        code: cat.prefix,
+        label: cat.label,
+        amount: catTotal.toFixed(2),
+        subRows,
+      });
+    }
+    return {
+      noteCode: 'Note 3A',
+      title: 'Immobilisations brutes par catégorie',
+      asAtDate,
+      fiscalYearStartDate: fyStart,
+      rows,
+      total: total.toFixed(2),
+      coverage: 'COMPLETE',
+      methodology:
+        'Valeur brute = solde net des comptes 20-27 à la date. Les amortissements (28x) et dépréciations (29x) sont traités séparément (Note 3B).',
+    };
+  }
+
+  private async computeNote5(
+    organizationId: TenantId,
+    asAtDate: string,
+    fyStart: string,
+  ): Promise<AnnexeNoteDetailReport> {
+    const balances = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
+    // Créances : sous-comptes 411 (clients) + 416 (clients douteux) +
+    // 418 (factures à établir) + autres créances 42x débit, 44x débit,
+    // 47x débit. V1 : se limiter à 411 pour rester actionnable.
+    const filtered = balances.filter(
+      (b) => b.accountCode.startsWith('411') && Number(b.totalDebit) - Number(b.totalCredit) > 0.005,
+    );
+    const rows: AnnexeNoteDetailRow[] = filtered.map((b) => ({
+      code: b.accountCode,
+      label: b.accountLabel,
+      amount: (Number(b.totalDebit) - Number(b.totalCredit)).toFixed(2),
+    }));
+    const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+    return {
+      noteCode: 'Note 5',
+      title: 'Créances clients et emplois assimilés',
+      asAtDate,
+      fiscalYearStartDate: fyStart,
+      rows,
+      total: total.toFixed(2),
+      coverage: 'PARTIAL',
+      methodology:
+        "V1 : sous-comptes 411 (clients) avec solde débiteur positif. À étendre : 416 (clients douteux), 418 (factures à établir), 425-427 (avances personnel). Pour le détail âge des créances, voir /aging-balance?side=CLIENT.",
+    };
+  }
+
+  private async computeNote15(
+    organizationId: TenantId,
+    asAtDate: string,
+    fyStart: string,
+  ): Promise<AnnexeNoteDetailReport> {
+    const balances = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
+    const filtered = balances.filter(
+      (b) => b.accountCode.startsWith('401') && Number(b.totalCredit) - Number(b.totalDebit) > 0.005,
+    );
+    const rows: AnnexeNoteDetailRow[] = filtered.map((b) => ({
+      code: b.accountCode,
+      label: b.accountLabel,
+      amount: (Number(b.totalCredit) - Number(b.totalDebit)).toFixed(2),
+    }));
+    const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+    return {
+      noteCode: 'Note 15',
+      title: 'Fournisseurs et dettes assimilées',
+      asAtDate,
+      fiscalYearStartDate: fyStart,
+      rows,
+      total: total.toFixed(2),
+      coverage: 'PARTIAL',
+      methodology:
+        'V1 : sous-comptes 401 (fournisseurs) avec solde créditeur positif. À étendre : 408 (fournisseurs factures non parvenues), 409 (avances versées en déduction). Pour le détail âge des dettes, voir /aging-balance?side=FOURNISSEUR.',
+    };
+  }
+
+  private async computeNote20(
+    organizationId: TenantId,
+    asAtDate: string,
+    fyStart: string,
+  ): Promise<AnnexeNoteDetailReport> {
+    // Ventilation du CA : on agrège la période [fyStart, asAtDate] par
+    // poste TA (701) / TB (702) / TC (704-706) / TD (707). Source :
+    // SIG sur la période demandée.
+    const sig = await this.getSig(organizationId, { fromDate: fyStart, toDate: asAtDate });
+    const labels: Record<string, string> = {
+      TA: 'Ventes de marchandises',
+      TB: 'Ventes de produits fabriqués',
+      TC: 'Travaux, services vendus',
+      TD: 'Produits accessoires',
+    };
+    const rows: AnnexeNoteDetailRow[] = [];
+    let total = 0;
+    for (const code of ['TA', 'TB', 'TC', 'TD']) {
+      const poste = sig.produits.find((p) => p.code === code);
+      if (poste === undefined) continue;
+      const amt = Number(poste.amount);
+      if (amt < 0.005) continue;
+      rows.push({
+        code,
+        label: labels[code] ?? poste.label,
+        amount: poste.amount,
+      });
+      total += amt;
+    }
+    return {
+      noteCode: 'Note 20',
+      title: "Ventilation du chiffre d'affaires",
+      asAtDate,
+      fiscalYearStartDate: fyStart,
+      rows,
+      total: total.toFixed(2),
+      coverage: 'COMPLETE',
+      methodology:
+        "Chiffre d'affaires SYSCOHADA = somme des postes TA (compte 701) + TB (702) + TC (704-706) + TD (707) sur la période [début exercice, asAtDate]. Cf. poste XB du SIG.",
     };
   }
 
