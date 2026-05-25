@@ -22,6 +22,7 @@ import { RulesModule } from './modules/rules/rules.module';
 import { TransformationsModule } from './modules/transformations/transformations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { TvaModule } from './modules/tva/tva.module';
+import { BankReconciliationModule } from './modules/bank-reconciliation/bank-reconciliation.module';
 
 @Module({
   imports: [
@@ -85,6 +86,11 @@ import { TvaModule } from './modules/tva/tva.module';
     ReportsModule,
     // Module 13 wave 1 — TVA & Déclarations fiscales.
     TvaModule,
+    // Module 15 wave 1 — Rapprochement bancaire. Import relevés CSV,
+    // auto-matching ligne relevé ↔ ligne écriture (compte 521x),
+    // matching manuel, lettrage banque. Permissions : bank.read,
+    // bank.import, bank.reconcile, bank.admin.
+    BankReconciliationModule,
   ],
   controllers: [],
   providers: [
