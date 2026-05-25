@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Brain,
+  Columns3,
   Lightbulb,
   Loader2,
   MessageCircle,
@@ -208,6 +209,8 @@ export default function AiPage() {
         />
 
         <SuggestionCard orgId={orgId} />
+
+        <MappingCard orgId={orgId} />
 
         <AssistantCard orgId={orgId} periodId={selectedPeriodId} />
       </div>
@@ -679,6 +682,192 @@ function AssistantCard({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── AI Mapping sandbox (wave 2.5) ────────────────────────────────────
+
+type TargetField =
+  | "account_code"
+  | "description"
+  | "debit"
+  | "credit"
+  | "entry_date"
+  | "journal_code"
+  | "partner"
+  | "reference";
+
+const TARGET_FIELD_LABELS: Readonly<Record<TargetField, string>> = {
+  account_code: "Compte",
+  description: "Libellé",
+  debit: "Débit",
+  credit: "Crédit",
+  entry_date: "Date",
+  journal_code: "Journal",
+  partner: "Tiers",
+  reference: "Référence",
+};
+
+interface ColumnMapping {
+  readonly sourceColumn: string;
+  readonly sourceIndex: number;
+  readonly targetField: TargetField | null;
+  readonly confidence: number;
+  readonly reason: string;
+}
+
+interface MappingSuggestionResult {
+  readonly mappings: ReadonlyArray<ColumnMapping>;
+  readonly coverage: number;
+}
+
+function MappingCard({ orgId }: { orgId: string }) {
+  const [headersInput, setHeadersInput] = useState(
+    "Date, Code journal, N° Compte, Libellé, Débit, Crédit, Tiers, N° Pièce",
+  );
+  const [sampleInput, setSampleInput] = useState(
+    "15/06/2026; AC; 6132; Loyer juin; 750000; 0; SOCIDA; F-2026-001\n16/06/2026; AC; 6051; CIE juin; 120000; 0; CIE; F-2026-002",
+  );
+
+  const mappingMutation = useApiMutation<MappingSuggestionResult, void>(() => {
+    const headers = headersInput
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const sampleRows = sampleInput
+      .split("\n")
+      .map((line) => line.split(/[;,]/).map((c) => c.trim()))
+      .filter((row) => row.length > 0 && row.some((c) => c.length > 0));
+    return api.post<MappingSuggestionResult>(
+      `/organizations/${orgId}/ai/mapping/suggest-columns`,
+      { headers, sampleRows },
+    );
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Columns3 className="h-4 w-4 text-purple-500" /> Mapping IA des
+          colonnes Sage
+        </CardTitle>
+        <CardDescription>
+          Bac à sable : coller des en-têtes Sage + quelques lignes
+          d&apos;échantillon. L&apos;IA détecte chaque colonne par pattern +
+          inférence de type. Coverage affichée pour mesurer combien de champs
+          cibles ont été reconnus.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <Label htmlFor="headers-input">
+              En-têtes (séparées par , ou ;)
+            </Label>
+            <Input
+              id="headers-input"
+              value={headersInput}
+              onChange={(e) => setHeadersInput(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="sample-input">
+              Lignes d&apos;échantillon (une par ligne, colonnes séparées par ;)
+            </Label>
+            <textarea
+              id="sample-input"
+              value={sampleInput}
+              onChange={(e) => setSampleInput(e.target.value)}
+              rows={3}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+        <Button
+          onClick={() => mappingMutation.mutate()}
+          disabled={
+            mappingMutation.isPending || headersInput.trim().length === 0
+          }
+        >
+          {mappingMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Columns3 className="mr-2 h-4 w-4" />
+          )}
+          Analyser les colonnes
+        </Button>
+
+        {mappingMutation.error && (
+          <FormError
+            error={{
+              code: mappingMutation.error.code,
+              message: mappingMutation.error.message,
+            }}
+          />
+        )}
+
+        {mappingMutation.data && (
+          <div className="space-y-3">
+            <div className="rounded-md border bg-card p-3 text-sm">
+              <span className="font-medium">Coverage :</span>{" "}
+              <Badge
+                variant={
+                  mappingMutation.data.coverage >= 80 ? "default" : "secondary"
+                }
+              >
+                {mappingMutation.data.coverage} / 100
+              </Badge>{" "}
+              <span className="text-muted-foreground">
+                (
+                {
+                  mappingMutation.data.mappings.filter((m) => m.targetField)
+                    .length
+                }{" "}
+                colonne(s) reconnue(s) sur{" "}
+                {mappingMutation.data.mappings.length})
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="px-2 py-1 text-left">Colonne source</th>
+                    <th className="px-2 py-1 text-left">Champ cible</th>
+                    <th className="px-2 py-1 text-left">Confiance</th>
+                    <th className="px-2 py-1 text-left">Raison</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mappingMutation.data.mappings.map((m) => (
+                    <tr key={m.sourceIndex} className="border-b">
+                      <td className="px-2 py-1 font-medium">
+                        {m.sourceColumn}
+                      </td>
+                      <td className="px-2 py-1">
+                        {m.targetField ? (
+                          <Badge variant="default">
+                            {TARGET_FIELD_LABELS[m.targetField]}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            non mappé
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1">{m.confidence}</td>
+                      <td className="px-2 py-1 text-xs text-muted-foreground">
+                        {m.reason}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </CardContent>
