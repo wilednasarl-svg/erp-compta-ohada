@@ -7,12 +7,15 @@ import {
   Calculator,
   Clock,
   FileSpreadsheet,
+  FileText,
+  GitBranch,
   History,
+  Landmark,
   Loader2,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
@@ -32,12 +35,15 @@ import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 import type {
   AgingBalanceReport,
+  AnnexeReport,
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
   GeneralLedgerReport,
   MultiYearBalanceReport,
   SigReport,
+  TafireReport,
+  TftReport,
   TrialBalanceReport,
 } from '@/types/reports';
 
@@ -68,6 +74,15 @@ interface MultiYearBalanceEnvelope {
 interface AgingBalanceEnvelope {
   readonly report: AgingBalanceReport;
 }
+interface TafireEnvelope {
+  readonly report: TafireReport;
+}
+interface TftEnvelope {
+  readonly report: TftReport;
+}
+interface AnnexeEnvelope {
+  readonly report: AnnexeReport;
+}
 
 type ReportMode =
   | 'trial-balance'
@@ -77,6 +92,9 @@ type ReportMode =
   | 'ratios'
   | 'cash-trend'
   | 'aging-balance'
+  | 'tafire'
+  | 'tft'
+  | 'annexe'
   | 'general-ledger';
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
@@ -196,6 +214,42 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('tafire')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'tafire'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Landmark className="h-4 w-4" />
+            TAFIRE
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('tft')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'tft'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <GitBranch className="h-4 w-4" />
+            TFT
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('annexe')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'annexe'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            Annexe
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('general-ledger')}
             className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'general-ledger'
@@ -222,6 +276,12 @@ export default function ReportsPage() {
           <CashTrendPanel orgId={orgId} />
         ) : mode === 'aging-balance' ? (
           <AgingBalancePanel orgId={orgId} />
+        ) : mode === 'tafire' ? (
+          <TafirePanel orgId={orgId} />
+        ) : mode === 'tft' ? (
+          <TftPanel orgId={orgId} />
+        ) : mode === 'annexe' ? (
+          <AnnexePanel orgId={orgId} />
         ) : (
           <GeneralLedgerPanel orgId={orgId} />
         )}
@@ -1946,6 +2006,465 @@ function FinancialRatiosTable({ report }: { readonly report: FinancialRatiosRepo
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── TAFIRE ────────────────────────────────────────────────────────────
+
+function TafirePanel({ orgId }: { readonly orgId: string }) {
+  const [fromDate, setFromDate] = useState<string>(yearStartIso());
+  const [toDate, setToDate] = useState<string>(todayIso());
+  const [submitted, setSubmitted] = useState<{ fromDate: string; toDate: string } | null>(null);
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({ fromDate: s.fromDate, toDate: s.toDate });
+
+  const query = useQuery<TafireReport, ApiError>({
+    queryKey: ['reports', 'tafire', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<TafireEnvelope>(
+        `/organizations/${orgId}/reports/tafire?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    window.open(
+      `/api/organizations/${orgId}/reports/tafire.xlsx?${buildParams(submitted).toString()}`,
+      '_blank',
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>TAFIRE — Tableau Financier des Ressources et Emplois</CardTitle>
+        <CardDescription>
+          État OHADA obligatoire pour les grandes entreprises (Vol. 3 SYSCOHADA AUDCIF).
+          EMPLOIS : investissements + variation BFR + remboursements dettes.
+          RESSOURCES : CAF + cessions + augmentations capitaux/dettes. CAF calculée
+          automatiquement à partir du SIG.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ fromDate, toDate });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="taf-from">Du</Label>
+            <Input
+              id="taf-from"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="taf-to">Au</Label>
+            <Input
+              id="taf-to"
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Générer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <TafireTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TafireTable({ report }: { readonly report: TafireReport }) {
+  const sumOf = (sections: ReadonlyArray<{ readonly total: string }>): string =>
+    sections.reduce((s, sec) => s + Number(sec.total), 0).toFixed(2);
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard label="Total EMPLOIS" value={sumOf(report.emplois)} />
+        <SummaryCard label="Total RESSOURCES" value={sumOf(report.ressources)} />
+        <SummaryCard label="Variation Trésorerie" value={report.variationTresorerie} />
+      </div>
+      <OhadaStatementBlock
+        title="EMPLOIS"
+        sections={report.emplois}
+        titleClass="text-red-700"
+      />
+      <OhadaStatementBlock
+        title="RESSOURCES"
+        sections={report.ressources}
+        titleClass="text-emerald-700"
+      />
+      {report.methodologyNotes.length > 0 ? (
+        <details className="rounded-md border bg-slate-50 p-3 text-xs text-slate-700">
+          <summary className="cursor-pointer font-medium">Notes méthodologiques</summary>
+          <ul className="mt-2 list-disc pl-4 space-y-1">
+            {report.methodologyNotes.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+// ─── TFT ───────────────────────────────────────────────────────────────
+
+function TftPanel({ orgId }: { readonly orgId: string }) {
+  const [fromDate, setFromDate] = useState<string>(yearStartIso());
+  const [toDate, setToDate] = useState<string>(todayIso());
+  const [submitted, setSubmitted] = useState<{ fromDate: string; toDate: string } | null>(null);
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({ fromDate: s.fromDate, toDate: s.toDate });
+
+  const query = useQuery<TftReport, ApiError>({
+    queryKey: ['reports', 'tft', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<TftEnvelope>(
+        `/organizations/${orgId}/reports/tft?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    window.open(
+      `/api/organizations/${orgId}/reports/tft.xlsx?${buildParams(submitted).toString()}`,
+      '_blank',
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>TFT — Tableau de Flux de Trésorerie (méthode indirecte)</CardTitle>
+        <CardDescription>
+          Décomposition des variations de trésorerie en 3 catégories OHADA :
+          activités d&apos;exploitation, d&apos;investissement, de financement.
+          Méthode indirecte (à partir du résultat net + ajustements non-cash).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ fromDate, toDate });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="tft-from">Du</Label>
+            <Input
+              id="tft-from"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="tft-to">Au</Label>
+            <Input
+              id="tft-to"
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Générer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <TftTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TftTable({ report }: { readonly report: TftReport }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard label="Trésorerie ouverture" value={report.tresorerieOuverture} />
+        <SummaryCard label="Variation totale" value={report.variationTresorerie} />
+        <SummaryCard label="Trésorerie clôture" value={report.tresorerieCloture} />
+      </div>
+      <OhadaStatementBlock
+        title="Activités d'exploitation"
+        sections={[report.fluxExploitation]}
+        titleClass="text-blue-700"
+      />
+      <OhadaStatementBlock
+        title="Activités d'investissement"
+        sections={[report.fluxInvestissement]}
+        titleClass="text-amber-700"
+      />
+      <OhadaStatementBlock
+        title="Activités de financement"
+        sections={[report.fluxFinancement]}
+        titleClass="text-purple-700"
+      />
+      {report.methodologyNotes.length > 0 ? (
+        <details className="rounded-md border bg-slate-50 p-3 text-xs text-slate-700">
+          <summary className="cursor-pointer font-medium">Notes méthodologiques</summary>
+          <ul className="mt-2 list-disc pl-4 space-y-1">
+            {report.methodologyNotes.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+// ─── Annexe ────────────────────────────────────────────────────────────
+
+function AnnexePanel({ orgId }: { readonly orgId: string }) {
+  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
+  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [submitted, setSubmitted] = useState<{
+    asAtDate: string;
+    fiscalYearStartDate: string;
+  } | null>(null);
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({ asAtDate: s.asAtDate, fiscalYearStartDate: s.fiscalYearStartDate });
+
+  const query = useQuery<AnnexeReport, ApiError>({
+    queryKey: ['reports', 'annexe', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<AnnexeEnvelope>(
+        `/organizations/${orgId}/reports/annexe?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    window.open(
+      `/api/organizations/${orgId}/reports/annexe.xlsx?${buildParams(submitted).toString()}`,
+      '_blank',
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Annexe — Notes 1 à 36 SYSCOHADA AUDCIF</CardTitle>
+        <CardDescription>
+          Liste des 35+ notes obligatoires des états financiers annuels OHADA. Chaque
+          note est marquée selon son statut : <strong>COMPUTED</strong> (calculable
+          depuis un rapport source), <strong>PARTIAL</strong> (partielle, à compléter),
+          <strong>MANUAL</strong> (saisie comptable).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ asAtDate, fiscalYearStartDate });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="anx-fy">Début exercice</Label>
+            <Input
+              id="anx-fy"
+              type="date"
+              value={fiscalYearStartDate}
+              onChange={(e) => setFiscalYearStartDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="anx-at">Au</Label>
+            <Input
+              id="anx-at"
+              type="date"
+              value={asAtDate}
+              onChange={(e) => setAsAtDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Générer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <AnnexeTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnnexeTable({ report }: { readonly report: AnnexeReport }) {
+  const statusColors: Record<'COMPUTED' | 'PARTIAL' | 'MANUAL', string> = {
+    COMPUTED: 'bg-emerald-100 text-emerald-800',
+    PARTIAL: 'bg-amber-100 text-amber-800',
+    MANUAL: 'bg-slate-200 text-slate-700',
+  };
+  const counts = report.notes.reduce(
+    (acc, n) => ({ ...acc, [n.status]: (acc[n.status] ?? 0) + 1 }),
+    {} as Record<string, number>,
+  );
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-3 text-xs">
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">
+          {counts.COMPUTED ?? 0} COMPUTED
+        </span>
+        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">
+          {counts.PARTIAL ?? 0} PARTIAL
+        </span>
+        <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">
+          {counts.MANUAL ?? 0} MANUAL
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-2">Note</th>
+              <th className="px-2 py-2">Titre</th>
+              <th className="px-2 py-2">Statut</th>
+              <th className="px-2 py-2">Source / Référence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.notes.map((n) => (
+              <tr key={n.code} className="border-b hover:bg-slate-50">
+                <td className="px-2 py-1 font-mono text-xs font-semibold">{n.code}</td>
+                <td className="px-2 py-1">{n.title}</td>
+                <td className="px-2 py-1">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[n.status]}`}
+                  >
+                    {n.status}
+                  </span>
+                </td>
+                <td className="px-2 py-1 text-xs text-slate-500">{n.source ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bloc réutilisable de section OHADA ────────────────────────────────
+
+function OhadaStatementBlock({
+  title,
+  sections,
+  titleClass = '',
+}: {
+  readonly title: string;
+  readonly sections: ReadonlyArray<{
+    readonly code: string;
+    readonly label: string;
+    readonly total: string;
+    readonly lines: ReadonlyArray<{ readonly code: string; readonly label: string; readonly amount: string }>;
+  }>;
+  readonly titleClass?: string;
+}) {
+  return (
+    <div>
+      <h4 className={`mb-2 text-sm font-semibold uppercase tracking-wide ${titleClass}`}>
+        {title}
+      </h4>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b text-left text-xs uppercase tracking-wide text-slate-500">
+            <th className="px-2 py-1">Réf.</th>
+            <th className="px-2 py-1">Libellé</th>
+            <th className="px-2 py-1 text-right">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sections.map((section) => (
+            <Fragment key={section.code}>
+              <tr className="border-b bg-slate-50">
+                <td className="px-2 py-1 font-mono text-xs font-semibold">{section.code}</td>
+                <td className="px-2 py-1 font-medium" colSpan={2}>
+                  {section.label}
+                </td>
+              </tr>
+              {section.lines.map((line) => (
+                <tr key={line.code} className="border-b">
+                  <td className="px-2 py-1 font-mono text-xs text-slate-500">{line.code}</td>
+                  <td className="px-2 py-1 pl-6 text-xs">{line.label}</td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(line.amount)}</td>
+                </tr>
+              ))}
+              <tr className="border-b font-semibold">
+                <td className="px-2 py-1"></td>
+                <td className="px-2 py-1 text-right text-xs">Total {section.label}</td>
+                <td className="px-2 py-1 text-right font-mono">{fmt(section.total)}</td>
+              </tr>
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

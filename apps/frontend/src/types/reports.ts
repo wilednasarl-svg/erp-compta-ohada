@@ -35,6 +35,55 @@ export interface TrialBalanceReport {
   readonly totals: TrialBalanceTotals;
 }
 
+export interface OhadaStatementLine {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  readonly note?: string;
+}
+
+export interface OhadaStatementSection {
+  readonly code: string;
+  readonly label: string;
+  readonly lines: ReadonlyArray<OhadaStatementLine>;
+  readonly total: string;
+}
+
+export interface TafireReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly emplois: ReadonlyArray<OhadaStatementSection>;
+  readonly ressources: ReadonlyArray<OhadaStatementSection>;
+  readonly variationTresorerie: string;
+  readonly methodologyNotes: ReadonlyArray<string>;
+}
+
+export interface TftReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly fluxExploitation: OhadaStatementSection;
+  readonly fluxInvestissement: OhadaStatementSection;
+  readonly fluxFinancement: OhadaStatementSection;
+  readonly variationTresorerie: string;
+  readonly tresorerieOuverture: string;
+  readonly tresorerieCloture: string;
+  readonly methodologyNotes: ReadonlyArray<string>;
+}
+
+export interface AnnexeNote {
+  readonly code: string;
+  readonly title: string;
+  readonly status: 'COMPUTED' | 'PARTIAL' | 'MANUAL';
+  readonly source?: string;
+  readonly summary?: string;
+}
+
+export interface AnnexeReport {
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+  readonly notes: ReadonlyArray<AnnexeNote>;
+}
+
 export type AgingSide = 'CLIENT' | 'FOURNISSEUR';
 
 export interface AgingBucket {
