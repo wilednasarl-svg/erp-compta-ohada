@@ -25,6 +25,7 @@ import { TvaModule } from './modules/tva/tva.module';
 import { AssetsModule } from './modules/assets/assets.module';
 import { MultiCurrencyModule } from './modules/multi-currency/multi-currency.module';
 import { BankReconciliationModule } from './modules/bank-reconciliation/bank-reconciliation.module';
+import { AiModule } from './modules/ai/ai.module';
 // Module 14 (signatures électroniques) est embarqué dans JournalsModule
 // via EntryWorkflowService — pas de module séparé. Module 17
 // (InventoryModule) est en cours sur sa branche dédiée et sera câblé
@@ -111,6 +112,14 @@ import { BankReconciliationModule } from './modules/bank-reconciliation/bank-rec
     // AuditModule en interne (TenantGuard a besoin d'AuthEventsService).
     // Permissions : bank.read, bank.import, bank.reconcile, bank.admin.
     BankReconciliationModule,
+    // Module 11 wave 1 — AI Engine. Heuristiques déterministes pour
+    // détecter les anomalies GL (montants extrêmes, comptes sensibles,
+    // doublons, dates suspectes, combinaisons rares) et suggérer un
+    // compte sur saisie (pattern-matching + historique majoritaire).
+    // Aucun appel ML / LLM externe en wave 1 — design prêt pour
+    // remplacer la couche heuristique par un modèle en wave 2.
+    // Permissions : ai.scan, ai.read, ai.suggest.
+    AiModule,
   ],
   controllers: [],
   providers: [
