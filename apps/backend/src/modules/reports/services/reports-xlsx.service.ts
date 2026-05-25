@@ -135,7 +135,7 @@ export class ReportsXlsxService {
     rows.push([
       `Compte de Résultat — Du ${report.fromDate} au ${report.toDate}` +
         (hasComp
-          ? ` (comparaison N-1 : ${report.previous!.fromDate} – ${report.previous!.toDate})`
+          ? ` (comparaison N-1 : ${report.previous.fromDate} – ${report.previous.toDate})`
           : ''),
     ]);
     rows.push([]);
@@ -149,20 +149,41 @@ export class ReportsXlsxService {
 
     for (const section of report.charges) {
       const sRow = hasComp
-        ? [section.code, section.label, this.num(section.amount), this.num(section.previousAmount), this.num(section.variation), section.variationPercent ? `${section.variationPercent}%` : '']
+        ? [
+            section.code,
+            section.label,
+            this.num(section.amount),
+            this.num(section.previousAmount),
+            this.num(section.variation),
+            section.variationPercent ? `${section.variationPercent}%` : '',
+          ]
         : [section.code, section.label, this.num(section.amount)];
       rows.push(sRow);
 
       for (const acc of section.accounts) {
         const aRow = hasComp
-          ? [acc.code, `  ${acc.label}`, this.num(acc.amount), this.num(acc.previousAmount), this.num(acc.variation), acc.variationPercent ? `${acc.variationPercent}%` : '']
+          ? [
+              acc.code,
+              `  ${acc.label}`,
+              this.num(acc.amount),
+              this.num(acc.previousAmount),
+              this.num(acc.variation),
+              acc.variationPercent ? `${acc.variationPercent}%` : '',
+            ]
           : [acc.code, `  ${acc.label}`, this.num(acc.amount)];
         rows.push(aRow);
       }
     }
 
     const chargeTotal = hasComp
-      ? ['', 'TOTAL CHARGES', this.num(report.totalCharges), this.num(report.previous!.totalCharges), '', '']
+      ? [
+          '',
+          'TOTAL CHARGES',
+          this.num(report.totalCharges),
+          this.num(report.previous.totalCharges),
+          '',
+          '',
+        ]
       : ['', 'TOTAL CHARGES', this.num(report.totalCharges)];
     rows.push(chargeTotal);
 
@@ -171,26 +192,47 @@ export class ReportsXlsxService {
 
     for (const section of report.produits) {
       const sRow = hasComp
-        ? [section.code, section.label, this.num(section.amount), this.num(section.previousAmount), this.num(section.variation), section.variationPercent ? `${section.variationPercent}%` : '']
+        ? [
+            section.code,
+            section.label,
+            this.num(section.amount),
+            this.num(section.previousAmount),
+            this.num(section.variation),
+            section.variationPercent ? `${section.variationPercent}%` : '',
+          ]
         : [section.code, section.label, this.num(section.amount)];
       rows.push(sRow);
 
       for (const acc of section.accounts) {
         const aRow = hasComp
-          ? [acc.code, `  ${acc.label}`, this.num(acc.amount), this.num(acc.previousAmount), this.num(acc.variation), acc.variationPercent ? `${acc.variationPercent}%` : '']
+          ? [
+              acc.code,
+              `  ${acc.label}`,
+              this.num(acc.amount),
+              this.num(acc.previousAmount),
+              this.num(acc.variation),
+              acc.variationPercent ? `${acc.variationPercent}%` : '',
+            ]
           : [acc.code, `  ${acc.label}`, this.num(acc.amount)];
         rows.push(aRow);
       }
     }
 
     const prodTotal = hasComp
-      ? ['', 'TOTAL PRODUITS', this.num(report.totalProduits), this.num(report.previous!.totalProduits), '', '']
+      ? [
+          '',
+          'TOTAL PRODUITS',
+          this.num(report.totalProduits),
+          this.num(report.previous.totalProduits),
+          '',
+          '',
+        ]
       : ['', 'TOTAL PRODUITS', this.num(report.totalProduits)];
     rows.push(prodTotal);
 
     rows.push([]);
     const resRow = hasComp
-      ? ['', 'RÉSULTAT NET', this.num(report.resultat), this.num(report.previous!.resultat), '', '']
+      ? ['', 'RÉSULTAT NET', this.num(report.resultat), this.num(report.previous.resultat), '', '']
       : ['', 'RÉSULTAT NET', this.num(report.resultat)];
     rows.push(resRow);
 
@@ -205,7 +247,7 @@ export class ReportsXlsxService {
     rows.push([orgName]);
     rows.push([
       `Bilan OHADA – SYSCOHADA AUDCIF — Au ${report.asAtDate}` +
-        (hasComp ? ` (comparaison N-1 : ${report.previous!.asAtDate})` : ''),
+        (hasComp ? ` (comparaison N-1 : ${report.previous.asAtDate})` : ''),
     ]);
     rows.push([]);
 
@@ -224,14 +266,28 @@ export class ReportsXlsxService {
 
       for (const group of section.groups) {
         const gRow = hasComp
-          ? [group.code, `  ${group.label}`, this.num(group.amount), this.num(group.previousAmount), this.num(group.variation), group.variationPercent ? `${group.variationPercent}%` : '']
+          ? [
+              group.code,
+              `  ${group.label}`,
+              this.num(group.amount),
+              this.num(group.previousAmount),
+              this.num(group.variation),
+              group.variationPercent ? `${group.variationPercent}%` : '',
+            ]
           : [group.code, `  ${group.label}`, this.num(group.amount)];
         rows.push(gRow);
       }
     }
 
     const actifTotal = hasComp
-      ? ['', 'TOTAL ACTIF', this.num(report.actif.total), this.num(report.previous!.totalActif), '', '']
+      ? [
+          '',
+          'TOTAL ACTIF',
+          this.num(report.actif.total),
+          this.num(report.previous.totalActif),
+          '',
+          '',
+        ]
       : ['', 'TOTAL ACTIF', this.num(report.actif.total)];
     rows.push(actifTotal);
 
@@ -246,14 +302,28 @@ export class ReportsXlsxService {
 
       for (const group of section.groups) {
         const gRow = hasComp
-          ? [group.code, `  ${group.label}`, this.num(group.amount), this.num(group.previousAmount), this.num(group.variation), group.variationPercent ? `${group.variationPercent}%` : '']
+          ? [
+              group.code,
+              `  ${group.label}`,
+              this.num(group.amount),
+              this.num(group.previousAmount),
+              this.num(group.variation),
+              group.variationPercent ? `${group.variationPercent}%` : '',
+            ]
           : [group.code, `  ${group.label}`, this.num(group.amount)];
         rows.push(gRow);
       }
     }
 
     const passifTotal = hasComp
-      ? ['', 'TOTAL PASSIF', this.num(report.passif.total), this.num(report.previous!.totalPassif), '', '']
+      ? [
+          '',
+          'TOTAL PASSIF',
+          this.num(report.passif.total),
+          this.num(report.previous.totalPassif),
+          '',
+          '',
+        ]
       : ['', 'TOTAL PASSIF', this.num(report.passif.total)];
     rows.push(passifTotal);
 

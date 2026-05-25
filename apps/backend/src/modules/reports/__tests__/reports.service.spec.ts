@@ -510,3 +510,243 @@ describe('ReportsService.getBalanceSheet', () => {
     expect(tresoPassif?.total).toBe('3000.00');
   });
 });
+
+// ─── Module 9 wave 3 — comparative + auto-consolidation ─────────────
+
+describe('ReportsService.getProfitLoss — comparative N vs N-1', () => {
+  it('returns previousAmount + variation + variationPercent per section when compareWith is set', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockImplementation((_org: unknown, filters: { fromDate: string }) => {
+      if (filters.fromDate === '2026-01-01') {
+        return Promise.resolve([
+          tbRow({
+            accountCode: '601000',
+            accountClass: 6,
+            periodDebit: '15000.00',
+          }),
+          tbRow({
+            accountCode: '701000',
+            accountClass: 7,
+            periodCredit: '25000.00',
+          }),
+        ]);
+      }
+      return Promise.resolve([
+        tbRow({
+          accountCode: '601000',
+          accountClass: 6,
+          periodDebit: '10000.00',
+        }),
+        tbRow({
+          accountCode: '701000',
+          accountClass: 7,
+          periodCredit: '20000.00',
+        }),
+      ]);
+    });
+
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      compareWith: { fromDate: '2025-01-01', toDate: '2025-12-31' },
+    });
+
+    expect(h.repo.trialBalance).toHaveBeenCalledTimes(2);
+    const section60 = result.charges.find((s) => s.code === '60');
+    expect(section60?.amount).toBe('15000.00');
+    expect(section60?.previousAmount).toBe('10000.00');
+    expect(section60?.variation).toBe('5000.00');
+    expect(section60?.variationPercent).toBe('50.00');
+
+    expect(result.previous).toEqual({
+      fromDate: '2025-01-01',
+      toDate: '2025-12-31',
+      totalCharges: '10000.00',
+      totalProduits: '20000.00',
+      resultat: '10000.00',
+    });
+  });
+
+  it('variationPercent is null when previous = 0 (avoid division by zero)', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '5000.00' }),
+    ]);
+    h.repo.trialBalance.mockResolvedValueOnce([]); // previous period empty
+
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      compareWith: { fromDate: '2025-01-01', toDate: '2025-12-31' },
+    });
+    const section60 = result.charges.find((s) => s.code === '60');
+    expect(section60?.previousAmount).toBe('0.00');
+    expect(section60?.variation).toBe('5000.00');
+    expect(section60?.variationPercent).toBeNull();
+  });
+
+  it('omits previous + variation fields when compareWith is not provided (backward compat)', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '5000.00' }),
+    ]);
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    expect(result.previous).toBeUndefined();
+    expect(result.charges[0].previousAmount).toBeUndefined();
+  });
+});
+
+describe('ReportsService.getBalanceSheet — auto-consolidation + comparative', () => {
+  it('incorporates the net result as a "Résultat de l\'exercice (bénéfice)" line in capitaux propres', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      {
+        accountId: 'a-1',
+        accountCode: '101000',
+        accountLabel: 'Capital',
+        accountClass: 1,
+        totalDebit: '0.00',
+        totalCredit: '50000.00',
+      },
+      {
+        accountId: 'a-2',
+        accountCode: '512000',
+        accountLabel: 'Banque',
+        accountClass: 5,
+        totalDebit: '52000.00',
+        totalCredit: '0.00',
+      },
+    ]);
+    // P&L returns a 2000 net profit for the fiscal year.
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '8000.00' }),
+      tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '10000.00' }),
+    ]);
+
+    const result = await h.service.getBalanceSheet(ORG_ID, {
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+
+    expect(result.netResultIncorporated).toBe('2000.00');
+    const cp = result.passif.sections.find((s) => s.key === 'CAPITAUX_PROPRES');
+    const netLine = cp?.groups.find((g) => g.accountId === '__net_result__');
+    expect(netLine).toMatchObject({
+      code: '130',
+      label: "Résultat de l'exercice (bénéfice)",
+      amount: '2000.00',
+    });
+    // 50000 capital + 2000 résultat = 52000 capitaux propres ; banque 52000 actif
+    expect(cp?.total).toBe('52000.00');
+    expect(result.difference).toBe('0.00');
+  });
+
+  it('incorporates a loss as code "129" and signs it negative in the section total', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      {
+        accountId: 'a-1',
+        accountCode: '101000',
+        accountLabel: 'Capital',
+        accountClass: 1,
+        totalDebit: '0.00',
+        totalCredit: '50000.00',
+      },
+      {
+        accountId: 'a-2',
+        accountCode: '512000',
+        accountLabel: 'Banque',
+        accountClass: 5,
+        totalDebit: '47000.00',
+        totalCredit: '0.00',
+      },
+    ]);
+    // P&L loss = -3000
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '8000.00' }),
+      tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '5000.00' }),
+    ]);
+
+    const result = await h.service.getBalanceSheet(ORG_ID, {
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+
+    expect(result.netResultIncorporated).toBe('-3000.00');
+    const cp = result.passif.sections.find((s) => s.key === 'CAPITAUX_PROPRES');
+    const lossLine = cp?.groups.find((g) => g.accountId === '__net_result__');
+    expect(lossLine?.code).toBe('129');
+    expect(lossLine?.label).toBe("Résultat de l'exercice (perte)");
+    // 50000 - 3000 = 47000 capitaux propres ; banque = 47000 actif → balanced
+    expect(cp?.total).toBe('47000.00');
+    expect(result.difference).toBe('0.00');
+  });
+
+  it('returns netResultIncorporated=null when fiscalYearStartDate is omitted (wave 2 behaviour)', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    expect(result.netResultIncorporated).toBeNull();
+  });
+
+  it('includes a previous snapshot when compareWith is provided', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          accountId: 'a-1',
+          accountCode: '512000',
+          accountLabel: 'Banque',
+          accountClass: 5,
+          totalDebit: '8000.00',
+          totalCredit: '0.00',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          accountId: 'a-1',
+          accountCode: '512000',
+          accountLabel: 'Banque',
+          accountClass: 5,
+          totalDebit: '5000.00',
+          totalCredit: '0.00',
+        },
+      ]);
+
+    const result = await h.service.getBalanceSheet(ORG_ID, {
+      asAtDate: '2026-12-31',
+      compareWith: { asAtDate: '2025-12-31' },
+    });
+
+    expect(result.previous?.asAtDate).toBe('2025-12-31');
+    expect(result.previous?.totalActif).toBe('5000.00');
+    // Variation on the bank line: 8000 - 5000 = 3000
+    const treso = result.actif.sections.find((s) => s.key === 'TRESORERIE_ACTIF');
+    expect(treso?.previousTotal).toBe('5000.00');
+    expect(treso?.groups[0]).toMatchObject({
+      previousAmount: '5000.00',
+      variation: '3000.00',
+      variationPercent: '60.00',
+    });
+  });
+});
+
+describe('ReportsService.percentChange (static)', () => {
+  it.each([
+    [100, 150, '50.00'],
+    [100, 50, '-50.00'],
+    [200, 200, '0.00'],
+    [-100, -50, '50.00'], // |previous| denominator
+  ])('percentChange(%s, %s) → %s', (prev, cur, expected) => {
+    expect(ReportsService.percentChange(prev, cur)).toBe(expected);
+  });
+
+  it('returns null when previous is zero (no meaningful %)', () => {
+    expect(ReportsService.percentChange(0, 100)).toBeNull();
+    expect(ReportsService.percentChange(0.001, 100)).toBeNull();
+  });
+});

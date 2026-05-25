@@ -116,9 +116,14 @@ export class ReportsController {
     @Query() query: ProfitLossQueryDto,
     @CurrentOrg() org: CurrentOrgContext,
   ): Promise<{ report: ProfitLossReport }> {
+    const compareWith =
+      query.compareFromDate !== undefined && query.compareToDate !== undefined
+        ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
+        : undefined;
     const report = await this.reports.getProfitLoss(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
+      compareWith,
     });
     return { report };
   }
@@ -134,8 +139,17 @@ export class ReportsController {
     @Query() query: BalanceSheetQueryDto,
     @CurrentOrg() org: CurrentOrgContext,
   ): Promise<{ report: BalanceSheetReport }> {
+    const compareWith =
+      query.compareAsAtDate !== undefined
+        ? {
+            asAtDate: query.compareAsAtDate,
+            fiscalYearStartDate: query.compareFiscalYearStartDate,
+          }
+        : undefined;
     const report = await this.reports.getBalanceSheet(asTenantId(org.id), {
       asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      compareWith,
     });
     return { report };
   }
@@ -161,7 +175,12 @@ export class ReportsController {
       hideEmpty: query.hideEmpty,
     });
     const buffer = await this.pdf.trialBalancePdf(report, org.name);
-    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, 'balance-generale', query.fromDate, query.toDate, 'pdf'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'balance-generale', query.fromDate, query.toDate, 'pdf'),
+    );
   }
 
   @Get('general-ledger/:accountId.pdf')
@@ -181,7 +200,18 @@ export class ReportsController {
       toDate: query.toDate,
     });
     const buffer = await this.pdf.generalLedgerPdf(report, org.name);
-    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, `grand-livre-${report.accountCode}`, query.fromDate, query.toDate, 'pdf'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(
+        org.name,
+        `grand-livre-${report.accountCode}`,
+        query.fromDate,
+        query.toDate,
+        'pdf',
+      ),
+    );
   }
 
   @Get('profit-loss.pdf')
@@ -204,7 +234,12 @@ export class ReportsController {
       compareWith,
     });
     const buffer = await this.pdf.profitLossPdf(report, org.name);
-    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, 'compte-de-resultat', query.fromDate, query.toDate, 'pdf'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'compte-de-resultat', query.fromDate, query.toDate, 'pdf'),
+    );
   }
 
   @Get('balance-sheet.pdf')
@@ -217,17 +252,21 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const compareWith =
-      query.compareAsAtDate
-        ? { asAtDate: query.compareAsAtDate, fiscalYearStartDate: query.compareFiscalYearStartDate }
-        : undefined;
+    const compareWith = query.compareAsAtDate
+      ? { asAtDate: query.compareAsAtDate, fiscalYearStartDate: query.compareFiscalYearStartDate }
+      : undefined;
     const report = await this.reports.getBalanceSheet(asTenantId(org.id), {
       asAtDate: query.asAtDate,
       fiscalYearStartDate: query.fiscalYearStartDate,
       compareWith,
     });
     const buffer = await this.pdf.balanceSheetPdf(report, org.name);
-    this.sendFile(res, buffer, 'application/pdf', this.filename(org.name, 'bilan', query.asAtDate, undefined, 'pdf'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'bilan', query.asAtDate, undefined, 'pdf'),
+    );
   }
 
   // ─── Excel export endpoints (wave 3) ────────────────────────────
@@ -251,7 +290,12 @@ export class ReportsController {
       hideEmpty: query.hideEmpty,
     });
     const buffer = this.xlsx.trialBalanceXlsx(report, org.name);
-    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, 'balance-generale', query.fromDate, query.toDate, 'xlsx'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'balance-generale', query.fromDate, query.toDate, 'xlsx'),
+    );
   }
 
   @Get('general-ledger/:accountId.xlsx')
@@ -271,7 +315,18 @@ export class ReportsController {
       toDate: query.toDate,
     });
     const buffer = this.xlsx.generalLedgerXlsx(report, org.name);
-    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, `grand-livre-${report.accountCode}`, query.fromDate, query.toDate, 'xlsx'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(
+        org.name,
+        `grand-livre-${report.accountCode}`,
+        query.fromDate,
+        query.toDate,
+        'xlsx',
+      ),
+    );
   }
 
   @Get('profit-loss.xlsx')
@@ -294,7 +349,12 @@ export class ReportsController {
       compareWith,
     });
     const buffer = this.xlsx.profitLossXlsx(report, org.name);
-    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, 'compte-de-resultat', query.fromDate, query.toDate, 'xlsx'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'compte-de-resultat', query.fromDate, query.toDate, 'xlsx'),
+    );
   }
 
   @Get('balance-sheet.xlsx')
@@ -307,17 +367,21 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const compareWith =
-      query.compareAsAtDate
-        ? { asAtDate: query.compareAsAtDate, fiscalYearStartDate: query.compareFiscalYearStartDate }
-        : undefined;
+    const compareWith = query.compareAsAtDate
+      ? { asAtDate: query.compareAsAtDate, fiscalYearStartDate: query.compareFiscalYearStartDate }
+      : undefined;
     const report = await this.reports.getBalanceSheet(asTenantId(org.id), {
       asAtDate: query.asAtDate,
       fiscalYearStartDate: query.fiscalYearStartDate,
       compareWith,
     });
     const buffer = this.xlsx.balanceSheetXlsx(report, org.name);
-    this.sendFile(res, buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', this.filename(org.name, 'bilan', query.asAtDate, undefined, 'xlsx'));
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'bilan', query.asAtDate, undefined, 'xlsx'),
+    );
   }
 
   // ─── Internal helpers ───────────────────────────────────────────
@@ -326,12 +390,7 @@ export class ReportsController {
    * Sends a binary file as an attachment response. Uses `@Res()` to
    * bypass NestJS's global response interceptor and emit raw bytes.
    */
-  private sendFile(
-    res: Response,
-    buffer: Buffer,
-    contentType: string,
-    downloadName: string,
-  ): void {
+  private sendFile(res: Response, buffer: Buffer, contentType: string, downloadName: string): void {
     res
       .set({
         'Content-Type': contentType,

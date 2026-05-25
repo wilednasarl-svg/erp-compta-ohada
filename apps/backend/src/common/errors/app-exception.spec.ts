@@ -173,6 +173,11 @@ describe('HTTP status mapping', () => {
       TVA_DECLARATION_ALREADY_EXISTS: 409,
       TVA_DECLARATION_INVALID_PERIOD: 422,
       TVA_DECLARATION_NOT_CALCULATED: 409,
+      // Module 12 — Assets & Depreciation.
+      ASSET_NOT_FOUND: 404,
+      ASSET_CODE_TAKEN: 409,
+      DEPRECIATION_SCHEDULE_NOT_FOUND: 404,
+      DEPRECIATION_SCHEDULE_ALREADY_POSTED: 409,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

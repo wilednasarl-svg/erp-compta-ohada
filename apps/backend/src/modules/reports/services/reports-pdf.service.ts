@@ -29,14 +29,10 @@ export class ReportsPdfService {
   private static readonly FONT_SIZE_TABLE = 8;
   private static readonly LINE_HEIGHT = 14;
   private static readonly COL_GAP = 6;
-  private static readonly OHADA_STAMP =
-    `Referentiel SYSCOHADA - Acte Uniforme Relatif au Droit Comptable et a l'Information Financiere (AUDCIF)`;
+  private static readonly OHADA_STAMP = `Referentiel SYSCOHADA - Acte Uniforme Relatif au Droit Comptable et a l'Information Financiere (AUDCIF)`;
 
   // ─── Trial Balance ───────────────────────────────────────────────
-  async trialBalancePdf(
-    report: TrialBalanceReport,
-    orgName: string,
-  ): Promise<Buffer> {
+  async trialBalancePdf(report: TrialBalanceReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
 
     this.header(doc, orgName, 'Balance Générale', `Du ${report.fromDate} au ${report.toDate}`);
@@ -96,10 +92,7 @@ export class ReportsPdfService {
   }
 
   // ─── General Ledger ──────────────────────────────────────────────
-  async generalLedgerPdf(
-    report: GeneralLedgerReport,
-    orgName: string,
-  ): Promise<Buffer> {
+  async generalLedgerPdf(report: GeneralLedgerReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
 
     this.header(
@@ -164,10 +157,7 @@ export class ReportsPdfService {
   }
 
   // ─── Profit & Loss ───────────────────────────────────────────────
-  async profitLossPdf(
-    report: ProfitLossReport,
-    orgName: string,
-  ): Promise<Buffer> {
+  async profitLossPdf(report: ProfitLossReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
     const hasComparison = report.previous !== undefined;
 
@@ -176,7 +166,9 @@ export class ReportsPdfService {
       orgName,
       'Compte de Résultat',
       `Du ${report.fromDate} au ${report.toDate}` +
-        (hasComparison ? ` (comparaison N-1 : ${report.previous!.fromDate} – ${report.previous!.toDate})` : ''),
+        (hasComparison
+          ? ` (comparaison N-1 : ${report.previous.fromDate} – ${report.previous.toDate})`
+          : ''),
     );
 
     const cols = hasComparison
@@ -202,7 +194,14 @@ export class ReportsPdfService {
       y = this.plSectionRows(doc, cols, section, y, hasComparison);
     }
     const chargeValues = hasComparison
-      ? ['', 'TOTAL CHARGES', this.fmtAmt(report.totalCharges), this.fmtAmt(report.previous!.totalCharges), '', '']
+      ? [
+          '',
+          'TOTAL CHARGES',
+          this.fmtAmt(report.totalCharges),
+          this.fmtAmt(report.previous.totalCharges),
+          '',
+          '',
+        ]
       : ['', 'TOTAL CHARGES', this.fmtAmt(report.totalCharges)];
     y = this.tableRow(doc, cols, chargeValues, y, true);
 
@@ -212,14 +211,28 @@ export class ReportsPdfService {
       y = this.plSectionRows(doc, cols, section, y, hasComparison);
     }
     const prodValues = hasComparison
-      ? ['', 'TOTAL PRODUITS', this.fmtAmt(report.totalProduits), this.fmtAmt(report.previous!.totalProduits), '', '']
+      ? [
+          '',
+          'TOTAL PRODUITS',
+          this.fmtAmt(report.totalProduits),
+          this.fmtAmt(report.previous.totalProduits),
+          '',
+          '',
+        ]
       : ['', 'TOTAL PRODUITS', this.fmtAmt(report.totalProduits)];
     y = this.tableRow(doc, cols, prodValues, y, true);
 
     // Résultat
     y += 8;
     const resValues = hasComparison
-      ? ['', 'RÉSULTAT NET', this.fmtAmt(report.resultat), this.fmtAmt(report.previous!.resultat), '', '']
+      ? [
+          '',
+          'RÉSULTAT NET',
+          this.fmtAmt(report.resultat),
+          this.fmtAmt(report.previous.resultat),
+          '',
+          '',
+        ]
       : ['', 'RÉSULTAT NET', this.fmtAmt(report.resultat)];
     y = this.tableRow(doc, cols, resValues, y, true);
 
@@ -228,10 +241,7 @@ export class ReportsPdfService {
   }
 
   // ─── Balance Sheet ───────────────────────────────────────────────
-  async balanceSheetPdf(
-    report: BalanceSheetReport,
-    orgName: string,
-  ): Promise<Buffer> {
+  async balanceSheetPdf(report: BalanceSheetReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
     const hasComparison = report.previous !== undefined;
 
@@ -240,7 +250,7 @@ export class ReportsPdfService {
       orgName,
       'Bilan OHADA – SYSCOHADA AUDCIF',
       `Au ${report.asAtDate}` +
-        (hasComparison ? ` (comparaison N-1 : ${report.previous!.asAtDate})` : ''),
+        (hasComparison ? ` (comparaison N-1 : ${report.previous.asAtDate})` : ''),
     );
 
     const cols = hasComparison
@@ -266,7 +276,14 @@ export class ReportsPdfService {
       y = this.bsSectionRows(doc, cols, section, y, hasComparison);
     }
     const actifTotals = hasComparison
-      ? ['', 'TOTAL ACTIF', this.fmtAmt(report.actif.total), this.fmtAmt(report.previous!.totalActif), '', '']
+      ? [
+          '',
+          'TOTAL ACTIF',
+          this.fmtAmt(report.actif.total),
+          this.fmtAmt(report.previous.totalActif),
+          '',
+          '',
+        ]
       : ['', 'TOTAL ACTIF', this.fmtAmt(report.actif.total)];
     y = this.tableRow(doc, cols, actifTotals, y, true);
 
@@ -280,7 +297,14 @@ export class ReportsPdfService {
       y = this.bsSectionRows(doc, cols, section, y, hasComparison);
     }
     const passifTotals = hasComparison
-      ? ['', 'TOTAL PASSIF', this.fmtAmt(report.passif.total), this.fmtAmt(report.previous!.totalPassif), '', '']
+      ? [
+          '',
+          'TOTAL PASSIF',
+          this.fmtAmt(report.passif.total),
+          this.fmtAmt(report.previous.totalPassif),
+          '',
+          '',
+        ]
       : ['', 'TOTAL PASSIF', this.fmtAmt(report.passif.total)];
     y = this.tableRow(doc, cols, passifTotals, y, true);
 
@@ -289,7 +313,11 @@ export class ReportsPdfService {
     doc
       .font('Helvetica-Bold')
       .fontSize(ReportsPdfService.FONT_SIZE_TABLE)
-      .text(`Écart Actif − Passif : ${this.fmtAmt(report.difference)}`, ReportsPdfService.MARGIN, y);
+      .text(
+        `Écart Actif − Passif : ${this.fmtAmt(report.difference)}`,
+        ReportsPdfService.MARGIN,
+        y,
+      );
     if (report.netResultIncorporated !== null) {
       y += ReportsPdfService.LINE_HEIGHT;
       doc.text(
@@ -393,13 +421,28 @@ export class ReportsPdfService {
   private plSectionRows(
     doc: PDFKit.PDFDocument,
     cols: Array<{ label: string; width: number; align?: 'right' }>,
-    section: { code: string; label: string; amount: string; previousAmount?: string; variation?: string; variationPercent?: string | null; accounts: readonly any[] },
+    section: {
+      code: string;
+      label: string;
+      amount: string;
+      previousAmount?: string;
+      variation?: string;
+      variationPercent?: string | null;
+      accounts: readonly any[];
+    },
     y: number,
     hasComparison: boolean,
   ): number {
     // Section header row
     const sectionValues = hasComparison
-      ? [section.code, section.label, this.fmtAmt(section.amount), this.fmtAmt(section.previousAmount ?? '0.00'), this.fmtAmt(section.variation ?? ''), section.variationPercent ? `${section.variationPercent}%` : '—']
+      ? [
+          section.code,
+          section.label,
+          this.fmtAmt(section.amount),
+          this.fmtAmt(section.previousAmount ?? '0.00'),
+          this.fmtAmt(section.variation ?? ''),
+          section.variationPercent ? `${section.variationPercent}%` : '—',
+        ]
       : [section.code, section.label, this.fmtAmt(section.amount)];
     if (y > doc.page.height - 60) {
       doc.addPage();
@@ -414,7 +457,14 @@ export class ReportsPdfService {
         y = this.tableHeader(doc, cols);
       }
       const accValues = hasComparison
-        ? [acc.code, `  ${acc.label}`, this.fmtAmt(acc.amount), this.fmtAmt(acc.previousAmount ?? '0.00'), this.fmtAmt(acc.variation ?? ''), acc.variationPercent ? `${acc.variationPercent}%` : '—']
+        ? [
+            acc.code,
+            `  ${acc.label}`,
+            this.fmtAmt(acc.amount),
+            this.fmtAmt(acc.previousAmount ?? '0.00'),
+            this.fmtAmt(acc.variation ?? ''),
+            acc.variationPercent ? `${acc.variationPercent}%` : '—',
+          ]
         : [acc.code, `  ${acc.label}`, this.fmtAmt(acc.amount)];
       y = this.tableRow(doc, cols, accValues, y);
     }
@@ -424,7 +474,13 @@ export class ReportsPdfService {
   private bsSectionRows(
     doc: PDFKit.PDFDocument,
     cols: Array<{ label: string; width: number; align?: 'right' }>,
-    section: { key: string; label: string; groups: readonly any[]; total: string; previousTotal?: string },
+    section: {
+      key: string;
+      label: string;
+      groups: readonly any[];
+      total: string;
+      previousTotal?: string;
+    },
     y: number,
     hasComparison: boolean,
   ): number {
@@ -434,7 +490,14 @@ export class ReportsPdfService {
       y = this.tableHeader(doc, cols);
     }
     const sectionValues = hasComparison
-      ? ['', section.label, this.fmtAmt(section.total), this.fmtAmt(section.previousTotal ?? '0.00'), '', '']
+      ? [
+          '',
+          section.label,
+          this.fmtAmt(section.total),
+          this.fmtAmt(section.previousTotal ?? '0.00'),
+          '',
+          '',
+        ]
       : ['', section.label, this.fmtAmt(section.total)];
     y = this.tableRow(doc, cols, sectionValues, y, true);
 
@@ -444,7 +507,14 @@ export class ReportsPdfService {
         y = this.tableHeader(doc, cols);
       }
       const gValues = hasComparison
-        ? [group.code, `  ${group.label}`, this.fmtAmt(group.amount), this.fmtAmt(group.previousAmount ?? '0.00'), this.fmtAmt(group.variation ?? ''), group.variationPercent ? `${group.variationPercent}%` : '—']
+        ? [
+            group.code,
+            `  ${group.label}`,
+            this.fmtAmt(group.amount),
+            this.fmtAmt(group.previousAmount ?? '0.00'),
+            this.fmtAmt(group.variation ?? ''),
+            group.variationPercent ? `${group.variationPercent}%` : '—',
+          ]
         : [group.code, `  ${group.label}`, this.fmtAmt(group.amount)];
       y = this.tableRow(doc, cols, gValues, y);
     }

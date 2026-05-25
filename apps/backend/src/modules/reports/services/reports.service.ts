@@ -175,7 +175,7 @@ export interface GeneralLedgerReport {
  * line in the balance sheet. Stable so clients can detect this row
  * deterministically (e.g. to render it in italics or with a footnote).
  */
-export const RESULTAT_GROUP_ID = '__net_result__' as const;
+export const RESULTAT_GROUP_ID = '__net_result__';
 
 /**
  * `ReportsService` — Module 9 accounting reports.
@@ -500,11 +500,7 @@ export class ReportsService {
     // check on `difference`.
     let netResultIncorporated: string | null = null;
     if (fiscalYearStartDate !== undefined) {
-      const pl = await this.computeProfitLossBare(
-        organizationId,
-        fiscalYearStartDate,
-        asAtDate,
-      );
+      const pl = await this.computeProfitLossBare(organizationId, fiscalYearStartDate, asAtDate);
       const netResult = Number(pl.resultat);
       if (Math.abs(netResult) >= 0.005) {
         netResultIncorporated = netResult.toFixed(2);
@@ -518,10 +514,12 @@ export class ReportsService {
           accountId: RESULTAT_GROUP_ID,
           code: netResult >= 0 ? '130' : '129',
           label:
-            netResult >= 0
-              ? `Résultat de l'exercice (bénéfice)`
-              : `Résultat de l'exercice (perte)`,
-          amount: netResultIncorporated,
+            netResult >= 0 ? `Résultat de l'exercice (bénéfice)` : `Résultat de l'exercice (perte)`,
+          // Stored as absolute positive value so the section-total
+          // reducer below can apply the sign through the code marker
+          // ('129' subtracts, '130' adds). `netResultIncorporated` at
+          // the report root keeps the signed value for the header.
+          amount: Math.abs(netResult).toFixed(2),
         });
         passifBuckets.set('CAPITAUX_PROPRES', cpBucket);
       }
