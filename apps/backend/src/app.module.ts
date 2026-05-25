@@ -24,11 +24,11 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { TvaModule } from './modules/tva/tva.module';
 import { AssetsModule } from './modules/assets/assets.module';
 import { MultiCurrencyModule } from './modules/multi-currency/multi-currency.module';
+import { BankReconciliationModule } from './modules/bank-reconciliation/bank-reconciliation.module';
 // Module 14 (signatures électroniques) est embarqué dans JournalsModule
-// via EntryWorkflowService — pas de module séparé. Module 15
-// (BankReconciliationModule) est en cours sur sa branche dédiée
-// (`feat/module-15-bank-recon`, bd projet-ferme-wj4) et sera câblé
-// lors du merge. Module 17 (InventoryModule) idem.
+// via EntryWorkflowService — pas de module séparé. Module 17
+// (InventoryModule) est en cours sur sa branche dédiée et sera câblé
+// lors du merge.
 
 @Module({
   imports: [
@@ -105,6 +105,12 @@ import { MultiCurrencyModule } from './modules/multi-currency/multi-currency.mod
     // pour futur impact FX sur journals (wave 2) et banking
     // multi-devises (Module 15 wave 2). Pas d'AuditModule en wave 1.
     MultiCurrencyModule,
+    // Module 15 wave 1 — Rapprochement bancaire SYSCOHADA. Import CSV
+    // de relevés, auto-matching (Jaro-Winkler sur libellé + montant
+    // exact ±5j), matching manuel 1:1. BankReconciliationModule importe
+    // AuditModule en interne (TenantGuard a besoin d'AuthEventsService).
+    // Permissions : bank.read, bank.import, bank.reconcile, bank.admin.
+    BankReconciliationModule,
   ],
   controllers: [],
   providers: [
