@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 
 import type {
   ComparativeBalanceReport,
+  FinancialRatiosReport,
   TrialBalanceReport,
   GeneralLedgerReport,
   ProfitLossReport,
@@ -463,6 +464,37 @@ export class ReportsXlsxService {
     }
 
     return this.buildWorkbook(rows, 'SIG');
+  }
+
+  // ─── Ratios financiers ───────────────────────────────────────────
+  financialRatiosXlsx(report: FinancialRatiosReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    rows.push([
+      `Ratios financiers — Au ${report.asAtDate} (exercice débutant le ${report.fiscalYearStartDate})`,
+    ]);
+    rows.push([]);
+    rows.push(['Code', 'Famille', 'Libellé', 'Formule', 'Numérateur', 'Dénominateur', 'Valeur', 'Unité', 'Interprétation']);
+    for (const r of report.ratios) {
+      rows.push([
+        r.code,
+        r.category,
+        r.label,
+        r.formula,
+        this.num(r.numerator),
+        this.num(r.denominator),
+        r.value !== null
+          ? r.unit === 'PERCENT'
+            ? `${r.value}%`
+            : r.unit === 'DAYS'
+              ? `${r.value} j`
+              : r.value
+          : 'n/a',
+        r.unit,
+        r.interpretation ?? '',
+      ]);
+    }
+    return this.buildWorkbook(rows, 'Ratios financiers');
   }
 
   // ─── Internal helpers ────────────────────────────────────────────

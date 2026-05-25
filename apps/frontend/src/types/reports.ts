@@ -35,6 +35,31 @@ export interface TrialBalanceReport {
   readonly totals: TrialBalanceTotals;
 }
 
+export type RatioCategory =
+  | 'STRUCTURE'
+  | 'LIQUIDITE'
+  | 'SOLVABILITE'
+  | 'RENTABILITE'
+  | 'ACTIVITE';
+
+export interface FinancialRatio {
+  readonly code: string;
+  readonly label: string;
+  readonly category: RatioCategory;
+  readonly formula: string;
+  readonly numerator: string;
+  readonly denominator: string;
+  readonly value: string | null;
+  readonly unit: 'PERCENT' | 'RATIO' | 'DAYS';
+  readonly interpretation?: string;
+}
+
+export interface FinancialRatiosReport {
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+  readonly ratios: ReadonlyArray<FinancialRatio>;
+}
+
 export interface ComparativeBalanceRow {
   readonly accountId: string;
   readonly accountCode: string;

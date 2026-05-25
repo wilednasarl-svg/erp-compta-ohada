@@ -1055,6 +1055,95 @@ describe('ReportsService.getSig (Soldes Intermédiaires de Gestion)', () => {
   });
 });
 
+describe('ReportsService.getFinancialRatios', () => {
+  function balanceRow(over: {
+    accountId: string;
+    accountCode: string;
+    accountClass: number;
+    totalDebit?: string;
+    totalCredit?: string;
+  }) {
+    return {
+      accountId: over.accountId,
+      accountCode: over.accountCode,
+      accountLabel: 'TEST',
+      accountClass: over.accountClass,
+      totalDebit: over.totalDebit ?? '0',
+      totalCredit: over.totalCredit ?? '0',
+    };
+  }
+
+  it('computes structure, liquidity, solvency and profitability ratios', async () => {
+    const h = buildHarness();
+    // Bilan as at date — fed by accountBalancesAsAt:
+    // Actif : immo 600 (231) + circ 300 (411) + tréso 100 (521) = 1000
+    // Passif : CP 400 (101) + DF 200 (162) + passif circ 350 (401) + tréso passif 50 (561) = 1000
+    h.repo.accountBalancesAsAt.mockResolvedValue([
+      balanceRow({ accountId: 'a-immo', accountCode: '231000', accountClass: 2, totalDebit: '600' }),
+      balanceRow({ accountId: 'a-circ', accountCode: '411000', accountClass: 4, totalDebit: '300' }),
+      balanceRow({ accountId: 'a-tres', accountCode: '521000', accountClass: 5, totalDebit: '100' }),
+      balanceRow({ accountId: 'a-cp', accountCode: '101000', accountClass: 1, totalCredit: '400' }),
+      balanceRow({ accountId: 'a-df', accountCode: '162000', accountClass: 1, totalCredit: '200' }),
+      balanceRow({ accountId: 'a-pc', accountCode: '401000', accountClass: 4, totalCredit: '350' }),
+      balanceRow({ accountId: 'a-tp', accountCode: '561000', accountClass: 5, totalCredit: '50' }),
+    ]);
+    // SIG période — fed by trialBalance:
+    // TB ventes 800, RC achats matières 600, RK perso 100, RL dotations 20
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountId: 'a-ca', accountCode: '702000', accountClass: 7, periodCredit: '800' }),
+      tbRow({ accountId: 'a-rc', accountCode: '602000', accountClass: 6, periodDebit: '600' }),
+      tbRow({ accountId: 'a-rk', accountCode: '661000', accountClass: 6, periodDebit: '100' }),
+      tbRow({ accountId: 'a-rl', accountCode: '681000', accountClass: 6, periodDebit: '20' }),
+    ]);
+
+    const report = await h.service.getFinancialRatios(ORG_ID, {
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+
+    const byCode = (c: string) => report.ratios.find((r) => r.code === c);
+    // Autonomie financière = CP / Total passif. CP a été augmenté du
+    // résultat net 80 par auto-incorporation (fiscalYearStartDate
+    // fourni) → CP = 400 + 80 = 480. Total passif = 1000 + 80 = 1080.
+    // AF = 480 / 1080 ≈ 44.44 %
+    expect(byCode('AF')?.value).toBe('44.44');
+    expect(byCode('AF')?.unit).toBe('PERCENT');
+    expect(byCode('AF')?.interpretation).toContain('bon');
+    // Endettement = DF / CP = 200 / 480 ≈ 0.4167
+    expect(byCode('EF')?.value).toBe('0.4167');
+    // Liquidité générale = (circulant + tréso) / passif CT = 400 / 400 = 1
+    expect(byCode('LG')?.value).toBe('1.0000');
+    // Liquidité immédiate = 100 / 400 = 0.25
+    expect(byCode('LI')?.value).toBe('0.2500');
+    // SIG : CA = 800, VA = 800-600 = 200, EBE = 200-100 = 100, RE = 100-20 = 80, RN = 80
+    expect(byCode('RE')?.value).toBe('10.00'); // 80 / 800
+    expect(byCode('RC')?.value).toBe('10.00');
+  });
+
+  it('returns value=null when denominator is zero', async () => {
+    const h = buildHarness();
+    // Bilan vide → tous les dénominateurs basés sur passif = 0
+    h.repo.accountBalancesAsAt.mockResolvedValue([]);
+    h.repo.trialBalance.mockResolvedValue([]);
+    const report = await h.service.getFinancialRatios(ORG_ID, {
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    const af = report.ratios.find((r) => r.code === 'AF');
+    expect(af?.value).toBeNull();
+  });
+
+  it('rejects with REPORT_INVALID_DATE_RANGE when fiscalYearStartDate > asAtDate', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getFinancialRatios(ORG_ID, {
+        asAtDate: '2026-01-01',
+        fiscalYearStartDate: '2026-12-31',
+      }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+  });
+});
+
 describe('ReportsService.percentChange (static)', () => {
   it.each([
     [100, 150, '50.00'],

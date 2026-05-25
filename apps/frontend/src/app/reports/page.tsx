@@ -1,7 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, BookText, FileSpreadsheet, Loader2, TrendingUp } from 'lucide-react';
+import {
+  BarChart3,
+  BookText,
+  Calculator,
+  FileSpreadsheet,
+  Loader2,
+  TrendingUp,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -22,6 +29,7 @@ import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 import type {
   ComparativeBalanceReport,
+  FinancialRatiosReport,
   GeneralLedgerReport,
   SigReport,
   TrialBalanceReport,
@@ -42,8 +50,16 @@ interface ComparativeBalanceEnvelope {
 interface SigEnvelope {
   readonly report: SigReport;
 }
+interface FinancialRatiosEnvelope {
+  readonly report: FinancialRatiosReport;
+}
 
-type ReportMode = 'trial-balance' | 'comparative-balance' | 'sig' | 'general-ledger';
+type ReportMode =
+  | 'trial-balance'
+  | 'comparative-balance'
+  | 'sig'
+  | 'ratios'
+  | 'general-ledger';
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
 const previousYearEndIso = (): string => `${new Date().getFullYear() - 1}-12-31`;
@@ -114,6 +130,18 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('ratios')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'ratios'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Calculator className="h-4 w-4" />
+            Ratios financiers
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('general-ledger')}
             className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'general-ledger'
@@ -132,6 +160,8 @@ export default function ReportsPage() {
           <ComparativeBalancePanel orgId={orgId} />
         ) : mode === 'sig' ? (
           <SigPanel orgId={orgId} />
+        ) : mode === 'ratios' ? (
+          <FinancialRatiosPanel orgId={orgId} />
         ) : (
           <GeneralLedgerPanel orgId={orgId} />
         )}
@@ -1192,6 +1222,160 @@ function SigPosteTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─── Ratios financiers ─────────────────────────────────────────────────
+
+function FinancialRatiosPanel({ orgId }: { readonly orgId: string }) {
+  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
+  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [submitted, setSubmitted] = useState<{
+    asAtDate: string;
+    fiscalYearStartDate: string;
+  } | null>(null);
+
+  const buildSearchParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({
+      asAtDate: s.asAtDate,
+      fiscalYearStartDate: s.fiscalYearStartDate,
+    });
+
+  const query = useQuery<FinancialRatiosReport, ApiError>({
+    queryKey: ['reports', 'ratios', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<FinancialRatiosEnvelope>(
+        `/organizations/${orgId}/reports/financial-ratios?${buildSearchParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    window.open(
+      `/api/organizations/${orgId}/reports/financial-ratios.xlsx?${buildSearchParams(submitted).toString()}`,
+      '_blank',
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Ratios financiers</CardTitle>
+        <CardDescription>
+          5 familles d&apos;indicateurs : structure financière, liquidité, solvabilité, rentabilité,
+          activité. Calculés à partir du Bilan SYSCOHADA + des SIG. Seuils d&apos;interprétation
+          conformes aux normes BCEAO / FANAF.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ asAtDate, fiscalYearStartDate });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="fr-fy-start">Début exercice</Label>
+            <Input
+              id="fr-fy-start"
+              type="date"
+              value={fiscalYearStartDate}
+              onChange={(e) => setFiscalYearStartDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fr-at">Au</Label>
+            <Input
+              id="fr-at"
+              type="date"
+              value={asAtDate}
+              onChange={(e) => setAsAtDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Calculer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <FinancialRatiosTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialRatiosTable({ report }: { readonly report: FinancialRatiosReport }) {
+  const groups = ['STRUCTURE', 'LIQUIDITE', 'SOLVABILITE', 'RENTABILITE', 'ACTIVITE'] as const;
+  const labelByCategory: Record<(typeof groups)[number], string> = {
+    STRUCTURE: 'Structure financière',
+    LIQUIDITE: 'Liquidité',
+    SOLVABILITE: 'Solvabilité',
+    RENTABILITE: 'Rentabilité',
+    ACTIVITE: 'Activité',
+  };
+  return (
+    <div className="space-y-6">
+      {groups.map((cat) => {
+        const items = report.ratios.filter((r) => r.category === cat);
+        if (items.length === 0) return null;
+        return (
+          <div key={cat}>
+            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700">
+              {labelByCategory[cat]}
+            </h4>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-2 py-1">Code</th>
+                  <th className="px-2 py-1">Ratio</th>
+                  <th className="px-2 py-1">Formule</th>
+                  <th className="px-2 py-1 text-right">Valeur</th>
+                  <th className="px-2 py-1">Interprétation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((r) => (
+                  <tr key={r.code} className="border-b hover:bg-slate-50">
+                    <td className="px-2 py-1 font-mono text-xs">{r.code}</td>
+                    <td className="px-2 py-1 font-medium">{r.label}</td>
+                    <td className="px-2 py-1 text-xs text-slate-500">{r.formula}</td>
+                    <td className="px-2 py-1 text-right font-mono font-semibold">
+                      {r.value === null
+                        ? '—'
+                        : r.unit === 'PERCENT'
+                          ? `${r.value} %`
+                          : r.unit === 'DAYS'
+                            ? `${r.value} j`
+                            : r.value}
+                    </td>
+                    <td className="px-2 py-1 text-xs text-slate-600">
+                      {r.interpretation ?? ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
     </div>
   );
 }

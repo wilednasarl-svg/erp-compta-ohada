@@ -290,6 +290,46 @@ export interface SigReport {
   };
 }
 
+// ─── Ratios financiers ──────────────────────────────────────────────
+
+/** Famille d'un ratio pour le regroupement dans l'UI et l'export. */
+export type RatioCategory =
+  | 'STRUCTURE'
+  | 'LIQUIDITE'
+  | 'SOLVABILITE'
+  | 'RENTABILITE'
+  | 'ACTIVITE';
+
+/**
+ * Un ratio calculé. `value` est en `string` pour préserver la précision
+ * (idem montants). `numerator` et `denominator` exposent les composants
+ * pour permettre l'audit visuel. `interpretation` est purement
+ * informative — texte court qualifiant la valeur (`bon`, `faible`,
+ * `à surveiller`, …) selon des seuils OHADA usuels.
+ */
+export interface FinancialRatio {
+  readonly code: string;
+  readonly label: string;
+  readonly category: RatioCategory;
+  readonly formula: string;
+  readonly numerator: string;
+  readonly denominator: string;
+  readonly value: string | null;
+  readonly unit: 'PERCENT' | 'RATIO' | 'DAYS';
+  readonly interpretation?: string;
+}
+
+export interface FinancialRatiosQuery {
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+}
+
+export interface FinancialRatiosReport {
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+  readonly ratios: readonly FinancialRatio[];
+}
+
 /**
  * `ReportsService` — Module 9 accounting reports.
  *
@@ -606,6 +646,266 @@ export class ReportsService {
       charges,
       produits,
       soldes,
+    };
+  }
+
+  /**
+   * Ratios financiers calculés à partir du bilan + du SIG.
+   *
+   * Couvre 5 familles :
+   *   STRUCTURE     — répartition des emplois/ressources
+   *   LIQUIDITE     — capacité à honorer les dettes court terme
+   *   SOLVABILITE   — capacité à honorer l'ensemble des dettes
+   *   RENTABILITE   — efficacité économique et financière
+   *   ACTIVITE      — rotation et délai (BFR, créances clients)
+   *
+   * Les seuils d'interprétation suivent les normes OHADA usuelles
+   * (FANAF, rapports BCEAO). Les ratios à dénominateur nul renvoient
+   * `value: null` plutôt qu'une erreur — l'UI affiche `—`.
+   */
+  async getFinancialRatios(
+    organizationId: TenantId,
+    query: FinancialRatiosQuery,
+  ): Promise<FinancialRatiosReport> {
+    assertTenantId(organizationId);
+    if (!ReportsService.isYmd(query.asAtDate) || !ReportsService.isYmd(query.fiscalYearStartDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'asAtDate and fiscalYearStartDate must be YYYY-MM-DD.',
+      });
+    }
+    if (query.fiscalYearStartDate > query.asAtDate) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'fiscalYearStartDate must be <= asAtDate.',
+      });
+    }
+
+    const [bilan, sig] = await Promise.all([
+      this.getBalanceSheet(organizationId, {
+        asAtDate: query.asAtDate,
+        fiscalYearStartDate: query.fiscalYearStartDate,
+      }),
+      this.getSig(organizationId, {
+        fromDate: query.fiscalYearStartDate,
+        toDate: query.asAtDate,
+      }),
+    ]);
+
+    const sectionTotal = (
+      sections: BalanceSheetReport['actif']['sections'],
+      key: string,
+    ): number => Number(sections.find((s) => s.key === key)?.total ?? '0');
+
+    const totalActif = Number(bilan.actif.total);
+    const totalPassif = Number(bilan.passif.total);
+    const actifImmobilise = sectionTotal(bilan.actif.sections, 'IMMOBILISE');
+    const actifCirculant = sectionTotal(bilan.actif.sections, 'CIRCULANT');
+    const tresoActif = sectionTotal(bilan.actif.sections, 'TRESORERIE_ACTIF');
+    const capitauxPropres = sectionTotal(bilan.passif.sections, 'CAPITAUX_PROPRES');
+    const dettesFinancieres = sectionTotal(bilan.passif.sections, 'DETTES_FINANCIERES');
+    const passifCirculant = sectionTotal(bilan.passif.sections, 'PASSIF_CIRCULANT');
+    const tresoPassif = sectionTotal(bilan.passif.sections, 'TRESORERIE_PASSIF');
+
+    const soldeByCode = (code: string): number =>
+      Number(sig.soldes.find((s) => s.code === code)?.amount ?? '0');
+    const chiffreAffaires = soldeByCode('XB');
+    const valeurAjoutee = soldeByCode('XC');
+    const ebe = soldeByCode('XD');
+    const resultatExploit = soldeByCode('XE');
+    const resultatNet = soldeByCode('XI');
+
+    const passifCourtTerme = passifCirculant + tresoPassif;
+    const ressourcesStables = capitauxPropres + dettesFinancieres;
+    const fondsRoulement = ressourcesStables - actifImmobilise;
+    const bfr = actifCirculant - passifCirculant;
+
+    const ratios: FinancialRatio[] = [
+      ReportsService.makeRatio({
+        code: 'AF',
+        label: 'Autonomie financière',
+        category: 'STRUCTURE',
+        formula: 'Capitaux propres / Total bilan',
+        numerator: capitauxPropres,
+        denominator: totalPassif,
+        unit: 'PERCENT',
+        interpret: (v) =>
+          v === null ? undefined : v >= 30 ? 'bon (≥ 30 %)' : v >= 20 ? 'à surveiller' : 'faible',
+      }),
+      ReportsService.makeRatio({
+        code: 'EF',
+        label: 'Endettement financier',
+        category: 'STRUCTURE',
+        formula: 'Dettes financières / Capitaux propres',
+        numerator: dettesFinancieres,
+        denominator: capitauxPropres,
+        unit: 'RATIO',
+        interpret: (v) =>
+          v === null ? undefined : v <= 1 ? 'bon (≤ 1)' : v <= 2 ? 'à surveiller' : 'élevé',
+      }),
+      ReportsService.makeRatio({
+        code: 'FR',
+        label: 'Couverture des emplois stables',
+        category: 'STRUCTURE',
+        formula: 'Ressources stables / Actif immobilisé',
+        numerator: ressourcesStables,
+        denominator: actifImmobilise,
+        unit: 'RATIO',
+        interpret: (v) =>
+          v === null ? undefined : v >= 1 ? 'fonds de roulement positif' : 'fonds de roulement négatif',
+      }),
+      ReportsService.makeRatio({
+        code: 'LG',
+        label: 'Liquidité générale',
+        category: 'LIQUIDITE',
+        formula: '(Actif circulant + Trésorerie actif) / Passif court terme',
+        numerator: actifCirculant + tresoActif,
+        denominator: passifCourtTerme,
+        unit: 'RATIO',
+        interpret: (v) =>
+          v === null ? undefined : v >= 1.5 ? 'bon' : v >= 1 ? 'acceptable' : 'tendu',
+      }),
+      ReportsService.makeRatio({
+        code: 'LI',
+        label: 'Liquidité immédiate',
+        category: 'LIQUIDITE',
+        formula: 'Trésorerie actif / Passif court terme',
+        numerator: tresoActif,
+        denominator: passifCourtTerme,
+        unit: 'RATIO',
+        interpret: (v) =>
+          v === null ? undefined : v >= 0.2 ? 'bon' : v >= 0.1 ? 'à surveiller' : 'faible',
+      }),
+      ReportsService.makeRatio({
+        code: 'SG',
+        label: 'Solvabilité générale',
+        category: 'SOLVABILITE',
+        formula: 'Total actif / Total dettes',
+        numerator: totalActif,
+        denominator: dettesFinancieres + passifCourtTerme,
+        unit: 'RATIO',
+        interpret: (v) =>
+          v === null ? undefined : v >= 1.5 ? 'bon' : v >= 1 ? 'limite' : 'critique',
+      }),
+      ReportsService.makeRatio({
+        code: 'RE',
+        label: "Rentabilité d'exploitation",
+        category: 'RENTABILITE',
+        formula: "Résultat d'exploitation / Chiffre d'affaires",
+        numerator: resultatExploit,
+        denominator: chiffreAffaires,
+        unit: 'PERCENT',
+      }),
+      ReportsService.makeRatio({
+        code: 'RC',
+        label: 'Rentabilité commerciale (marge nette)',
+        category: 'RENTABILITE',
+        formula: "Résultat net / Chiffre d'affaires",
+        numerator: resultatNet,
+        denominator: chiffreAffaires,
+        unit: 'PERCENT',
+      }),
+      ReportsService.makeRatio({
+        code: 'RF',
+        label: 'Rentabilité financière (ROE)',
+        category: 'RENTABILITE',
+        formula: 'Résultat net / Capitaux propres',
+        numerator: resultatNet,
+        denominator: capitauxPropres,
+        unit: 'PERCENT',
+        interpret: (v) =>
+          v === null ? undefined : v >= 10 ? 'bon (≥ 10 %)' : v >= 5 ? 'modéré' : 'faible',
+      }),
+      ReportsService.makeRatio({
+        code: 'RA',
+        label: "Rentabilité économique de l'actif",
+        category: 'RENTABILITE',
+        formula: 'EBE / Total actif',
+        numerator: ebe,
+        denominator: totalActif,
+        unit: 'PERCENT',
+      }),
+      ReportsService.makeRatio({
+        code: 'VA',
+        label: 'Productivité — VA / CA',
+        category: 'ACTIVITE',
+        formula: "Valeur ajoutée / Chiffre d'affaires",
+        numerator: valeurAjoutee,
+        denominator: chiffreAffaires,
+        unit: 'PERCENT',
+      }),
+      ReportsService.makeRatio({
+        code: 'BFR',
+        label: 'Poids du BFR',
+        category: 'ACTIVITE',
+        formula: "Besoin en fonds de roulement / Chiffre d'affaires (en jours)",
+        numerator: bfr * 360,
+        denominator: chiffreAffaires,
+        unit: 'DAYS',
+      }),
+      ReportsService.makeRatio({
+        code: 'FRNG',
+        label: 'Fonds de roulement net global',
+        category: 'STRUCTURE',
+        formula: 'Ressources stables − Actif immobilisé',
+        numerator: fondsRoulement,
+        denominator: 1, // valeur absolue, pas un quotient
+        unit: 'RATIO',
+        interpret: () =>
+          fondsRoulement >= 0 ? 'positif' : 'négatif (déséquilibre structurel)',
+      }),
+    ];
+
+    return {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      ratios,
+    };
+  }
+
+  private static makeRatio(args: {
+    code: string;
+    label: string;
+    category: RatioCategory;
+    formula: string;
+    numerator: number;
+    denominator: number;
+    unit: 'PERCENT' | 'RATIO' | 'DAYS';
+    /**
+     * Le numérique passé à `interpret` est dans l'unité d'affichage :
+     *   - PERCENT → la valeur en pourcent (44.44, pas 0.4444)
+     *   - RATIO   → la valeur brute (0.5)
+     *   - DAYS    → le nombre de jours
+     * Les seuils dans la lambda sont donc lisibles directement.
+     */
+    interpret?: (v: number | null) => string | undefined;
+  }): FinancialRatio {
+    const denomZero = Math.abs(args.denominator) < 0.005;
+    const raw = denomZero ? null : args.numerator / args.denominator;
+    const displayValue =
+      raw === null
+        ? null
+        : args.unit === 'PERCENT'
+          ? raw * 100
+          : args.unit === 'DAYS'
+            ? Math.round(raw)
+            : raw;
+    const value =
+      displayValue === null
+        ? null
+        : args.unit === 'PERCENT'
+          ? displayValue.toFixed(2)
+          : args.unit === 'DAYS'
+            ? displayValue.toString()
+            : displayValue.toFixed(4);
+    return {
+      code: args.code,
+      label: args.label,
+      category: args.category,
+      formula: args.formula,
+      numerator: args.numerator.toFixed(2),
+      denominator: args.denominator.toFixed(2),
+      value,
+      unit: args.unit,
+      interpretation: args.interpret?.(displayValue),
     };
   }
 

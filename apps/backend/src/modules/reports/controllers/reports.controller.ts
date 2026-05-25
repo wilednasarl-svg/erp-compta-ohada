@@ -21,6 +21,7 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
+import { FinancialRatiosQueryDto } from '../dto/financial-ratios-query.dto';
 import { GeneralLedgerQueryDto } from '../dto/general-ledger-query.dto';
 import { ProfitLossQueryDto } from '../dto/profit-loss-query.dto';
 import { SigQueryDto } from '../dto/sig-query.dto';
@@ -29,6 +30,7 @@ import {
   ReportsService,
   type BalanceSheetReport,
   type ComparativeBalanceReport,
+  type FinancialRatiosReport,
   type GeneralLedgerReport,
   type ProfitLossReport,
   type SigReport,
@@ -203,6 +205,45 @@ export class ReportsController {
       compareWith,
     });
     return { report };
+  }
+
+  @Get('financial-ratios')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ratios financiers (structure, liquidité, solvabilité, rentabilité)' })
+  async financialRatios(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: FinancialRatiosQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: FinancialRatiosReport }> {
+    const report = await this.reports.getFinancialRatios(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+    });
+    return { report };
+  }
+
+  @Get('financial-ratios.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Ratios financiers' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async financialRatiosXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: FinancialRatiosQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getFinancialRatios(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+    });
+    const buffer = this.xlsx.financialRatiosXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'ratios-financiers', query.asAtDate, undefined, 'xlsx'),
+    );
   }
 
   // ─── PDF export endpoints (wave 3) ──────────────────────────────
