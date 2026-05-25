@@ -12,7 +12,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -29,7 +34,11 @@ import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { TvaCodesService } from '../services/tva-codes.service';
 import { CreateTvaCodeDto } from '../dto/create-tva-code.dto';
 import { UpdateTvaCodeDto } from '../dto/update-tva-code.dto';
-import { TvaCodeEntity } from '../entities/tva-code.entity';
+import {
+  ListTvaCodesResponse,
+  TvaCodeEnvelopeResponse,
+} from '../dto/responses';
+import { toEnvelopeCode, toListCodes } from '../mappers/tva-response.mapper';
 
 @ApiTags('TvaCodes')
 @ApiBearerAuth('bearer')
@@ -41,41 +50,44 @@ export class TvaCodesController {
   @Get()
   @RequirePermission('tva.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListTvaCodesResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Query('activeOnly') activeOnly?: string,
-  ): Promise<{ codes: TvaCodeEntity[] }> {
+  ): Promise<ListTvaCodesResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const codes = await this.tvaCodes.listForOrg(asTenantId(tokenOrgId), {
       activeOnly: activeOnly === 'true',
     });
-    return { codes };
+    return toListCodes(codes);
   }
 
   @Get(':codeId')
   @RequirePermission('tva.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: TvaCodeEnvelopeResponse })
   async getOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('codeId', new ParseUUIDPipe({ version: '4' })) codeId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ): Promise<{ code: TvaCodeEntity }> {
+  ): Promise<TvaCodeEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const code = await this.tvaCodes.findById(codeId, asTenantId(tokenOrgId));
-    return { code };
+    return toEnvelopeCode(code);
   }
 
   @Post()
   @RequirePermission('tva.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: TvaCodeEnvelopeResponse })
   async create(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: CreateTvaCodeDto,
     @Req() req: Request,
-  ): Promise<{ code: TvaCodeEntity }> {
+  ): Promise<TvaCodeEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const code = await this.tvaCodes.create(
@@ -84,12 +96,13 @@ export class TvaCodesController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { code };
+    return toEnvelopeCode(code);
   }
 
   @Patch(':codeId')
   @RequirePermission('tva.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: TvaCodeEnvelopeResponse })
   async update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('codeId', new ParseUUIDPipe({ version: '4' })) codeId: string,
@@ -97,7 +110,7 @@ export class TvaCodesController {
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: UpdateTvaCodeDto,
     @Req() req: Request,
-  ): Promise<{ code: TvaCodeEntity }> {
+  ): Promise<TvaCodeEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const code = await this.tvaCodes.update(
@@ -107,7 +120,7 @@ export class TvaCodesController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { code };
+    return toEnvelopeCode(code);
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────

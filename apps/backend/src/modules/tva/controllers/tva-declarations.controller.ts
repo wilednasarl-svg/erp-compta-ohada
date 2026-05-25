@@ -11,7 +11,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -28,7 +33,14 @@ import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { TvaDeclarationsService } from '../services/tva-declarations.service';
 import { ComputeDeclarationDto } from '../dto/compute-declaration.dto';
 import { CancelDeclarationDto } from '../dto/cancel-declaration.dto';
-import { TvaDeclarationEntity } from '../entities/tva-declaration.entity';
+import {
+  ListTvaDeclarationsResponse,
+  TvaDeclarationEnvelopeResponse,
+} from '../dto/responses';
+import {
+  toEnvelopeDeclaration,
+  toListDeclarations,
+} from '../mappers/tva-response.mapper';
 
 @ApiTags('TvaDeclarations')
 @ApiBearerAuth('bearer')
@@ -40,44 +52,47 @@ export class TvaDeclarationsController {
   @Get()
   @RequirePermission('tva.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListTvaDeclarationsResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Query('status') status?: 'draft' | 'calculated' | 'cancelled',
     @Query('year') year?: string,
-  ): Promise<{ declarations: TvaDeclarationEntity[] }> {
+  ): Promise<ListTvaDeclarationsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const parsedYear = year ? parseInt(year, 10) : undefined;
     const declarations = await this.tvaDeclarations.listForOrg(asTenantId(tokenOrgId), {
       status,
       periodYear: isNaN(parsedYear as number) ? undefined : parsedYear,
     });
-    return { declarations };
+    return toListDeclarations(declarations);
   }
 
   @Get(':declarationId')
   @RequirePermission('tva.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: TvaDeclarationEnvelopeResponse })
   async getOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('declarationId', new ParseUUIDPipe({ version: '4' })) declarationId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ): Promise<{ declaration: TvaDeclarationEntity }> {
+  ): Promise<TvaDeclarationEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const declaration = await this.tvaDeclarations.findById(declarationId, asTenantId(tokenOrgId));
-    return { declaration };
+    return toEnvelopeDeclaration(declaration);
   }
 
   @Post()
   @RequirePermission('tva.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: TvaDeclarationEnvelopeResponse })
   async compute(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: ComputeDeclarationDto,
     @Req() req: Request,
-  ): Promise<{ declaration: TvaDeclarationEntity }> {
+  ): Promise<TvaDeclarationEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const declaration = await this.tvaDeclarations.computeDeclaration(
@@ -86,12 +101,13 @@ export class TvaDeclarationsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { declaration };
+    return toEnvelopeDeclaration(declaration);
   }
 
   @Post(':declarationId/cancel')
   @RequirePermission('tva.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: TvaDeclarationEnvelopeResponse })
   async cancel(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('declarationId', new ParseUUIDPipe({ version: '4' })) declarationId: string,
@@ -99,7 +115,7 @@ export class TvaDeclarationsController {
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: CancelDeclarationDto,
     @Req() req: Request,
-  ): Promise<{ declaration: TvaDeclarationEntity }> {
+  ): Promise<TvaDeclarationEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const declaration = await this.tvaDeclarations.cancelDeclaration(
@@ -109,7 +125,7 @@ export class TvaDeclarationsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { declaration };
+    return toEnvelopeDeclaration(declaration);
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────
