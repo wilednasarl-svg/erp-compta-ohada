@@ -57,6 +57,7 @@ export type AuditModule =
   | 'ai'
   | 'tva'
   | 'assets'
+  | 'bank-reconciliation'
   | '_legacy';
 
 @Entity({ name: 'auth_events' })
