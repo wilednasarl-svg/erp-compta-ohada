@@ -25,10 +25,14 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequirePermission } from '../../rbac/decorators/require-permission.decorator';
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
+import { AskAssistantDto } from '../dto/ask-assistant.dto';
 import { ListAnomaliesQueryDto } from '../dto/list-anomalies-query.dto';
 import { ScanAnomaliesDto } from '../dto/scan-anomalies.dto';
 import { SuggestAccountDto } from '../dto/suggest-account.dto';
+import { SuggestColumnsDto } from '../dto/suggest-columns.dto';
 import { AiAnomalyService } from '../services/ai-anomaly.service';
+import { AiAssistantService } from '../services/ai-assistant.service';
+import { AiMappingService } from '../services/ai-mapping.service';
 import { AiSuggestionService } from '../services/ai-suggestion.service';
 
 @ApiTags('AI Engine')
@@ -39,6 +43,8 @@ export class AiController {
   constructor(
     private readonly anomalies: AiAnomalyService,
     private readonly suggestions: AiSuggestionService,
+    private readonly mapping: AiMappingService,
+    private readonly assistant: AiAssistantService,
   ) {}
 
   @Post('anomalies/scan')
@@ -112,6 +118,62 @@ export class AiController {
       buildAuditRequestContext(req),
     );
     return { suggestion };
+  }
+
+  // ─── Wave 2 — AI Mapping ────────────────────────────────────────────
+
+  @Post('mapping/suggest-columns')
+  @RequirePermission('ai.suggest')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Suggérer un mapping de colonnes pour un fichier Sage importé',
+  })
+  async suggestColumns(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Body() body: SuggestColumnsDto,
+    @Req() req: Request,
+  ) {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const result = await this.mapping.suggestColumns(
+      {
+        organizationId: asTenantId(tokenOrgId),
+        headers: body.headers,
+        sampleRows: body.sampleRows,
+      },
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
+    return result;
+  }
+
+  // ─── Wave 2 — AI Assistant (Q&A) ────────────────────────────────────
+
+  @Post('assistant/ask')
+  @RequirePermission('ai.suggest')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Question en langage naturel — provider rule-based v1 (wave 2)' })
+  async ask(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Body() body: AskAssistantDto,
+    @Req() req: Request,
+  ) {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const answer = await this.assistant.ask(
+      {
+        organizationId: asTenantId(tokenOrgId),
+        question: body.question,
+        periodId: body.periodId,
+      },
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
+    return { answer };
   }
 
   private assertOrgMatch(

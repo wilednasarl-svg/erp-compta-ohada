@@ -206,9 +206,7 @@ export function detectSuspiciousDates(
     const date = new Date(line.entryDate + 'T00:00:00Z');
     const dow = date.getUTCDay();
     if (dow === 0 || dow === 6) {
-      reasons.push(
-        `Écriture datée d'un ${dow === 0 ? 'dimanche' : 'samedi'} (${line.entryDate}).`,
-      );
+      reasons.push(`Écriture datée d'un ${dow === 0 ? 'dimanche' : 'samedi'} (${line.entryDate}).`);
     }
     if (line.entryDate < periodStart || line.entryDate > periodEnd) {
       reasons.push(

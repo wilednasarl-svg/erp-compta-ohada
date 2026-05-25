@@ -10,20 +10,25 @@ import { AiController } from './controllers/ai.controller';
 import { AiAnomalyEntity } from './entities/ai-anomaly.entity';
 import { AiAnomalyRepository } from './repositories/ai-anomaly.repository';
 import { AiAnomalyService } from './services/ai-anomaly.service';
+import { AiAssistantService } from './services/ai-assistant.service';
+import { AiMappingService } from './services/ai-mapping.service';
 import { AiSuggestionService } from './services/ai-suggestion.service';
+import { ASSISTANT_PROVIDER } from './services/assistant-provider';
+import { RuleBasedAssistantProvider } from './services/rule-based-assistant-provider';
 
 /**
- * AiModule — Module 11 wave 1 AI Engine.
+ * AiModule — Module 11.
  *
- * Heuristiques pures, ZÉRO appel ML/LLM. Le design garde la porte
- * ouverte à une wave 2 ML — on n'a qu'à ajouter un MLAnomalyService
- * derrière la même interface publique.
+ * Wave 1 : anomalies + suggestions de compte (heuristiques pures).
+ * Wave 2 : AI Mapping (auto-détection colonnes Sage) + AI Assistant
+ *   (Q&A rule-based, interface prête pour LLM en wave 3).
+ *
+ * ZÉRO appel ML/LLM côté backend en wave 1+2. Le binding
+ * `ASSISTANT_PROVIDER → RuleBasedAssistantProvider` se swap en wave 3
+ * pour brancher un LLM sans toucher au controller ni au frontend.
  *
  * AuthModule + RbacModule sont importés pour les guards locaux
  * (mémoire `nest-useguards-requires-module-imports`).
- *
- * On enregistre `AccountingPeriodEntity` localement parce que
- * JournalsModule n'exporte pas `AccountingPeriodRepository`.
  */
 @Module({
   imports: [
@@ -38,7 +43,13 @@ import { AiSuggestionService } from './services/ai-suggestion.service';
     AccountingPeriodRepository,
     AiAnomalyService,
     AiSuggestionService,
+    AiMappingService,
+    AiAssistantService,
+    // Wave 2 default provider — bound to the abstract token. Swap this
+    // class in wave 3 for a `LlmAssistantProvider`.
+    RuleBasedAssistantProvider,
+    { provide: ASSISTANT_PROVIDER, useExisting: RuleBasedAssistantProvider },
   ],
-  exports: [AiAnomalyService, AiSuggestionService],
+  exports: [AiAnomalyService, AiSuggestionService, AiMappingService, AiAssistantService],
 })
 export class AiModule {}

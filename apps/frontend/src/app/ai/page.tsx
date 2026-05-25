@@ -1,40 +1,48 @@
-'use client';
+"use client";
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Brain, Lightbulb, Loader2, Play, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  Brain,
+  Lightbulb,
+  Loader2,
+  MessageCircle,
+  Play,
+  Search,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { AppShell } from "@/components/app-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { FormError } from '@/components/ui/form-error';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useApiMutation } from '@/hooks/use-api-mutation';
-import { ApiError, api } from '@/lib/api-client';
-import { useCurrentOrg } from '@/stores/auth-store';
-import type { AccountingPeriodView } from '@/types/journals';
+} from "@/components/ui/card";
+import { FormError } from "@/components/ui/form-error";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useApiMutation } from "@/hooks/use-api-mutation";
+import { ApiError, api } from "@/lib/api-client";
+import { useCurrentOrg } from "@/stores/auth-store";
+import type { AccountingPeriodView } from "@/types/journals";
 
 type AnomalyType =
-  | 'extreme_amount'
-  | 'sensitive_account'
-  | 'potential_duplicate'
-  | 'suspicious_date'
-  | 'rare_account_journal';
+  | "extreme_amount"
+  | "sensitive_account"
+  | "potential_duplicate"
+  | "suspicious_date"
+  | "rare_account_journal";
 
 const ANOMALY_TYPE_LABELS: Readonly<Record<AnomalyType, string>> = {
-  extreme_amount: 'Montant extrême',
-  sensitive_account: 'Compte sensible',
-  potential_duplicate: 'Doublon potentiel',
-  suspicious_date: 'Date suspecte',
-  rare_account_journal: 'Combinaison rare',
+  extreme_amount: "Montant extrême",
+  sensitive_account: "Compte sensible",
+  potential_duplicate: "Doublon potentiel",
+  suspicious_date: "Date suspecte",
+  rare_account_journal: "Combinaison rare",
 };
 
 interface AiAnomaly {
@@ -52,7 +60,11 @@ interface AiAnomaly {
 
 interface AnomaliesResponse {
   readonly anomalies: ReadonlyArray<AiAnomaly>;
-  readonly meta: { readonly total: number; readonly page: number; readonly pageSize: number };
+  readonly meta: {
+    readonly total: number;
+    readonly page: number;
+    readonly pageSize: number;
+  };
 }
 
 interface ScanStats {
@@ -100,41 +112,51 @@ interface SuggestionResult {
  */
 export default function AiPage() {
   const currentOrg = useCurrentOrg();
-  const orgId = currentOrg?.id ?? '';
+  const orgId = currentOrg?.id ?? "";
   const queryClient = useQueryClient();
 
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
-  const [typeFilter, setTypeFilter] = useState<AnomalyType | ''>('');
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<AnomalyType | "">("");
   const [minScore, setMinScore] = useState<number>(0);
 
   const periodsQuery = useQuery<ReadonlyArray<AccountingPeriodView>, ApiError>({
-    queryKey: ['accounting-periods', orgId],
+    queryKey: ["accounting-periods", orgId],
     queryFn: async () => {
-      const data = await api.get<PeriodsResponse>(`/organizations/${orgId}/accounting-periods`);
+      const data = await api.get<PeriodsResponse>(
+        `/organizations/${orgId}/accounting-periods`,
+      );
       return data.periods;
     },
-    enabled: orgId !== '',
+    enabled: orgId !== "",
   });
 
   const anomaliesQuery = useQuery<AnomaliesResponse, ApiError>({
-    queryKey: ['ai-anomalies', orgId, selectedPeriodId, typeFilter, minScore],
+    queryKey: ["ai-anomalies", orgId, selectedPeriodId, typeFilter, minScore],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedPeriodId) params.set('periodId', selectedPeriodId);
-      if (typeFilter) params.set('anomalyType', typeFilter);
-      if (minScore > 0) params.set('minScore', String(minScore));
-      params.set('pageSize', '100');
-      return api.get<AnomaliesResponse>(`/organizations/${orgId}/ai/anomalies?${params}`);
+      if (selectedPeriodId) params.set("periodId", selectedPeriodId);
+      if (typeFilter) params.set("anomalyType", typeFilter);
+      if (minScore > 0) params.set("minScore", String(minScore));
+      params.set("pageSize", "100");
+      return api.get<AnomaliesResponse>(
+        `/organizations/${orgId}/ai/anomalies?${params}`,
+      );
     },
-    enabled: orgId !== '',
+    enabled: orgId !== "",
   });
 
-  const scanMutation = useApiMutation<{ stats: ScanStats }, { periodId: string }>(
+  const scanMutation = useApiMutation<
+    { stats: ScanStats },
+    { periodId: string }
+  >(
     ({ periodId }) =>
-      api.post<{ stats: ScanStats }>(`/organizations/${orgId}/ai/anomalies/scan`, { periodId }),
+      api.post<{ stats: ScanStats }>(
+        `/organizations/${orgId}/ai/anomalies/scan`,
+        { periodId },
+      ),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['ai-anomalies', orgId] });
+        queryClient.invalidateQueries({ queryKey: ["ai-anomalies", orgId] });
       },
     },
   );
@@ -152,7 +174,9 @@ export default function AiPage() {
         <header className="flex items-center gap-3">
           <Brain className="h-7 w-7 text-primary" />
           <div>
-            <h1 className="text-2xl font-semibold">IA — Anomalies &amp; suggestions</h1>
+            <h1 className="text-2xl font-semibold">
+              IA — Anomalies &amp; suggestions
+            </h1>
             <p className="text-sm text-muted-foreground">
               Module 11 wave 1 — heuristiques déterministes (sans LLM).
             </p>
@@ -164,7 +188,8 @@ export default function AiPage() {
           selectedPeriodId={selectedPeriodId}
           onPeriodChange={setSelectedPeriodId}
           onScan={() => {
-            if (selectedPeriodId) scanMutation.mutate({ periodId: selectedPeriodId });
+            if (selectedPeriodId)
+              scanMutation.mutate({ periodId: selectedPeriodId });
           }}
           loading={scanMutation.isPending}
           stats={scanMutation.data?.stats ?? null}
@@ -183,6 +208,8 @@ export default function AiPage() {
         />
 
         <SuggestionCard orgId={orgId} />
+
+        <AssistantCard orgId={orgId} periodId={selectedPeriodId} />
       </div>
     </AppShell>
   );
@@ -216,8 +243,8 @@ function ScanCard({
           <Play className="h-4 w-4" /> Scanner une période
         </CardTitle>
         <CardDescription>
-          Recalcul complet des anomalies sur la période choisie. Les anciennes anomalies de la
-          période sont effacées avant ré-insertion.
+          Recalcul complet des anomalies sur la période choisie. Les anciennes
+          anomalies de la période sont effacées avant ré-insertion.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -233,14 +260,15 @@ function ScanCard({
               <option value="">— Toutes les anomalies déjà détectées —</option>
               {periods.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label} ({p.startDate} → {p.endDate}) {p.status === 'closed' ? '— clôturée' : ''}
+                  {p.label} ({p.startDate} → {p.endDate}){" "}
+                  {p.status === "closed" ? "— clôturée" : ""}
                 </option>
               ))}
             </select>
           </div>
           <Button
             onClick={onScan}
-            disabled={loading || selectedPeriodId === ''}
+            disabled={loading || selectedPeriodId === ""}
             className="md:w-44"
           >
             {loading ? (
@@ -251,15 +279,20 @@ function ScanCard({
             Lancer le scan
           </Button>
         </div>
-        {error && <FormError error={{ code: error.code, message: error.message }} />}
+        {error && (
+          <FormError error={{ code: error.code, message: error.message }} />
+        )}
         {stats && (
           <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm dark:border-green-900 dark:bg-green-950/40">
-            <div className="font-medium">Scan terminé en {stats.durationMs} ms.</div>
+            <div className="font-medium">
+              Scan terminé en {stats.durationMs} ms.
+            </div>
             <div className="mt-1 text-muted-foreground">
-              {stats.entriesScanned} écriture{stats.entriesScanned > 1 ? 's' : ''} ·{' '}
-              {stats.linesScanned} ligne{stats.linesScanned > 1 ? 's' : ''} · {stats.anomaliesDetected}{' '}
-              anomalie{stats.anomaliesDetected > 1 ? 's' : ''} détectée
-              {stats.anomaliesDetected > 1 ? 's' : ''}.
+              {stats.entriesScanned} écriture
+              {stats.entriesScanned > 1 ? "s" : ""} · {stats.linesScanned} ligne
+              {stats.linesScanned > 1 ? "s" : ""} · {stats.anomaliesDetected}{" "}
+              anomalie{stats.anomaliesDetected > 1 ? "s" : ""} détectée
+              {stats.anomaliesDetected > 1 ? "s" : ""}.
             </div>
           </div>
         )}
@@ -275,8 +308,8 @@ interface AnomaliesCardProps {
   readonly total: number;
   readonly loading: boolean;
   readonly error: ApiError | null;
-  readonly typeFilter: AnomalyType | '';
-  readonly onTypeFilterChange: (t: AnomalyType | '') => void;
+  readonly typeFilter: AnomalyType | "";
+  readonly onTypeFilterChange: (t: AnomalyType | "") => void;
   readonly minScore: number;
   readonly onMinScoreChange: (s: number) => void;
 }
@@ -295,10 +328,12 @@ function AnomaliesCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-amber-500" /> Anomalies détectées ({total})
+          <AlertTriangle className="h-4 w-4 text-amber-500" /> Anomalies
+          détectées ({total})
         </CardTitle>
         <CardDescription>
-          Triées par risque décroissant. Chaque ligne expose ses raisons en clair.
+          Triées par risque décroissant. Chaque ligne expose ses raisons en
+          clair.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -309,7 +344,9 @@ function AnomaliesCard({
               id="type-filter"
               className="mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={typeFilter}
-              onChange={(e) => onTypeFilterChange((e.target.value as AnomalyType) || '')}
+              onChange={(e) =>
+                onTypeFilterChange((e.target.value as AnomalyType) || "")
+              }
             >
               <option value="">Tous</option>
               {(Object.keys(ANOMALY_TYPE_LABELS) as AnomalyType[]).map((t) => (
@@ -333,7 +370,9 @@ function AnomaliesCard({
           </div>
         </div>
 
-        {error && <FormError error={{ code: error.code, message: error.message }} />}
+        {error && (
+          <FormError error={{ code: error.code, message: error.message }} />
+        )}
 
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -358,21 +397,26 @@ function AnomaliesCard({
 function AnomalyRow({ anomaly }: { anomaly: AiAnomaly }) {
   const color =
     anomaly.riskScore >= 70
-      ? 'destructive'
+      ? "destructive"
       : anomaly.riskScore >= 40
-        ? 'warning'
-        : 'secondary';
+        ? "warning"
+        : "secondary";
   return (
     <div className="rounded-md border bg-card p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={color as 'destructive' | 'secondary'} className="uppercase tracking-wide">
+          <Badge
+            variant={color as "destructive" | "secondary"}
+            className="uppercase tracking-wide"
+          >
             Score {anomaly.riskScore}
           </Badge>
-          <span className="text-sm font-medium">{ANOMALY_TYPE_LABELS[anomaly.anomalyType]}</span>
+          <span className="text-sm font-medium">
+            {ANOMALY_TYPE_LABELS[anomaly.anomalyType]}
+          </span>
         </div>
         <span className="text-xs text-muted-foreground">
-          {new Date(anomaly.detectedAt).toLocaleString('fr-FR')}
+          {new Date(anomaly.detectedAt).toLocaleString("fr-FR")}
         </span>
       </div>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
@@ -387,9 +431,9 @@ function AnomalyRow({ anomaly }: { anomaly: AiAnomaly }) {
 // ─── Suggestion sandbox ───────────────────────────────────────────────
 
 function SuggestionCard({ orgId }: { orgId: string }) {
-  const [description, setDescription] = useState('');
-  const [partner, setPartner] = useState('');
-  const [side, setSide] = useState<'' | 'debit' | 'credit'>('');
+  const [description, setDescription] = useState("");
+  const [partner, setPartner] = useState("");
+  const [side, setSide] = useState<"" | "debit" | "credit">("");
 
   const suggestionMutation = useApiMutation<SuggestionResult, void>(() =>
     api.post<SuggestionResult>(`/organizations/${orgId}/ai/suggestions/entry`, {
@@ -406,7 +450,8 @@ function SuggestionCard({ orgId }: { orgId: string }) {
           <Lightbulb className="h-4 w-4 text-yellow-500" /> Suggestion de compte
         </CardTitle>
         <CardDescription>
-          Bac à sable : saisir un libellé d&apos;écriture pour voir le compte heuristique proposé.
+          Bac à sable : saisir un libellé d&apos;écriture pour voir le compte
+          heuristique proposé.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -437,7 +482,9 @@ function SuggestionCard({ orgId }: { orgId: string }) {
               id="suggest-side"
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={side}
-              onChange={(e) => setSide(e.target.value as '' | 'debit' | 'credit')}
+              onChange={(e) =>
+                setSide(e.target.value as "" | "debit" | "credit")
+              }
             >
               <option value="">—</option>
               <option value="debit">Débit</option>
@@ -447,7 +494,9 @@ function SuggestionCard({ orgId }: { orgId: string }) {
         </div>
         <Button
           onClick={() => suggestionMutation.mutate()}
-          disabled={suggestionMutation.isPending || description.trim().length === 0}
+          disabled={
+            suggestionMutation.isPending || description.trim().length === 0
+          }
         >
           {suggestionMutation.isPending ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -470,9 +519,13 @@ function SuggestionCard({ orgId }: { orgId: string }) {
           (suggestionMutation.data.suggestion ? (
             <div className="space-y-2 rounded-md border bg-card p-3">
               <div className="flex items-center gap-2">
-                <Badge>Compte {suggestionMutation.data.suggestion.suggestedAccountCode}</Badge>
+                <Badge>
+                  Compte{" "}
+                  {suggestionMutation.data.suggestion.suggestedAccountCode}
+                </Badge>
                 <span className="text-sm font-medium">
-                  Confiance : {suggestionMutation.data.suggestion.confidence} / 100
+                  Confiance : {suggestionMutation.data.suggestion.confidence} /
+                  100
                 </span>
               </div>
               <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
@@ -482,18 +535,152 @@ function SuggestionCard({ orgId }: { orgId: string }) {
               </ul>
               {suggestionMutation.data.suggestion.alternative && (
                 <div className="border-t pt-2 text-sm text-muted-foreground">
-                  <span className="font-medium">Alternative :</span>{' '}
-                  Compte {suggestionMutation.data.suggestion.alternative.accountCode} (confiance{' '}
-                  {suggestionMutation.data.suggestion.alternative.confidence}) —{' '}
-                  {suggestionMutation.data.suggestion.alternative.reasons.join(' ')}
+                  <span className="font-medium">Alternative :</span> Compte{" "}
+                  {suggestionMutation.data.suggestion.alternative.accountCode}{" "}
+                  (confiance{" "}
+                  {suggestionMutation.data.suggestion.alternative.confidence}) —{" "}
+                  {suggestionMutation.data.suggestion.alternative.reasons.join(
+                    " ",
+                  )}
                 </div>
               )}
             </div>
           ) : (
             <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-              Aucune suggestion : le libellé ne matche aucun pattern ni historique suffisant.
+              Aucune suggestion : le libellé ne matche aucun pattern ni
+              historique suffisant.
             </div>
           ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Assistant chat (wave 2) ──────────────────────────────────────────
+
+interface AssistantResponse {
+  readonly answer: {
+    readonly answer: string;
+    readonly confidence: number;
+    readonly matchedIntent: string | null;
+    readonly supportingData?: Record<string, unknown>;
+  };
+}
+
+const SAMPLE_QUESTIONS: ReadonlyArray<string> = [
+  "Quelles anomalies détectées ?",
+  "Quelle est l’écriture la plus risquée ?",
+  "Solde du compte 411",
+  "Combien j’ai dépensé en 6132 ?",
+  "Pourquoi le compte 6132 augmente ?",
+];
+
+function AssistantCard({
+  orgId,
+  periodId,
+}: {
+  orgId: string;
+  periodId: string;
+}) {
+  const [question, setQuestion] = useState("");
+  const [history, setHistory] = useState<
+    ReadonlyArray<{ q: string; a: AssistantResponse["answer"] }>
+  >([]);
+
+  const askMutation = useApiMutation<AssistantResponse, { question: string }>(
+    ({ question: q }) =>
+      api.post<AssistantResponse>(`/organizations/${orgId}/ai/assistant/ask`, {
+        question: q,
+        periodId: periodId || undefined,
+      }),
+    {
+      onSuccess: (data, vars) => {
+        setHistory((prev) => [...prev, { q: vars.question, a: data.answer }]);
+        setQuestion("");
+      },
+    },
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageCircle className="h-4 w-4 text-primary" /> Assistant comptable
+        </CardTitle>
+        <CardDescription>
+          Provider rule-based v1 — 5 patterns reconnus. Un LLM est prévu en wave
+          3.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {SAMPLE_QUESTIONS.map((sample) => (
+            <Button
+              key={sample}
+              variant="outline"
+              size="sm"
+              onClick={() => setQuestion(sample)}
+              disabled={askMutation.isPending}
+            >
+              {sample}
+            </Button>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            placeholder="Posez votre question…"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && question.trim().length > 0) {
+                askMutation.mutate({ question });
+              }
+            }}
+            className="flex-1"
+          />
+          <Button
+            onClick={() => askMutation.mutate({ question })}
+            disabled={askMutation.isPending || question.trim().length === 0}
+          >
+            {askMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <MessageCircle className="mr-2 h-4 w-4" />
+            )}
+            Demander
+          </Button>
+        </div>
+
+        {askMutation.error && (
+          <FormError
+            error={{
+              code: askMutation.error.code,
+              message: askMutation.error.message,
+            }}
+          />
+        )}
+
+        {history.length > 0 && (
+          <div className="space-y-3">
+            {history.map((entry, i) => (
+              <div key={i} className="space-y-2 rounded-md border bg-card p-3">
+                <div className="text-sm font-medium">Q : {entry.q}</div>
+                <div className="text-sm text-muted-foreground">
+                  {entry.a.answer}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="secondary">
+                    Intent : {entry.a.matchedIntent ?? "non reconnu"}
+                  </Badge>
+                  <Badge variant="secondary">
+                    Confiance {entry.a.confidence}/100
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
