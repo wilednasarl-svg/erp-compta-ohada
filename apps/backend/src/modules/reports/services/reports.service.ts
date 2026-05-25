@@ -1249,19 +1249,40 @@ export class ReportsService {
     const participation = sigPoste([...sig.charges], 'RQ');
     const caf = ebe + reprises - dotations - fraisFin + revFin - impots - participation;
 
+    // Détail cessions / acquisitions d'immobilisations (Vol. 3, p. 267).
+    // Cessions identifiées par les postes 82 (produits) et 81 (valeurs
+    // comptables) du SIG — déjà mappés dans syscohada-postes.ts.
+    const produitsCessions = sigPoste([...sig.produits], 'TN'); // compte 82
+    const valeursCessions = sigPoste([...sig.charges], 'RO'); // compte 81
+    // Acquisitions = ΔImmoNet + dotations (les sorties amortissements
+    // diminuent l'immo net) + VCessions (les cessions sortent l'immo).
+    // C'est une estimation : si l'entité fait des réévaluations ou des
+    // sorties pour autres raisons, l'écart est porté dans la note méthodo.
+    const acquisitionsEstimees = variationImmo + dotations + valeursCessions;
+
+    // Dividendes versés : approximation = RN N-1 réintégré au CAF − ce
+    // que la variation des capitaux propres absorbe (hors RN courant).
+    // Bonne approche : capN − capNm1 − (RN_N) − apports nouveaux ≈
+    // − dividendes − rachats actions. Ici on ne distingue pas, on
+    // marque comme "Variation capitaux propres hors résultat".
+    const rnN = sigSolde('XI');
+    const variationCapHorsResultat = variationCapitaux - rnN;
+    const dividendesEstimes = Math.max(-variationCapHorsResultat, 0);
+    const apportsNouveauxEstimes = Math.max(variationCapHorsResultat, 0);
+
     const emplois: OhadaStatementSection[] = [
       {
         code: 'E.I',
-        label: 'Investissements et désinvestissements',
+        label: "Acquisitions d'immobilisations",
         lines: [
           {
             code: 'EI.1',
-            label: "Acquisitions / cessions nettes d'immobilisations",
-            amount: Math.max(variationImmo, 0).toFixed(2),
-            note: variationImmo < 0 ? 'Désinvestissement net' : 'Investissement net',
+            label: 'Acquisitions estimées (ΔImmoNet + dotations + valeurs cessions)',
+            amount: Math.max(acquisitionsEstimees, 0).toFixed(2),
+            note: 'Estimation — pour précision exacte voir tableau des immobilisations (Note 3A)',
           },
         ],
-        total: Math.max(variationImmo, 0).toFixed(2),
+        total: Math.max(acquisitionsEstimees, 0).toFixed(2),
       },
       {
         code: 'E.II',
@@ -1284,30 +1305,42 @@ export class ReportsService {
             label: 'Remboursement de dettes financières',
             amount: Math.max(-variationDettesFin, 0).toFixed(2),
           },
+          {
+            code: 'EIII.2',
+            label: 'Dividendes versés (estimés)',
+            amount: dividendesEstimes.toFixed(2),
+            note: 'Approximation = baisse des capitaux propres hors RN courant',
+          },
         ],
-        total: Math.max(-variationDettesFin, 0).toFixed(2),
+        total: (Math.max(-variationDettesFin, 0) + dividendesEstimes).toFixed(2),
       },
     ];
     const ressources: OhadaStatementSection[] = [
       {
         code: 'R.I',
-        label: 'Capacité d\'autofinancement (CAF)',
+        label: "Capacité d'autofinancement (CAF)",
         lines: [
-          { code: 'RI.1', label: 'CAF de l\'exercice', amount: caf.toFixed(2) },
+          { code: 'RI.1', label: "CAF de l'exercice", amount: caf.toFixed(2) },
         ],
         total: caf.toFixed(2),
       },
       {
         code: 'R.II',
-        label: 'Cessions et reductions d\'immobilisations',
+        label: "Cessions d'immobilisations",
         lines: [
           {
             code: 'RII.1',
-            label: 'Désinvestissement net (si applicable)',
-            amount: Math.max(-variationImmo, 0).toFixed(2),
+            label: "Produits de cession d'immobilisations (poste TN, compte 82)",
+            amount: produitsCessions.toFixed(2),
+          },
+          {
+            code: 'RII.2',
+            label: 'Valeur comptable nette cédée (poste RO, compte 81)',
+            amount: valeursCessions.toFixed(2),
+            note: 'Pour information — entre dans le calcul des acquisitions',
           },
         ],
-        total: Math.max(-variationImmo, 0).toFixed(2),
+        total: produitsCessions.toFixed(2),
       },
       {
         code: 'R.III',
@@ -1315,8 +1348,8 @@ export class ReportsService {
         lines: [
           {
             code: 'RIII.1',
-            label: 'Augmentation de capitaux propres',
-            amount: Math.max(variationCapitaux, 0).toFixed(2),
+            label: 'Apports nouveaux en capitaux propres (estimés)',
+            amount: apportsNouveauxEstimes.toFixed(2),
           },
           {
             code: 'RIII.2',
@@ -1324,9 +1357,7 @@ export class ReportsService {
             amount: Math.max(variationDettesFin, 0).toFixed(2),
           },
         ],
-        total: (
-          Math.max(variationCapitaux, 0) + Math.max(variationDettesFin, 0)
-        ).toFixed(2),
+        total: (apportsNouveauxEstimes + Math.max(variationDettesFin, 0)).toFixed(2),
       },
     ];
 
@@ -1338,9 +1369,10 @@ export class ReportsService {
       variationTresorerie: variationTreso.toFixed(2),
       methodologyNotes: [
         'CAF calculée à partir du SIG : EBE + reprises − dotations − frais financiers + revenus financiers − impôts − participation.',
-        "Acquisitions / cessions d'immobilisations sont présentées en NET (besoin de distinguer 8x produits cessions vs 81 valeurs comptables pour le détail).",
-        "Variation BFR = (Actif circulant N − N-1) − (Passif circulant N − N-1).",
-        'Variation de trésorerie nette indicative — le détail flux d\'investissement vs financement est dans le TFT.',
+        "Cessions = poste TN (compte 82, produits cessions). Acquisitions estimées = ΔImmoNet + dotations + valeurs comptables cédées (poste RO, compte 81). Pour précision exacte, croiser avec le tableau des immobilisations (Note 3A).",
+        'Variation BFR = (Actif circulant N − N-1) − (Passif circulant N − N-1).',
+        'Dividendes et apports nouveaux : approximations basées sur la variation des capitaux propres hors résultat net courant. Pour précision, lire les comptes 1060/1061/1062 séparément.',
+        "Variation de trésorerie nette ≈ Total Ressources − Total Emplois (réconciliation auto).",
       ],
     };
   }
@@ -1400,13 +1432,25 @@ export class ReportsService {
 
     const immoN = sectionTotal(bilanN.actif.sections, 'IMMOBILISE');
     const immoNm1 = sectionTotal(bilanNm1.actif.sections, 'IMMOBILISE');
-    const fluxInvestissement = -(immoN - immoNm1);
+    // Detail acquisitions vs cessions
+    const sigPosteAmount = (
+      postes: ReadonlyArray<SyscohadaPosteAmount>,
+      code: string,
+    ): number => Number(postes.find((p) => p.code === code)?.amount ?? '0');
+    const produitsCessions = sigPosteAmount(sig.produits, 'TN');
+    const valeursCessions = sigPosteAmount(sig.charges, 'RO');
+    const acquisitionsEstimees = immoN - immoNm1 + dotations + valeursCessions;
+    // Flux investissement net = -Acquisitions + Cessions encaissées
+    const fluxInvestissement = -acquisitionsEstimees + produitsCessions;
 
     const dettesFinN = sectionTotal(bilanN.passif.sections, 'DETTES_FINANCIERES');
     const dettesFinNm1 = sectionTotal(bilanNm1.passif.sections, 'DETTES_FINANCIERES');
     const capN = sectionTotal(bilanN.passif.sections, 'CAPITAUX_PROPRES');
     const capNm1 = sectionTotal(bilanNm1.passif.sections, 'CAPITAUX_PROPRES');
-    const fluxFinancement = dettesFinN - dettesFinNm1 + (capN - capNm1 - rn);
+    const variationCapHorsRn = capN - capNm1 - rn;
+    const apportsNouveaux = Math.max(variationCapHorsRn, 0);
+    const dividendesVerses = Math.max(-variationCapHorsRn, 0);
+    const fluxFinancement = dettesFinN - dettesFinNm1 + apportsNouveaux - dividendesVerses;
 
     const tresoN =
       sectionTotal(bilanN.actif.sections, 'TRESORERIE_ACTIF') -
@@ -1435,8 +1479,14 @@ export class ReportsService {
         lines: [
           {
             code: 'FB.1',
-            label: 'Variation nette des immobilisations',
-            amount: fluxInvestissement.toFixed(2),
+            label: "− Acquisitions d'immobilisations (estimées)",
+            amount: (-acquisitionsEstimees).toFixed(2),
+            note: 'ΔImmoNet + dotations + valeurs comptables cédées',
+          },
+          {
+            code: 'FB.2',
+            label: '+ Produits de cessions (poste TN, compte 82)',
+            amount: produitsCessions.toFixed(2),
           },
         ],
         total: fluxInvestissement.toFixed(2),
@@ -1452,8 +1502,13 @@ export class ReportsService {
           },
           {
             code: 'FC.2',
-            label: 'Variation des capitaux propres hors résultat',
-            amount: (capN - capNm1 - rn).toFixed(2),
+            label: '+ Apports nouveaux en capitaux propres (estimés)',
+            amount: apportsNouveaux.toFixed(2),
+          },
+          {
+            code: 'FC.3',
+            label: '− Dividendes versés (estimés)',
+            amount: (-dividendesVerses).toFixed(2),
           },
         ],
         total: fluxFinancement.toFixed(2),
