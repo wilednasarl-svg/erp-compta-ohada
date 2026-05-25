@@ -23,6 +23,7 @@ import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
 import { GeneralLedgerQueryDto } from '../dto/general-ledger-query.dto';
 import { ProfitLossQueryDto } from '../dto/profit-loss-query.dto';
+import { SigQueryDto } from '../dto/sig-query.dto';
 import { TrialBalanceQueryDto } from '../dto/trial-balance-query.dto';
 import {
   ReportsService,
@@ -30,6 +31,7 @@ import {
   type ComparativeBalanceReport,
   type GeneralLedgerReport,
   type ProfitLossReport,
+  type SigReport,
   type TrialBalanceReport,
 } from '../services/reports.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
@@ -147,6 +149,29 @@ export class ReportsController {
         ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
         : undefined;
     const report = await this.reports.getProfitLoss(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      compareWith,
+    });
+    return { report };
+  }
+
+  @Get('sig')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Soldes Intermédiaires de Gestion (SIG) — cascade SYSCOHADA XA → XI',
+  })
+  async sig(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: SigQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: SigReport }> {
+    const compareWith =
+      query.compareFromDate !== undefined && query.compareToDate !== undefined
+        ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
+        : undefined;
+    const report = await this.reports.getSig(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
@@ -415,6 +440,34 @@ export class ReportsController {
       buffer,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       this.filename(org.name, 'compte-de-resultat', query.fromDate, query.toDate, 'xlsx'),
+    );
+  }
+
+  @Get('sig.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Soldes Intermédiaires de Gestion' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async sigXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: SigQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith =
+      query.compareFromDate !== undefined && query.compareToDate !== undefined
+        ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
+        : undefined;
+    const report = await this.reports.getSig(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      compareWith,
+    });
+    const buffer = this.xlsx.sigXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(org.name, 'sig', query.fromDate, query.toDate, 'xlsx'),
     );
   }
 

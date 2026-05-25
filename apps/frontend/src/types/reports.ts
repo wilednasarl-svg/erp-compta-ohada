@@ -59,6 +59,36 @@ export interface ComparativeBalanceTotals {
   readonly endingCredit: string;
 }
 
+export interface SyscohadaPosteAmount {
+  readonly code: string;
+  readonly label: string;
+  readonly side: 'CHARGE' | 'PRODUIT';
+  readonly amount: string;
+  readonly previousAmount?: string;
+}
+
+export interface SoldeIntermediaire {
+  readonly code: string;
+  readonly label: string;
+  readonly formula: string;
+  readonly amount: string;
+  readonly previousAmount?: string;
+  readonly variation?: string;
+  readonly variationPercent?: string | null;
+}
+
+export interface SigReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly charges: ReadonlyArray<SyscohadaPosteAmount>;
+  readonly produits: ReadonlyArray<SyscohadaPosteAmount>;
+  readonly soldes: ReadonlyArray<SoldeIntermediaire>;
+  readonly previous?: {
+    readonly fromDate: string;
+    readonly toDate: string;
+  };
+}
+
 export interface ComparativeBalanceReport {
   readonly fromDate: string;
   readonly toDate: string;

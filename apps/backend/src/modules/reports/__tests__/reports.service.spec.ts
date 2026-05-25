@@ -905,6 +905,156 @@ describe('ReportsService.getComparativeBalance', () => {
   });
 });
 
+describe('ReportsService.getSig (Soldes Intermédiaires de Gestion)', () => {
+  it('computes the full cascade XA → XI on a basic trading scenario', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      // Ventes marchandises (TA) = 110M crédit net
+      tbRow({
+        accountId: 'a-ta',
+        accountCode: '701000',
+        accountClass: 7,
+        periodCredit: '110000000.00',
+      }),
+      // Achats marchandises (RA) = 75M débit net
+      tbRow({
+        accountId: 'a-ra',
+        accountCode: '601000',
+        accountClass: 6,
+        periodDebit: '75000000.00',
+      }),
+      // Variation stocks marchandises (RB) = 5M débit
+      tbRow({
+        accountId: 'a-rb',
+        accountCode: '603100',
+        accountClass: 6,
+        periodDebit: '5000000.00',
+      }),
+      // Charges de personnel (RK) = 20M
+      tbRow({
+        accountId: 'a-rk',
+        accountCode: '661000',
+        accountClass: 6,
+        periodDebit: '20000000.00',
+      }),
+      // Impôt sur résultat (RS) = 3M
+      tbRow({
+        accountId: 'a-rs',
+        accountCode: '891000',
+        accountClass: 8,
+        periodDebit: '3000000.00',
+      }),
+    ]);
+
+    const report = await h.service.getSig(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    const soldeByCode = (code: string): string =>
+      report.soldes.find((s) => s.code === code)?.amount ?? 'missing';
+
+    // XA Marge commerciale = TA - RA - RB = 110M - 75M - 5M = 30M
+    expect(soldeByCode('XA')).toBe('30000000.00');
+    // XB CA = TA + TB + TC + TD = 110M (TB/TC/TD nuls)
+    expect(soldeByCode('XB')).toBe('110000000.00');
+    // XC VA = XB - RA - RB + 0 - 0 = 110M - 80M = 30M
+    expect(soldeByCode('XC')).toBe('30000000.00');
+    // XD EBE = XC - RK = 30M - 20M = 10M
+    expect(soldeByCode('XD')).toBe('10000000.00');
+    // XE Résultat exploit = XD + 0 (TJ) - 0 (RL) = 10M
+    expect(soldeByCode('XE')).toBe('10000000.00');
+    // XF Résultat financier = 0
+    expect(soldeByCode('XF')).toBe('0.00');
+    // XG RAO = XE + XF = 10M
+    expect(soldeByCode('XG')).toBe('10000000.00');
+    // XH RHAO = 0
+    expect(soldeByCode('XH')).toBe('0.00');
+    // XI Résultat net = XG + XH - RQ - RS = 10M - 3M = 7M
+    expect(soldeByCode('XI')).toBe('7000000.00');
+  });
+
+  it('maps 6031 to RB (variation stocks marchandises) not RA via longest-prefix match', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({
+        accountId: 'a-1',
+        accountCode: '603100',
+        accountClass: 6,
+        periodDebit: '1500.00',
+      }),
+    ]);
+    const report = await h.service.getSig(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    const rb = report.charges.find((c) => c.code === 'RB');
+    const ra = report.charges.find((c) => c.code === 'RA');
+    expect(rb?.amount).toBe('1500.00');
+    expect(ra?.amount).toBe('0.00');
+  });
+
+  it('returns all postes with zero amount when no movement', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([]);
+    const report = await h.service.getSig(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    // 17 postes de charges + 15 postes de produits + 9 soldes
+    expect(report.charges).toHaveLength(17);
+    expect(report.produits).toHaveLength(15);
+    expect(report.soldes).toHaveLength(9);
+    expect(report.soldes.every((s) => s.amount === '0.00')).toBe(true);
+  });
+
+  it('attaches previous-period amounts + variation when compareWith is set', async () => {
+    const h = buildHarness();
+    // Première résolution → période N
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({
+        accountId: 'a-1',
+        accountCode: '701000',
+        accountClass: 7,
+        periodCredit: '200.00',
+      }),
+    ]);
+    // Deuxième résolution → période N-1
+    h.repo.trialBalance.mockResolvedValueOnce([
+      tbRow({
+        accountId: 'a-1',
+        accountCode: '701000',
+        accountClass: 7,
+        periodCredit: '100.00',
+      }),
+    ]);
+
+    const report = await h.service.getSig(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      compareWith: { fromDate: '2025-01-01', toDate: '2025-12-31' },
+    });
+
+    expect(report.previous).toEqual({ fromDate: '2025-01-01', toDate: '2025-12-31' });
+    const xb = report.soldes.find((s) => s.code === 'XB');
+    expect(xb?.amount).toBe('200.00');
+    expect(xb?.previousAmount).toBe('100.00');
+    expect(xb?.variation).toBe('100.00');
+    expect(xb?.variationPercent).toBe('100.00');
+  });
+
+  it('rejects with REPORT_INVALID_DATE_RANGE on inverted comparison range', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getSig(ORG_ID, {
+        fromDate: '2026-01-01',
+        toDate: '2026-12-31',
+        compareWith: { fromDate: '2025-12-31', toDate: '2025-01-01' },
+      }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+  });
+});
+
 describe('ReportsService.percentChange (static)', () => {
   it.each([
     [100, 150, '50.00'],

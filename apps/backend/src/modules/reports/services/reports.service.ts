@@ -18,6 +18,12 @@ import {
   type BalanceSheetActifKey,
   type BalanceSheetPassifKey,
 } from './ohada-classifier';
+import {
+  CHARGE_POSTES,
+  PRODUIT_POSTES,
+  SOLDES_INTERMEDIAIRES,
+  matchPoste,
+} from './syscohada-postes';
 
 export interface TrialBalanceQuery {
   readonly fromDate: string;
@@ -235,6 +241,55 @@ export interface ComparativeBalanceReport {
   readonly totals: ComparativeBalanceTotals;
 }
 
+// ─── Soldes Intermédiaires de Gestion (SIG) ─────────────────────────
+
+/**
+ * Détail d'un poste officiel SYSCOHADA (RA, RB, TA, TB, …) pour une
+ * période. Les montants sont en valeur absolue côté affichage — le
+ * signe officiel SYSCOHADA est porté par la cascade XA → XI (cf.
+ * formules dans `syscohada-postes.ts`).
+ */
+export interface SyscohadaPosteAmount {
+  readonly code: string;
+  readonly label: string;
+  readonly side: 'CHARGE' | 'PRODUIT';
+  readonly amount: string;
+  readonly previousAmount?: string;
+}
+
+/**
+ * Solde intermédiaire calculé en cascade (Marge commerciale → Résultat
+ * net). `formula` est la formule littérale officielle, conservée pour
+ * l'affichage et la traçabilité de l'audit.
+ */
+export interface SoldeIntermediaire {
+  readonly code: string;
+  readonly label: string;
+  readonly formula: string;
+  readonly amount: string;
+  readonly previousAmount?: string;
+  readonly variation?: string;
+  readonly variationPercent?: string | null;
+}
+
+export interface SigQuery {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly compareWith?: { fromDate: string; toDate: string };
+}
+
+export interface SigReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly charges: readonly SyscohadaPosteAmount[];
+  readonly produits: readonly SyscohadaPosteAmount[];
+  readonly soldes: readonly SoldeIntermediaire[];
+  readonly previous?: {
+    readonly fromDate: string;
+    readonly toDate: string;
+  };
+}
+
 /**
  * `ReportsService` — Module 9 accounting reports.
  *
@@ -429,6 +484,169 @@ export class ReportsService {
       endingCredit: endingC.toFixed(2),
       netVariation: variation.toFixed(2),
       netVariationPercent: ReportsService.percentChange(prevNet, curNet),
+    };
+  }
+
+  /**
+   * Soldes Intermédiaires de Gestion (SIG) au format SYSCOHADA AUDCIF.
+   *
+   * Calcule en deux étapes :
+   *   1. Agrège les comptes 6/7/8 par poste officiel (RA, RB, …, TA,
+   *      TB, …, RO, RP, RQ, RS) via `matchPoste` qui projette le code
+   *      OHADA sur son poste de rattachement.
+   *   2. Évalue la cascade XA → XI selon les formules du Guide
+   *      d'application Volume 3 :
+   *        XA = TA + RA + RB                (Marge commerciale)
+   *        XB = TA + TB + TC + TD           (Chiffre d'affaires)
+   *        XC = XB + RA + RB + (TE+TF+TG+TH+TI) − (RC+RD+RE+RF+RG+RH+RI+RJ)
+   *        XD = XC + RK                     (EBE)
+   *        XE = XD + TJ + RL                (Résultat d'exploitation)
+   *        XF = (TK+TL+TM) − RM             (Résultat financier)
+   *        XG = XE + XF                     (RAO)
+   *        XH = (TN+TO) − (RO+RP)           (RHAO)
+   *        XI = XG + XH − RQ − RS           (Résultat net)
+   *
+   * Convention de signe : les montants par poste sont en VALEUR ABSOLUE
+   * (positifs). Les formules portent le signe — RA/RB sont soustraits
+   * dans XA, RK dans XD, etc. Le solde net XI peut être négatif (perte).
+   */
+  async getSig(organizationId: TenantId, query: SigQuery): Promise<SigReport> {
+    assertTenantId(organizationId);
+    this.assertDateRange(query.fromDate, query.toDate);
+    if (query.compareWith !== undefined) {
+      this.assertDateRange(query.compareWith.fromDate, query.compareWith.toDate);
+    }
+
+    const current = await this.computeSigBare(organizationId, query.fromDate, query.toDate);
+    if (query.compareWith === undefined) {
+      return current;
+    }
+
+    const previous = await this.computeSigBare(
+      organizationId,
+      query.compareWith.fromDate,
+      query.compareWith.toDate,
+    );
+    return this.enrichSigWithComparison(current, previous, query.compareWith);
+  }
+
+  private async computeSigBare(
+    organizationId: TenantId,
+    fromDate: string,
+    toDate: string,
+  ): Promise<SigReport> {
+    const rows = await this.repo.trialBalance(organizationId, { fromDate, toDate });
+    const posteAmounts = new Map<string, number>();
+
+    for (const row of rows) {
+      const poste = matchPoste(row.accountCode);
+      if (poste === null) continue;
+      const periodD = Number(row.periodDebit);
+      const periodC = Number(row.periodCredit);
+      const net = poste.side === 'CHARGE' ? periodD - periodC : periodC - periodD;
+      // Valeur absolue par convention d'affichage : un poste de charges
+      // affiche un montant positif et la formule XA = TA + RA + RB
+      // applique le signe ailleurs. Net <= 0 pour un poste signifie
+      // qu'il a été annulé/contre-passé — on l'écrête à 0 pour ne pas
+      // distordre la cascade.
+      const display = Math.max(net, 0);
+      posteAmounts.set(poste.code, (posteAmounts.get(poste.code) ?? 0) + display);
+    }
+
+    const get = (code: string): number => posteAmounts.get(code) ?? 0;
+
+    // Cascade SYSCOHADA officielle (Vol. 3 du Guide d'application).
+    const XA = get('TA') - get('RA') - get('RB');
+    const XB = get('TA') + get('TB') + get('TC') + get('TD');
+    const sumOtherProduits = get('TE') + get('TF') + get('TG') + get('TH') + get('TI');
+    const sumConsommations =
+      get('RC') + get('RD') + get('RE') + get('RF') + get('RG') + get('RH') + get('RI') + get('RJ');
+    const XC = XB - get('RA') - get('RB') + sumOtherProduits - sumConsommations;
+    const XD = XC - get('RK');
+    const XE = XD + get('TJ') - get('RL');
+    const XF = get('TK') + get('TL') + get('TM') - get('RM');
+    const XG = XE + XF;
+    const XH = get('TN') + get('TO') - get('RO') - get('RP');
+    const XI = XG + XH - get('RQ') - get('RS');
+
+    const soldeValues: Record<string, number> = {
+      XA,
+      XB,
+      XC,
+      XD,
+      XE,
+      XF,
+      XG,
+      XH,
+      XI,
+    };
+
+    const charges: SyscohadaPosteAmount[] = CHARGE_POSTES.map((p) => ({
+      code: p.code,
+      label: p.label,
+      side: 'CHARGE' as const,
+      amount: (posteAmounts.get(p.code) ?? 0).toFixed(2),
+    }));
+    const produits: SyscohadaPosteAmount[] = PRODUIT_POSTES.map((p) => ({
+      code: p.code,
+      label: p.label,
+      side: 'PRODUIT' as const,
+      amount: (posteAmounts.get(p.code) ?? 0).toFixed(2),
+    }));
+    const soldes: SoldeIntermediaire[] = SOLDES_INTERMEDIAIRES.map((s) => ({
+      code: s.code,
+      label: s.label,
+      formula: s.formula,
+      amount: soldeValues[s.code].toFixed(2),
+    }));
+
+    return {
+      fromDate,
+      toDate,
+      charges,
+      produits,
+      soldes,
+    };
+  }
+
+  private enrichSigWithComparison(
+    current: SigReport,
+    previous: SigReport,
+    previousRange: { fromDate: string; toDate: string },
+  ): SigReport {
+    const indexByCode = (items: readonly SyscohadaPosteAmount[]) =>
+      new Map(items.map((a) => [a.code, a]));
+    const prevCharges = indexByCode(previous.charges);
+    const prevProduits = indexByCode(previous.produits);
+    const prevSoldes = new Map(previous.soldes.map((s) => [s.code, s]));
+
+    const enrichPoste = (
+      poste: SyscohadaPosteAmount,
+      prevMap: Map<string, SyscohadaPosteAmount>,
+    ): SyscohadaPosteAmount => {
+      const prev = prevMap.get(poste.code);
+      return { ...poste, previousAmount: prev?.amount ?? '0.00' };
+    };
+
+    const enrichSolde = (s: SoldeIntermediaire): SoldeIntermediaire => {
+      const prev = prevSoldes.get(s.code);
+      const prevAmount = prev ? Number(prev.amount) : 0;
+      const curAmount = Number(s.amount);
+      const variation = curAmount - prevAmount;
+      return {
+        ...s,
+        previousAmount: prevAmount.toFixed(2),
+        variation: variation.toFixed(2),
+        variationPercent: ReportsService.percentChange(prevAmount, curAmount),
+      };
+    };
+
+    return {
+      ...current,
+      charges: current.charges.map((p) => enrichPoste(p, prevCharges)),
+      produits: current.produits.map((p) => enrichPoste(p, prevProduits)),
+      soldes: current.soldes.map(enrichSolde),
+      previous: { fromDate: previousRange.fromDate, toDate: previousRange.toDate },
     };
   }
 

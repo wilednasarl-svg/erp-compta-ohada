@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, BookText, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { BarChart3, BookText, FileSpreadsheet, Loader2, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -23,6 +23,7 @@ import type { AccountView } from '@/types/accounting-plan';
 import type {
   ComparativeBalanceReport,
   GeneralLedgerReport,
+  SigReport,
   TrialBalanceReport,
 } from '@/types/reports';
 
@@ -38,8 +39,11 @@ interface GeneralLedgerEnvelope {
 interface ComparativeBalanceEnvelope {
   readonly report: ComparativeBalanceReport;
 }
+interface SigEnvelope {
+  readonly report: SigReport;
+}
 
-type ReportMode = 'trial-balance' | 'comparative-balance' | 'general-ledger';
+type ReportMode = 'trial-balance' | 'comparative-balance' | 'sig' | 'general-ledger';
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
 const previousYearEndIso = (): string => `${new Date().getFullYear() - 1}-12-31`;
@@ -98,6 +102,18 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('sig')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'sig'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <TrendingUp className="h-4 w-4" />
+            SIG (SYSCOHADA)
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('general-ledger')}
             className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'general-ledger'
@@ -114,6 +130,8 @@ export default function ReportsPage() {
           <TrialBalancePanel orgId={orgId} />
         ) : mode === 'comparative-balance' ? (
           <ComparativeBalancePanel orgId={orgId} />
+        ) : mode === 'sig' ? (
+          <SigPanel orgId={orgId} />
         ) : (
           <GeneralLedgerPanel orgId={orgId} />
         )}
@@ -924,6 +942,255 @@ function ComparativeBalanceTable({
             <td className="px-2 py-2"></td>
           </tr>
         </tfoot>
+      </table>
+    </div>
+  );
+}
+
+// ─── SIG (Soldes Intermédiaires de Gestion) ────────────────────────────
+
+function SigPanel({ orgId }: { readonly orgId: string }) {
+  const [fromDate, setFromDate] = useState<string>(yearStartIso());
+  const [toDate, setToDate] = useState<string>(todayIso());
+  const [compare, setCompare] = useState<boolean>(false);
+  const [compareFromDate, setCompareFromDate] = useState<string>(previousYearStartIso());
+  const [compareToDate, setCompareToDate] = useState<string>(previousYearEndIso());
+  const [submitted, setSubmitted] = useState<{
+    fromDate: string;
+    toDate: string;
+    compareFromDate?: string;
+    compareToDate?: string;
+  } | null>(null);
+
+  const buildSearchParams = (s: NonNullable<typeof submitted>): URLSearchParams => {
+    const params = new URLSearchParams({ fromDate: s.fromDate, toDate: s.toDate });
+    if (s.compareFromDate !== undefined && s.compareToDate !== undefined) {
+      params.set('compareFromDate', s.compareFromDate);
+      params.set('compareToDate', s.compareToDate);
+    }
+    return params;
+  };
+
+  const query = useQuery<SigReport, ApiError>({
+    queryKey: ['reports', 'sig', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) {
+        throw new Error('not submitted');
+      }
+      const data = await api.get<SigEnvelope>(
+        `/organizations/${orgId}/reports/sig?${buildSearchParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    const url = `/api/organizations/${orgId}/reports/sig.xlsx?${buildSearchParams(submitted).toString()}`;
+    window.open(url, '_blank');
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Soldes Intermédiaires de Gestion (SIG)</CardTitle>
+        <CardDescription>
+          Cascade officielle SYSCOHADA AUDCIF : Marge commerciale (XA) → Chiffre d&apos;affaires
+          (XB) → Valeur ajoutée (XC) → Excédent brut d&apos;exploitation (XD) → Résultat
+          d&apos;exploitation (XE) → Résultat financier (XF) → Résultat des activités
+          ordinaires (XG) → Résultat HAO (XH) → Résultat net (XI). Postes RA→RS pour les
+          charges, TA→TO pour les produits, mappés sur les comptes OHADA.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({
+              fromDate,
+              toDate,
+              compareFromDate: compare ? compareFromDate : undefined,
+              compareToDate: compare ? compareToDate : undefined,
+            });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="sig-from">Du</Label>
+            <Input
+              id="sig-from"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="sig-to">Au</Label>
+            <Input
+              id="sig-to"
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={compare}
+                onChange={(e) => setCompare(e.target.checked)}
+              />
+              Comparer avec N-1
+            </label>
+          </div>
+          {compare ? (
+            <>
+              <div className="space-y-1">
+                <Label htmlFor="sig-prev-from">N-1 — du</Label>
+                <Input
+                  id="sig-prev-from"
+                  type="date"
+                  value={compareFromDate}
+                  onChange={(e) => setCompareFromDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sig-prev-to">N-1 — au</Label>
+                <Input
+                  id="sig-prev-to"
+                  type="date"
+                  value={compareToDate}
+                  onChange={(e) => setCompareToDate(e.target.value)}
+                  required
+                />
+              </div>
+            </>
+          ) : null}
+          <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Générer
+            </Button>
+            {query.data !== undefined ? (
+              <Button type="button" variant="outline" onClick={downloadXlsx}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export Excel
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <SigTable report={query.data} /> : submitted === null ? (
+          <p className="text-sm text-slate-500">Choisissez la période puis cliquez sur « Générer ».</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SigTable({ report }: { readonly report: SigReport }) {
+  const hasComp = report.previous !== undefined;
+  return (
+    <div className="space-y-6">
+      <div className="rounded-md border bg-slate-50 p-4">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">
+          Cascade des soldes (XA → XI)
+        </h3>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs uppercase tracking-wide text-slate-600">
+              <th className="px-2 py-1">Réf.</th>
+              <th className="px-2 py-1">Libellé</th>
+              <th className="px-2 py-1 text-right">Montant N</th>
+              {hasComp ? (
+                <>
+                  <th className="px-2 py-1 text-right">Montant N-1</th>
+                  <th className="px-2 py-1 text-right">Variation</th>
+                  <th className="px-2 py-1 text-right">% Évol.</th>
+                </>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {report.soldes.map((s) => (
+              <tr key={s.code} className="border-b">
+                <td className="px-2 py-1 font-mono text-xs font-semibold">{s.code}</td>
+                <td className="px-2 py-1">
+                  <div className="font-medium">{s.label}</div>
+                  <div className="text-xs text-slate-500">{s.formula}</div>
+                </td>
+                <td className="px-2 py-1 text-right font-mono font-semibold">{fmt(s.amount)}</td>
+                {hasComp ? (
+                  <>
+                    <td className="px-2 py-1 text-right font-mono">{fmt(s.previousAmount ?? '0')}</td>
+                    <td className="px-2 py-1 text-right font-mono">{fmt(s.variation ?? '0')}</td>
+                    <td className="px-2 py-1 text-right font-mono text-xs text-slate-500">
+                      {s.variationPercent !== undefined && s.variationPercent !== null
+                        ? `${s.variationPercent}%`
+                        : '—'}
+                    </td>
+                  </>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SigPosteTable title="Produits (TA → TO)" postes={report.produits} hasComp={hasComp} />
+        <SigPosteTable title="Charges (RA → RS)" postes={report.charges} hasComp={hasComp} />
+      </div>
+    </div>
+  );
+}
+
+function SigPosteTable({
+  title,
+  postes,
+  hasComp,
+}: {
+  readonly title: string;
+  readonly postes: ReadonlyArray<{
+    readonly code: string;
+    readonly label: string;
+    readonly amount: string;
+    readonly previousAmount?: string;
+  }>;
+  readonly hasComp: boolean;
+}) {
+  return (
+    <div>
+      <h4 className="mb-2 text-sm font-semibold text-slate-700">{title}</h4>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b text-left text-xs uppercase tracking-wide text-slate-500">
+            <th className="px-2 py-1">Réf.</th>
+            <th className="px-2 py-1">Libellé</th>
+            <th className="px-2 py-1 text-right">N</th>
+            {hasComp ? <th className="px-2 py-1 text-right">N-1</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {postes.map((p) => (
+            <tr key={p.code} className="border-b hover:bg-slate-50">
+              <td className="px-2 py-1 font-mono text-xs">{p.code}</td>
+              <td className="px-2 py-1 text-xs">{p.label}</td>
+              <td className="px-2 py-1 text-right font-mono">{fmt(p.amount)}</td>
+              {hasComp ? (
+                <td className="px-2 py-1 text-right font-mono text-slate-500">
+                  {fmt(p.previousAmount ?? '0')}
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   );

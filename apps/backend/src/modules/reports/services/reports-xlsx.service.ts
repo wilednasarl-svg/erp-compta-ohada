@@ -7,6 +7,7 @@ import type {
   GeneralLedgerReport,
   ProfitLossReport,
   BalanceSheetReport,
+  SigReport,
 } from './reports.service';
 
 /**
@@ -400,6 +401,68 @@ export class ReportsXlsxService {
     ]);
 
     return this.buildWorkbook(rows, 'Balance comparative');
+  }
+
+  // ─── Soldes Intermédiaires de Gestion (SIG) ──────────────────────
+  /**
+   * Mise en page SYSCOHADA AUDCIF : détail des postes RA→RS + TA→TO
+   * suivi de la cascade XA → XI avec formules officielles. Quand
+   * `previous` est présent, ajoute deux colonnes N-1 + variation.
+   */
+  sigXlsx(report: SigReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    const hasComp = report.previous !== undefined;
+
+    rows.push([orgName]);
+    rows.push([
+      `Soldes Intermédiaires de Gestion (SIG) — Du ${report.fromDate} au ${report.toDate}` +
+        (hasComp
+          ? ` (comparaison : ${report.previous.fromDate} → ${report.previous.toDate})`
+          : ''),
+    ]);
+    rows.push([]);
+
+    const header = hasComp
+      ? ['Réf.', 'Libellé', 'Montant N', 'Montant N-1', 'Variation', '% Évolution']
+      : ['Réf.', 'Libellé', 'Montant N'];
+    rows.push(header);
+
+    rows.push(['', 'PRODUITS (par poste officiel)']);
+    for (const p of report.produits) {
+      const r = hasComp
+        ? [p.code, p.label, this.num(p.amount), this.num(p.previousAmount), '', '']
+        : [p.code, p.label, this.num(p.amount)];
+      rows.push(r);
+    }
+
+    rows.push([]);
+    rows.push(['', 'CHARGES (par poste officiel)']);
+    for (const p of report.charges) {
+      const r = hasComp
+        ? [p.code, p.label, this.num(p.amount), this.num(p.previousAmount), '', '']
+        : [p.code, p.label, this.num(p.amount)];
+      rows.push(r);
+    }
+
+    rows.push([]);
+    rows.push(['', 'SOLDES INTERMÉDIAIRES (cascade SYSCOHADA)']);
+    for (const s of report.soldes) {
+      const r = hasComp
+        ? [
+            s.code,
+            `${s.label}  [${s.formula}]`,
+            this.num(s.amount),
+            this.num(s.previousAmount),
+            this.num(s.variation),
+            s.variationPercent !== undefined && s.variationPercent !== null
+              ? `${s.variationPercent}%`
+              : '',
+          ]
+        : [s.code, `${s.label}  [${s.formula}]`, this.num(s.amount)];
+      rows.push(r);
+    }
+
+    return this.buildWorkbook(rows, 'SIG');
   }
 
   // ─── Internal helpers ────────────────────────────────────────────
