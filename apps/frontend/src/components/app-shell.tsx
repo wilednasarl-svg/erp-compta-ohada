@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRightLeft, BarChart3, BookOpen, BookText, Building2, Calendar, FileUp, GitBranch, History, LayoutDashboard, LogOut, Mail, Paperclip, Percent, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
+import { ArrowRightLeft, BarChart3, BookOpen, BookText, Building2, Calendar, FileUp, GitBranch, History, LayoutDashboard, LogOut, Mail, Package, Paperclip, Percent, ShieldCheck, Sparkles, User as UserIcon, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -34,6 +34,7 @@ const NAV: ReadonlyArray<NavItem> = [
   { href: '/accounting-periods', label: 'Périodes', icon: Calendar },
   { href: '/imports', label: 'Imports', icon: FileUp },
   { href: '/journals', label: 'Journaux', icon: BookText },
+  { href: '/assets', label: 'Immobilisations', icon: Package },
   { href: '/reports', label: 'États financiers', icon: BarChart3 },
   { href: '/tva', label: 'TVA', icon: Percent },
   { href: '/documents', label: 'Documents', icon: Paperclip },
