@@ -94,6 +94,7 @@ export class ApiError extends Error {
  * through `setAuthToken` — keeps the lifecycle explicit.
  */
 let currentAuthToken: string | null = null;
+let currentRefreshToken: string | null = null;
 
 export function setAuthToken(token: string | null): void {
   currentAuthToken = token;
@@ -101,6 +102,69 @@ export function setAuthToken(token: string | null): void {
 
 export function getAuthToken(): string | null {
   return currentAuthToken;
+}
+
+export function setRefreshToken(token: string | null): void {
+  currentRefreshToken = token;
+}
+
+/**
+ * Callbacks the auth store registers at boot so the API client can
+ * (a) persist a rotated token pair and (b) react to a refresh failure
+ * without importing the store directly (circular dep).
+ */
+type TokenPair = { accessToken: string; refreshToken: string };
+let onTokensRotated: ((pair: TokenPair) => void) | null = null;
+let onAuthExpired: (() => void) | null = null;
+
+export function setOnTokensRotated(handler: ((pair: TokenPair) => void) | null): void {
+  onTokensRotated = handler;
+}
+
+export function setOnAuthExpired(handler: (() => void) | null): void {
+  onAuthExpired = handler;
+}
+
+/**
+ * Single-flight refresh. Multiple concurrent 401s share the same
+ * `/auth/refresh` call — without this, a page that fans out 5 queries
+ * on mount would race 5 refreshes against the backend's reuse-detection
+ * and only one would succeed (the others would burn the rotated token).
+ */
+let inflightRefresh: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (currentRefreshToken === null) return null;
+  if (inflightRefresh !== null) return inflightRefresh;
+
+  const presented = currentRefreshToken;
+  inflightRefresh = (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ refreshToken: presented }),
+        credentials: 'include',
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { data?: TokenPair | null; error?: ApiErrorBody | null }
+        | null;
+      if (!res.ok || !json || !json.data) {
+        onAuthExpired?.();
+        return null;
+      }
+      currentAuthToken = json.data.accessToken;
+      currentRefreshToken = json.data.refreshToken;
+      onTokensRotated?.(json.data);
+      return json.data.accessToken;
+    } catch {
+      onAuthExpired?.();
+      return null;
+    } finally {
+      inflightRefresh = null;
+    }
+  })();
+  return inflightRefresh;
 }
 
 const BASE_URL: string =
@@ -123,31 +187,60 @@ async function request<T>(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   options: RequestOptions = {},
+  retryOn401: boolean = true,
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    ...options.headers,
+  const buildHeaders = (): Record<string, string> => {
+    const h: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...options.headers,
+    };
+    if (options.anonymous !== true && currentAuthToken !== null) {
+      h['Authorization'] = `Bearer ${currentAuthToken}`;
+    }
+    return h;
   };
-  if (options.anonymous !== true && currentAuthToken !== null) {
-    headers['Authorization'] = `Bearer ${currentAuthToken}`;
-  }
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
+  const doFetch = async (): Promise<Response> =>
+    fetch(url, {
       method,
-      headers,
+      headers: buildHeaders(),
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
       credentials: 'include',
     });
+
+  let response: Response;
+  try {
+    response = await doFetch();
   } catch (cause: unknown) {
     throw new ApiError(0, {
       code: 'NETWORK_ERROR',
       message: cause instanceof Error ? cause.message : 'Network request failed',
     });
+  }
+
+  // 401 → try one refresh + replay before surfacing the error. Skip for
+  // anonymous calls (login/signup/refresh) and when we've already retried,
+  // to avoid infinite loops.
+  if (
+    response.status === 401 &&
+    retryOn401 &&
+    options.anonymous !== true &&
+    path !== '/auth/refresh'
+  ) {
+    const newAccess = await refreshAccessToken();
+    if (newAccess !== null) {
+      try {
+        response = await doFetch();
+      } catch (cause: unknown) {
+        throw new ApiError(0, {
+          code: 'NETWORK_ERROR',
+          message: cause instanceof Error ? cause.message : 'Network request failed',
+        });
+      }
+    }
   }
 
   // 204 No Content has no body to parse; treat as success with undefined.

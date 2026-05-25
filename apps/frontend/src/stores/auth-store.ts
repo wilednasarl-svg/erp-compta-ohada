@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-import { setAuthToken } from '@/lib/api-client';
+import {
+  setAuthToken,
+  setRefreshToken,
+  setOnTokensRotated,
+  setOnAuthExpired,
+} from '@/lib/api-client';
 import type { OrganizationSummary, PublicUser } from '@/types/auth';
 
 /**
@@ -77,6 +82,7 @@ export const useAuthStore = create<AuthStore>()(
 
       signin: ({ accessToken, refreshToken, user, organizations }) => {
         setAuthToken(accessToken);
+        setRefreshToken(refreshToken);
         set({
           isHydrated: true,
           accessToken,
@@ -89,6 +95,7 @@ export const useAuthStore = create<AuthStore>()(
 
       setOrg: ({ accessToken, refreshToken, organization }) => {
         setAuthToken(accessToken);
+        setRefreshToken(refreshToken);
         set((state) => ({
           ...state,
           accessToken,
@@ -99,11 +106,13 @@ export const useAuthStore = create<AuthStore>()(
 
       rotateTokens: ({ accessToken, refreshToken }) => {
         setAuthToken(accessToken);
+        setRefreshToken(refreshToken);
         set((state) => ({ ...state, accessToken, refreshToken }));
       },
 
       signout: () => {
         setAuthToken(null);
+        setRefreshToken(null);
         set({ isHydrated: true });
       },
     }),
@@ -123,6 +132,9 @@ export const useAuthStore = create<AuthStore>()(
         if (state?.accessToken !== undefined) {
           setAuthToken(state.accessToken);
         }
+        if (state?.refreshToken !== undefined) {
+          setRefreshToken(state.refreshToken);
+        }
         if (state !== undefined) {
           state.isHydrated = true;
         }
@@ -130,6 +142,21 @@ export const useAuthStore = create<AuthStore>()(
     },
   ),
 );
+
+// Bridge the API client's refresh interceptor back into the store so a
+// successful /auth/refresh rotation persists, and a failed one (expired
+// or reuse-detected refresh token) clears the session and bounces the
+// user to /login. Registered at module load — the store and the client
+// share a process, so this runs once per app boot.
+setOnTokensRotated(({ accessToken, refreshToken }) => {
+  useAuthStore.getState().rotateTokens({ accessToken, refreshToken });
+});
+setOnAuthExpired(() => {
+  useAuthStore.getState().signout();
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+});
 
 /**
  * Selector hooks. Components subscribe to the slice they need so a
