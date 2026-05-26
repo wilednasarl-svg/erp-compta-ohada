@@ -318,6 +318,108 @@ export class ReportsRepository {
   }
 
   /**
+   * Agrège les mouvements de classe 6 (charges) et 7 (produits) par
+   * code d'axe analytique sur une période. Sert au rapport "marge par
+   * activité" qui présente une ligne par axe (chantier / BU / projet).
+   *
+   * Retourne un tableau d'objets `{ axisCode, accountClass, periodDebit,
+   * periodCredit }`. La projection finale en marge brute / VA / résultat
+   * par axe est faite côté service (postes RA/RB/TA/TB/etc.).
+   *
+   * Migration 0092 — uniquement sur lignes où `analytic_axis_type =
+   * :axisType` (les lignes sans axe sont exclues). Pour inclure une
+   * pseudo-ligne "Sans imputation" il faudra un UNION ALL côté service.
+   */
+  async marginByAxis(
+    organizationId: TenantId | string,
+    filters: {
+      fromDate: string;
+      toDate: string;
+      axisType: string;
+    },
+  ): Promise<
+    Array<{
+      axisCode: string;
+      accountCode: string;
+      accountClass: number;
+      periodDebit: string;
+      periodCredit: string;
+    }>
+  > {
+    assertTenantId(organizationId);
+    const rows = await this.lineRepo
+      .createQueryBuilder('l')
+      .innerJoin('journal_entries', 'e', 'e.id = l.journal_entry_id')
+      .innerJoin('organization_chart_accounts', 'a', 'a.id = l.account_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere(`e.status = 'validated'`)
+      .andWhere(`e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date`, {
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+      })
+      .andWhere('l.analytic_axis_type = :axisType', { axisType: filters.axisType })
+      .andWhere('l.analytic_axis_code IS NOT NULL')
+      .andWhere('a.class IN (6, 7, 8)') // P&L + HAO
+      .select('l.analytic_axis_code', 'axisCode')
+      .addSelect('a.code', 'accountCode')
+      .addSelect('a.class', 'accountClass')
+      .addSelect(`COALESCE(SUM(l.debit), 0)`, 'periodDebit')
+      .addSelect(`COALESCE(SUM(l.credit), 0)`, 'periodCredit')
+      .groupBy('l.analytic_axis_code')
+      .addGroupBy('a.code')
+      .addGroupBy('a.class')
+      .orderBy('l.analytic_axis_code', 'ASC')
+      .addOrderBy('a.code', 'ASC')
+      .getRawMany<{
+        axisCode: string;
+        accountCode: string;
+        accountClass: string | number;
+        periodDebit: string;
+        periodCredit: string;
+      }>();
+    return rows.map((r) => ({
+      axisCode: r.axisCode,
+      accountCode: r.accountCode,
+      accountClass: Number(r.accountClass),
+      periodDebit: Number(r.periodDebit).toFixed(2),
+      periodCredit: Number(r.periodCredit).toFixed(2),
+    }));
+  }
+
+  /**
+   * Liste les couples (axis_type, axis_code) utilisés dans l'org sur
+   * la période — sert à peupler le sélecteur frontend "choisir un axe".
+   */
+  async listAnalyticAxes(
+    organizationId: TenantId | string,
+    fromDate?: string,
+    toDate?: string,
+  ): Promise<Array<{ axisType: string; axisCode: string; lineCount: number }>> {
+    assertTenantId(organizationId);
+    const qb = this.lineRepo
+      .createQueryBuilder('l')
+      .innerJoin('journal_entries', 'e', 'e.id = l.journal_entry_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere(`e.status = 'validated'`)
+      .andWhere('l.analytic_axis_type IS NOT NULL')
+      .andWhere('l.analytic_axis_code IS NOT NULL')
+      .select('l.analytic_axis_type', 'axisType')
+      .addSelect('l.analytic_axis_code', 'axisCode')
+      .addSelect('COUNT(*)::int', 'lineCount')
+      .groupBy('l.analytic_axis_type')
+      .addGroupBy('l.analytic_axis_code')
+      .orderBy('l.analytic_axis_type', 'ASC')
+      .addOrderBy('l.analytic_axis_code', 'ASC');
+    if (fromDate !== undefined) {
+      qb.andWhere('e.entry_date >= :fromDate::date', { fromDate });
+    }
+    if (toDate !== undefined) {
+      qb.andWhere('e.entry_date <= :toDate::date', { toDate });
+    }
+    return qb.getRawMany<{ axisType: string; axisCode: string; lineCount: number }>();
+  }
+
+  /**
    * Compute the strictly-before-fromDate net balance for one account
    * — i.e. the "opening balance" line shown at the top of the general
    * ledger. Returns { openingDebit, openingCredit }.

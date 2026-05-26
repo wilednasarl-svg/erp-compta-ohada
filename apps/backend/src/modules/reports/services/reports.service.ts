@@ -552,6 +552,33 @@ export interface AnnexeReport {
   readonly notes: readonly AnnexeNote[];
 }
 
+// ─── Reporting analytique (Option A — 1 axe par ligne) ──────────────
+
+export interface AnalyticAxisSummary {
+  readonly axisType: string;
+  readonly axisCode: string;
+  readonly lineCount: number;
+}
+
+export interface MarginByAxisRow {
+  readonly axisCode: string;
+  readonly chiffreAffaires: string;
+  readonly achatsConsommes: string;
+  readonly margeBrute: string;
+  readonly margeBrutePercent: string | null;
+  readonly chargesPersonnel: string;
+  readonly autresCharges: string;
+  readonly resultatNet: string;
+}
+
+export interface MarginByAxisReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly axisType: string;
+  readonly rows: readonly MarginByAxisRow[];
+  readonly totals: MarginByAxisRow;
+}
+
 /**
  * Une ligne du détail d'une note d'annexe : un compte ou un poste +
  * son intitulé + son montant à la date du rapport. `subRows` permet
@@ -600,6 +627,129 @@ export class ReportsService {
     private readonly repo: ReportsRepository,
     private readonly accounts: OrganizationAccountRepository,
   ) {}
+
+  /**
+   * Marge par axe analytique (closes projet-ferme-le9).
+   *
+   * Pour chaque code d'axe utilisé (CHANTIER AB123, BU BETON, etc.)
+   * agrège les mouvements P&L de la période :
+   *   Chiffre d'affaires    = somme net créditeur classe 7
+   *   Achats consommés      = somme net débiteur 60x + variation stocks
+   *                           (60x signe négatif au global, ici on prend
+   *                           la valeur absolue pour lisibilité)
+   *   Marge brute           = CA − Achats consommés
+   *   Marge brute %         = Marge / CA × 100 (null si CA = 0)
+   *   Charges personnel     = somme net débiteur classe 66 (RK)
+   *   Autres charges        = somme net débiteur autres charges P&L
+   *   Résultat net (par axe) = CA − total charges
+   *
+   * Limitation : seules les lignes imputées à un axe sont prises en
+   * compte. Les frais généraux non ventilés ne remontent pas dans cette
+   * vue — c'est volontaire (sinon il faudrait une clef de répartition).
+   */
+  async getMarginByAxis(
+    organizationId: TenantId,
+    query: { fromDate: string; toDate: string; axisType: string },
+  ): Promise<MarginByAxisReport> {
+    assertTenantId(organizationId);
+    this.assertDateRange(query.fromDate, query.toDate);
+    if (query.axisType.trim() === '') {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: 'axisType must be a non-empty string.',
+      });
+    }
+
+    const rows = await this.repo.marginByAxis(organizationId, query);
+
+    interface Bucket {
+      ca: number;
+      achats: number;
+      personnel: number;
+      autres: number;
+    }
+    const byAxis = new Map<string, Bucket>();
+    for (const r of rows) {
+      const debit = Number(r.periodDebit);
+      const credit = Number(r.periodCredit);
+      const bucket = byAxis.get(r.axisCode) ?? { ca: 0, achats: 0, personnel: 0, autres: 0 };
+
+      if (r.accountClass === 7) {
+        bucket.ca += credit - debit;
+      } else if (r.accountClass === 6) {
+        const net = debit - credit;
+        // 60 + 603 (variation stocks) = achats consommés
+        if (r.accountCode.startsWith('60')) {
+          bucket.achats += net;
+        } else if (r.accountCode.startsWith('66')) {
+          bucket.personnel += net;
+        } else {
+          bucket.autres += net;
+        }
+      } else if (r.accountClass === 8) {
+        // HAO net débit → autres
+        bucket.autres += debit - credit;
+      }
+      byAxis.set(r.axisCode, bucket);
+    }
+
+    const buildRow = (axisCode: string, b: Bucket): MarginByAxisRow => {
+      const marge = b.ca - b.achats;
+      const margePercent = Math.abs(b.ca) < 0.005 ? null : ((marge / Math.abs(b.ca)) * 100).toFixed(2);
+      const totalCharges = b.achats + b.personnel + b.autres;
+      const rn = b.ca - totalCharges;
+      return {
+        axisCode,
+        chiffreAffaires: b.ca.toFixed(2),
+        achatsConsommes: b.achats.toFixed(2),
+        margeBrute: marge.toFixed(2),
+        margeBrutePercent: margePercent,
+        chargesPersonnel: b.personnel.toFixed(2),
+        autresCharges: b.autres.toFixed(2),
+        resultatNet: rn.toFixed(2),
+      };
+    };
+
+    const sortedKeys = Array.from(byAxis.keys()).sort((a, b) => a.localeCompare(b));
+    const result: MarginByAxisRow[] = sortedKeys.map((k) => {
+      const b = byAxis.get(k);
+      if (b === undefined) throw new Error('unreachable');
+      return buildRow(k, b);
+    });
+
+    const totalsBucket: Bucket = sortedKeys.reduce<Bucket>(
+      (acc, k) => {
+        const b = byAxis.get(k);
+        if (b === undefined) return acc;
+        return {
+          ca: acc.ca + b.ca,
+          achats: acc.achats + b.achats,
+          personnel: acc.personnel + b.personnel,
+          autres: acc.autres + b.autres,
+        };
+      },
+      { ca: 0, achats: 0, personnel: 0, autres: 0 },
+    );
+
+    return {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      axisType: query.axisType,
+      rows: result,
+      totals: buildRow('TOTAL', totalsBucket),
+    };
+  }
+
+  /**
+   * Liste les axes analytiques connus pour l'organisation. Sert au
+   * sélecteur frontend (type + code + nombre de lignes).
+   */
+  async listAnalyticAxes(
+    organizationId: TenantId,
+    query?: { fromDate?: string; toDate?: string },
+  ): Promise<AnalyticAxisSummary[]> {
+    assertTenantId(organizationId);
+    return this.repo.listAnalyticAxes(organizationId, query?.fromDate, query?.toDate);
+  }
 
   async getTrialBalance(
     organizationId: TenantId,

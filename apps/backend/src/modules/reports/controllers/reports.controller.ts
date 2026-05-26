@@ -24,6 +24,7 @@ import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
 import { AnnexeNoteDetailQueryDto } from '../dto/annexe-note-detail-query.dto';
 import { AnnexeQueryDto } from '../dto/annexe-query.dto';
 import { AnnualPackageQueryDto } from '../dto/annual-package-query.dto';
+import { MarginByAxisQueryDto } from '../dto/margin-by-axis-query.dto';
 import { PeriodQueryDto } from '../dto/period-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
@@ -37,12 +38,14 @@ import {
   ReportsService,
   type BalanceSheetReport,
   type AgingBalanceReport,
+  type AnalyticAxisSummary,
   type AnnexeNoteDetailReport,
   type AnnexeReport,
   type CashTrendReport,
   type TafireReport,
   type TftReport,
   type ComparativeBalanceReport,
+  type MarginByAxisReport,
   type MultiYearBalanceReport,
   type FinancialRatiosReport,
   type GeneralLedgerReport,
@@ -386,6 +389,39 @@ export class ReportsController {
       fiscalYearStartDate: query.fiscalYearStartDate,
     });
     return { report };
+  }
+
+  @Get('margin-by-axis')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Marge brute par axe analytique (chantier / BU / activité)" })
+  async marginByAxis(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: MarginByAxisQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: MarginByAxisReport }> {
+    const report = await this.reports.getMarginByAxis(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      axisType: query.axisType,
+    });
+    return { report };
+  }
+
+  @Get('analytic-axes')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Liste les axes analytiques utilisés dans l'organisation (avec compteurs)",
+  })
+  async analyticAxes(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query('fromDate') fromDate: string | undefined,
+    @Query('toDate') toDate: string | undefined,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ axes: AnalyticAxisSummary[] }> {
+    const axes = await this.reports.listAnalyticAxes(asTenantId(org.id), { fromDate, toDate });
+    return { axes };
   }
 
   @Get('aging-balance')
