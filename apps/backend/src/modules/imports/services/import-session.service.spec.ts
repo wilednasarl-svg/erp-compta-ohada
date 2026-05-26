@@ -31,6 +31,8 @@ describe('ImportSessionService', () => {
       markFailed: jest.fn().mockResolvedValue(undefined),
       updateCounters: jest.fn().mockResolvedValue(undefined),
       updateMappingOverride: jest.fn().mockResolvedValue(undefined),
+      updateLabel: jest.fn().mockResolvedValue(undefined),
+      deleteById: jest.fn().mockResolvedValue(1),
     };
     const filesRepo = {
       create: jest.fn(),
@@ -1000,6 +1002,175 @@ describe('ImportSessionService', () => {
 
       expect(sessionsRepo.updateMappingOverride).not.toHaveBeenCalled();
       expect(sessionsRepo.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── updateSession (label + documentType) ───────────────────────────
+
+  describe('updateSession', () => {
+    it('updates only the label without touching mapping_override when documentType is absent', async () => {
+      const { service, sessionsRepo, audit } = buildService();
+      const before = fakeSession({ label: 'old', status: 'parsed' });
+      const after = fakeSession({ label: 'new', status: 'parsed' });
+      sessionsRepo.findById.mockResolvedValueOnce(before).mockResolvedValueOnce(after);
+
+      const result = await service.updateSession(
+        asTenantId(ORG_ID),
+        SESSION_ID,
+        { label: 'new' },
+        USER_ID,
+        { ipAddress: null, userAgent: null },
+      );
+
+      expect(result.label).toBe('new');
+      expect(sessionsRepo.updateLabel).toHaveBeenCalledWith(SESSION_ID, ORG_ID, 'new');
+      expect(sessionsRepo.updateMappingOverride).not.toHaveBeenCalled();
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'session_updated' }),
+      );
+    });
+
+    it('normalises an empty/whitespace label to null', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ label: 'old', status: 'parsed' }));
+
+      await service.updateSession(
+        asTenantId(ORG_ID),
+        SESSION_ID,
+        { label: '   ' },
+        USER_ID,
+        { ipAddress: null, userAgent: null },
+      );
+
+      expect(sessionsRepo.updateLabel).toHaveBeenCalledWith(SESSION_ID, ORG_ID, null);
+    });
+
+    it('refuses changing documentType on a completed session', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'completed' }));
+
+      await expect(
+        service.updateSession(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          { documentType: 'trial_balance' },
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_CANNOT_DELETE });
+
+      expect(sessionsRepo.updateLabel).not.toHaveBeenCalled();
+      expect(sessionsRepo.updateMappingOverride).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty patch with IMPORT_SESSION_NOT_VALID', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'parsed' }));
+
+      await expect(
+        service.updateSession(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          {},
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_VALID });
+    });
+
+    it('throws NOT_FOUND when the session does not exist', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateSession(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          { label: 'whatever' },
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_FOUND });
+    });
+  });
+
+  // ─── deleteSession ──────────────────────────────────────────────────
+
+  describe('deleteSession', () => {
+    it('refuses to delete a completed session', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'completed' }));
+
+      await expect(
+        service.deleteSession(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_CANNOT_DELETE });
+
+      expect(sessionsRepo.deleteById).not.toHaveBeenCalled();
+    });
+
+    it('throws NOT_FOUND when the session is absent', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        service.deleteSession(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_FOUND });
+    });
+
+    it('deletes the session, emits audit, and survives missing-file cleanup', async () => {
+      const { service, sessionsRepo, filesRepo, audit } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'failed', label: 'bad import' }));
+      filesRepo.listBySession.mockResolvedValue([
+        { id: FILE_ID, storagePath: `${ORG_ID}/${SESSION_ID}/missing.csv` },
+      ]);
+      sessionsRepo.deleteById.mockResolvedValue(1);
+
+      await expect(
+        service.deleteSession(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(sessionsRepo.deleteById).toHaveBeenCalledWith(SESSION_ID, ORG_ID);
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'session_deleted',
+          legacyEventType: 'imports.session_deleted',
+          before: expect.objectContaining({
+            status: 'failed',
+            label: 'bad import',
+            fileCount: 1,
+          }),
+        }),
+      );
+    });
+
+    it('treats a 0-row DELETE as a race-condition NOT_FOUND', async () => {
+      const { service, sessionsRepo } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'parsed' }));
+      sessionsRepo.deleteById.mockResolvedValue(0);
+
+      await expect(
+        service.deleteSession(
+          asTenantId(ORG_ID),
+          SESSION_ID,
+          USER_ID,
+          { ipAddress: null, userAgent: null },
+        ),
+      ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_FOUND });
     });
   });
 });

@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -33,6 +34,7 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateImportSessionDto } from '../dto/create-import-session.dto';
 import { PreviewImportDto } from '../dto/preview-import.dto';
+import { UpdateImportSessionDto } from '../dto/update-import-session.dto';
 import { UpdateMappingOverrideDto } from '../dto/update-mapping-override.dto';
 import { ImportAnalyticsService } from '../services/import-analytics.service';
 import {
@@ -62,6 +64,8 @@ interface UploadedMulterFile {
  *   POST   /sessions               — crée une session draft
  *   GET    /sessions               — liste les sessions de l'org
  *   GET    /sessions/:sessionId    — détail d'une session
+ *   PATCH  /sessions/:sessionId    — update label / documentType
+ *   DELETE /sessions/:sessionId    — hard delete (sauf 'completed')
  *   POST   /sessions/:sessionId/files     — upload + parse + persist staging
  *   POST   /sessions/:sessionId/preview   — mapping auto + validation + preview
  *
@@ -137,6 +141,56 @@ export class ImportsController {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const session = await this.importSessions.getSession(asTenantId(tokenOrgId), sessionId);
     return { session };
+  }
+
+  @Patch('sessions/:sessionId')
+  @RequirePermission('imports.write')
+  @HttpCode(HttpStatus.OK)
+  async updateSession(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Body() body: UpdateImportSessionDto,
+    @Req() req: Request,
+  ): Promise<{ session: SessionSummary }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const patch: { label?: string | null; documentType?: typeof body.documentType } = {};
+    if (Object.prototype.hasOwnProperty.call(body, 'label')) {
+      patch.label = body.label ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'documentType')) {
+      patch.documentType = body.documentType ?? null;
+    }
+    const session = await this.importSessions.updateSession(
+      asTenantId(tokenOrgId),
+      sessionId,
+      patch,
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
+    return { session };
+  }
+
+  @Delete('sessions/:sessionId')
+  @RequirePermission('imports.write')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteSession(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
+  ): Promise<void> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    await this.importSessions.deleteSession(
+      asTenantId(tokenOrgId),
+      sessionId,
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
   }
 
   // ─── File upload + parse ────────────────────────────────────────────

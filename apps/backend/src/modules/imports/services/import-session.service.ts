@@ -235,6 +235,190 @@ export class ImportSessionService {
     return this.toSummary(session);
   }
 
+  // ─── Update / Delete session (Module 3 wave 3) ──────────────────────
+
+  /**
+   * Update mutable session metadata. Two channels currently supported:
+   *
+   *   - `label` (string | null) — informational name shown in the list /
+   *     detail. Allowed on every status (including `completed`) because
+   *     it never propagates to committed journal entries.
+   *   - `documentType` (DocumentType | null) — stored in `mapping_override`
+   *     under the sentinel key. Allowed only BEFORE commit (`draft`,
+   *     `parsing`, `parsed`, `validated`, `failed`). Forbidden on
+   *     `completed` / `ready_for_import` because changing the document
+   *     nature after commit would re-interpret already-written entries.
+   *
+   * Returns the refreshed `SessionSummary` so the caller can render the
+   * post-update state without a second round-trip.
+   */
+  async updateSession(
+    organizationId: TenantId,
+    sessionId: string,
+    patch: { label?: string | null; documentType?: DocumentType | null },
+    actorUserId: string,
+    ctx: AuditContext,
+  ): Promise<SessionSummary> {
+    const session = await this.sessions.findById(sessionId, organizationId);
+    if (session === null) {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_FOUND);
+    }
+
+    const labelTouched = Object.prototype.hasOwnProperty.call(patch, 'label');
+    const docTypeTouched = Object.prototype.hasOwnProperty.call(patch, 'documentType');
+
+    if (!labelTouched && !docTypeTouched) {
+      // Nothing to do — surface a 422 rather than a silent no-op so the
+      // caller knows their PATCH body was empty.
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
+        message: 'Nothing to update — provide at least `label` or `documentType`.',
+      });
+    }
+
+    if (docTypeTouched) {
+      if (session.status === 'completed' || session.status === 'ready_for_import') {
+        throw new AppException(ERROR_CODES.IMPORT_SESSION_CANNOT_DELETE, {
+          message: `documentType cannot be changed on a "${session.status}" session.`,
+        });
+      }
+      // Merge into the existing JSONB: keep header overrides, replace
+      // only the `__documentType` sentinel (or drop it on null).
+      const existing = (session.mappingOverride as Record<string, string> | null) ?? {};
+      const merged: Record<string, string> = { ...existing };
+      if (patch.documentType === null) {
+        delete merged[DOCUMENT_TYPE_OVERRIDE_KEY];
+      } else if (patch.documentType !== undefined) {
+        merged[DOCUMENT_TYPE_OVERRIDE_KEY] = patch.documentType;
+      }
+      await this.sessions.updateMappingOverride(sessionId, organizationId, merged);
+
+      // Same back-edit rule as `updateMappingOverride`: a `validated`
+      // session repasses in `parsed` so the next preview re-validates.
+      if (session.status === 'validated') {
+        await this.sessions.updateStatus(sessionId, organizationId, 'parsed');
+      }
+    }
+
+    if (labelTouched) {
+      const trimmed =
+        patch.label === null || patch.label === undefined ? null : patch.label.trim();
+      const normalized = trimmed === '' ? null : trimmed;
+      await this.sessions.updateLabel(sessionId, organizationId, normalized);
+    }
+
+    await this.audit.record({
+      module: ImportSessionService.MODULE,
+      action: 'session_updated',
+      entityType: 'import_session',
+      entityId: sessionId,
+      before: {
+        label: session.label,
+        documentType: this.getDocumentType(session),
+      },
+      after: {
+        ...(labelTouched ? { label: patch.label ?? null } : {}),
+        ...(docTypeTouched ? { documentType: patch.documentType ?? null } : {}),
+      },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'imports.session_updated',
+    });
+
+    const refreshed = await this.sessions.findById(sessionId, organizationId);
+    return this.toSummary(refreshed ?? session);
+  }
+
+  /**
+   * Hard delete a session and its on-disk file artifacts.
+   *
+   * Policy:
+   *   - `completed` sessions are NEVER deletable — the journal entries
+   *     they produced live on; deleting the source session would orphan
+   *     the audit trail (`source_import_session_id` FK on
+   *     `journal_entries`). To void a committed import, use the
+   *     contre-passation flow from the Journals page.
+   *   - Every other status (draft / parsing / parsed / validated /
+   *     ready_for_import / failed) is deletable. We don't even
+   *     special-case `parsing` — the parser holds the file open inside
+   *     a single async call, not across requests, so by the time a
+   *     DELETE lands the parser has either finished (status = parsed
+   *     or parse_failed) or thrown.
+   *
+   * Sequence:
+   *   1. Load every file row to capture `storagePath` BEFORE the DB
+   *      cascade wipes them.
+   *   2. DELETE the session row — Postgres cascades to `import_files`
+   *      and `import_staging_entries` via the FK constraints declared
+   *      in migrations 0016 / 0017.
+   *   3. Remove the on-disk files (best-effort; a missing file is not
+   *      an error because the row is already gone).
+   *   4. Emit a single `session_deleted` audit event with enough metadata
+   *      to reconstruct what was removed (status, totals, fileCount).
+   */
+  async deleteSession(
+    organizationId: TenantId,
+    sessionId: string,
+    actorUserId: string,
+    ctx: AuditContext,
+  ): Promise<void> {
+    const session = await this.sessions.findById(sessionId, organizationId);
+    if (session === null) {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_FOUND);
+    }
+    if (session.status === 'completed') {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_CANNOT_DELETE, {
+        message:
+          'A completed import cannot be deleted because its journal entries are live. ' +
+          'Use the contre-passation flow on the Journals page to void those entries.',
+      });
+    }
+
+    // 1. Capture file paths BEFORE the DB cascade nukes them.
+    const sessionFiles = await this.files.listBySession(sessionId, organizationId);
+    const storagePaths = sessionFiles.map((f) => f.storagePath);
+
+    // 2. DB delete (cascade handles staging_entries + files).
+    const affected = await this.sessions.deleteById(sessionId, organizationId);
+    if (affected === 0) {
+      // Race: someone else deleted between findById and deleteById.
+      // Treat as the same NOT_FOUND from the caller's point of view.
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_FOUND);
+    }
+
+    // 3. Disk cleanup — best-effort. A missing file is a no-op; a
+    //    permission error or volume failure is logged but does not
+    //    re-throw because the DB state is already consistent.
+    for (const relativePath of storagePaths) {
+      try {
+        const absolute = this.resolveAbsolutePath(relativePath);
+        await rm(absolute, { force: true });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[imports] Failed to remove on-disk file for deleted session ${sessionId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    await this.audit.record({
+      module: ImportSessionService.MODULE,
+      action: 'session_deleted',
+      entityType: 'import_session',
+      entityId: sessionId,
+      before: {
+        status: session.status,
+        label: session.label,
+        sourceType: session.sourceType,
+        totalLines: session.totalLines,
+        errorLines: session.errorLines,
+        fileCount: storagePaths.length,
+      },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'imports.session_deleted',
+    });
+  }
+
   // ─── Upload + parse file ────────────────────────────────────────────
 
   async uploadFile(

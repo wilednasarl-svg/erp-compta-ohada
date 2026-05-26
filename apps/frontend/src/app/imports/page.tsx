@@ -1,7 +1,20 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, CheckCircle2, FileUp, Loader2, Plus, RotateCcw, Save, Upload, XCircle } from 'lucide-react';
+import {
+  BarChart3,
+  CheckCircle2,
+  FileUp,
+  Loader2,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Save,
+  Trash2,
+  Upload,
+  X,
+  XCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -136,6 +149,29 @@ export default function ImportsPage() {
   // ─── Sélection + détail ─────────────────────────────────────────────
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const selectedSession = sessionsQuery.data?.find((s) => s.id === selectedSessionId) ?? null;
+
+  // ─── Suppression de session (Module 3 wave 3) ───────────────────────
+  // Mutation partagée entre la liste et le panneau détail : déclenchée
+  // depuis l'icône poubelle sur chaque ligne, ou un futur bouton dans
+  // le panneau détail. On garde l'ID en flight pour disabled-only-this-row
+  // pendant que les autres restent cliquables.
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const deleteSession = useApiMutation(
+    async (sessionId: string) => {
+      await api.delete(`/organizations/${orgId}/imports/sessions/${sessionId}`);
+      return sessionId;
+    },
+    {
+      onMutate: (sessionId) => setDeletingSessionId(sessionId),
+      onSettled: () => setDeletingSessionId(null),
+      onSuccess: (sessionId) => {
+        if (selectedSessionId === sessionId) {
+          setSelectedSessionId(null);
+        }
+        void queryClient.invalidateQueries({ queryKey: ['imports', 'sessions', orgId] });
+      },
+    },
+  );
 
   return (
     <AppShell>
@@ -275,17 +311,58 @@ export default function ImportsPage() {
                       {canAnalyze && (
                         <Link
                           href={`/imports/${s.id}/dashboard`}
-                          className="mr-3 inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent"
+                          className="mr-2 inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent"
                           title="Voir l'analyse de cette session"
                         >
                           <BarChart3 className="h-3.5 w-3.5" />
                           Analyse
                         </Link>
                       )}
+                      {/* Suppression — bloquée sur `completed` car les
+                          écritures comptables sont déjà au journal et la
+                          contre-passation est la seule voie propre. Sur
+                          les autres statuts, hard delete (cascade DB +
+                          cleanup disque côté backend). */}
+                      <button
+                        type="button"
+                        disabled={
+                          s.status === 'completed' ||
+                          (deleteSession.isPending && deletingSessionId === s.id)
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (s.status === 'completed') return;
+                          const labelOrId = s.label ?? `Session ${s.id.slice(0, 8)}`;
+                          if (
+                            window.confirm(
+                              `Supprimer définitivement « ${labelOrId} » ?\n\n` +
+                                `Le fichier source, les lignes staging et les erreurs ` +
+                                `seront perdus. Cette action est irréversible.`,
+                            )
+                          ) {
+                            deleteSession.mutate(s.id);
+                          }
+                        }}
+                        title={
+                          s.status === 'completed'
+                            ? 'Impossible — utiliser la contre-passation depuis les Journaux'
+                            : 'Supprimer la session'
+                        }
+                        className="mr-3 inline-flex items-center justify-center rounded-md border border-input bg-background p-1.5 text-muted-foreground transition-colors hover:border-destructive hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground"
+                      >
+                        {deleteSession.isPending && deletingSessionId === s.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
                     </li>
                   );
                 })}
               </ul>
+            )}
+            {deleteSession.error && (
+              <FormError error={deleteSession.error} className="mt-3" />
             )}
             {sessionsQuery.error && (
               <FormError error={sessionsQuery.error} className="mt-3" />
@@ -417,6 +494,32 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [commitDone, setCommitDone] = useState<CommitResult | null>(null);
+
+  // ─── Renommage inline ───────────────────────────────────────────────
+  // Label informationnel — autorisé sur TOUS les statuts (y compris
+  // `completed`) puisqu'il n'est pas propagé dans les écritures réelles.
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [labelDraft, setLabelDraft] = useState(session.label ?? '');
+  useEffect(() => {
+    setLabelDraft(session.label ?? '');
+    setIsRenaming(false);
+  }, [session.id, session.label]);
+
+  const renameSession = useApiMutation(
+    async (nextLabel: string | null) => {
+      await api.patch(
+        `/organizations/${orgId}/imports/sessions/${session.id}`,
+        { label: nextLabel },
+      );
+      return nextLabel;
+    },
+    {
+      onSuccess: () => {
+        setIsRenaming(false);
+        onMutated();
+      },
+    },
+  );
 
   // Upload — multipart, on contourne le client JSON pour passer FormData.
   const upload = useApiMutation(
@@ -571,15 +674,77 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle className="flex items-center gap-2">
               Détail session
               <SessionStatusBadge status={session.status} />
             </CardTitle>
-            <CardDescription>
-              {session.label ?? `Session ${session.id.slice(0, 8)}`} · {session.totalLines} lignes
-              {session.errorLines > 0 ? ` · ${session.errorLines} en erreur` : ''}
-            </CardDescription>
+            {isRenaming ? (
+              <form
+                className="mt-2 flex flex-wrap items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const trimmed = labelDraft.trim();
+                  renameSession.mutate(trimmed === '' ? null : trimmed);
+                }}
+              >
+                <Input
+                  value={labelDraft}
+                  onChange={(e) => setLabelDraft(e.target.value)}
+                  placeholder={`Session ${session.id.slice(0, 8)}`}
+                  maxLength={200}
+                  autoFocus
+                  className="h-8 w-64 text-sm"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={renameSession.isPending}
+                >
+                  {renameSession.isPending ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  Enregistrer
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={renameSession.isPending}
+                  onClick={() => {
+                    setLabelDraft(session.label ?? '');
+                    setIsRenaming(false);
+                  }}
+                >
+                  <X className="mr-1 h-3.5 w-3.5" />
+                  Annuler
+                </Button>
+                <FormError error={renameSession.error} className="basis-full" />
+              </form>
+            ) : (
+              <CardDescription className="flex flex-wrap items-center gap-1.5">
+                <span className="truncate">
+                  {session.label ?? `Session ${session.id.slice(0, 8)}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLabelDraft(session.label ?? '');
+                    setIsRenaming(true);
+                  }}
+                  className="inline-flex items-center rounded-sm p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="Renommer la session"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <span>· {session.totalLines} lignes</span>
+                {session.errorLines > 0 ? (
+                  <span>· {session.errorLines} en erreur</span>
+                ) : null}
+              </CardDescription>
+            )}
           </div>
           {session.totalLines > 0 && (
             <Link

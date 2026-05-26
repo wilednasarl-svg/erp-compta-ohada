@@ -158,4 +158,47 @@ export class ImportSessionRepository {
     assertTenantId(organizationId);
     await this.scoped(manager).update({ id, organizationId }, { mappingOverride });
   }
+
+  /**
+   * Update the human-friendly `label`. Allowed on every status because
+   * the label is informational only (it never appears on committed
+   * journal entries — those carry their own `description`). Passing
+   * `null` clears the label.
+   */
+  async updateLabel(
+    id: string,
+    organizationId: TenantId | string,
+    label: string | null,
+    manager?: EntityManager,
+  ): Promise<void> {
+    assertTenantId(organizationId);
+    await this.scoped(manager).update({ id, organizationId }, { label });
+  }
+
+  /**
+   * Hard delete a session. The database FKs cascade to `import_files`
+   * and `import_staging_entries` (see migrations 0016 / 0017). Physical
+   * files on disk must be removed by the caller BEFORE invoking this
+   * method — once the row is gone, the `storage_path` references vanish
+   * with it and any leftover bytes become orphans on the volume.
+   *
+   * Returns the number of rows actually deleted (`0` if the session no
+   * longer exists or belongs to another tenant) — callers can use this
+   * to short-circuit follow-up audit writes on a stale ID.
+   */
+  async deleteById(
+    id: string,
+    organizationId: TenantId | string,
+    manager?: EntityManager,
+  ): Promise<number> {
+    assertTenantId(organizationId);
+    const result = await this.scoped(manager)
+      .createQueryBuilder()
+      .delete()
+      .from(ImportSessionEntity)
+      .where('id = :id', { id })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .execute();
+    return result.affected ?? 0;
+  }
 }
