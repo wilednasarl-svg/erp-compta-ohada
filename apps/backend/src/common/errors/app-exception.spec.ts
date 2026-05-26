@@ -238,6 +238,12 @@ describe('HTTP status mapping', () => {
       SUBSIDY_NOT_ACTIVE: 409,
       SUBSIDY_INVALID_AMOUNT: 422,
       SUBSIDY_OVERRELEASE: 422,
+      // W4.5 — Crédit-bail / location-acquisition.
+      LEASE_NOT_FOUND: 404,
+      LEASE_NOT_ACTIVE: 409,
+      LEASE_INSTALLMENT_NOT_FOUND: 404,
+      LEASE_INSTALLMENT_ALREADY_PAID: 409,
+      LEASE_IMPLICIT_RATE_CALCULATION_FAILED: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
