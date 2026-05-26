@@ -196,12 +196,20 @@ jobs:
       NODE_ENV: production
       # Minimal env the backend needs to boot enough to serve /docs-json.
       # Values are deterministic CI-only secrets — nothing here grants
-      # access to anything real.
-      JWT_SECRET: ci-only-jwt-secret-not-used-in-prod
-      MFA_ENCRYPTION_KEY: ci-only-mfa-key-32-bytes-padding00
+      # access to anything real. MFA_ENCRYPTION_KEY must decode to exactly
+      # 32 bytes (base64); SMTP_* are required by env.validation.ts even
+      # though the api-types-sync job never sends mail (EMAIL_DRY_RUN=true).
+      JWT_SECRET: ci-only-jwt-secret-not-used-in-prod-32b
+      MFA_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/erp_compta_ci
       DB_SSL: 'false'
       APP_BASE_URL: http://localhost:3000
+      SMTP_HOST: smtp.example.invalid
+      SMTP_PORT: '587'
+      SMTP_USER: ci-user
+      SMTP_PASS: ci-pass
+      SMTP_FROM: ci@example.invalid
+      EMAIL_DRY_RUN: 'true'
     services:
       postgres:
         image: postgres:16-alpine
