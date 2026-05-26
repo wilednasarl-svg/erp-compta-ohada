@@ -157,7 +157,7 @@ export default function ReportsPage() {
           </div>
         </header>
 
-        <div className="inline-flex rounded-md border bg-white p-1">
+        <div className="flex flex-wrap gap-1 rounded-md border bg-white p-1">
           <button
             type="button"
             onClick={() => setMode('trial-balance')}
