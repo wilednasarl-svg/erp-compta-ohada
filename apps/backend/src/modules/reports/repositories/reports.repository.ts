@@ -66,6 +66,38 @@ export interface GeneralLedgerFilters {
 }
 
 /**
+ * Import session header for the diagnostic report. Only the columns the
+ * report cares about — full session entity is loaded by the imports
+ * module elsewhere.
+ */
+export interface ImportSessionMeta {
+  readonly id: string;
+  readonly label: string | null;
+  readonly status: string;
+  readonly sourceType: string;
+  readonly documentType: string | null;
+  readonly totalLines: number;
+  readonly errorLines: number;
+  readonly createdAt: Date;
+}
+
+/**
+ * Raw staging row needed to compute the import diagnostic (balance par
+ * compte + anomalies). `mappedValues` and `errors` are JSONB columns
+ * that staging surfaces in their typed form — see the imports module
+ * for the canonical `MappedRow` / `ValidationError` shapes.
+ */
+export interface ImportStagingRow {
+  readonly rowNumber: number;
+  readonly mappedValues: Record<string, string | null>;
+  readonly errors: ReadonlyArray<{
+    readonly code: string;
+    readonly message: string;
+    readonly field?: string;
+  }>;
+}
+
+/**
  * `ReportsRepository` — Module 9 wave 1 read-only aggregations over
  * `journal_entry_lines` joined with `journal_entries` (status filter)
  * and `organization_chart_accounts` (label / class).
@@ -449,5 +481,124 @@ export class ReportsRepository {
       openingDebit: (net > 0 ? net : 0).toFixed(2),
       openingCredit: (net < 0 ? -net : 0).toFixed(2),
     };
+  }
+
+  // ─── Import diagnostic ───────────────────────────────────────────────
+
+  /**
+   * Header of an import session, scoped to the tenant. Returns `null`
+   * when the session does not exist OR belongs to another tenant — the
+   * service maps both to `IMPORT_SESSION_NOT_FOUND` to avoid leaking
+   * existence across tenants.
+   */
+  async fetchImportSessionMeta(
+    organizationId: TenantId | string,
+    sessionId: string,
+  ): Promise<ImportSessionMeta | null> {
+    assertTenantId(organizationId);
+    const rows = await this.lineRepo.manager.query<
+      Array<{
+        id: string;
+        label: string | null;
+        status: string;
+        source_type: string;
+        total_lines: number | string;
+        error_lines: number | string;
+        created_at: Date;
+        document_type: string | null;
+      }>
+    >(
+      `SELECT s.id,
+              s.label,
+              s.status,
+              s.source_type,
+              s.total_lines,
+              s.error_lines,
+              s.created_at,
+              (SELECT f.document_type
+                 FROM import_files f
+                WHERE f.session_id = s.id
+                ORDER BY f.created_at ASC
+                LIMIT 1) AS document_type
+         FROM import_sessions s
+        WHERE s.id = $1
+          AND s.organization_id = $2
+        LIMIT 1`,
+      [sessionId, organizationId],
+    );
+    const row = rows[0];
+    if (row === undefined) return null;
+    return {
+      id: row.id,
+      label: row.label,
+      status: row.status,
+      sourceType: row.source_type,
+      documentType: row.document_type,
+      totalLines: Number(row.total_lines),
+      errorLines: Number(row.error_lines),
+      createdAt: row.created_at,
+    };
+  }
+
+  /**
+   * Every staging row of a session, ordered by `row_number`. The
+   * caller iterates in JS to compute aggregates and anomaly groups —
+   * SQL aggregation is harder when the keys live in JSONB.
+   *
+   * Volumetry: a 50k-row file produces 50k rows here. We stream-read
+   * with a simple SELECT; the existing `ix_import_staging_entries_session_row`
+   * index covers the WHERE + ORDER BY.
+   */
+  async fetchImportStagingRows(
+    organizationId: TenantId | string,
+    sessionId: string,
+  ): Promise<ImportStagingRow[]> {
+    assertTenantId(organizationId);
+    const rows = await this.lineRepo.manager.query<
+      Array<{
+        row_number: number;
+        mapped_values: Record<string, string | null>;
+        errors: Array<{ code: string; message: string; field?: string }>;
+      }>
+    >(
+      `SELECT e.row_number, e.mapped_values, e.errors
+         FROM import_staging_entries e
+         JOIN import_sessions s ON s.id = e.session_id
+        WHERE e.session_id = $1
+          AND s.organization_id = $2
+        ORDER BY e.row_number ASC`,
+      [sessionId, organizationId],
+    );
+    return rows.map((r) => ({
+      rowNumber: Number(r.row_number),
+      mappedValues: r.mapped_values ?? {},
+      errors: r.errors ?? [],
+    }));
+  }
+
+  /**
+   * Build `code → label` map for a list of account codes, scoped to
+   * the tenant's chart. Codes not found in the map are "unknown" from
+   * the report's perspective. An empty `codes` list returns an empty
+   * map without hitting the DB.
+   */
+  async fetchAccountLabelsByCode(
+    organizationId: TenantId | string,
+    codes: ReadonlyArray<string>,
+  ): Promise<Map<string, string>> {
+    assertTenantId(organizationId);
+    if (codes.length === 0) return new Map();
+    const rows = await this.lineRepo.manager.query<
+      Array<{ code: string; label: string }>
+    >(
+      `SELECT code, label
+         FROM organization_chart_accounts
+        WHERE organization_id = $1
+          AND code = ANY($2::text[])`,
+      [organizationId, codes],
+    );
+    const map = new Map<string, string>();
+    for (const r of rows) map.set(r.code, r.label);
+    return map;
   }
 }

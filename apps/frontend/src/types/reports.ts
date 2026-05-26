@@ -84,6 +84,91 @@ export interface AnnexeReport {
   readonly notes: ReadonlyArray<AnnexeNote>;
 }
 
+// ─── Import diagnostic ──────────────────────────────────────────────
+
+export type ImportAnomalySeverity = 'critical' | 'warning' | 'info';
+
+export interface ImportTrialBalanceRow {
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly debit: string;
+  readonly credit: string;
+  readonly balance: string;
+  readonly sign: 'D' | 'C' | '=';
+  readonly lineCount: number;
+  readonly accountExists: boolean;
+  readonly autoProvisionable: boolean;
+}
+
+export interface ImportAnomalySample {
+  readonly rowNumber: number;
+  readonly accountCode: string | null;
+  readonly field?: string;
+  readonly message: string;
+}
+
+export interface ImportAnomalyGroup {
+  readonly code: string;
+  readonly severity: ImportAnomalySeverity;
+  readonly title: string;
+  readonly description: string;
+  readonly count: number;
+  readonly samples: ReadonlyArray<ImportAnomalySample>;
+}
+
+export interface ImportRemediationItem {
+  readonly priority: 1 | 2 | 3;
+  readonly title: string;
+  readonly description: string;
+  readonly autoFixable: boolean;
+  readonly affectedCount: number;
+}
+
+export interface ImportDiagnosticReport {
+  readonly session: {
+    readonly id: string;
+    readonly label: string | null;
+    readonly status: string;
+    readonly sourceType: string;
+    readonly documentType: string | null;
+    readonly totalLines: number;
+    readonly errorLines: number;
+    readonly createdAt: string;
+  };
+  readonly trialBalance: ReadonlyArray<ImportTrialBalanceRow>;
+  readonly totals: {
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly balanceDelta: string;
+    readonly isBalanced: boolean;
+  };
+  readonly anomalies: {
+    readonly critical: ReadonlyArray<ImportAnomalyGroup>;
+    readonly warnings: ReadonlyArray<ImportAnomalyGroup>;
+    readonly info: ReadonlyArray<ImportAnomalyGroup>;
+  };
+  readonly remediationPlan: ReadonlyArray<ImportRemediationItem>;
+  readonly verdict: {
+    readonly status: 'conforme' | 'à corriger' | 'bloquant';
+    readonly criticalCount: number;
+    readonly warningCount: number;
+    readonly infoCount: number;
+    readonly canCommit: boolean;
+  };
+}
+
+/** Réponse `GET /imports/sessions` côté frontend. */
+export interface ImportSessionSummary {
+  readonly id: string;
+  readonly status: string;
+  readonly sourceType: string;
+  readonly label: string | null;
+  readonly totalLines: number;
+  readonly errorLines: number;
+  readonly createdAt: string;
+  readonly documentType: string | null;
+}
+
 export interface AnnexeNoteDetailRow {
   readonly code: string;
   readonly label: string;

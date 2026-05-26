@@ -33,6 +33,7 @@ import { FinancialRatiosQueryDto } from '../dto/financial-ratios-query.dto';
 import { GeneralLedgerQueryDto } from '../dto/general-ledger-query.dto';
 import { ProfitLossQueryDto } from '../dto/profit-loss-query.dto';
 import { SigQueryDto } from '../dto/sig-query.dto';
+import { ImportDiagnosticParamsDto } from '../dto/import-diagnostic-query.dto';
 import { TrialBalanceQueryDto } from '../dto/trial-balance-query.dto';
 import {
   ReportsService,
@@ -42,6 +43,7 @@ import {
   type AnnexeNoteDetailReport,
   type AnnexeReport,
   type CashTrendReport,
+  type ImportDiagnosticReport,
   type TafireReport,
   type TftReport,
   type ComparativeBalanceReport,
@@ -349,6 +351,22 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
     });
+    return { report };
+  }
+
+  @Get('import-diagnostic/:sessionId')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Diagnostic d'import — balance des comptes + anomalies + plan de normalisation pour une session d'import (lit le staging, PAS les journaux validés)",
+  })
+  async importDiagnostic(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Param() params: ImportDiagnosticParamsDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: ImportDiagnosticReport }> {
+    const report = await this.reports.getImportDiagnostic(asTenantId(org.id), params.sessionId);
     return { report };
   }
 

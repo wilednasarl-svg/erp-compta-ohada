@@ -2,20 +2,25 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  AlertTriangle,
   BarChart3,
   BookText,
   Calculator,
+  CheckCircle2,
   Clock,
   FileSpreadsheet,
   FileText,
   GitBranch,
   History,
+  Info,
   Landmark,
   Layers,
   Loader2,
   Package,
+  Stethoscope,
   TrendingUp,
   Wallet,
+  XCircle,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 
@@ -44,6 +49,9 @@ import type {
   ComparativeBalanceReport,
   FinancialRatiosReport,
   GeneralLedgerReport,
+  ImportAnomalyGroup,
+  ImportDiagnosticReport,
+  ImportSessionSummary,
   MarginByAxisReport,
   MultiYearBalanceReport,
   SigReport,
@@ -94,6 +102,12 @@ interface MarginByAxisEnvelope {
 interface AnalyticAxesEnvelope {
   readonly axes: ReadonlyArray<AnalyticAxisSummary>;
 }
+interface ImportDiagnosticEnvelope {
+  readonly report: ImportDiagnosticReport;
+}
+interface ImportSessionsEnvelope {
+  readonly sessions: ReadonlyArray<ImportSessionSummary>;
+}
 
 type ReportMode =
   | 'trial-balance'
@@ -107,7 +121,8 @@ type ReportMode =
   | 'tft'
   | 'annexe'
   | 'margin-by-axis'
-  | 'general-ledger';
+  | 'general-ledger'
+  | 'import-diagnostic';
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
 const previousYearEndIso = (): string => `${new Date().getFullYear() - 1}-12-31`;
@@ -287,6 +302,18 @@ export default function ReportsPage() {
             <BookText className="h-4 w-4" />
             Grand livre
           </button>
+          <button
+            type="button"
+            onClick={() => setMode('import-diagnostic')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'import-diagnostic'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Stethoscope className="h-4 w-4" />
+            Diagnostic d&apos;import
+          </button>
         </div>
 
         {mode === 'trial-balance' ? (
@@ -311,6 +338,8 @@ export default function ReportsPage() {
           <AnnexePanel orgId={orgId} />
         ) : mode === 'margin-by-axis' ? (
           <MarginByAxisPanel orgId={orgId} />
+        ) : mode === 'import-diagnostic' ? (
+          <ImportDiagnosticPanel orgId={orgId} />
         ) : (
           <GeneralLedgerPanel orgId={orgId} />
         )}
@@ -2964,6 +2993,386 @@ function OhadaStatementBlock({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─── Diagnostic d'import ────────────────────────────────────────────────
+
+/**
+ * Pre-flight check d'une session d'import : balance des comptes telle
+ * qu'elle résulterait du commit, anomalies classées par sévérité, plan
+ * de normalisation actionnable. Lit le staging, PAS les journaux validés.
+ */
+function ImportDiagnosticPanel({ orgId }: { readonly orgId: string }) {
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+
+  const sessionsQuery = useQuery<ImportSessionsEnvelope, ApiError>({
+    queryKey: ['imports', 'sessions', orgId],
+    queryFn: () => api.get<ImportSessionsEnvelope>(`/organizations/${orgId}/imports/sessions`),
+    enabled: orgId !== '',
+  });
+
+  const eligibleSessions = useMemo(() => {
+    const sessions = sessionsQuery.data?.sessions ?? [];
+    return sessions.filter((s) =>
+      ['parsed', 'validated', 'ready_for_import', 'completed'].includes(s.status),
+    );
+  }, [sessionsQuery.data]);
+
+  // Auto-select the most recent eligible session (no useEffect needed —
+  // derived state: explicit selection wins, otherwise fall back to head).
+  const activeSessionId =
+    selectedSessionId !== '' ? selectedSessionId : (eligibleSessions[0]?.id ?? '');
+
+  const diagQuery = useQuery<ImportDiagnosticReport, ApiError>({
+    queryKey: ['reports', 'import-diagnostic', orgId, activeSessionId],
+    queryFn: async () => {
+      const env = await api.get<ImportDiagnosticEnvelope>(
+        `/organizations/${orgId}/reports/import-diagnostic/${activeSessionId}`,
+      );
+      return env.report;
+    },
+    enabled: orgId !== '' && activeSessionId !== '',
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Stethoscope className="h-5 w-5" />
+          Diagnostic d&apos;import
+        </CardTitle>
+        <CardDescription>
+          Scan de santé d&apos;une session d&apos;import : balance prévisionnelle, points de vigilance,
+          anomalies bloquantes et plan de normalisation pour rendre le fichier conforme OHADA.
+          Cette analyse porte sur les lignes en staging — AVANT le commit en comptabilité.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Sélecteur de session */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[280px]">
+            <Label htmlFor="diag-session">Session d&apos;import</Label>
+            <select
+              id="diag-session"
+              className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              value={activeSessionId}
+              onChange={(e) => setSelectedSessionId(e.target.value)}
+              disabled={sessionsQuery.isPending || eligibleSessions.length === 0}
+            >
+              {eligibleSessions.length === 0 && (
+                <option value="">— aucune session éligible —</option>
+              )}
+              {eligibleSessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {formatSessionLabel(s)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {diagQuery.isFetching && (
+            <Loader2 className="h-5 w-5 animate-spin text-slate-500" aria-label="chargement" />
+          )}
+        </div>
+
+        {sessionsQuery.isError ? <FormError error={sessionsQuery.error} /> : null}
+        {diagQuery.isError ? <FormError error={diagQuery.error} /> : null}
+
+        {sessionsQuery.isSuccess && eligibleSessions.length === 0 && (
+          <div className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            Aucune session d&apos;import éligible. Charge un fichier dans l&apos;onglet{' '}
+            <em>Imports</em> et lance la validation pour le voir apparaître ici.
+          </div>
+        )}
+
+        {diagQuery.data !== undefined && (
+          <>
+            <VerdictBanner report={diagQuery.data} />
+            <ImportTrialBalanceTable report={diagQuery.data} />
+            <AnomalySection anomalies={diagQuery.data.anomalies} />
+            {diagQuery.data.remediationPlan.length > 0 && (
+              <RemediationPlanCard items={diagQuery.data.remediationPlan} />
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatSessionLabel(s: ImportSessionSummary): string {
+  const date = new Date(s.createdAt).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const docType = s.documentType !== null ? ` — ${s.documentType}` : '';
+  const label = s.label !== null && s.label !== '' ? s.label : `Session ${s.id.slice(0, 8)}`;
+  return `${date} · ${label}${docType} (${s.status}, ${s.totalLines} lignes)`;
+}
+
+function VerdictBanner({ report }: { readonly report: ImportDiagnosticReport }) {
+  const { verdict, totals } = report;
+  const palette =
+    verdict.status === 'conforme'
+      ? { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', icon: CheckCircle2, iconColor: 'text-emerald-600' }
+      : verdict.status === 'à corriger'
+      ? { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', icon: AlertTriangle, iconColor: 'text-amber-600' }
+      : { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', icon: XCircle, iconColor: 'text-rose-600' };
+  const Icon = palette.icon;
+  return (
+    <div className={`rounded-lg border ${palette.border} ${palette.bg} p-4`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`h-6 w-6 ${palette.iconColor} flex-shrink-0 mt-0.5`} />
+        <div className={`${palette.text} flex-1`}>
+          <div className="flex flex-wrap items-baseline gap-3">
+            <span className="text-lg font-semibold capitalize">{verdict.status}</span>
+            <span className="text-sm">
+              {verdict.criticalCount} critique{verdict.criticalCount > 1 ? 's' : ''} ·{' '}
+              {verdict.warningCount} avertissement{verdict.warningCount > 1 ? 's' : ''} ·{' '}
+              {verdict.infoCount} info
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+            <div>
+              <span className="font-medium">Total débit&nbsp;:</span> {fmt(totals.totalDebit)} FCFA
+            </div>
+            <div>
+              <span className="font-medium">Total crédit&nbsp;:</span> {fmt(totals.totalCredit)} FCFA
+            </div>
+            <div className={totals.isBalanced ? '' : 'font-semibold'}>
+              <span className="font-medium">Écart&nbsp;:</span>{' '}
+              {totals.isBalanced ? '0,00 (équilibré ✓)' : `${fmt(totals.balanceDelta)} FCFA`}
+            </div>
+          </div>
+          <div className="mt-2 text-xs">
+            {verdict.canCommit
+              ? '✓ Cette session peut être committée. Les avertissements méritent un coup d\'œil mais ne bloquent pas.'
+              : '⚠ Cette session ne peut PAS être committée en l\'état. Corriger les anomalies critiques ci-dessous.'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImportTrialBalanceTable({ report }: { readonly report: ImportDiagnosticReport }) {
+  if (report.trialBalance.length === 0) {
+    return (
+      <div className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        Aucune ligne de balance — la session ne contient pas d&apos;écritures parsables.
+      </div>
+    );
+  }
+  return (
+    <div>
+      <h3 className="mb-2 font-semibold">Balance des comptes (prévisionnelle)</h3>
+      <div className="overflow-x-auto rounded border border-slate-200">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Compte</th>
+              <th className="px-3 py-2 text-left font-medium">Libellé</th>
+              <th className="px-3 py-2 text-right font-medium">Lignes</th>
+              <th className="px-3 py-2 text-right font-medium">Débit</th>
+              <th className="px-3 py-2 text-right font-medium">Crédit</th>
+              <th className="px-3 py-2 text-right font-medium">Solde</th>
+              <th className="px-3 py-2 text-left font-medium">Statut</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {report.trialBalance.map((row) => (
+              <tr key={row.accountCode}>
+                <td className="px-3 py-2 font-mono">{row.accountCode}</td>
+                <td className="px-3 py-2">{row.accountLabel}</td>
+                <td className="px-3 py-2 text-right">{row.lineCount}</td>
+                <td className="px-3 py-2 text-right font-mono">{fmt(row.debit)}</td>
+                <td className="px-3 py-2 text-right font-mono">{fmt(row.credit)}</td>
+                <td className="px-3 py-2 text-right font-mono">
+                  {fmt(row.balance)} {row.sign}
+                </td>
+                <td className="px-3 py-2">
+                  {row.accountExists ? (
+                    <Badge variant="outline" className="border-emerald-300 text-emerald-700">
+                      existant
+                    </Badge>
+                  ) : row.autoProvisionable ? (
+                    <Badge variant="outline" className="border-amber-300 text-amber-700">
+                      auto-créé au commit
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-rose-300 text-rose-700">
+                      inconnu
+                    </Badge>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-slate-50 font-semibold">
+            <tr>
+              <td colSpan={3} className="px-3 py-2 text-right">
+                TOTAUX
+              </td>
+              <td className="px-3 py-2 text-right font-mono">{fmt(report.totals.totalDebit)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmt(report.totals.totalCredit)}</td>
+              <td className="px-3 py-2 text-right font-mono">
+                {report.totals.isBalanced ? '— équilibré' : fmt(report.totals.balanceDelta)}
+              </td>
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AnomalySection({
+  anomalies,
+}: {
+  readonly anomalies: ImportDiagnosticReport['anomalies'];
+}) {
+  const total = anomalies.critical.length + anomalies.warnings.length + anomalies.info.length;
+  if (total === 0) {
+    return (
+      <div className="rounded border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        ✓ Aucune anomalie détectée — le fichier est techniquement conforme.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <h3 className="font-semibold">Anomalies détectées</h3>
+      {anomalies.critical.length > 0 && (
+        <AnomalyGroupList
+          title="Bloquants (à corriger impérativement avant commit)"
+          severity="critical"
+          groups={anomalies.critical}
+        />
+      )}
+      {anomalies.warnings.length > 0 && (
+        <AnomalyGroupList
+          title="Avertissements (recommandé de vérifier)"
+          severity="warning"
+          groups={anomalies.warnings}
+        />
+      )}
+      {anomalies.info.length > 0 && (
+        <AnomalyGroupList
+          title="Informations"
+          severity="info"
+          groups={anomalies.info}
+        />
+      )}
+    </div>
+  );
+}
+
+function AnomalyGroupList({
+  title,
+  severity,
+  groups,
+}: {
+  readonly title: string;
+  readonly severity: 'critical' | 'warning' | 'info';
+  readonly groups: ReadonlyArray<ImportAnomalyGroup>;
+}) {
+  const palette =
+    severity === 'critical'
+      ? { border: 'border-rose-200', bg: 'bg-rose-50', icon: XCircle, iconColor: 'text-rose-600' }
+      : severity === 'warning'
+      ? { border: 'border-amber-200', bg: 'bg-amber-50', icon: AlertTriangle, iconColor: 'text-amber-600' }
+      : { border: 'border-slate-200', bg: 'bg-slate-50', icon: Info, iconColor: 'text-slate-600' };
+  const Icon = palette.icon;
+  return (
+    <div>
+      <h4 className="mb-2 text-sm font-medium text-slate-700">{title}</h4>
+      <div className="space-y-2">
+        {groups.map((g) => (
+          <details key={g.code} className={`rounded border ${palette.border} ${palette.bg} p-3`}>
+            <summary className="cursor-pointer text-sm">
+              <span className="inline-flex items-center gap-2 align-middle">
+                <Icon className={`h-4 w-4 ${palette.iconColor}`} />
+                <span className="font-semibold">{g.title}</span>
+                <Badge variant="outline">
+                  {g.count} ligne{g.count > 1 ? 's' : ''}
+                </Badge>
+              </span>
+            </summary>
+            <div className="mt-2 text-sm text-slate-700">
+              <p>{g.description}</p>
+              {g.samples.length > 0 && (
+                <div className="mt-2">
+                  <span className="text-xs font-medium uppercase text-slate-500">
+                    Exemples ({g.samples.length} sur {g.count})
+                  </span>
+                  <ul className="mt-1 space-y-1 text-xs text-slate-700">
+                    {g.samples.map((s, i) => (
+                      <li key={`${g.code}-${i}`} className="font-mono">
+                        Ligne {s.rowNumber}
+                        {s.accountCode !== null ? ` · compte ${s.accountCode}` : ''}
+                        {s.field !== undefined ? ` · champ ${s.field}` : ''} —{' '}
+                        <span className="font-sans">{s.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RemediationPlanCard({
+  items,
+}: {
+  readonly items: ImportDiagnosticReport['remediationPlan'];
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <h3 className="mb-3 flex items-center gap-2 font-semibold">
+        <BookText className="h-4 w-4" />
+        Plan de normalisation — ce qu&apos;il faut faire
+      </h3>
+      <ol className="space-y-3 text-sm">
+        {items.map((item, idx) => (
+          <li key={`${item.title}-${idx}`} className="flex gap-3">
+            <Badge
+              variant="outline"
+              className={
+                item.priority === 1
+                  ? 'border-rose-300 text-rose-700'
+                  : item.priority === 2
+                  ? 'border-amber-300 text-amber-700'
+                  : 'border-slate-300 text-slate-700'
+              }
+            >
+              P{item.priority}
+            </Badge>
+            <div className="flex-1">
+              <div className="font-medium">
+                {item.title}{' '}
+                <span className="text-xs font-normal text-slate-500">
+                  · {item.affectedCount} ligne{item.affectedCount > 1 ? 's' : ''}
+                </span>
+                {item.autoFixable && (
+                  <Badge variant="outline" className="ml-2 border-emerald-300 text-emerald-700">
+                    auto-fix
+                  </Badge>
+                )}
+              </div>
+              <p className="text-slate-600">{item.description}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

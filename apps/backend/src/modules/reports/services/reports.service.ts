@@ -614,6 +614,191 @@ export interface AnnexeNoteDetailReport {
 }
 
 /**
+ * Diagnostic d'import — rapport "santé du fichier" qui s'appuie sur les
+ * `import_staging_entries` (PAS les écritures commitées). Sert de
+ * pre-flight check avant `commitSession`. Présente:
+ *   - la balance des comptes telle qu'elle résulterait du commit,
+ *   - le verdict d'équilibre global (∑D vs ∑C),
+ *   - les anomalies classées par sévérité,
+ *   - un plan de normalisation actionnable (ce qu'il faut faire pour
+ *     rendre le fichier conforme OHADA et committable sans erreur).
+ */
+export type ImportAnomalySeverity = 'critical' | 'warning' | 'info';
+
+export interface ImportTrialBalanceRow {
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly debit: string;
+  readonly credit: string;
+  readonly balance: string;
+  readonly sign: 'D' | 'C' | '=';
+  readonly lineCount: number;
+  /** True si le code existe déjà dans le plan comptable tenant. */
+  readonly accountExists: boolean;
+  /** True si le compte est inconnu mais qu'un parent SYSCOHADA est détecté → auto-provision au commit. */
+  readonly autoProvisionable: boolean;
+}
+
+export interface ImportAnomalySample {
+  readonly rowNumber: number;
+  readonly accountCode: string | null;
+  readonly field?: string;
+  readonly message: string;
+}
+
+export interface ImportAnomalyGroup {
+  readonly code: string;
+  readonly severity: ImportAnomalySeverity;
+  readonly title: string;
+  readonly description: string;
+  readonly count: number;
+  /** Au plus 5 lignes-exemples pour aider à localiser le problème. */
+  readonly samples: ReadonlyArray<ImportAnomalySample>;
+}
+
+export interface ImportRemediationItem {
+  /** 1 = le plus urgent. */
+  readonly priority: 1 | 2 | 3;
+  readonly title: string;
+  readonly description: string;
+  readonly autoFixable: boolean;
+  readonly affectedCount: number;
+}
+
+export interface ImportDiagnosticReport {
+  readonly session: {
+    readonly id: string;
+    readonly label: string | null;
+    readonly status: string;
+    readonly sourceType: string;
+    readonly documentType: string | null;
+    readonly totalLines: number;
+    readonly errorLines: number;
+    readonly createdAt: string;
+  };
+  readonly trialBalance: ReadonlyArray<ImportTrialBalanceRow>;
+  readonly totals: {
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly balanceDelta: string;
+    readonly isBalanced: boolean;
+  };
+  readonly anomalies: {
+    readonly critical: ReadonlyArray<ImportAnomalyGroup>;
+    readonly warnings: ReadonlyArray<ImportAnomalyGroup>;
+    readonly info: ReadonlyArray<ImportAnomalyGroup>;
+  };
+  readonly remediationPlan: ReadonlyArray<ImportRemediationItem>;
+  /** Verdict global (utilisé par l'UI pour l'affichage du bandeau santé). */
+  readonly verdict: {
+    readonly status: 'conforme' | 'à corriger' | 'bloquant';
+    readonly criticalCount: number;
+    readonly warningCount: number;
+    readonly infoCount: number;
+    readonly canCommit: boolean;
+  };
+}
+
+/**
+ * Catalogue de remédiation — mappe chaque code de validation OHADA à
+ * son titre, sa sévérité et l'action que l'utilisateur doit prendre.
+ * Volontairement statique : adding a new code here is a deliberate
+ * product decision aligned with the `ValidationErrorCode` union.
+ */
+const ANOMALY_META: Record<
+  string,
+  {
+    readonly severity: ImportAnomalySeverity;
+    readonly title: string;
+    readonly description: string;
+    readonly remediation: string;
+    readonly autoFixable: boolean;
+  }
+> = {
+  missing_required_field: {
+    severity: 'critical',
+    title: 'Champ obligatoire manquant',
+    description:
+      "Une ou plusieurs lignes n'ont pas tous les champs requis (compte, journal, date, libellé, débit ou crédit).",
+    remediation:
+      "Compléter les champs manquants directement dans le fichier source puis ré-uploader, ou éditer manuellement les lignes concernées.",
+    autoFixable: false,
+  },
+  unknown_account: {
+    severity: 'critical',
+    title: 'Compte inconnu (non auto-créable)',
+    description:
+      "Le code compte ne figure pas dans le plan comptable de l'organisation et n'a pas de parent SYSCOHADA détectable.",
+    remediation:
+      'Créer manuellement les comptes manquants dans le plan comptable avant de re-tenter le commit.',
+    autoFixable: false,
+  },
+  unknown_account_with_parent_hint: {
+    severity: 'warning',
+    title: 'Compte inconnu (auto-provisionnable)',
+    description:
+      "Le code compte n'existe pas mais un parent SYSCOHADA a été détecté. Le commit créera automatiquement le sous-compte à partir du parent.",
+    remediation:
+      "Aucune action requise — l'auto-provisionnement crée le compte au moment du commit. Vérifier néanmoins les libellés générés après le commit.",
+    autoFixable: true,
+  },
+  invalid_date: {
+    severity: 'critical',
+    title: 'Date illisible',
+    description:
+      "Le format de date n'est pas reconnu (formats acceptés : YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY).",
+    remediation:
+      'Corriger les dates dans le fichier source au format YYYY-MM-DD puis ré-uploader le fichier.',
+    autoFixable: false,
+  },
+  date_out_of_fiscal_year: {
+    severity: 'warning',
+    title: 'Date hors exercice',
+    description:
+      "La date d'opération sort de l'exercice comptable courant configuré sur l'organisation.",
+    remediation:
+      "Confirmer que ces écritures appartiennent à un autre exercice (corriger la date dans le fichier), ou créer une session dédiée à l'exercice ciblé.",
+    autoFixable: false,
+  },
+  invalid_amount: {
+    severity: 'critical',
+    title: 'Montant illisible',
+    description:
+      "Le montant débit ou crédit ne peut pas être parsé en nombre (espaces, séparateur décimal incohérent, devise mêlée au chiffre).",
+    remediation:
+      "Nettoyer le format des montants : séparateur décimal point ou virgule, pas d'unité de devise ni d'espace dans la cellule.",
+    autoFixable: false,
+  },
+  debit_credit_both_zero: {
+    severity: 'warning',
+    title: 'Ligne à zéro (D=0 et C=0)',
+    description:
+      "La ligne ne porte ni débit ni crédit (0/0). Sans incidence comptable mais probablement parasite.",
+    remediation:
+      "Supprimer ces lignes du fichier source si elles sont parasites, ou compléter les montants si elles devaient porter une opération.",
+    autoFixable: false,
+  },
+  debit_credit_both_nonzero: {
+    severity: 'critical',
+    title: 'Débit ET crédit non nuls sur la même ligne',
+    description:
+      'Une même ligne porte simultanément un montant débit ET crédit — impossible en partie double OHADA.',
+    remediation:
+      'Splitter chaque ligne en deux : une ligne de débit, une ligne de crédit, sur le même compte ou comptes distincts selon la nature de l\'opération.',
+    autoFixable: false,
+  },
+  negative_amount: {
+    severity: 'critical',
+    title: 'Montant négatif',
+    description:
+      "Un montant débit ou crédit est négatif — la partie double OHADA n'accepte que des montants positifs.",
+    remediation:
+      'Convertir le signe négatif en mouvement opposé : un débit négatif devient un crédit positif et vice-versa.',
+    autoFixable: false,
+  },
+};
+
+/**
  * `ReportsService` — Module 9 accounting reports.
  *
  *   - `getTrialBalance`  : balance générale (one row per account).
@@ -3245,6 +3430,230 @@ export class ReportsService {
       periodCredit: sum('periodCredit').toFixed(2),
       endingDebit: sum('endingDebit').toFixed(2),
       endingCredit: sum('endingCredit').toFixed(2),
+    };
+  }
+
+  // ─── Import diagnostic ───────────────────────────────────────────────
+
+  /**
+   * Diagnostic d'import — produit un rapport complet sur l'état de
+   * santé d'une session avant son commit. Lit `import_staging_entries`
+   * (PAS les journaux validés). Voir `ImportDiagnosticReport` pour la
+   * forme retournée.
+   *
+   * Cas d'erreur : session inexistante ou hors tenant →
+   * `IMPORT_SESSION_NOT_FOUND`. Une session en `draft` retourne un
+   * rapport vide (totaux à 0, pas d'anomalies) — c'est volontaire pour
+   * que l'UI puisse afficher le diagnostic dès que la session existe.
+   */
+  async getImportDiagnostic(
+    organizationId: TenantId,
+    sessionId: string,
+  ): Promise<ImportDiagnosticReport> {
+    const session = await this.repo.fetchImportSessionMeta(organizationId, sessionId);
+    if (session === null) {
+      throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_FOUND);
+    }
+
+    const rows = await this.repo.fetchImportStagingRows(organizationId, sessionId);
+
+    // 1. Agrégation balance par compte ----------------------------------
+    interface AccountAggregate {
+      debit: number;
+      credit: number;
+      lineCount: number;
+      autoProvisionable: boolean;
+    }
+    const aggregates = new Map<string, AccountAggregate>();
+    for (const row of rows) {
+      const code = (row.mappedValues.account ?? '').trim();
+      if (code === '') continue;
+      const debit = Number(row.mappedValues.debit ?? '0') || 0;
+      const credit = Number(row.mappedValues.credit ?? '0') || 0;
+      const agg = aggregates.get(code) ?? {
+        debit: 0,
+        credit: 0,
+        lineCount: 0,
+        autoProvisionable: false,
+      };
+      agg.debit += debit;
+      agg.credit += credit;
+      agg.lineCount += 1;
+      if (row.errors.some((e) => e.code === 'unknown_account_with_parent_hint')) {
+        agg.autoProvisionable = true;
+      }
+      aggregates.set(code, agg);
+    }
+
+    // 2. Labels comptes (1 requête pour toute la balance) ---------------
+    const accountCodes = Array.from(aggregates.keys());
+    const labels = await this.repo.fetchAccountLabelsByCode(organizationId, accountCodes);
+
+    // 3. Lignes balance triées par code --------------------------------
+    const trialBalance: ImportTrialBalanceRow[] = accountCodes
+      .map((code) => {
+        const agg = aggregates.get(code) as AccountAggregate;
+        const accountExists = labels.has(code);
+        const accountLabel = labels.get(code) ?? '(compte inconnu)';
+        const net = agg.debit - agg.credit;
+        const sign: 'D' | 'C' | '=' = Math.abs(net) < 0.005 ? '=' : net > 0 ? 'D' : 'C';
+        return {
+          accountCode: code,
+          accountLabel,
+          debit: agg.debit.toFixed(2),
+          credit: agg.credit.toFixed(2),
+          balance: Math.abs(net).toFixed(2),
+          sign,
+          lineCount: agg.lineCount,
+          accountExists,
+          autoProvisionable: !accountExists && agg.autoProvisionable,
+        } satisfies ImportTrialBalanceRow;
+      })
+      .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+
+    // 4. Totaux + équilibre ---------------------------------------------
+    let totalDebit = 0;
+    let totalCredit = 0;
+    for (const r of trialBalance) {
+      totalDebit += Number(r.debit);
+      totalCredit += Number(r.credit);
+    }
+    const balanceDelta = totalDebit - totalCredit;
+    const isBalanced = Math.abs(balanceDelta) < 0.01;
+
+    // 5. Groupement des anomalies par code -----------------------------
+    interface AnomalyAccumulator {
+      readonly code: string;
+      count: number;
+      samples: ImportAnomalySample[];
+    }
+    const errorGroups = new Map<string, AnomalyAccumulator>();
+    for (const row of rows) {
+      for (const err of row.errors) {
+        const acc = errorGroups.get(err.code) ?? {
+          code: err.code,
+          count: 0,
+          samples: [],
+        };
+        acc.count += 1;
+        if (acc.samples.length < 5) {
+          const accountCode = (row.mappedValues.account ?? '').trim() || null;
+          acc.samples.push({
+            rowNumber: row.rowNumber,
+            accountCode,
+            ...(err.field !== undefined ? { field: err.field } : {}),
+            message: err.message,
+          });
+        }
+        errorGroups.set(err.code, acc);
+      }
+    }
+
+    // 6. Classement par sévérité ----------------------------------------
+    const critical: ImportAnomalyGroup[] = [];
+    const warnings: ImportAnomalyGroup[] = [];
+    const info: ImportAnomalyGroup[] = [];
+    for (const acc of errorGroups.values()) {
+      const meta = ANOMALY_META[acc.code] ?? {
+        severity: 'info' as ImportAnomalySeverity,
+        title: acc.code,
+        description: 'Anomalie non catégorisée.',
+        remediation: 'Examiner les lignes concernées.',
+        autoFixable: false,
+      };
+      const group: ImportAnomalyGroup = {
+        code: acc.code,
+        severity: meta.severity,
+        title: meta.title,
+        description: meta.description,
+        count: acc.count,
+        samples: acc.samples,
+      };
+      if (meta.severity === 'critical') critical.push(group);
+      else if (meta.severity === 'warning') warnings.push(group);
+      else info.push(group);
+    }
+
+    // Anomalie systémique : déséquilibre global ------------------------
+    if (!isBalanced && trialBalance.length > 0) {
+      critical.unshift({
+        code: 'unbalanced_total',
+        severity: 'critical',
+        title: 'Déséquilibre global ∑D ≠ ∑C',
+        description: `La somme des débits (${totalDebit.toFixed(2)}) ne correspond pas à la somme des crédits (${totalCredit.toFixed(2)}). Écart : ${Math.abs(balanceDelta).toFixed(2)} ${balanceDelta > 0 ? '(excédent débit)' : '(excédent crédit)'}.`,
+        count: 1,
+        samples: [],
+      });
+    }
+
+    // Tri intra-sévérité par count décroissant -------------------------
+    const byCountDesc = (a: ImportAnomalyGroup, b: ImportAnomalyGroup) => b.count - a.count;
+    critical.sort(byCountDesc);
+    warnings.sort(byCountDesc);
+    info.sort(byCountDesc);
+
+    // 7. Plan de remédiation --------------------------------------------
+    const remediationPlan: ImportRemediationItem[] = [];
+    for (const group of [...critical, ...warnings, ...info]) {
+      const meta = ANOMALY_META[group.code];
+      if (group.code === 'unbalanced_total') {
+        remediationPlan.push({
+          priority: 1,
+          title: 'Rééquilibrer le fichier',
+          description: `Identifier la ou les écritures manquantes pour annuler l'écart de ${Math.abs(balanceDelta).toFixed(2)}. Vérifier d'abord les groupes de lignes (journal, date) pour localiser l'écriture incomplète.`,
+          autoFixable: false,
+          affectedCount: 1,
+        });
+        continue;
+      }
+      if (meta === undefined) continue;
+      const priority: 1 | 2 | 3 =
+        meta.severity === 'critical' ? 1 : meta.severity === 'warning' ? 2 : 3;
+      remediationPlan.push({
+        priority,
+        title: meta.title,
+        description: meta.remediation,
+        autoFixable: meta.autoFixable,
+        affectedCount: group.count,
+      });
+    }
+    remediationPlan.sort((a, b) => a.priority - b.priority);
+
+    // 8. Verdict --------------------------------------------------------
+    const criticalCount = critical.length;
+    const warningCount = warnings.length;
+    const infoCount = info.length;
+    const status: 'conforme' | 'à corriger' | 'bloquant' =
+      criticalCount > 0 ? 'bloquant' : warningCount > 0 ? 'à corriger' : 'conforme';
+    const canCommit = criticalCount === 0;
+
+    return {
+      session: {
+        id: session.id,
+        label: session.label,
+        status: session.status,
+        sourceType: session.sourceType,
+        documentType: session.documentType,
+        totalLines: session.totalLines,
+        errorLines: session.errorLines,
+        createdAt: session.createdAt.toISOString(),
+      },
+      trialBalance,
+      totals: {
+        totalDebit: totalDebit.toFixed(2),
+        totalCredit: totalCredit.toFixed(2),
+        balanceDelta: balanceDelta.toFixed(2),
+        isBalanced,
+      },
+      anomalies: { critical, warnings, info },
+      remediationPlan,
+      verdict: {
+        status,
+        criticalCount,
+        warningCount,
+        infoCount,
+        canCommit,
+      },
     };
   }
 }
