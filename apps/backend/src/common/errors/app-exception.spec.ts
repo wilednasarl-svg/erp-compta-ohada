@@ -231,6 +231,11 @@ describe('HTTP status mapping', () => {
       BILL_INVALID_STATE_FOR_ACTION: 409,
       BILL_INVALID_AMOUNT: 422,
       BILL_NEGATIVE_NET: 422,
+      // W4.4 — Subventions d'investissement.
+      SUBSIDY_NOT_FOUND: 404,
+      SUBSIDY_NOT_ACTIVE: 409,
+      SUBSIDY_INVALID_AMOUNT: 422,
+      SUBSIDY_OVERRELEASE: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
