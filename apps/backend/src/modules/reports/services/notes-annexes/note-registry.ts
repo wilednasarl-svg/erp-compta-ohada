@@ -5,27 +5,49 @@
  *   - métadonnées statiques (id, label, section, applicableByDefault)
  *   - handler associé (fonction asynchrone qui calcule les rows)
  *
- * 10 notes critiques implémentées dans cette session (W2.4.a) :
- *   N1, N2, N3A, N3C, N3D, N6, N7, N17, N18, N28
+ * 31 notes implémentées (W2.4.a + W2.4.b) :
+ *   N1, N2, N3A, N3C, N3D, N4, N6, N7, N8, N9, N10, N11, N12, N13, N14,
+ *   N15, N16, N17, N18, N19, N20, N21, N22, N23, N24, N25, N26, N27,
+ *   N28, N29, N30
  *
- * 26 notes restantes en stub avec `NotImplementedError` :
- *   N3B, N4, N5, N8, N9, N10, N11, N12, N13, N14, N15, N16, N19, N20,
- *   N21, N22, N23, N24, N25, N26, N27, N29, N30, N31, N32, N33, N34,
- *   N35, N36
- *
- * Implémentation des restantes : voir issue de roadmap W2.4.b.
+ * 5 notes restantes en stub avec `NotImplementedError` :
+ *   N3B (variation incorporelles — analogue N3A à scoper sur 21x)
+ *   N5  (actif circulant HAO 485/488)
+ *   N31 (TFT détaillé — dépend du module cash-flow)
+ *   N32, N33, N34, N35, N36 (textes / infos non comptables)
  */
 
 import { handleN1Referentiel } from './handlers/note-1-referentiel';
+import { handleN10ValeursEncaisser } from './handlers/note-10-valeurs-encaisser';
+import { handleN11Disponibilites } from './handlers/note-11-disponibilites';
+import { handleN12ConversionActif } from './handlers/note-12-conversion-actif';
+import { handleN13Capital } from './handlers/note-13-capital';
+import { handleN14ReservesReport } from './handlers/note-14-reserves-report';
+import { handleN15Subventions } from './handlers/note-15-subventions';
+import { handleN16Emprunts } from './handlers/note-16-emprunts';
 import { handleN17Fournisseurs } from './handlers/note-17-fournisseurs';
 import { handleN18FiscalSocial } from './handlers/note-18-fiscal-social';
+import { handleN19AutresDettes } from './handlers/note-19-autres-dettes';
 import { handleN2Conformite } from './handlers/note-2-conformite';
+import { handleN20ConcoursBancaires } from './handlers/note-20-concours-bancaires';
+import { handleN21ConversionPassif } from './handlers/note-21-conversion-passif';
+import { handleN22CaProduits } from './handlers/note-22-ca-produits';
+import { handleN23Achats } from './handlers/note-23-achats';
+import { handleN24ServicesExterieurs } from './handlers/note-24-services-exterieurs';
+import { handleN25ChargesPersonnel } from './handlers/note-25-charges-personnel';
+import { handleN26Dotations } from './handlers/note-26-dotations';
+import { handleN27Financiers } from './handlers/note-27-financiers';
 import { handleN28Provisions } from './handlers/note-28-provisions';
+import { handleN29Hao } from './handlers/note-29-hao';
+import { handleN30Impot } from './handlers/note-30-impot';
 import { handleN3aImmoCorp } from './handlers/note-3a-immo-corp';
 import { handleN3cCessions } from './handlers/note-3c-cessions';
 import { handleN3dAmort } from './handlers/note-3d-amort';
+import { handleN4ImmoFinancieres } from './handlers/note-4-immo-financieres';
 import { handleN6Stocks } from './handlers/note-6-stocks';
 import { handleN7Clients } from './handlers/note-7-clients';
+import { handleN8AutresCreances } from './handlers/note-8-autres-creances';
+import { handleN9TitresPlacement } from './handlers/note-9-titres-placement';
 import { type NoteHandler, type NoteId, type NoteMetadata, NotImplementedError } from './types';
 
 /** Factory pour un handler stub. */
@@ -115,12 +137,11 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
       handler: handleN3dAmort,
     },
   ],
-  /** Note 4 — Immobilisations financières : titres de participation, créances rattachées. */
   [
     'N4' as NoteId,
     {
       metadata: meta('N4', 'Note 4 — Immobilisations financières', 'BILAN', true),
-      handler: stub('N4' as NoteId, 'Titres + créances rattachées (26x/27x)'),
+      handler: handleN4ImmoFinancieres,
     },
   ],
   /** Note 5 — Actif circulant HAO. */
@@ -145,76 +166,67 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
       handler: handleN7Clients,
     },
   ],
-  /** Note 8 — Autres créances (4xx hors clients/fourn.). */
   [
     'N8' as NoteId,
     {
       metadata: meta('N8', 'Note 8 — Autres créances', 'BILAN', true),
-      handler: stub('N8' as NoteId, 'Comptes 42x/43x/44x/47x débiteurs'),
+      handler: handleN8AutresCreances,
     },
   ],
-  /** Note 9 — Titres de placement (50x). */
   [
     'N9' as NoteId,
     {
       metadata: meta('N9', 'Note 9 — Titres de placement', 'BILAN', false),
-      handler: stub('N9' as NoteId, 'Comptes 50x'),
+      handler: handleN9TitresPlacement,
     },
   ],
-  /** Note 10 — Valeurs à encaisser (51x). */
   [
     'N10' as NoteId,
     {
       metadata: meta('N10', 'Note 10 — Valeurs à encaisser', 'BILAN', true),
-      handler: stub('N10' as NoteId, 'Comptes 51x'),
+      handler: handleN10ValeursEncaisser,
     },
   ],
-  /** Note 11 — Disponibilités (52x à 57x). */
   [
     'N11' as NoteId,
     {
       metadata: meta('N11', 'Note 11 — Disponibilités', 'BILAN', true),
-      handler: stub('N11' as NoteId, 'Banques/caisse 52x..57x'),
+      handler: handleN11Disponibilites,
     },
   ],
-  /** Note 12 — Écarts de conversion-actif (478). */
   [
     'N12' as NoteId,
     {
       metadata: meta('N12', 'Note 12 — Écarts de conversion-actif', 'BILAN', false),
-      handler: stub('N12' as NoteId, 'Compte 478'),
+      handler: handleN12ConversionActif,
     },
   ],
-  /** Note 13 — Capital social et primes liées. */
   [
     'N13' as NoteId,
     {
       metadata: meta('N13', 'Note 13 — Capital social et primes', 'BILAN', true),
-      handler: stub('N13' as NoteId, 'Comptes 101..104'),
+      handler: handleN13Capital,
     },
   ],
-  /** Note 14 — Réserves et report à nouveau. */
   [
     'N14' as NoteId,
     {
       metadata: meta('N14', 'Note 14 — Réserves et report à nouveau', 'BILAN', true),
-      handler: stub('N14' as NoteId, 'Comptes 11x/12x'),
+      handler: handleN14ReservesReport,
     },
   ],
-  /** Note 15 — Subventions d'investissement. */
   [
     'N15' as NoteId,
     {
       metadata: meta('N15', "Note 15 — Subventions d'investissement", 'BILAN', false),
-      handler: stub('N15' as NoteId, 'Compte 14'),
+      handler: handleN15Subventions,
     },
   ],
-  /** Note 16 — Emprunts et dettes financières. */
   [
     'N16' as NoteId,
     {
       metadata: meta('N16', 'Note 16 — Emprunts et dettes financières', 'BILAN', true),
-      handler: stub('N16' as NoteId, 'Comptes 16x/17x ventilés ≤1an / >1an'),
+      handler: handleN16Emprunts,
     },
   ],
   [
@@ -231,78 +243,69 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
       handler: handleN18FiscalSocial,
     },
   ],
-  /** Note 19 — Autres dettes d'exploitation. */
   [
     'N19' as NoteId,
     {
       metadata: meta('N19', "Note 19 — Autres dettes d'exploitation", 'BILAN', true),
-      handler: stub('N19' as NoteId, 'Comptes 42x/47x créditeurs hors fisc/social'),
+      handler: handleN19AutresDettes,
     },
   ],
-  /** Note 20 — Concours bancaires et soldes créditeurs de banques. */
   [
     'N20' as NoteId,
     {
       metadata: meta('N20', 'Note 20 — Concours bancaires courants', 'BILAN', false),
-      handler: stub('N20' as NoteId, 'Comptes 56x créditeurs'),
+      handler: handleN20ConcoursBancaires,
     },
   ],
-  /** Note 21 — Écarts de conversion-passif (479). */
   [
     'N21' as NoteId,
     {
       metadata: meta('N21', 'Note 21 — Écarts de conversion-passif', 'BILAN', false),
-      handler: stub('N21' as NoteId, 'Compte 479'),
+      handler: handleN21ConversionPassif,
     },
   ],
 
   // ───────────────────────────── Section COMPTE DE RÉSULTAT ────────────────────
-  /** Note 22 — Ventes et autres produits d'exploitation (70x..75x). */
   [
     'N22' as NoteId,
     {
       metadata: meta('N22', "Note 22 — Chiffre d'affaires et autres produits", 'CR', true),
-      handler: stub('N22' as NoteId, 'Comptes 70x..75x'),
+      handler: handleN22CaProduits,
     },
   ],
-  /** Note 23 — Achats consommés (60x). */
   [
     'N23' as NoteId,
     {
       metadata: meta('N23', 'Note 23 — Achats consommés', 'CR', true),
-      handler: stub('N23' as NoteId, 'Comptes 60x avec variation de stock'),
+      handler: handleN23Achats,
     },
   ],
-  /** Note 24 — Services extérieurs et autres consommations (61x..65x). */
   [
     'N24' as NoteId,
     {
       metadata: meta('N24', 'Note 24 — Services extérieurs et autres', 'CR', true),
-      handler: stub('N24' as NoteId, 'Comptes 61x..65x'),
+      handler: handleN24ServicesExterieurs,
     },
   ],
-  /** Note 25 — Charges de personnel (66x). */
   [
     'N25' as NoteId,
     {
       metadata: meta('N25', 'Note 25 — Charges de personnel', 'CR', true),
-      handler: stub('N25' as NoteId, 'Comptes 66x'),
+      handler: handleN25ChargesPersonnel,
     },
   ],
-  /** Note 26 — Dotations aux amortissements et provisions (68x). */
   [
     'N26' as NoteId,
     {
       metadata: meta('N26', 'Note 26 — Dotations amortissements et provisions', 'CR', true),
-      handler: stub('N26' as NoteId, 'Comptes 68x — recoupe N3D'),
+      handler: handleN26Dotations,
     },
   ],
-  /** Note 27 — Charges et produits financiers (67x/77x). */
   [
     'N27' as NoteId,
     {
       metadata: meta('N27', 'Note 27 — Charges et produits financiers', 'CR', true),
-      handler: stub('N27' as NoteId, 'Comptes 67x/77x'),
+      handler: handleN27Financiers,
     },
   ],
   [
@@ -317,20 +320,18 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
       handler: handleN28Provisions,
     },
   ],
-  /** Note 29 — Charges et produits HAO (83x/84x). */
   [
     'N29' as NoteId,
     {
       metadata: meta('N29', 'Note 29 — Charges et produits HAO', 'CR', false),
-      handler: stub('N29' as NoteId, 'Comptes 83x/84x — hors activité ordinaire'),
+      handler: handleN29Hao,
     },
   ],
-  /** Note 30 — Impôt sur le résultat (89x/87x). */
   [
     'N30' as NoteId,
     {
       metadata: meta('N30', 'Note 30 — Impôt sur le résultat', 'CR', true),
-      handler: stub('N30' as NoteId, 'Comptes 89x avec réconciliation taux'),
+      handler: handleN30Impot,
     },
   ],
 
