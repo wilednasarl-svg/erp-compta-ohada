@@ -24,6 +24,7 @@ import { useCurrentOrg } from '@/stores/auth-store';
 import {
   DOCUMENT_TYPE_DESCRIPTIONS,
   DOCUMENT_TYPE_LABELS,
+  DOCUMENT_TYPE_OVERRIDE_KEY,
   type CommitResult,
   type DocumentType,
   type ImportSourceType,
@@ -31,6 +32,20 @@ import {
   type SessionSummary,
   type TargetField,
 } from '@/types/imports';
+
+/**
+ * Libellés FR courts pour la phrase « Ce fichier ressemble plutôt à
+ * une {libellé} ». Distincts de `DOCUMENT_TYPE_LABELS` (formels) :
+ * ici on veut une formulation contextuelle et concise.
+ */
+const DOCUMENT_TYPE_SUGGESTION_LABEL: Record<DocumentType, string> = {
+  entries: 'liste d’écritures',
+  general_ledger: 'grand livre',
+  trial_balance: 'balance',
+  bank_statement: 'relevé bancaire',
+  auxiliary_ledger: 'grand livre auxiliaire',
+  sales_purchases: 'journal de ventes / achats',
+};
 
 const DOCUMENT_TYPE_ORDER: readonly DocumentType[] = [
   'entries',
@@ -328,6 +343,67 @@ function SessionStatusBadge({ status }: { status: SessionSummary['status'] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Suggestion bandeau : « Ce fichier ressemble plutôt à une {libellé}. »
+//
+// Présentation : ton informatif ambré, surface paper-ivory respectée
+// (background ambre-50 doux, texte ambre-900). Pas un Toast volatil —
+// le signal doit rester visible pour qu'un opérateur puisse y revenir
+// après inspection de la preview.
+// ─────────────────────────────────────────────────────────────────────
+
+interface SuggestedDocumentTypeBannerProps {
+  readonly suggested: DocumentType;
+  readonly isPending: boolean;
+  readonly success: DocumentType | null;
+  readonly error: ApiError | null;
+  readonly onSwitch: () => void;
+}
+
+function SuggestedDocumentTypeBanner({
+  suggested,
+  isPending,
+  success,
+  error,
+  onSwitch,
+}: SuggestedDocumentTypeBannerProps) {
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+      <p className="leading-snug">
+        Ce fichier ressemble plutôt à une{' '}
+        <span className="font-semibold">{DOCUMENT_TYPE_SUGGESTION_LABEL[suggested]}</span> —
+        basculer ?
+      </p>
+      <div className="flex flex-col items-start gap-1 sm:items-end">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+          disabled={isPending}
+          onClick={onSwitch}
+        >
+          {isPending ? (
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          Basculer en {DOCUMENT_TYPE_LABELS[suggested].toLowerCase()}
+        </Button>
+        {success !== null && (
+          <span className="text-xs text-emerald-700">
+            <CheckCircle2 className="mr-1 inline h-3 w-3" />
+            Type basculé en {DOCUMENT_TYPE_SUGGESTION_LABEL[success]}. Preview régénérée.
+          </span>
+        )}
+      </div>
+      {error !== null && (
+        <div className="basis-full">
+          <FormError error={error} className="mt-1" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Detail panel — actions contextuelles selon le statut
 // ─────────────────────────────────────────────────────────────────────
 
@@ -400,6 +476,39 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     {
       onSuccess: (data) => {
         setPreview(data);
+        onMutated();
+      },
+    },
+  );
+
+  // Bascule de DocumentType — injecte la sentinelle `__documentType`
+  // dans le `mappingOverride` existant pour préserver les overrides
+  // de colonnes déjà choisis par l'utilisateur. Le backend
+  // (`ImportSessionService.updateMappingOverride`) re-applique le
+  // mapping + revalide la staging, et repasse la session en `parsed` :
+  // on re-déclenche la preview au succès pour rafraîchir l'écran.
+  const switchDocumentType = useApiMutation(
+    async (target: DocumentType) => {
+      const overrideOnly = preview
+        ? Object.fromEntries(
+            Object.entries(preview.headerMapping).map(([h, t]) => [h, t as string]),
+          )
+        : {};
+      const payload: Record<string, string> = {
+        ...overrideOnly,
+        [DOCUMENT_TYPE_OVERRIDE_KEY]: target,
+      };
+      await api.patch(
+        `/organizations/${orgId}/imports/sessions/${session.id}/mapping`,
+        { mappingOverride: payload },
+      );
+      return target;
+    },
+    {
+      onSuccess: () => {
+        // Reset la preview locale pour que l'auto-trigger relance un
+        // POST /preview frais sur la session re-basculée en `parsed`.
+        setPreview(null);
         onMutated();
       },
     },
@@ -585,6 +694,24 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   </span>
                 )}
               </div>
+
+              {/* Suggestion de bascule de DocumentType — affichée
+                  uniquement quand l'auto-détection sur les colonnes
+                  effectivement mappées indique une nature de document
+                  différente du choix initial. Ton informatif (ambre
+                  doux), pas alarmant — c'est une aide, pas une erreur. */}
+              {preview.suggestedDocumentType !== null &&
+                preview.suggestedDocumentType !== session.documentType && (
+                  <SuggestedDocumentTypeBanner
+                    suggested={preview.suggestedDocumentType}
+                    isPending={switchDocumentType.isPending}
+                    success={switchDocumentType.data ?? null}
+                    error={switchDocumentType.error}
+                    onSwitch={() =>
+                      switchDocumentType.mutate(preview.suggestedDocumentType as DocumentType)
+                    }
+                  />
+                )}
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">

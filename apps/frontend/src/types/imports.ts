@@ -109,7 +109,24 @@ export interface PreviewResult {
   readonly unmappedTargets: ReadonlyArray<TargetField>;
   readonly totals: { total: number; withErrors: number };
   readonly entries: ReadonlyArray<PreviewEntry>;
+  /**
+   * Type de document inféré par l'auto-détection à partir des colonnes
+   * effectivement mappées. `null` quand l'heuristique n'a pas de
+   * suggestion différente du choix utilisateur. Quand non-null ET
+   * différent de `session.documentType`, l'UI propose une bascule en
+   * 1 clic via un PATCH du mapping avec la clé sentinelle
+   * `__documentType` (cf. backend `DOCUMENT_TYPE_OVERRIDE_KEY`).
+   */
+  readonly suggestedDocumentType: DocumentType | null;
 }
+
+/**
+ * Sentinelle injectée dans `mappingOverride` pour basculer le
+ * `documentType` d'une session sans nouvelle migration SQL. Doit
+ * rester strictement alignée avec le backend
+ * (`apps/backend/src/modules/imports/types/import-status.ts`).
+ */
+export const DOCUMENT_TYPE_OVERRIDE_KEY = '__documentType' as const;
 
 export interface CommitResult {
   readonly sessionId: string;
