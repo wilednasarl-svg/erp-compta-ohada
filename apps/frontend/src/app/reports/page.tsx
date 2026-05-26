@@ -3074,6 +3074,21 @@ function ImportDiagnosticPanel({ orgId }: { readonly orgId: string }) {
           {diagQuery.isFetching && (
             <Loader2 className="h-5 w-5 animate-spin text-slate-500" aria-label="chargement" />
           )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (activeSessionId === '') return;
+              window.open(
+                `/api/organizations/${orgId}/reports/import-diagnostic/${activeSessionId}.pdf`,
+                '_blank',
+              );
+            }}
+            disabled={activeSessionId === '' || diagQuery.data === undefined}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Télécharger PDF
+          </Button>
         </div>
 
         {sessionsQuery.isError ? <FormError error={sessionsQuery.error} /> : null}

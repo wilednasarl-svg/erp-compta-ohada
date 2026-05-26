@@ -370,6 +370,29 @@ export class ReportsController {
     return { report };
   }
 
+  @Get('import-diagnostic/:sessionId.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({
+    summary: "Export PDF — Diagnostic d'import (rapport de conformité)",
+  })
+  @ApiProduces('application/pdf')
+  async importDiagnosticPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Param() params: ImportDiagnosticParamsDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getImportDiagnostic(asTenantId(org.id), params.sessionId);
+    const buffer = await this.pdf.importDiagnosticPdf(report, org.name);
+    const dateStamp = report.session.createdAt.slice(0, 10);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'diagnostic-import', dateStamp, undefined, 'pdf'),
+    );
+  }
+
   @Get('tft')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)

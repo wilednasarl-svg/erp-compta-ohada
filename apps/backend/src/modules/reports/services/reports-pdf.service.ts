@@ -8,6 +8,7 @@ import type {
   CashTrendReport,
   FinancialRatiosReport,
   GeneralLedgerReport,
+  ImportDiagnosticReport,
   ProfitLossAccountLine,
   ProfitLossReport,
   SigReport,
@@ -614,6 +615,210 @@ export class ReportsPdfService {
     y = this.tableRow(doc, cols, ['', 'Variation totale (Σ flux)', this.fmtAmt(report.variationTresorerie)], y, true);
     y = this.tableRow(doc, cols, ['', "Trésorerie à l'ouverture", this.fmtAmt(report.tresorerieOuverture)], y);
     y = this.tableRow(doc, cols, ['', 'Trésorerie à la clôture', this.fmtAmt(report.tresorerieCloture)], y);
+    this.footer(doc);
+    return this.finalize(doc);
+  }
+
+  // ─── Diagnostic d'import ────────────────────────────────────────────
+  async importDiagnosticPdf(report: ImportDiagnosticReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+
+    const sessionLabel =
+      report.session.label !== null && report.session.label !== ''
+        ? report.session.label
+        : `Session ${report.session.id.slice(0, 8)}`;
+    const docType = report.session.documentType !== null ? ` · ${report.session.documentType}` : '';
+    this.header(
+      doc,
+      orgName,
+      "Diagnostic d'import — Rapport de conformité",
+      `${sessionLabel}${docType} · ${report.session.totalLines} lignes · statut ${report.session.status}`,
+    );
+
+    // ── Verdict bandeau (rectangle coloré) ──
+    const verdictColors: Record<
+      'conforme' | 'à corriger' | 'bloquant',
+      { bg: string; border: string; text: string }
+    > = {
+      conforme: { bg: '#ECFDF5', border: '#10B981', text: '#065F46' },
+      'à corriger': { bg: '#FFFBEB', border: '#F59E0B', text: '#92400E' },
+      bloquant: { bg: '#FEF2F2', border: '#EF4444', text: '#991B1B' },
+    };
+    const palette = verdictColors[report.verdict.status];
+    const verdictY = doc.y;
+    const verdictHeight = 55;
+    const pageWidth = doc.page.width - ReportsPdfService.MARGIN * 2;
+    doc
+      .rect(ReportsPdfService.MARGIN, verdictY, pageWidth, verdictHeight)
+      .fillAndStroke(palette.bg, palette.border);
+    doc.fillColor(palette.text);
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(13)
+      .text(
+        `VERDICT : ${report.verdict.status.toUpperCase()}`,
+        ReportsPdfService.MARGIN + 10,
+        verdictY + 8,
+      );
+    doc
+      .font('Helvetica')
+      .fontSize(9)
+      .text(
+        `${report.verdict.criticalCount} anomalie(s) critique(s) · ${report.verdict.warningCount} avertissement(s) · ${report.verdict.infoCount} info(s)`,
+        ReportsPdfService.MARGIN + 10,
+        verdictY + 26,
+      );
+    doc
+      .font('Helvetica-Oblique')
+      .fontSize(8)
+      .text(
+        report.verdict.canCommit
+          ? "✓ Le fichier peut être commite en l'etat. Les avertissements ne sont pas bloquants."
+          : "✗ Le fichier ne peut PAS etre commite. Corriger les anomalies critiques listees plus bas avant de re-tenter.",
+        ReportsPdfService.MARGIN + 10,
+        verdictY + 40,
+      );
+    doc.fillColor('#000000');
+    doc.y = verdictY + verdictHeight + 12;
+
+    // ── Totaux globaux ──
+    const eqStatus = report.totals.isBalanced
+      ? 'EQUILIBRE'
+      : `DESEQUILIBRE de ${this.fmtAmt(report.totals.balanceDelta)}`;
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(9)
+      .text(
+        `Total debit : ${this.fmtAmt(report.totals.totalDebit)}  |  Total credit : ${this.fmtAmt(report.totals.totalCredit)}  |  ${eqStatus}`,
+        ReportsPdfService.MARGIN,
+        doc.y,
+      );
+    doc.moveDown(0.8);
+
+    // ── Balance des comptes ──
+    if (report.trialBalance.length > 0) {
+      doc.font('Helvetica-Bold').fontSize(10).text('Balance des comptes (previsionnelle)');
+      doc.moveDown(0.3);
+      const balCols = [
+        { label: 'Compte', width: 60 },
+        { label: 'Libelle', width: 280 },
+        { label: 'Lignes', width: 50, align: 'right' as const },
+        { label: 'Debit', width: 90, align: 'right' as const },
+        { label: 'Credit', width: 90, align: 'right' as const },
+        { label: 'Solde', width: 90, align: 'right' as const },
+        { label: 'Statut', width: 90 },
+      ];
+      let y = this.tableHeader(doc, balCols);
+      for (const row of report.trialBalance) {
+        if (y > doc.page.height - 60) {
+          doc.addPage();
+          y = this.tableHeader(doc, balCols);
+        }
+        const statut = row.accountExists
+          ? 'existant'
+          : row.autoProvisionable
+            ? 'auto-cree'
+            : 'inconnu';
+        y = this.tableRow(
+          doc,
+          balCols,
+          [
+            row.accountCode,
+            row.accountLabel,
+            String(row.lineCount),
+            this.fmtAmt(row.debit),
+            this.fmtAmt(row.credit),
+            `${this.fmtAmt(row.balance)} ${row.sign}`,
+            statut,
+          ],
+          y,
+        );
+      }
+      // Totaux row
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, balCols);
+      }
+      y = this.tableRow(
+        doc,
+        balCols,
+        [
+          '',
+          'TOTAUX',
+          '',
+          this.fmtAmt(report.totals.totalDebit),
+          this.fmtAmt(report.totals.totalCredit),
+          report.totals.isBalanced ? 'equilibre' : this.fmtAmt(report.totals.balanceDelta),
+          '',
+        ],
+        y,
+        true,
+      );
+      doc.y = y + 6;
+    }
+
+    // ── Anomalies ──
+    const renderAnomalies = (
+      title: string,
+      groups: ImportDiagnosticReport['anomalies']['critical'],
+      accent: string,
+    ): void => {
+      if (groups.length === 0) return;
+      if (doc.y > doc.page.height - 100) doc.addPage();
+      doc.moveDown(0.5);
+      doc.fillColor(accent).font('Helvetica-Bold').fontSize(10).text(title);
+      doc.fillColor('#000000');
+      doc.moveDown(0.2);
+      for (const g of groups) {
+        if (doc.y > doc.page.height - 80) doc.addPage();
+        doc
+          .font('Helvetica-Bold')
+          .fontSize(9)
+          .text(`• ${g.title} (${g.count} ligne${g.count > 1 ? 's' : ''})`);
+        doc.font('Helvetica').fontSize(8).text(g.description, { indent: 12 });
+        if (g.samples.length > 0) {
+          doc
+            .font('Helvetica-Oblique')
+            .fontSize(7)
+            .fillColor('#555555')
+            .text(`Exemples (${g.samples.length}/${g.count}) :`, { indent: 12 });
+          for (const s of g.samples.slice(0, 3)) {
+            const acct = s.accountCode !== null ? ` · compte ${s.accountCode}` : '';
+            const field = s.field !== undefined ? ` · champ ${s.field}` : '';
+            doc.text(`  Ligne ${s.rowNumber}${acct}${field} — ${s.message}`, { indent: 16 });
+          }
+          doc.fillColor('#000000');
+        }
+        doc.moveDown(0.3);
+      }
+    };
+    renderAnomalies('Anomalies bloquantes', report.anomalies.critical, '#991B1B');
+    renderAnomalies('Avertissements', report.anomalies.warnings, '#92400E');
+    renderAnomalies('Informations', report.anomalies.info, '#1F2937');
+
+    // ── Plan de normalisation ──
+    if (report.remediationPlan.length > 0) {
+      if (doc.y > doc.page.height - 100) doc.addPage();
+      doc.moveDown(0.5);
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(11)
+        .text('Plan de normalisation — actions a entreprendre');
+      doc.moveDown(0.3);
+      for (const item of report.remediationPlan) {
+        if (doc.y > doc.page.height - 60) doc.addPage();
+        const autoTag = item.autoFixable ? ' [auto-fix]' : '';
+        doc
+          .font('Helvetica-Bold')
+          .fontSize(9)
+          .text(
+            `P${item.priority} · ${item.title}${autoTag} (${item.affectedCount} ligne${item.affectedCount > 1 ? 's' : ''})`,
+          );
+        doc.font('Helvetica').fontSize(8).text(item.description, { indent: 12 });
+        doc.moveDown(0.3);
+      }
+    }
+
     this.footer(doc);
     return this.finalize(doc);
   }
