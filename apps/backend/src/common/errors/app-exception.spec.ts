@@ -226,6 +226,11 @@ describe('HTTP status mapping', () => {
       REGULARIZATION_BATCH_NOT_EXECUTED: 409,
       REGULARIZATION_BATCH_ALREADY_REVERSED: 409,
       REGULARIZATION_ENTRY_INVALID_TYPE: 422,
+      // W4.6 — Effets de commerce.
+      BILL_NOT_FOUND: 404,
+      BILL_INVALID_STATE_FOR_ACTION: 409,
+      BILL_INVALID_AMOUNT: 422,
+      BILL_NEGATIVE_NET: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
