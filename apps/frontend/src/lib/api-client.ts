@@ -284,6 +284,102 @@ async function request<T>(
   return envelope.data as T;
 }
 
+/**
+ * Trigger a file download (xlsx, pdf, zip…) from a backend endpoint.
+ *
+ * `window.open('/api/…')` cannot work for two reasons: (1) the frontend
+ * domain has no `/api/*` route or rewrite — the real backend lives at
+ * `NEXT_PUBLIC_API_BASE_URL`; (2) `window.open` cannot inject the
+ * `Authorization: Bearer` header that `request()` adds. This helper
+ * fetches the resource as a blob (with auth + 401 refresh-retry) and
+ * triggers a synthetic `<a download>` click.
+ *
+ * The filename falls back to the server's `Content-Disposition` header
+ * when the caller does not provide one explicitly.
+ */
+async function downloadFile(
+  path: string,
+  fallbackFilename: string,
+  retryOn401: boolean = true,
+): Promise<void> {
+  const url = `${BASE_URL}${path}`;
+  const buildHeaders = (): Record<string, string> => {
+    const h: Record<string, string> = {};
+    if (currentAuthToken !== null) {
+      h['Authorization'] = `Bearer ${currentAuthToken}`;
+    }
+    return h;
+  };
+
+  const doFetch = async (): Promise<Response> =>
+    fetch(url, { method: 'GET', headers: buildHeaders(), credentials: 'include' });
+
+  let response: Response;
+  try {
+    response = await doFetch();
+  } catch (cause: unknown) {
+    throw new ApiError(0, {
+      code: 'NETWORK_ERROR',
+      message: cause instanceof Error ? cause.message : 'Network request failed',
+    });
+  }
+
+  if (response.status === 401 && retryOn401) {
+    const newAccess = await refreshAccessToken();
+    if (newAccess !== null) {
+      try {
+        response = await doFetch();
+      } catch (cause: unknown) {
+        throw new ApiError(0, {
+          code: 'NETWORK_ERROR',
+          message: cause instanceof Error ? cause.message : 'Network request failed',
+        });
+      }
+    }
+  }
+
+  if (!response.ok) {
+    let body: ApiErrorBody = {
+      code: 'UNKNOWN_ERROR',
+      message: `Backend returned ${response.status}`,
+    };
+    try {
+      const parsed = (await response.json()) as { error?: ApiErrorBody };
+      if (parsed.error) body = parsed.error;
+    } catch {
+      // Non-JSON body — keep the default message.
+    }
+    throw new ApiError(response.status, body);
+  }
+
+  const filename = extractFilename(response.headers.get('Content-Disposition')) ?? fallbackFilename;
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  // Revoke after a tick so the browser has time to start the download.
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+function extractFilename(contentDisposition: string | null): string | null {
+  if (contentDisposition === null) return null;
+  // Prefer RFC 5987 `filename*=UTF-8''…` (handles accents), then plain `filename="…"`.
+  const utf8 = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(contentDisposition);
+  if (utf8 && utf8[1]) {
+    try {
+      return decodeURIComponent(utf8[1].trim().replace(/^"|"$/g, ''));
+    } catch {
+      // Fall through to the plain form.
+    }
+  }
+  const plain = /filename\s*=\s*"?([^";]+)"?/i.exec(contentDisposition);
+  return plain && plain[1] ? plain[1].trim() : null;
+}
+
 export const api = {
   get: <T>(path: string, options?: RequestOptions): Promise<T> => request<T>('GET', path, options),
   post: <T>(path: string, body?: RequestOptions['body'], options?: RequestOptions): Promise<T> =>
@@ -292,4 +388,6 @@ export const api = {
     request<T>('PATCH', path, { ...options, body }),
   delete: <T>(path: string, options?: RequestOptions): Promise<T> =>
     request<T>('DELETE', path, options),
+  download: (path: string, fallbackFilename: string): Promise<void> =>
+    downloadFile(path, fallbackFilename),
 };

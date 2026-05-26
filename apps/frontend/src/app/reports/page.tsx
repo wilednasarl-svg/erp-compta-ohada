@@ -360,17 +360,13 @@ function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
     setDownloading(true);
     try {
       const params = new URLSearchParams({ fromDate, toDate });
-      // Window.open avec URL avec params déclenche le download dans
-      // l'onglet courant — l'attribut Content-Disposition côté backend
-      // assure la sauvegarde sur disque sans naviguer.
-      window.open(
-        `/api/organizations/${orgId}/reports/annual-package.zip?${params.toString()}`,
-        '_self',
+      await api.download(
+        `/organizations/${orgId}/reports/annual-package.zip?${params.toString()}`,
+        'annual-package.zip',
       );
       setOpen(false);
     } finally {
-      // Re-enable button after a brief delay — the download is async.
-      setTimeout(() => setDownloading(false), 2000);
+      setDownloading(false);
     }
   };
 
@@ -1238,8 +1234,10 @@ function ComparativeBalancePanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    const url = `/api/organizations/${orgId}/reports/comparative-balance.xlsx?${buildSearchParams(submitted).toString()}`;
-    window.open(url, '_blank');
+    void api.download(
+      `/organizations/${orgId}/reports/comparative-balance.xlsx?${buildSearchParams(submitted).toString()}`,
+      'comparative-balance.xlsx',
+    );
   };
 
   return (
@@ -1520,8 +1518,10 @@ function SigPanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    const url = `/api/organizations/${orgId}/reports/sig.xlsx?${buildSearchParams(submitted).toString()}`;
-    window.open(url, '_blank');
+    void api.download(
+      `/organizations/${orgId}/reports/sig.xlsx?${buildSearchParams(submitted).toString()}`,
+      'sig.xlsx',
+    );
   };
 
   return (
@@ -1763,9 +1763,9 @@ function MultiYearBalancePanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    window.open(
-      `/api/organizations/${orgId}/reports/multi-year-balance.xlsx?${buildParams(submitted).toString()}`,
-      '_blank',
+    void api.download(
+      `/organizations/${orgId}/reports/multi-year-balance.xlsx?${buildParams(submitted).toString()}`,
+      'multi-year-balance.xlsx',
     );
   };
 
@@ -1934,9 +1934,9 @@ function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    window.open(
-      `/api/organizations/${orgId}/reports/aging-balance.xlsx?${buildParams(submitted).toString()}`,
-      '_blank',
+    void api.download(
+      `/organizations/${orgId}/reports/aging-balance.xlsx?${buildParams(submitted).toString()}`,
+      'aging-balance.xlsx',
     );
   };
 
@@ -2099,9 +2099,9 @@ function CashTrendPanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    window.open(
-      `/api/organizations/${orgId}/reports/cash-trend.xlsx?${buildParams(submitted).toString()}`,
-      '_blank',
+    void api.download(
+      `/organizations/${orgId}/reports/cash-trend.xlsx?${buildParams(submitted).toString()}`,
+      'cash-trend.xlsx',
     );
   };
 
@@ -2269,9 +2269,9 @@ function FinancialRatiosPanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    window.open(
-      `/api/organizations/${orgId}/reports/financial-ratios.xlsx?${buildSearchParams(submitted).toString()}`,
-      '_blank',
+    void api.download(
+      `/organizations/${orgId}/reports/financial-ratios.xlsx?${buildSearchParams(submitted).toString()}`,
+      'financial-ratios.xlsx',
     );
   };
 
@@ -2417,9 +2417,9 @@ function TafirePanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    window.open(
-      `/api/organizations/${orgId}/reports/tafire.xlsx?${buildParams(submitted).toString()}`,
-      '_blank',
+    void api.download(
+      `/organizations/${orgId}/reports/tafire.xlsx?${buildParams(submitted).toString()}`,
+      'tafire.xlsx',
     );
   };
 
@@ -2542,9 +2542,9 @@ function TftPanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    window.open(
-      `/api/organizations/${orgId}/reports/tft.xlsx?${buildParams(submitted).toString()}`,
-      '_blank',
+    void api.download(
+      `/organizations/${orgId}/reports/tft.xlsx?${buildParams(submitted).toString()}`,
+      'tft.xlsx',
     );
   };
 
@@ -2672,9 +2672,9 @@ function AnnexePanel({ orgId }: { readonly orgId: string }) {
 
   const downloadXlsx = (): void => {
     if (submitted === null) return;
-    window.open(
-      `/api/organizations/${orgId}/reports/annexe.xlsx?${buildParams(submitted).toString()}`,
-      '_blank',
+    void api.download(
+      `/organizations/${orgId}/reports/annexe.xlsx?${buildParams(submitted).toString()}`,
+      'annexe.xlsx',
     );
   };
 
@@ -3079,9 +3079,9 @@ function ImportDiagnosticPanel({ orgId }: { readonly orgId: string }) {
             variant="outline"
             onClick={() => {
               if (activeSessionId === '') return;
-              window.open(
-                `/api/organizations/${orgId}/reports/import-diagnostic/${activeSessionId}.pdf`,
-                '_blank',
+              void api.download(
+                `/organizations/${orgId}/reports/import-diagnostic/${activeSessionId}.pdf`,
+                `import-diagnostic-${activeSessionId}.pdf`,
               );
             }}
             disabled={activeSessionId === '' || diagQuery.data === undefined}
