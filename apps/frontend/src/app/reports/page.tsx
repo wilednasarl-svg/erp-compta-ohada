@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart3,
   BookText,
@@ -11,6 +11,7 @@ import {
   GitBranch,
   History,
   Landmark,
+  Layers,
   Loader2,
   Package,
   TrendingUp,
@@ -36,12 +37,14 @@ import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 import type {
   AgingBalanceReport,
+  AnalyticAxisSummary,
   AnnexeNoteDetailReport,
   AnnexeReport,
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
   GeneralLedgerReport,
+  MarginByAxisReport,
   MultiYearBalanceReport,
   SigReport,
   TafireReport,
@@ -85,6 +88,12 @@ interface TftEnvelope {
 interface AnnexeEnvelope {
   readonly report: AnnexeReport;
 }
+interface MarginByAxisEnvelope {
+  readonly report: MarginByAxisReport;
+}
+interface AnalyticAxesEnvelope {
+  readonly axes: ReadonlyArray<AnalyticAxisSummary>;
+}
 
 type ReportMode =
   | 'trial-balance'
@@ -97,6 +106,7 @@ type ReportMode =
   | 'tafire'
   | 'tft'
   | 'annexe'
+  | 'margin-by-axis'
   | 'general-ledger';
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
@@ -255,6 +265,18 @@ export default function ReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('margin-by-axis')}
+            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'margin-by-axis'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            Marge par activité
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('general-ledger')}
             className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'general-ledger'
@@ -287,6 +309,8 @@ export default function ReportsPage() {
           <TftPanel orgId={orgId} />
         ) : mode === 'annexe' ? (
           <AnnexePanel orgId={orgId} />
+        ) : mode === 'margin-by-axis' ? (
+          <MarginByAxisPanel orgId={orgId} />
         ) : (
           <GeneralLedgerPanel orgId={orgId} />
         )}
@@ -373,6 +397,201 @@ function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
       <Button variant="outline" onClick={() => setOpen(false)}>
         Annuler
       </Button>
+    </div>
+  );
+}
+
+// ─── Marge par axe analytique ──────────────────────────────────────────
+
+function MarginByAxisPanel({ orgId }: { readonly orgId: string }) {
+  const [fromDate, setFromDate] = useState<string>(yearStartIso());
+  const [toDate, setToDate] = useState<string>(todayIso());
+  const [axisType, setAxisType] = useState<string>('CHANTIER');
+  const [submitted, setSubmitted] = useState<{
+    fromDate: string;
+    toDate: string;
+    axisType: string;
+  } | null>(null);
+
+  // Liste des axes disponibles pour suggérer les types existants
+  const axesQuery = useQuery<ReadonlyArray<AnalyticAxisSummary>, ApiError>({
+    queryKey: ['reports', 'analytic-axes', orgId],
+    queryFn: async () => {
+      const data = await api.get<AnalyticAxesEnvelope>(
+        `/organizations/${orgId}/reports/analytic-axes`,
+      );
+      return data.axes;
+    },
+    enabled: orgId !== '',
+  });
+  const knownTypes = useMemo(
+    () => Array.from(new Set((axesQuery.data ?? []).map((a) => a.axisType))),
+    [axesQuery.data],
+  );
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({
+      fromDate: s.fromDate,
+      toDate: s.toDate,
+      axisType: s.axisType,
+    });
+
+  const query = useQuery<MarginByAxisReport, ApiError>({
+    queryKey: ['reports', 'margin-by-axis', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<MarginByAxisEnvelope>(
+        `/organizations/${orgId}/reports/margin-by-axis?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Marge par activité</CardTitle>
+        <CardDescription>
+          Décomposition de la marge brute et du résultat par axe analytique (chantier, BU,
+          activité, projet). Seules les lignes d&apos;écriture imputées à un axe (champ
+          analytic_axis_code) entrent dans le calcul. Pour utiliser ce rapport, imputez les
+          écritures à l&apos;import via la colonne d&apos;axe ou en saisie manuelle.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 sm:grid-cols-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ fromDate, toDate, axisType });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="mba-axis">Type d&apos;axe</Label>
+            <Input
+              id="mba-axis"
+              type="text"
+              value={axisType}
+              onChange={(e) => setAxisType(e.target.value.toUpperCase())}
+              placeholder="CHANTIER"
+              required
+              list="known-axis-types"
+            />
+            {knownTypes.length > 0 ? (
+              <datalist id="known-axis-types">
+                {knownTypes.map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
+            ) : null}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="mba-from">Du</Label>
+            <Input
+              id="mba-from"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="mba-to">Au</Label>
+            <Input
+              id="mba-to"
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex items-end">
+            <Button type="submit" disabled={query.isFetching}>
+              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Générer
+            </Button>
+          </div>
+        </form>
+
+        {axesQuery.data !== undefined && axesQuery.data.length === 0 ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Aucune écriture imputée analytiquement pour le moment. Au prochain import,
+            mappez une colonne du fichier sur le champ <code>analytic_axis_code</code> pour
+            commencer à ventiler par chantier ou BU.
+          </div>
+        ) : null}
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <MarginByAxisTable report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MarginByAxisTable({ report }: { readonly report: MarginByAxisReport }) {
+  if (report.rows.length === 0) {
+    return (
+      <p className="text-sm text-slate-500">
+        Aucune écriture imputée sur l&apos;axe <strong>{report.axisType}</strong> pour cette
+        période.
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+            <th className="px-2 py-2">Axe</th>
+            <th className="px-2 py-2 text-right">Chiffre d&apos;affaires</th>
+            <th className="px-2 py-2 text-right">Achats consommés</th>
+            <th className="px-2 py-2 text-right">Marge brute</th>
+            <th className="px-2 py-2 text-right">% marge</th>
+            <th className="px-2 py-2 text-right">Charges personnel</th>
+            <th className="px-2 py-2 text-right">Autres charges</th>
+            <th className="px-2 py-2 text-right">Résultat net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.rows.map((row) => {
+            const rn = Number(row.resultatNet);
+            return (
+              <tr key={row.axisCode} className="border-b hover:bg-slate-50">
+                <td className="px-2 py-1 font-mono text-xs font-semibold">{row.axisCode}</td>
+                <td className="px-2 py-1 text-right font-mono">{fmt(row.chiffreAffaires)}</td>
+                <td className="px-2 py-1 text-right font-mono">{fmt(row.achatsConsommes)}</td>
+                <td className="px-2 py-1 text-right font-mono">{fmt(row.margeBrute)}</td>
+                <td className="px-2 py-1 text-right font-mono text-xs text-slate-500">
+                  {row.margeBrutePercent !== null ? `${row.margeBrutePercent}%` : '—'}
+                </td>
+                <td className="px-2 py-1 text-right font-mono">{fmt(row.chargesPersonnel)}</td>
+                <td className="px-2 py-1 text-right font-mono">{fmt(row.autresCharges)}</td>
+                <td
+                  className={`px-2 py-1 text-right font-mono font-semibold ${rn < 0 ? 'text-red-600' : 'text-emerald-700'}`}
+                >
+                  {fmt(row.resultatNet)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 bg-slate-100 font-medium">
+            <td className="px-2 py-2">TOTAL</td>
+            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.chiffreAffaires)}</td>
+            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.achatsConsommes)}</td>
+            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.margeBrute)}</td>
+            <td className="px-2 py-2 text-right font-mono text-xs text-slate-500">
+              {report.totals.margeBrutePercent !== null ? `${report.totals.margeBrutePercent}%` : '—'}
+            </td>
+            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.chargesPersonnel)}</td>
+            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.autresCharges)}</td>
+            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.resultatNet)}</td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }
@@ -606,6 +825,7 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
     toDate: string;
   } | null>(null);
 
+  const queryClient = useQueryClient();
   const accountsQuery = useQuery<ReadonlyArray<AccountView>, ApiError>({
     queryKey: ['chart-of-accounts', orgId],
     queryFn: async () => {
@@ -615,6 +835,18 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
       return data.accounts;
     },
     enabled: orgId !== '',
+  });
+
+  const importChartMutation = useMutation<{ added: number; skipped: number }, ApiError>({
+    mutationFn: async () => {
+      return api.post<{ added: number; skipped: number }>(
+        `/organizations/${orgId}/chart-of-accounts/import`,
+        {},
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['chart-of-accounts', orgId] });
+    },
   });
 
   const ledgerQuery = useQuery<GeneralLedgerReport, ApiError>({
@@ -767,7 +999,13 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
               required
             >
               <option value="">
-                — {filteredAccounts.length} compte(s) disponible(s) —
+                {accountsQuery.isLoading
+                  ? '— Chargement du plan comptable… —'
+                  : accountsQuery.isError
+                    ? `— Erreur : ${accountsQuery.error?.message ?? 'plan indisponible'} —`
+                    : (accountsQuery.data?.length ?? 0) === 0
+                      ? "— Plan comptable vide (utiliser le bouton d'import) —"
+                      : `— ${filteredAccounts.length} compte(s) disponible(s) —`}
               </option>
               {filteredAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -804,6 +1042,35 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
           </div>
         </form>
 
+        {accountsQuery.isSuccess && (accountsQuery.data?.length ?? 0) === 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <span>
+              Le plan comptable de cette organisation est vide. Importer le référentiel SYSCOHADA
+              pour peupler les comptes.
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => importChartMutation.mutate()}
+              disabled={importChartMutation.isPending}
+            >
+              {importChartMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Importer le plan SYSCOHADA
+            </Button>
+            {importChartMutation.isSuccess ? (
+              <span className="text-xs text-emerald-700">
+                Importé : {importChartMutation.data.added} ajouté(s),{' '}
+                {importChartMutation.data.skipped} ignoré(s).
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {accountsQuery.isError ? <FormError error={accountsQuery.error} /> : null}
+        {importChartMutation.isError ? <FormError error={importChartMutation.error} /> : null}
         {ledgerQuery.isError ? <FormError error={ledgerQuery.error} /> : null}
 
         {ledgerQuery.data !== undefined ? (

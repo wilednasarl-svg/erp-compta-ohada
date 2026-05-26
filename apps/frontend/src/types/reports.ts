@@ -102,6 +102,31 @@ export interface AnnexeNoteDetailReport {
   readonly methodology?: string;
 }
 
+export interface AnalyticAxisSummary {
+  readonly axisType: string;
+  readonly axisCode: string;
+  readonly lineCount: number;
+}
+
+export interface MarginByAxisRow {
+  readonly axisCode: string;
+  readonly chiffreAffaires: string;
+  readonly achatsConsommes: string;
+  readonly margeBrute: string;
+  readonly margeBrutePercent: string | null;
+  readonly chargesPersonnel: string;
+  readonly autresCharges: string;
+  readonly resultatNet: string;
+}
+
+export interface MarginByAxisReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly axisType: string;
+  readonly rows: ReadonlyArray<MarginByAxisRow>;
+  readonly totals: MarginByAxisRow;
+}
+
 export type AgingSide = 'CLIENT' | 'FOURNISSEUR';
 
 export interface AgingBucket {
