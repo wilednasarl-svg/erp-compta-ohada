@@ -209,6 +209,10 @@ describe('HTTP status mapping', () => {
       COLLAB_INVALID_TRANSITION: 422,
       COLLAB_COMMENT_EMPTY: 422,
       COLLAB_REQUEST_CLOSED: 409,
+      PROVISION_NOT_FOUND: 404,
+      PROVISION_INVALID_AMOUNT: 422,
+      PROVISION_INSUFFICIENT_BALANCE: 422,
+      PROVISION_NOT_ACTIVE: 409,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
