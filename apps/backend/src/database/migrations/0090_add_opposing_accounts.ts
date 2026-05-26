@@ -48,9 +48,7 @@ export class AddOpposingAccounts1700000000090 implements MigrationInterface {
     `);
     await queryRunner.query(`
       COMMENT ON COLUMN "reference_chart_accounts"."is_opposing"
-        IS 'true → le compte a un sens normal opposé à sa classe parente '
-        || '(dépréciations 29x/39x/49x/59x, 109, 121, 129, 409). '
-        || 'Son solde vient en déduction du poste au Bilan, jamais en addition.'
+        IS 'true → le compte a un sens normal opposé à sa classe parente (dépréciations 29x/39x/49x/59x, 109, 121, 129, 409). Son solde vient en déduction du poste au Bilan, jamais en addition.'
     `);
     await queryRunner.query(`
       UPDATE "reference_chart_accounts"
@@ -69,8 +67,7 @@ export class AddOpposingAccounts1700000000090 implements MigrationInterface {
     `);
     await queryRunner.query(`
       COMMENT ON COLUMN "organization_chart_accounts"."is_opposing"
-        IS 'Hérité de reference_chart_accounts.is_opposing lors du clone du plan '
-        || 'à la création de l''organisation. Voir migration 0090.'
+        IS 'Hérité de reference_chart_accounts.is_opposing lors du clone du plan à la création de l''organisation. Voir migration 0090.'
     `);
     // Backfill via la FK vers reference_chart_accounts (les comptes
     // clonés ont reference_account_id non-null) ; pour les comptes
