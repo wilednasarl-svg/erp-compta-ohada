@@ -93,7 +93,7 @@ const FRENCH_MONTHS: Record<string, string> = {
   janvier: '01',
   janv: '01',
   fevrier: '02',
-  'février': '02',
+  février: '02',
   fevr: '02',
   mars: '03',
   avril: '04',
@@ -103,7 +103,7 @@ const FRENCH_MONTHS: Record<string, string> = {
   juillet: '07',
   juil: '07',
   aout: '08',
-  'août': '08',
+  août: '08',
   septembre: '09',
   sept: '09',
   octobre: '10',
@@ -111,7 +111,7 @@ const FRENCH_MONTHS: Record<string, string> = {
   novembre: '11',
   nov: '11',
   decembre: '12',
-  'décembre': '12',
+  décembre: '12',
   dec: '12',
 };
 

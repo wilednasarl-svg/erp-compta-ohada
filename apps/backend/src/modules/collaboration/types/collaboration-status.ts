@@ -24,7 +24,9 @@ export const COLLABORATION_STATUS_VALUES = [
 
 export type CollaborationStatus = (typeof COLLABORATION_STATUS_VALUES)[number];
 
-const ALLOWED_TRANSITIONS: Readonly<Record<CollaborationStatus, ReadonlyArray<CollaborationStatus>>> = {
+const ALLOWED_TRANSITIONS: Readonly<
+  Record<CollaborationStatus, ReadonlyArray<CollaborationStatus>>
+> = {
   open: ['in_progress', 'cancelled'],
   in_progress: ['completed', 'open', 'cancelled'],
   completed: ['in_progress'],

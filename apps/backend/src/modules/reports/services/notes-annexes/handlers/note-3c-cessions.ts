@@ -26,10 +26,7 @@ function fmt(n: number): string {
 
 export const handleN3cCessions: NoteHandler = async (ctx, deps) => {
   const assets = await deps.assets.findAllForExercise(ctx.organizationId, ctx.fiscalYear);
-  const schedules = await deps.assets.findDepreciationForYear(
-    ctx.organizationId,
-    ctx.fiscalYear,
-  );
+  const schedules = await deps.assets.findDepreciationForYear(ctx.organizationId, ctx.fiscalYear);
 
   const cumulByAsset = new Map<string, number>();
   for (const s of schedules) {
@@ -75,9 +72,7 @@ export const handleN3cCessions: NoteHandler = async (ctx, deps) => {
     key: 'TOTAL',
     label: 'TOTAL plus-values et moins-values',
     values: {
-      prixCession: fmt(
-        rows.reduce((s, r) => s + num(r.values.prixCession), 0),
-      ),
+      prixCession: fmt(rows.reduce((s, r) => s + num(r.values.prixCession), 0)),
       vnc: fmt(rows.reduce((s, r) => s + num(r.values.vnc), 0)),
       plusValue: fmt(totalPv),
       moinsValue: fmt(totalMv),

@@ -21,7 +21,7 @@ export const handleN2Conformite: NoteHandler = async () => {
         statut: 'CONFORME',
         texte:
           'Les états financiers annuels ont été établis conformément au PCGO ' +
-          '(Acte uniforme AUDCIF révisé). Aucune dérogation n\'a été appliquée.',
+          "(Acte uniforme AUDCIF révisé). Aucune dérogation n'a été appliquée.",
       },
     },
   ];

@@ -1554,7 +1554,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '148',
-    label: 'Autres subventions d\'investissement',
+    label: "Autres subventions d'investissement",
     class: 1,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -1589,7 +1589,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '155',
-    label: "Provisions réglementées relatives aux stocks",
+    label: 'Provisions réglementées relatives aux stocks',
     class: 1,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -1597,7 +1597,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '156',
-    label: "Provisions pour investissement",
+    label: 'Provisions pour investissement',
     class: 1,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -1623,7 +1623,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '163',
-    label: 'Avances reçues de l\'État',
+    label: "Avances reçues de l'État",
     class: 1,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -1734,7 +1734,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '194',
-    label: "Provisions pour pertes de change",
+    label: 'Provisions pour pertes de change',
     class: 1,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -1742,7 +1742,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '195',
-    label: "Provisions pour impôts",
+    label: 'Provisions pour impôts',
     class: 1,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -1900,7 +1900,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '233',
-    label: 'Ouvrages d\'infrastructure',
+    label: "Ouvrages d'infrastructure",
     class: 2,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -2378,7 +2378,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '4132',
-    label: 'Clients, effets à l\'encaissement',
+    label: "Clients, effets à l'encaissement",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -2728,7 +2728,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '4861',
-    label: 'Charges constatées d\'avance — exploitation',
+    label: "Charges constatées d'avance — exploitation",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -2736,7 +2736,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '4862',
-    label: 'Produits constatés d\'avance — exploitation',
+    label: "Produits constatés d'avance — exploitation",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -2754,7 +2754,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 48 — Créances et dettes HAO (cessions immo + FNP investissements).
   {
     code: '481',
-    label: 'Fournisseurs d\'investissements',
+    label: "Fournisseurs d'investissements",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -2762,7 +2762,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '4818',
-    label: 'Fournisseurs d\'investissements, factures non parvenues',
+    label: "Fournisseurs d'investissements, factures non parvenues",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -2770,7 +2770,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '485',
-    label: 'Créances sur cessions d\'immobilisations',
+    label: "Créances sur cessions d'immobilisations",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -2778,7 +2778,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '4858',
-    label: 'Créances sur cessions d\'immobilisations — divers',
+    label: "Créances sur cessions d'immobilisations — divers",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -2887,7 +2887,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '513',
-    label: 'Chèques à l\'encaissement',
+    label: "Chèques à l'encaissement",
     class: 5,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -2919,7 +2919,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '565',
-    label: 'Escompte d\'effets et de chèques',
+    label: "Escompte d'effets et de chèques",
     class: 5,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -2935,7 +2935,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '585',
-    label: 'Régies d\'avances',
+    label: "Régies d'avances",
     class: 5,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3035,7 +3035,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '6082',
-    label: 'Achats d\'emballages perdus',
+    label: "Achats d'emballages perdus",
     class: 6,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3043,7 +3043,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '6033',
-    label: 'Variations des stocks d\'autres approvisionnements',
+    label: "Variations des stocks d'autres approvisionnements",
     class: 6,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3053,7 +3053,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 61 — Transports détaillés.
   {
     code: '6311',
-    label: 'Frais d\'acheminement (forfait courrier, fret)',
+    label: "Frais d'acheminement (forfait courrier, fret)",
     class: 6,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3199,7 +3199,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 69 — Dotations aux provisions et dépréciations détaillées.
   {
     code: '691',
-    label: 'Dotations aux provisions d\'exploitation',
+    label: "Dotations aux provisions d'exploitation",
     class: 6,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3207,7 +3207,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '6911',
-    label: 'Dotations aux provisions pour risques et charges d\'exploitation',
+    label: "Dotations aux provisions pour risques et charges d'exploitation",
     class: 6,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3325,7 +3325,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 71 — Subventions d'exploitation (détail).
   {
     code: '711',
-    label: 'Subventions d\'exploitation reçues de l\'État',
+    label: "Subventions d'exploitation reçues de l'État",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3333,7 +3333,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '712',
-    label: 'Subventions d\'exploitation reçues des collectivités publiques',
+    label: "Subventions d'exploitation reçues des collectivités publiques",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3341,7 +3341,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '713',
-    label: 'Subventions d\'exploitation reçues des organismes internationaux',
+    label: "Subventions d'exploitation reçues des organismes internationaux",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3349,7 +3349,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '718',
-    label: 'Autres subventions d\'exploitation',
+    label: "Autres subventions d'exploitation",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3411,7 +3411,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 77 — Revenus financiers détaillés.
   {
     code: '7713',
-    label: 'Subventions d\'équilibre reçues',
+    label: "Subventions d'équilibre reçues",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3453,7 +3453,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 79 — Reprises de provisions et dépréciations (détail).
   {
     code: '791',
-    label: 'Reprises de provisions d\'exploitation',
+    label: "Reprises de provisions d'exploitation",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3461,7 +3461,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '7911',
-    label: 'Reprises de provisions pour risques et charges d\'exploitation',
+    label: "Reprises de provisions pour risques et charges d'exploitation",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3529,7 +3529,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 81 — VNC des cessions d'immobilisations (sortie d'actif).
   {
     code: '811',
-    label: 'Valeurs comptables des cessions d\'immobilisations incorporelles',
+    label: "Valeurs comptables des cessions d'immobilisations incorporelles",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3537,7 +3537,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '812',
-    label: 'Valeurs comptables des cessions d\'immobilisations corporelles',
+    label: "Valeurs comptables des cessions d'immobilisations corporelles",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3545,7 +3545,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '816',
-    label: 'Valeurs comptables des cessions d\'immobilisations financières',
+    label: "Valeurs comptables des cessions d'immobilisations financières",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3555,7 +3555,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 82 — Produits des cessions (contrepartie au prix de cession).
   {
     code: '822',
-    label: 'Produits des cessions d\'immobilisations corporelles',
+    label: "Produits des cessions d'immobilisations corporelles",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3563,7 +3563,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '826',
-    label: 'Produits des cessions d\'immobilisations financières',
+    label: "Produits des cessions d'immobilisations financières",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3615,7 +3615,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '845',
-    label: 'Quote-part de subventions d\'investissement virée au résultat',
+    label: "Quote-part de subventions d'investissement virée au résultat",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3703,7 +3703,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // 88 — Subventions d'équilibre (POSTING).
   {
     code: '881',
-    label: 'Subventions d\'équilibre reçues — POSTING',
+    label: "Subventions d'équilibre reçues — POSTING",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3717,7 +3717,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // ─── 74 / 76 — TITLE manquants classe 7 ──────────────────────────────
   {
     code: '74',
-    label: 'Autres produits d\'exploitation',
+    label: "Autres produits d'exploitation",
     class: 7,
     account_type: 'TITLE',
     normal_balance: 'C',
@@ -3833,7 +3833,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // ─── 20 — Charges immobilisées (POSTING) ─────────────────────────────
   {
     code: '201',
-    label: 'Frais d\'établissement',
+    label: "Frais d'établissement",
     class: 2,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3909,7 +3909,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '333',
-    label: 'Produits d\'entretien',
+    label: "Produits d'entretien",
     class: 3,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -3951,7 +3951,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '404',
-    label: 'Fournisseurs d\'investissements',
+    label: "Fournisseurs d'investissements",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3959,7 +3959,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '405',
-    label: 'Fournisseurs d\'investissements, effets à payer',
+    label: "Fournisseurs d'investissements, effets à payer",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -3983,7 +3983,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '414',
-    label: 'Créances sur cessions courantes d\'immobilisations',
+    label: "Créances sur cessions courantes d'immobilisations",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -4025,7 +4025,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '474',
-    label: 'Compte d\'attente — sommes en instance d\'affectation',
+    label: "Compte d'attente — sommes en instance d'affectation",
     class: 4,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -4091,7 +4091,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '654',
-    label: 'Valeurs comptables des cessions courantes d\'immobilisations',
+    label: "Valeurs comptables des cessions courantes d'immobilisations",
     class: 6,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -4099,7 +4099,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '659',
-    label: 'Charges provisionnées d\'exploitation',
+    label: "Charges provisionnées d'exploitation",
     class: 6,
     account_type: 'POSTING',
     normal_balance: 'D',
@@ -4141,7 +4141,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // ─── 7x complément ───────────────────────────────────────────────────
   {
     code: '741',
-    label: 'Autres produits d\'exploitation divers',
+    label: "Autres produits d'exploitation divers",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -4149,7 +4149,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '748',
-    label: 'Reprises sur charges d\'exploitation antérieures',
+    label: "Reprises sur charges d'exploitation antérieures",
     class: 7,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -4191,7 +4191,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   // ─── 8x complément ───────────────────────────────────────────────────
   {
     code: '821',
-    label: 'Produits des cessions d\'immobilisations incorporelles',
+    label: "Produits des cessions d'immobilisations incorporelles",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'C',
@@ -4207,7 +4207,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
   },
   {
     code: '849',
-    label: 'Produits HAO — indemnités d\'assurance reçues',
+    label: "Produits HAO — indemnités d'assurance reçues",
     class: 8,
     account_type: 'POSTING',
     normal_balance: 'C',

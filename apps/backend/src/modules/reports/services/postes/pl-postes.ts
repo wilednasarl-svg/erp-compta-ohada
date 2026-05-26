@@ -41,11 +41,7 @@
 export type PlPosteKind = 'CHARGE' | 'PRODUIT' | 'SIG' | 'RESULTAT';
 
 /** Section éditoriale du Compte de résultat. */
-export type PlSection =
-  | 'Activités ordinaires'
-  | 'HAO'
-  | 'Soldes intermédiaires'
-  | 'Résultats';
+export type PlSection = 'Activités ordinaires' | 'HAO' | 'Soldes intermédiaires' | 'Résultats';
 
 /** Définition d'un poste lettré du Compte de résultat. */
 export interface PlPosteRef {
@@ -97,8 +93,7 @@ const MARGE_COMMERCIALE: readonly PlPosteRef[] = [
     sign: 1,
     parentGroup: 'XA',
     doctrinePage: 33,
-    notes:
-      'Solde créditeur 701 net des RRR accordés (7019). Ventilation Note 21.',
+    notes: 'Solde créditeur 701 net des RRR accordés (7019). Ventilation Note 21.',
   },
   {
     code: 'RA',
@@ -110,8 +105,7 @@ const MARGE_COMMERCIALE: readonly PlPosteRef[] = [
     sign: -1,
     parentGroup: 'XA',
     doctrinePage: 33,
-    notes:
-      'Solde débiteur 601 net des RRR obtenus (6019). Ventilation Note 22.',
+    notes: 'Solde débiteur 601 net des RRR obtenus (6019). Ventilation Note 22.',
   },
   {
     code: 'RB',
@@ -206,7 +200,7 @@ const SIG_XB: PlPosteRef = {
   parentGroup: 'XC',
   doctrinePage: 33,
   notes:
-    "Somme des ventes de marchandises (TA), produits fabriqués (TB), travaux/services (TC), produits accessoires (TD). Doctrine p. 33.",
+    'Somme des ventes de marchandises (TA), produits fabriqués (TB), travaux/services (TC), produits accessoires (TD). Doctrine p. 33.',
 };
 
 /* ========================================================================== */
@@ -224,8 +218,7 @@ const PRODUCTION_ET_AUTRES_PRODUITS: readonly PlPosteRef[] = [
     sign: 1,
     parentGroup: 'XC',
     doctrinePage: 33,
-    notes:
-      'Compte 73 : solde créditeur (stockage) = +, solde débiteur (déstockage) = −. Note 6.',
+    notes: 'Compte 73 : solde créditeur (stockage) = +, solde débiteur (déstockage) = −. Note 6.',
   },
   {
     code: 'TF',
@@ -262,7 +255,7 @@ const PRODUCTION_ET_AUTRES_PRODUITS: readonly PlPosteRef[] = [
     parentGroup: 'XC',
     doctrinePage: 33,
     notes:
-      "Solde créditeur 75 (auquel la doctrine adjoint 781 hors 7813 ; voir TI pour 781). Note 21.",
+      'Solde créditeur 75 (auquel la doctrine adjoint 781 hors 7813 ; voir TI pour 781). Note 21.',
   },
   {
     code: 'TI',
@@ -317,8 +310,7 @@ const ACHATS_ET_CHARGES_EXTERNES: readonly PlPosteRef[] = [
     sign: -1,
     parentGroup: 'XC',
     doctrinePage: 33,
-    notes:
-      'Solde débiteur 604/605/608 net des RRR obtenus. Note 22.',
+    notes: 'Solde débiteur 604/605/608 net des RRR obtenus. Note 22.',
   },
   {
     code: 'RF',
@@ -354,8 +346,7 @@ const ACHATS_ET_CHARGES_EXTERNES: readonly PlPosteRef[] = [
     sign: -1,
     parentGroup: 'XC',
     doctrinePage: 33,
-    notes:
-      'Contracte les classes 62 et 63 (solde débiteur cumulé). Note 24.',
+    notes: 'Contracte les classes 62 et 63 (solde débiteur cumulé). Note 24.',
   },
   {
     code: 'RI',
@@ -400,7 +391,7 @@ const SIG_XC: PlPosteRef = {
   parentGroup: 'XD',
   doctrinePage: 33,
   notes:
-    "Forme additive doctrinale p. 33 : « XC = (XB + RA + RB) + Σ(TE..RJ) ». Les charges (RA, RB, RC..RJ) sont déjà signées −, donc la sommation algébrique est correcte.",
+    'Forme additive doctrinale p. 33 : « XC = (XB + RA + RB) + Σ(TE..RJ) ». Les charges (RA, RB, RC..RJ) sont déjà signées −, donc la sommation algébrique est correcte.',
 };
 
 /* ========================================================================== */
@@ -708,7 +699,7 @@ const SIG_XI: PlPosteRef = {
   sign: 1,
   doctrinePage: 33,
   notes:
-    "Doctrine p. 33 : Résultat net = RAO + HAO − participation − impôt (RQ et RS portent déjà le signe −).",
+    'Doctrine p. 33 : Résultat net = RAO + HAO − participation − impôt (RQ et RS portent déjà le signe −).',
 };
 
 /* ========================================================================== */

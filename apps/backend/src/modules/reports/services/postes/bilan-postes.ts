@@ -82,7 +82,25 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     side: 'ACTIF',
     section: 'Actif immobilisé',
     sourceAccountPrefixes: ['21'],
-    deductionPrefixes: ['2811', '2812', '2813', '2814', '2815', '2816', '2817', '2818', '2911', '2912', '2913', '2914', '2915', '2916', '2917', '2918', '219'],
+    deductionPrefixes: [
+      '2811',
+      '2812',
+      '2813',
+      '2814',
+      '2815',
+      '2816',
+      '2817',
+      '2818',
+      '2911',
+      '2912',
+      '2913',
+      '2914',
+      '2915',
+      '2916',
+      '2917',
+      '2918',
+      '219',
+    ],
     sign: 1,
     parentGroup: 'AZ',
     doctrinePage: 32,
@@ -162,7 +180,20 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     side: 'ACTIF',
     section: 'Actif immobilisé',
     sourceAccountPrefixes: ['231', '232', '233', '234', '237', '238'],
-    deductionPrefixes: ['2831', '2832', '2833', '2834', '2837', '2838', '2931', '2932', '2933', '2934', '2937', '2938'],
+    deductionPrefixes: [
+      '2831',
+      '2832',
+      '2833',
+      '2834',
+      '2837',
+      '2838',
+      '2931',
+      '2932',
+      '2933',
+      '2934',
+      '2937',
+      '2938',
+    ],
     sign: 1,
     parentGroup: 'AI',
     doctrinePage: 32,
@@ -210,7 +241,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     sign: 1,
     parentGroup: 'AZ',
     doctrinePage: 32,
-    notes: 'Solde débiteur des avances sur commandes d\'immobilisations. Note 3.',
+    notes: "Solde débiteur des avances sur commandes d'immobilisations. Note 3.",
   },
   {
     code: 'AQ',
@@ -245,7 +276,8 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     sign: 1,
     parentGroup: 'AQ',
     doctrinePage: 32,
-    notes: 'Inclut prêts au personnel (272), dépôts et cautionnements (275). 277 intérêts courus hors périmètre.',
+    notes:
+      'Inclut prêts au personnel (272), dépôts et cautionnements (275). 277 intérêts courus hors périmètre.',
   },
   {
     code: 'AZ',
@@ -325,7 +357,30 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     label: 'Autres créances',
     side: 'ACTIF',
     section: 'Actif circulant',
-    sourceAccountPrefixes: ['421', '425', '4287', '4387', '4486', '4487', '4582', '462', '463', '4664', '4665', '4667', '4674', '4675', '471', '4742', '4743', '4746', '4747', '4748', '476', '488'],
+    sourceAccountPrefixes: [
+      '421',
+      '425',
+      '4287',
+      '4387',
+      '4486',
+      '4487',
+      '4582',
+      '462',
+      '463',
+      '4664',
+      '4665',
+      '4667',
+      '4674',
+      '4675',
+      '471',
+      '4742',
+      '4743',
+      '4746',
+      '4747',
+      '4748',
+      '476',
+      '488',
+    ],
     deductionPrefixes: ['492', '495'],
     sign: 1,
     parentGroup: 'BG',
@@ -367,7 +422,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     sign: 1,
     parentGroup: 'BT',
     doctrinePage: 32,
-    notes: 'Note 9. Comptes 514 valeurs à l\'encaissement.',
+    notes: "Note 9. Comptes 514 valeurs à l'encaissement.",
   },
   {
     code: 'BS',
@@ -511,7 +566,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   },
   {
     code: 'CJ',
-    label: 'Résultat net de l\'exercice (bénéfice + / perte −)',
+    label: "Résultat net de l'exercice (bénéfice + / perte −)",
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['131', '139'],
@@ -523,7 +578,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   },
   {
     code: 'CL',
-    label: 'Subventions d\'investissement',
+    label: "Subventions d'investissement",
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['141', '142', '148'],
@@ -563,7 +618,21 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     label: 'Emprunts et dettes financières diverses',
     side: 'PASSIF',
     section: 'Dettes financières',
-    sourceAccountPrefixes: ['161', '162', '163', '164', '165', '166', '167', '168', '181', '182', '183', '184', '185'],
+    sourceAccountPrefixes: [
+      '161',
+      '162',
+      '163',
+      '164',
+      '165',
+      '166',
+      '167',
+      '168',
+      '181',
+      '182',
+      '183',
+      '184',
+      '185',
+    ],
     deductionPrefixes: [],
     sign: 1,
     parentGroup: 'DD',
@@ -645,7 +714,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   },
   {
     code: 'DJ',
-    label: 'Fournisseurs d\'exploitation',
+    label: "Fournisseurs d'exploitation",
     side: 'PASSIF',
     section: 'Passif circulant',
     sourceAccountPrefixes: ['401', '402', '403', '408'],
@@ -653,7 +722,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     sign: 1,
     parentGroup: 'DP',
     doctrinePage: 32,
-    notes: 'Solde créditeur (4081 fournisseurs d\'investissement exclus). Note 17.',
+    notes: "Solde créditeur (4081 fournisseurs d'investissement exclus). Note 17.",
   },
   {
     code: 'DK',
@@ -665,7 +734,8 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     sign: 1,
     parentGroup: 'DP',
     doctrinePage: 32,
-    notes: 'Solde créditeur de la classe 42 (personnel), 43 (organismes sociaux), 44 (État). Note 18.',
+    notes:
+      'Solde créditeur de la classe 42 (personnel), 43 (organismes sociaux), 44 (État). Note 18.',
   },
   {
     code: 'DM',
@@ -706,7 +776,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   // --- TRÉSORERIE PASSIF ---
   {
     code: 'DQ',
-    label: 'Banques, crédits d\'escompte',
+    label: "Banques, crédits d'escompte",
     side: 'PASSIF',
     section: 'Trésorerie-Passif',
     sourceAccountPrefixes: ['564', '565'],
@@ -774,10 +844,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
  * Référentiel complet des postes lettrés du Bilan SYSCOHADA AUDCIF.
  * Ordre : Actif (AD à BZ) puis Passif (CA à DZ).
  */
-export const BILAN_POSTES: readonly BilanPosteRef[] = [
-  ...ACTIF_POSTES,
-  ...PASSIF_POSTES,
-];
+export const BILAN_POSTES: readonly BilanPosteRef[] = [...ACTIF_POSTES, ...PASSIF_POSTES];
 
 /** Accès direct par code (utilitaire, pas de logique métier). */
 export function getBilanPoste(code: string): BilanPosteRef | undefined {

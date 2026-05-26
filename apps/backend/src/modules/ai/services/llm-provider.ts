@@ -65,9 +65,7 @@ export interface LlmProvider {
    * cohérente (ex. : compte 60x avec libellé "Salaire" est suspect).
    * Renvoie `null` en cas d'erreur — pas d'anomalie levée.
    */
-  detectSemanticAnomaly(
-    input: LlmSemanticAnomalyInput,
-  ): Promise<LlmSemanticAnomalyOutput | null>;
+  detectSemanticAnomaly(input: LlmSemanticAnomalyInput): Promise<LlmSemanticAnomalyOutput | null>;
 }
 
 /**

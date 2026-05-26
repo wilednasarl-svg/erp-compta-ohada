@@ -66,16 +66,15 @@ export const REQUIRED_TARGET_FIELDS: readonly TargetField[] = [
  * `getRequiredFieldsForDocumentType` retombera sur le comportement
  * `entries` (défensif — pas un échec dur, mais loggable côté review).
  */
-export const DOCUMENT_TYPE_REQUIRED_FIELDS: Readonly<
-  Record<DocumentType, readonly TargetField[]>
-> = {
-  entries: ['account', 'journal', 'date', 'label'],
-  general_ledger: ['account', 'date', 'label'],
-  trial_balance: ['account', 'label'],
-  bank_statement: ['date', 'label'],
-  auxiliary_ledger: ['account', 'partner', 'date', 'label'],
-  sales_purchases: ['account', 'date', 'label'],
-};
+export const DOCUMENT_TYPE_REQUIRED_FIELDS: Readonly<Record<DocumentType, readonly TargetField[]>> =
+  {
+    entries: ['account', 'journal', 'date', 'label'],
+    general_ledger: ['account', 'date', 'label'],
+    trial_balance: ['account', 'label'],
+    bank_statement: ['date', 'label'],
+    auxiliary_ledger: ['account', 'partner', 'date', 'label'],
+    sales_purchases: ['account', 'date', 'label'],
+  };
 
 /**
  * Fonction pure exposant les champs requis pour un `DocumentType`

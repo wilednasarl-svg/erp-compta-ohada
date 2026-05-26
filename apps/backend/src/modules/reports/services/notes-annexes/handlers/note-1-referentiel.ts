@@ -32,7 +32,7 @@ export const handleN1Referentiel: NoteHandler = async () => {
     },
     {
       key: 'METHODE_AMORT',
-      label: 'Méthode d\'amortissement par défaut',
+      label: "Méthode d'amortissement par défaut",
       values: {
         valeur: 'Linéaire prorata temporis',
       },
@@ -46,7 +46,7 @@ export const handleN1Referentiel: NoteHandler = async () => {
     },
     {
       key: 'CHANGEMENT_METHODE',
-      label: 'Changement de méthode sur l\'exercice',
+      label: "Changement de méthode sur l'exercice",
       values: {
         valeur: 'Aucun (à compléter si applicable via commentaire libre)',
       },

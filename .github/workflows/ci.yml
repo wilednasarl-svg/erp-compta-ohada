@@ -193,7 +193,12 @@ jobs:
     needs: build-backend
     env:
       PORT: '3001'
-      NODE_ENV: production
+      # NOTE: NODE_ENV is set per-step (only on `start:prod`), NOT at job
+      # level. If we set NODE_ENV=production here, `pnpm install` would
+      # skip devDependencies and `openapi-typescript` would go missing
+      # in the regenerate step. See nixpacks.toml for the matching prod
+      # override (`--prod=false`).
+      #
       # Minimal env the backend needs to boot enough to serve /docs-json.
       # Values are deterministic CI-only secrets — nothing here grants
       # access to anything real. MFA_ENCRYPTION_KEY must decode to exactly
@@ -239,6 +244,11 @@ jobs:
           name: backend-dist
           path: apps/backend/dist
       - name: Start backend in background
+        # NODE_ENV=production only here — the install step above runs
+        # with the default NODE_ENV so devDependencies (openapi-typescript)
+        # land in node_modules/.bin for the regenerate step below.
+        env:
+          NODE_ENV: production
         run: |
           pnpm --filter backend start:prod > backend.log 2>&1 &
           echo $! > backend.pid

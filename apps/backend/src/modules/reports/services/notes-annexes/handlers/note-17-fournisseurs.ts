@@ -73,7 +73,7 @@ export const handleN17Fournisseurs: NoteHandler = async (ctx, deps) => {
 
   rows.push({
     key: 'TOTAL',
-    label: 'TOTAL fournisseurs d\'exploitation',
+    label: "TOTAL fournisseurs d'exploitation",
     values: {
       debit: fmt(grandDebit),
       credit: fmt(grandCredit),

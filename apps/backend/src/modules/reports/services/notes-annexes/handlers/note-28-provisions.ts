@@ -85,9 +85,7 @@ export const handleN28Provisions: NoteHandler = async (ctx, deps) => {
     },
   });
 
-  const hasAny = rows.some(
-    (r) => r.key !== 'TOTAL' && num(r.values.provision) > 0,
-  );
+  const hasAny = rows.some((r) => r.key !== 'TOTAL' && num(r.values.provision) > 0);
 
   return { rows, applicable: hasAny };
 };

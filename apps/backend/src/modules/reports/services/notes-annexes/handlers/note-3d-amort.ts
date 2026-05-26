@@ -24,10 +24,7 @@ function fmt(n: number): string {
 
 export const handleN3dAmort: NoteHandler = async (ctx, deps) => {
   const assets = await deps.assets.findAllForExercise(ctx.organizationId, ctx.fiscalYear);
-  const schedules = await deps.assets.findDepreciationForYear(
-    ctx.organizationId,
-    ctx.fiscalYear,
-  );
+  const schedules = await deps.assets.findDepreciationForYear(ctx.organizationId, ctx.fiscalYear);
 
   const assetById = new Map<string, (typeof assets)[number]>();
   for (const a of assets) assetById.set(a.id, a);

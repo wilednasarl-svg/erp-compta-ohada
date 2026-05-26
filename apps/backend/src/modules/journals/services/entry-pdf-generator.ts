@@ -7,10 +7,7 @@ import PDFDocument from 'pdfkit';
 import type { OrganizationAccountEntity } from '../../accounting-plan/entities/organization-account.entity';
 import type { OrganizationEntity } from '../../organizations/entities/organization.entity';
 import type { AccountingPeriodEntity } from '../entities/accounting-period.entity';
-import type {
-  EntrySignatureEntity,
-  EntrySignerRole,
-} from '../entities/entry-signature.entity';
+import type { EntrySignatureEntity, EntrySignerRole } from '../entities/entry-signature.entity';
 import type { JournalEntryLineEntity } from '../entities/journal-entry-line.entity';
 import type { JournalEntryEntity } from '../entities/journal-entry.entity';
 import type { JournalEntity } from '../entities/journal.entity';
@@ -80,25 +77,12 @@ export class EntryPdfGenerator {
   // ─── Sections ───────────────────────────────────────────────────────
 
   private renderHeader(doc: PDFKit.PDFDocument, input: EntryPdfInput): void {
-    doc
-      .fontSize(10)
-      .fillColor('#555')
-      .text(input.organization.name, { align: 'right' });
+    doc.fontSize(10).fillColor('#555').text(input.organization.name, { align: 'right' });
     doc.moveDown(0.5);
-    doc
-      .fontSize(18)
-      .fillColor('#000')
-      .text('ECRITURE COMPTABLE VALIDEE', { align: 'center' });
-    doc
-      .fontSize(9)
-      .fillColor('#888')
-      .text('Document signe electroniquement', { align: 'center' });
+    doc.fontSize(18).fillColor('#000').text('ECRITURE COMPTABLE VALIDEE', { align: 'center' });
+    doc.fontSize(9).fillColor('#888').text('Document signe electroniquement', { align: 'center' });
     doc.moveDown(1);
-    doc
-      .moveTo(50, doc.y)
-      .lineTo(545, doc.y)
-      .strokeColor('#ccc')
-      .stroke();
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#ccc').stroke();
     doc.moveDown(1);
   }
 
@@ -189,12 +173,9 @@ export class EntryPdfGenerator {
       doc
         .fontSize(9)
         .fillColor('#000')
-        .text(
-          sig ? `Signe le ${sig.signedAt.toISOString()}` : '- non signe -',
-          x,
-          blockY + 14,
-          { width: 230 },
-        );
+        .text(sig ? `Signe le ${sig.signedAt.toISOString()}` : '- non signe -', x, blockY + 14, {
+          width: 230,
+        });
       doc
         .fontSize(8)
         .fillColor('#888')
@@ -228,10 +209,13 @@ export class EntryPdfGenerator {
       }
     } else {
       doc.rect(x, y, 110, 110).strokeColor('#ccc').stroke();
-      doc.fontSize(7).fillColor('#888').text('QR indisponible', x, y + 52, {
-        width: 110,
-        align: 'center',
-      });
+      doc
+        .fontSize(7)
+        .fillColor('#888')
+        .text('QR indisponible', x, y + 52, {
+          width: 110,
+          align: 'center',
+        });
     }
     doc
       .fontSize(7)

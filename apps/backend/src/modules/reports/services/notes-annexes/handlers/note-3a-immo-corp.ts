@@ -28,7 +28,11 @@ import type { NoteDepreciationRecord, NoteHandler, NoteRow } from '../types';
  * Catégories standards SYSCOHADA pour la note 3A.
  * Clé = prefix de compte ; valeur = libellé human-readable.
  */
-const CATEGORIES: ReadonlyArray<{ readonly prefix: string; readonly key: string; readonly label: string }> = [
+const CATEGORIES: ReadonlyArray<{
+  readonly prefix: string;
+  readonly key: string;
+  readonly label: string;
+}> = [
   { prefix: '22', key: 'TERRAINS', label: 'Terrains (22)' },
   { prefix: '23', key: 'CONSTRUCTIONS', label: 'Bâtiments et installations (23)' },
   { prefix: '24', key: 'MATERIEL', label: 'Matériel et mobilier (24)' },
@@ -53,10 +57,7 @@ function categoryOf(accountCode: string): string | null {
 
 export const handleN3aImmoCorp: NoteHandler = async (ctx, deps) => {
   const assets = await deps.assets.findAllForExercise(ctx.organizationId, ctx.fiscalYear);
-  const schedules = await deps.assets.findDepreciationForYear(
-    ctx.organizationId,
-    ctx.fiscalYear,
-  );
+  const schedules = await deps.assets.findDepreciationForYear(ctx.organizationId, ctx.fiscalYear);
 
   // Index schedules par assetId (un seul schedule par asset×année par construction).
   const scheduleByAsset = new Map<string, NoteDepreciationRecord>();
@@ -195,8 +196,7 @@ export const handleN3aImmoCorp: NoteHandler = async (ctx, deps) => {
   // Applicable seulement s'il y a au moins une ligne avec mouvement.
   const hasAnyMovement = rows.some(
     (r) =>
-      r.key !== 'TOTAL' &&
-      (num(r.values.brutCloture) !== 0 || num(r.values.amortCloture) !== 0),
+      r.key !== 'TOTAL' && (num(r.values.brutCloture) !== 0 || num(r.values.amortCloture) !== 0),
   );
 
   return { rows, applicable: hasAnyMovement };

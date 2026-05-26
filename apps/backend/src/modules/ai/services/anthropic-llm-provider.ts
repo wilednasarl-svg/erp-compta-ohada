@@ -38,7 +38,7 @@ export class AnthropicLlmProvider implements LlmProvider {
   private static readonly ANTHROPIC_VERSION = '2023-06-01';
 
   private static readonly SYSTEM_PROMPT =
-    "Tu es un assistant comptable expert du référentiel SYSCOHADA (OHADA, " +
+    'Tu es un assistant comptable expert du référentiel SYSCOHADA (OHADA, ' +
     "Côte d'Ivoire). Tu réponds UNIQUEMENT en JSON valide, sans markdown, " +
     'sans commentaire, sans texte avant ou après. Les codes de compte sont ' +
     'à 3-6 chiffres conformément au plan SYSCOHADA AUDCIF (classes 1-9).';
@@ -69,7 +69,9 @@ export class AnthropicLlmProvider implements LlmProvider {
 
     const parsed = this.safeParseSuggestion(raw);
     if (!parsed) {
-      this.logger.warn(`Anthropic suggestAccount: JSON invalide → fallback. Body=${raw.slice(0, 200)}`);
+      this.logger.warn(
+        `Anthropic suggestAccount: JSON invalide → fallback. Body=${raw.slice(0, 200)}`,
+      );
       return null;
     }
     return parsed;

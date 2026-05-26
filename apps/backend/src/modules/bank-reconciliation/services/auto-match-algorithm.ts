@@ -144,10 +144,7 @@ export function proposeAutoMatchesV2(
   const enableMultiLine = options.enableMultiLine === true;
   const tolerance = Math.max(0, options.amountTolerance ?? 0);
   const requestedMaxComb = options.maxCombinationSize ?? DEFAULT_MAX_COMBINATION_SIZE;
-  const maxCombinationSize = Math.min(
-    Math.max(2, requestedMaxComb),
-    MAX_COMBINATION_HARD_CAP,
-  );
+  const maxCombinationSize = Math.min(Math.max(2, requestedMaxComb), MAX_COMBINATION_HARD_CAP);
   const maxDateDistance = options.maxDateDistanceDays ?? DEFAULT_MAX_DATE_DISTANCE;
 
   // Étape 1 — réutiliser l'algo 1:1 pour les matches exacts.
@@ -192,27 +189,19 @@ export function proposeAutoMatchesV2(
 
     if (eligible.length < 2) continue;
 
-    const found = findSubsetSum(
-      eligible,
-      target,
-      tolerance,
-      maxCombinationSize,
-    );
+    const found = findSubsetSum(eligible, target, tolerance, maxCombinationSize);
 
     if (found === null) continue;
 
     // Calcul du score : moyenne pondérée par taille (plus on combine,
     // plus la confiance baisse — heuristique conservatrice).
-    const avgDays =
-      found.reduce((acc, idx) => acc + eligible[idx].days, 0) / found.length;
+    const avgDays = found.reduce((acc, idx) => acc + eligible[idx].days, 0) / found.length;
     const dateScore = Math.max(0, 1 - avgDays / dateWindow);
     const labelRatio = found
       .map((idx) => jaroWinkler(stLine.label, eligible[idx].description))
       .reduce((a, b) => Math.max(a, b), 0);
     const sizePenalty = Math.max(0, 1 - (found.length - 2) * 0.05);
-    const score = Math.round(
-      (DATE_WEIGHT * dateScore + LABEL_WEIGHT * labelRatio) * sizePenalty,
-    );
+    const score = Math.round((DATE_WEIGHT * dateScore + LABEL_WEIGHT * labelRatio) * sizePenalty);
 
     const entryIds = found.map((idx) => eligible[idx].id);
     entryIds.forEach((id) => usedEntryLines.add(id));
