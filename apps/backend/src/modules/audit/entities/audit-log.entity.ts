@@ -61,6 +61,7 @@ export type AuditModule =
   | 'dashboards'
   | 'accounting_score'
   | 'collaboration'
+  | 'impairments'
   | '_legacy';
 
 @Entity({ name: 'auth_events' })

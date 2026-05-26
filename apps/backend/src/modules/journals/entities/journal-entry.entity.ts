@@ -20,7 +20,8 @@ export type JournalEntrySourceType =
   | 'manual'
   | 'import'
   | 'depreciation'
-  | 'bank_reconciliation';
+  | 'bank_reconciliation'
+  | 'impairment';
 
 /**
  * `journal_entries` row — voir migration 0038.

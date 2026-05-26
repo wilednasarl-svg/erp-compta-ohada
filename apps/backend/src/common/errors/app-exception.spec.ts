@@ -213,6 +213,11 @@ describe('HTTP status mapping', () => {
       PROVISION_INVALID_AMOUNT: 422,
       PROVISION_INSUFFICIENT_BALANCE: 422,
       PROVISION_NOT_ACTIVE: 409,
+      // W3.2 — Tests de valeur immo + stocks.
+      IMPAIRMENT_ASSET_NOT_FOUND: 404,
+      IMPAIRMENT_INVENTORY_NOT_FOUND: 404,
+      IMPAIRMENT_INVALID_AMOUNT: 422,
+      IMPAIRMENT_REPRISE_EXCEEDS_HISTORY: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
