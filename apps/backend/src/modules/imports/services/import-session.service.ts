@@ -30,7 +30,26 @@ export interface CommitResult {
   readonly sessionId: string;
   readonly committedRows: number;
   readonly entryIds: readonly string[];
+  /**
+   * Nombre de sous-comptes auto-créés dans `organization_chart_accounts`
+   * juste avant le commit, à partir d'un parent SYSCOHADA détecté par
+   * préfixe. Présent uniquement pour les sessions `trial_balance` —
+   * les autres documentTypes laissent ce champ à `undefined` pour
+   * rétrocompat (un consommateur qui ignore le champ continue de
+   * fonctionner).
+   *
+   * Voir `ImportSessionService.autoProvisionMissingBalanceAccounts` —
+   * débloque les imports balance Sage 8 chiffres sans paramétrage manuel.
+   */
+  readonly autoCreatedAccounts?: number;
 }
+
+/**
+ * Garde-fou : au-delà de ce seuil, l'auto-provisioning émet un warning
+ * (sans bloquer le commit). Un fichier qui réclame plus de comptes que
+ * ça est plus probablement mal mappé qu'authentiquement énorme.
+ */
+const AUTO_PROVISION_WARN_THRESHOLD = 500;
 
 /**
  * Internal: one staging row projected to the shape we feed to
@@ -51,7 +70,7 @@ import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { FileParserService } from './file-parser.service';
 import { MappingService } from './mapping.service';
-import { ValidationService } from './validation.service';
+import { ValidationService, findParentAccountByPrefix } from './validation.service';
 
 /**
  * Représentation minimale d'un fichier reçu en upload, agnostique du
@@ -798,6 +817,22 @@ export class ImportSessionService {
       });
     }
 
+    // Auto-provisioning balance — pour un trial_balance Sage 8 chiffres,
+    // on crée automatiquement les sous-comptes manquants à partir des
+    // parents SYSCOHADA détectés. S'exécute AVANT le compte d'erreurs
+    // car la création supprime les `unknown_account_with_parent_hint`
+    // qui sinon bloqueraient le commit.
+    const documentType = this.getDocumentType(session);
+    let autoCreatedAccounts: number | undefined;
+    if (documentType === 'trial_balance') {
+      autoCreatedAccounts = await this.autoProvisionMissingBalanceAccounts(
+        organizationId,
+        sessionId,
+        actorUserId,
+        ctx,
+      );
+    }
+
     const totals = await this.stagingEntries.countBySession(sessionId, organizationId);
     if (totals.withErrors > 0) {
       throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
@@ -892,12 +927,18 @@ export class ImportSessionService {
         status: 'completed',
         entryIds: committedEntryIds,
         groups: committedEntryIds.length,
+        autoCreatedAccounts: autoCreatedAccounts ?? 0,
       },
       ctx: { ...ctx, userId: actorUserId, organizationId },
       legacyEventType: 'imports.session_committed',
     });
 
-    return { sessionId, committedRows: totals.total, entryIds: committedEntryIds };
+    return {
+      sessionId,
+      committedRows: totals.total,
+      entryIds: committedEntryIds,
+      autoCreatedAccounts,
+    };
   }
 
   // ─── Commit helpers ─────────────────────────────────────────────────
@@ -1015,6 +1056,266 @@ export class ImportSessionService {
       }
     }
     return out;
+  }
+
+  // ─── Auto-provisioning balance ────────────────────────────────────
+
+  /**
+   * Pour une session `trial_balance` : examine les staging rows, repère
+   * les comptes inconnus de l'organisation qui matchent un parent
+   * SYSCOHADA par préfixe (cas typique d'un fichier Sage à 8 chiffres
+   * contre un plan org à 3-6 chiffres), et CRÉE les sous-comptes
+   * manquants en les rattachant au parent référentiel détecté.
+   *
+   * Tolérances :
+   *   - idempotent : un check `findByCode` préalable évite la
+   *     duplication, et la contrainte unique `(organization_id, code)`
+   *     en DB est la deuxième barrière. Un 2e commit consécutif est un
+   *     no-op (0 comptes créés).
+   *   - sans parent : un compte qui ne match aucun préfixe est ignoré
+   *     (warning), il restera flaggé `unknown_account` après commit et
+   *     fera échouer la phase suivante — comportement attendu.
+   *   - > 500 comptes : warning loggé via audit metadata, mais le commit
+   *     continue. Au-delà, l'utilisateur a probablement mal mappé son
+   *     fichier (entête mal détectée → toutes les lignes inconnues).
+   *
+   * Transactionnel : chaque création est un `INSERT` indépendant via le
+   * repository org-account (pas de tx Postgres explicite ici, le
+   * `EntriesService.createDraft` en aval ouvre la sienne par groupe).
+   * Si un INSERT échoue, l'exception remonte et `commitSession` repasse
+   * la session en `failed` via le path d'erreur classique — les comptes
+   * déjà créés AVANT l'échec restent en DB (idempotent au prochain run).
+   *
+   * Renvoie le nombre de comptes effectivement créés (peut être 0).
+   */
+  private async autoProvisionMissingBalanceAccounts(
+    organizationId: TenantId,
+    sessionId: string,
+    actorUserId: string,
+    ctx: AuditContext,
+  ): Promise<number> {
+    if (this.referenceAccounts === undefined) {
+      // Sans accès au référentiel, on ne peut pas déterminer les
+      // parents — silent skip (le commit échouera proprement plus loin
+      // si des comptes sont inconnus).
+      return 0;
+    }
+
+    // 1. Charger tous les staging rows + extraire les comptes inconnus
+    //    qui ont une erreur `unknown_account_with_parent_hint`.
+    const rows = await this.loadAllStagingRows(sessionId, organizationId);
+    const candidateCodes = new Set<string>();
+    for (const row of rows) {
+      const account = (row.mappedValues.account ?? '').trim();
+      if (account.length === 0) continue;
+      candidateCodes.add(account);
+    }
+    if (candidateCodes.size === 0) {
+      return 0;
+    }
+
+    // 2. Préparer les index : chart org + référentiel global, pour
+    //    réutiliser `findParentAccountByPrefix` à l'identique de la
+    //    phase validation.
+    const orgAccounts = await this.chartAccounts.listByOrganization(organizationId, {
+      activeOnly: true,
+    });
+    const orgCodeSet = new Set(orgAccounts.map((a) => a.code));
+    const allReferenceCodes = await this.loadAllReferenceCodes();
+    if (allReferenceCodes === undefined) {
+      return 0;
+    }
+
+    // 3. Pour chaque compte candidat absent du plan org : trouver son
+    //    parent référentiel et créer l'org-account dérivé.
+    let created = 0;
+    const missingWithParents: Array<{ account: string; parentCode: string }> = [];
+    for (const account of candidateCodes) {
+      if (orgCodeSet.has(account)) continue;
+      const parentCode = findParentAccountByPrefix(account, orgCodeSet, allReferenceCodes);
+      if (parentCode === null) {
+        // Pas de parent — on log et on continue, le compte restera
+        // flaggé après la re-validation.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[imports] No SYSCOHADA parent prefix found for account "${account}" — skipping auto-provision`,
+        );
+        continue;
+      }
+      missingWithParents.push({ account, parentCode });
+    }
+
+    if (missingWithParents.length === 0) {
+      return 0;
+    }
+
+    if (missingWithParents.length > AUTO_PROVISION_WARN_THRESHOLD) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[imports] Auto-provisioning ${missingWithParents.length} accounts for session ${sessionId} ` +
+          `— this exceeds the soft threshold (${AUTO_PROVISION_WARN_THRESHOLD}). The file may be mis-mapped.`,
+      );
+    }
+
+    // Cache des parents référentiels chargés (un même parent peut
+    // servir 50+ enfants — évite 50 round-trips).
+    const parentCache = new Map<string, Awaited<ReturnType<typeof this.fetchReferenceParent>>>();
+
+    for (const { account, parentCode } of missingWithParents) {
+      let parent = parentCache.get(parentCode);
+      if (parent === undefined) {
+        parent = await this.fetchReferenceParent(parentCode);
+        parentCache.set(parentCode, parent);
+      }
+      if (parent === null) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[imports] Reference parent "${parentCode}" not found in reference_chart_accounts for account "${account}"`,
+        );
+        continue;
+      }
+
+      // Idempotence : si une exécution antérieure (ou un autre worker) a
+      // déjà créé ce compte, ne pas re-créer.
+      const existing = await this.chartAccounts.findByCode(account, organizationId);
+      if (existing !== null) {
+        // Ajouter au set pour la re-validation ci-dessous.
+        orgCodeSet.add(account);
+        continue;
+      }
+
+      // Le parent référentiel peut être lui-même un TITLE (cas général
+      // dans SYSCOHADA), mais le nouveau compte feuille est POSTING.
+      // Si une org-account dérivée du parent existe déjà, on récupère
+      // son `id` comme parentId pour la cohérence arborescente. Sinon,
+      // parentId reste null (le compte vivra à la racine côté org).
+      const parentOrgAccount = await this.chartAccounts.findByCode(parentCode, organizationId);
+      await this.chartAccounts.create({
+        organizationId,
+        code: account,
+        // Label dérivé du parent — préfixe le code source pour
+        // distinguer visuellement les sous-comptes auto-créés des
+        // comptes natifs.
+        label: `${parent.label} — ${account}`,
+        class: parent.class,
+        accountType: 'POSTING',
+        normalBalance: parent.normalBalance,
+        parentId: parentOrgAccount?.id ?? null,
+        referenceAccountId: null,
+        isActive: true,
+      });
+      orgCodeSet.add(account);
+      created += 1;
+
+      await this.audit.record({
+        module: ImportSessionService.MODULE,
+        action: 'organization_account.auto_created_from_balance',
+        entityType: 'organization_account',
+        entityId: account,
+        after: {
+          code: account,
+          parentCode,
+          class: parent.class,
+          normalBalance: parent.normalBalance,
+          sessionId,
+        },
+        ctx: { ...ctx, userId: actorUserId, organizationId },
+        legacyEventType: 'imports.account_auto_created',
+      });
+    }
+
+    if (created === 0) {
+      return 0;
+    }
+
+    // 4. Re-valider les staging rows pour vider les
+    //    `unknown_account_with_parent_hint` désormais obsolètes —
+    //    indispensable, sinon le compte d'erreurs en aval bloquerait
+    //    le commit malgré la création.
+    await this.revalidateStagingRows(sessionId, organizationId, orgAccounts, orgCodeSet);
+    return created;
+  }
+
+  private async fetchReferenceParent(parentCode: string): Promise<{
+    code: string;
+    label: string;
+    class: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+    normalBalance: 'D' | 'C';
+  } | null> {
+    if (this.referenceAccounts === undefined) return null;
+    const ref = await this.referenceAccounts.findByCode(parentCode);
+    if (ref === null) return null;
+    return {
+      code: ref.code,
+      label: ref.label,
+      class: ref.class,
+      normalBalance: ref.normalBalance,
+    };
+  }
+
+  /**
+   * Re-passe la validation sur toutes les staging rows de la session
+   * avec le chart MIS À JOUR (nouveaux org-accounts inclus), et
+   * persiste les erreurs recalculées. Indispensable après une vague
+   * d'auto-provisioning pour que `countBySession.withErrors` reflète
+   * la réalité avant le check de commit.
+   */
+  private async revalidateStagingRows(
+    sessionId: string,
+    organizationId: TenantId,
+    initialOrgAccounts: ReadonlyArray<{
+      code: string;
+      accountType: 'POSTING' | 'TITLE';
+      isActive: boolean;
+    }>,
+    augmentedOrgCodes: ReadonlySet<string>,
+  ): Promise<void> {
+    // Construire le set des codes POSTING actifs en intégrant les codes
+    // augmentés (les nouveaux auto-créés sont par construction POSTING
+    // + actifs, donc on peut les fusionner sans recharger).
+    const postingCodes = new Set<string>(
+      initialOrgAccounts.filter((a) => a.accountType === 'POSTING' && a.isActive).map((a) => a.code),
+    );
+    for (const code of augmentedOrgCodes) {
+      postingCodes.add(code);
+    }
+    const allReferenceCodes = (await this.loadAllReferenceCodes()) ?? new Set<string>();
+    const chart = { postingCodes, allReferenceCodes };
+
+    const pageSize = 500;
+    let offset = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const page = await this.stagingEntries.listBySession(sessionId, organizationId, {
+        limit: pageSize,
+        offset,
+      });
+      if (page.length === 0) break;
+      const patch = page.map((row) => ({
+        id: row.id,
+        mappedValues: row.mappedValues,
+        errors: this.validation.validateRow(row.mappedValues, {
+          chart,
+          documentType: 'trial_balance' as const,
+        }),
+      }));
+      await this.stagingEntries.updateMappedValuesAndErrors(patch);
+      if (page.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    // Re-synchroniser le compteur `errorLines` de la session pour que
+    // le check `withErrors > 0` ci-après reflète l'état post-provision.
+    const totals = await this.stagingEntries.countBySession(sessionId, organizationId);
+    await this.sessions.updateCounters(sessionId, organizationId, {
+      totalLines: totals.total,
+      errorLines: totals.withErrors,
+    });
+  }
+
+  private getDocumentType(session: ImportSessionEntity): DocumentType | null {
+    const raw = session.mappingOverride?.[DOCUMENT_TYPE_OVERRIDE_KEY] ?? null;
+    return (raw as DocumentType | null) ?? null;
   }
 
   // ─── Update Mapping ───────────────────────────────────────────────────

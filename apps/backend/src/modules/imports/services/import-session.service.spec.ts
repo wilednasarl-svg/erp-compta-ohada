@@ -53,6 +53,14 @@ describe('ImportSessionService', () => {
     };
     const chartRepo = {
       listByOrganization: jest.fn().mockResolvedValue([]),
+      findByCode: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockImplementation((input: { code: string }) =>
+        Promise.resolve({ id: `org-acc-${input.code}`, ...input }),
+      ),
+    };
+    const referenceRepo = {
+      listBySystem: jest.fn().mockResolvedValue([]),
+      findByCode: jest.fn().mockResolvedValue(null),
     };
     const audit = {
       record: jest.fn().mockResolvedValue(null),
@@ -81,6 +89,7 @@ describe('ImportSessionService', () => {
       entries as never,
       audit as never,
       config as never,
+      referenceRepo as never,
     );
 
     return {
@@ -90,6 +99,7 @@ describe('ImportSessionService', () => {
       stagingRepo,
       parserService,
       chartRepo,
+      referenceRepo,
       entries,
       audit,
       config,
@@ -640,6 +650,266 @@ describe('ImportSessionService', () => {
         }),
       ).rejects.toMatchObject({ code: 'IMPORT_SESSION_NOT_FOUND' });
     });
+  });
+
+  // ─── commitSession — trial_balance auto-provisioning ─────────────
+  //
+  // Lorsqu'une session `trial_balance` Sage (comptes 8 chiffres) est
+  // committée contre un plan org plus court (3-6 chiffres), les
+  // sous-comptes manquants sont créés automatiquement à partir du
+  // parent SYSCOHADA détecté par préfixe. Couvre :
+  //   - smoke : 3 comptes inconnus, 3 parents trouvés → 3 créations,
+  //     re-validation vide les erreurs, commit OK,
+  //   - idempotence : 2e passage = 0 création,
+  //   - documentType `entries` : aucune auto-création,
+  //   - compte sans parent matché : ignoré, le commit continue.
+  describe('commitSession — trial_balance auto-provision', () => {
+    const REF_PARENTS = [
+      { code: '101', label: 'Capital social', class: 1, normalBalance: 'C' },
+      { code: '213', label: 'Bâtiments', class: 2, normalBalance: 'D' },
+      { code: '311', label: 'Marchandises A', class: 3, normalBalance: 'D' },
+    ] as const;
+
+    function balanceSession(): ImportSessionEntity {
+      return fakeSession({
+        status: 'validated',
+        mappingOverride: { __documentType: 'trial_balance' },
+      });
+    }
+
+    function balanceRows(): Array<{
+      id: string;
+      rowNumber: number;
+      mappedValues: Record<string, string | null>;
+    }> {
+      // 3 lignes balance : compte / label / debit / credit
+      // (pas de journal ni de date — c'est le pattern balance).
+      return [
+        {
+          id: 'r1',
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'BAL',
+            date: '2026-01-31',
+            account: '10100000',
+            label: 'Capital',
+            debit: '0',
+            credit: '1000',
+          },
+        },
+        {
+          id: 'r2',
+          rowNumber: 2,
+          mappedValues: {
+            journal: 'BAL',
+            date: '2026-01-31',
+            account: '21310000',
+            label: 'Bâtiments',
+            debit: '600',
+            credit: '0',
+          },
+        },
+        {
+          id: 'r3',
+          rowNumber: 3,
+          mappedValues: {
+            journal: 'BAL',
+            date: '2026-01-31',
+            account: '31100000',
+            label: 'Stocks',
+            debit: '400',
+            credit: '0',
+          },
+        },
+      ];
+    }
+
+    function referenceFindByCodeImpl(code: string) {
+      const hit = REF_PARENTS.find((p) => p.code === code);
+      return Promise.resolve(hit ? { ...hit } : null);
+    }
+
+    it('auto-creates 3 missing sub-accounts when parents exist in SYSCOHADA reference', async () => {
+      const {
+        service,
+        sessionsRepo,
+        stagingRepo,
+        chartRepo,
+        referenceRepo,
+        entries,
+        audit,
+      } = buildService();
+      sessionsRepo.findById.mockResolvedValue(balanceSession());
+      // First countBySession (post-provision) returns 0 errors.
+      stagingRepo.countBySession.mockResolvedValue({ total: 3, withErrors: 0 });
+      // `loadAllStagingRows` page-breaks after a single < 500-row page;
+      // mockResolvedValue covers every call (auto-provision + revalidation
+      // + commit) with the same payload.
+      stagingRepo.listBySession.mockResolvedValue(balanceRows());
+      referenceRepo.listBySystem.mockResolvedValue(
+        REF_PARENTS.map((p) => ({ code: p.code })),
+      );
+      referenceRepo.findByCode.mockImplementation(referenceFindByCodeImpl);
+      // findByCode on chartRepo: returns null for the 3 leaves AND for
+      // the 3 parents (no org-account exists for 101/213/311 either).
+      chartRepo.findByCode.mockResolvedValue(null);
+      entries.createDraft.mockResolvedValue({ id: 'entry-bal' });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      expect(result.autoCreatedAccounts).toBe(3);
+      expect(chartRepo.create).toHaveBeenCalledTimes(3);
+      const createdCodes = chartRepo.create.mock.calls.map((c) => c[0].code).sort();
+      expect(createdCodes).toEqual(['10100000', '21310000', '31100000']);
+      // Each call must reference its parent SYSCOHADA code.
+      const parentByLeaf = Object.fromEntries(
+        chartRepo.create.mock.calls.map((c) => [c[0].code, c[0].label]),
+      );
+      expect(parentByLeaf['10100000']).toContain('Capital');
+      expect(parentByLeaf['21310000']).toContain('Bâtiments');
+      // Audit emitted for each creation.
+      const autoCreateAuditCalls = audit.record.mock.calls.filter(
+        (c) => c[0].action === 'organization_account.auto_created_from_balance',
+      );
+      expect(autoCreateAuditCalls).toHaveLength(3);
+    });
+
+    it('is idempotent: a 2nd commit on already-provisioned accounts creates none', async () => {
+      const { service, sessionsRepo, stagingRepo, chartRepo, referenceRepo, entries } =
+        buildService();
+      sessionsRepo.findById.mockResolvedValue(balanceSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 3, withErrors: 0 });
+      // `loadAllStagingRows` page-breaks once page.length < 500 — so a
+      // single call returns the whole page. mockResolvedValue is used
+      // (not Once) so both calls (auto-provision + commit) see the rows.
+      stagingRepo.listBySession.mockResolvedValue(balanceRows());
+      referenceRepo.listBySystem.mockResolvedValue(
+        REF_PARENTS.map((p) => ({ code: p.code })),
+      );
+      referenceRepo.findByCode.mockImplementation(referenceFindByCodeImpl);
+      // Simulate "already exists" — listByOrganization returns the 3
+      // leaf accounts so they are NOT in candidateCodes minus existing.
+      chartRepo.listByOrganization.mockResolvedValue([
+        { code: '10100000', accountType: 'POSTING', isActive: true },
+        { code: '21310000', accountType: 'POSTING', isActive: true },
+        { code: '31100000', accountType: 'POSTING', isActive: true },
+      ]);
+      entries.createDraft.mockResolvedValue({ id: 'entry-bal' });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      expect(result.autoCreatedAccounts).toBe(0);
+      expect(chartRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('does NOT auto-provision when documentType is not trial_balance', async () => {
+      const { service, sessionsRepo, stagingRepo, chartRepo, entries } = buildService();
+      // entries-type session — no __documentType override == defaults to entries.
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSessionLocal());
+      stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
+      stagingRepo.listBySession.mockResolvedValueOnce(balancedRowsLocal()).mockResolvedValueOnce([]);
+      entries.createDraft.mockResolvedValue({ id: 'entry-x' });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      expect(result.autoCreatedAccounts).toBeUndefined();
+      expect(chartRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('skips an account whose prefix matches no SYSCOHADA parent', async () => {
+      const { service, sessionsRepo, stagingRepo, chartRepo, referenceRepo, entries } =
+        buildService();
+      sessionsRepo.findById.mockResolvedValue(balanceSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 1, withErrors: 0 });
+      const mysteryRow = [
+        {
+          id: 'r1',
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'BAL',
+            date: '2026-01-31',
+            account: '99999999',
+            label: 'Mystery',
+            debit: '0',
+            credit: '0',
+          },
+        },
+      ];
+      stagingRepo.listBySession.mockResolvedValue(mysteryRow);
+      // Reference has NO 99/999/etc. prefix.
+      referenceRepo.listBySystem.mockResolvedValue([]);
+      referenceRepo.findByCode.mockResolvedValue(null);
+      entries.createDraft.mockResolvedValue({ id: 'entry-bal' });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      expect(result.autoCreatedAccounts).toBe(0);
+      expect(chartRepo.create).not.toHaveBeenCalled();
+    });
+
+    // Helpers reused from the parent describe — re-declared locally to
+    // avoid hoisting weirdness between sibling describes.
+    function fakeValidatedSessionLocal() {
+      return {
+        id: SESSION_ID,
+        organizationId: ORG_ID,
+        status: 'validated' as const,
+        sourceType: 'csv' as const,
+        label: null,
+        totalLines: 2,
+        errorLines: 0,
+        createdAt: new Date(),
+        stagingEntries: [],
+        files: [],
+        createdBy: null,
+        createdById: USER_ID,
+        company: null,
+        companyId: null,
+        fiscalYear: null,
+        failureReason: null,
+        mappingOverride: null,
+      };
+    }
+    function balancedRowsLocal() {
+      return [
+        {
+          id: 'r1',
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'VTE',
+            date: '2026-01-15',
+            account: '411000',
+            label: 'Facture A',
+            debit: '100',
+            credit: '0',
+          },
+        },
+        {
+          id: 'r2',
+          rowNumber: 2,
+          mappedValues: {
+            journal: 'VTE',
+            date: '2026-01-15',
+            account: '707000',
+            label: 'Facture A',
+            debit: '0',
+            credit: '100',
+          },
+        },
+      ];
+    }
   });
 
   // ─── updateMappingOverride ────────────────────────────────────────
