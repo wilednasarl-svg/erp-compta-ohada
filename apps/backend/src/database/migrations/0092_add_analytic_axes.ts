@@ -33,13 +33,11 @@ export class AddAnalyticAxes1700000000092 implements MigrationInterface {
     `);
     await queryRunner.query(`
       COMMENT ON COLUMN "journal_entry_lines"."analytic_axis_type"
-        IS 'Type de l''axe analytique (CHANTIER, BU, ACTIVITE, PROJET, ...). '
-        || 'NULL si la ligne n''est pas imputée analytiquement. Migration 0092.'
+        IS 'Type de l''axe analytique (CHANTIER, BU, ACTIVITE, PROJET, ...). NULL si la ligne n''est pas imputée analytiquement. Migration 0092.'
     `);
     await queryRunner.query(`
       COMMENT ON COLUMN "journal_entry_lines"."analytic_axis_code"
-        IS 'Code de l''axe analytique (ex. CHANTIER AB123). NULL si la ligne '
-        || 'n''est pas imputée. Doit être renseigné iff analytic_axis_type l''est.'
+        IS 'Code de l''axe analytique (ex. CHANTIER AB123). NULL si la ligne n''est pas imputée. Doit être renseigné iff analytic_axis_type l''est.'
     `);
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "ix_journal_entry_lines_analytic"
