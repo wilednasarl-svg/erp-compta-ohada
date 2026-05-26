@@ -8,14 +8,20 @@ import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.
 import { JournalsModule } from '../journals/journals.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { ReportsController } from './controllers/reports.controller';
+import { FiscalYearSnapshotEntity } from './entities/fiscal-year-snapshot.entity';
 import { NoteAnnexeCommentEntity } from './entities/note-annexe-comment.entity';
+import { SubsequentEventEntity } from './entities/subsequent-event.entity';
+import { FiscalYearSnapshotsRepository } from './repositories/fiscal-year-snapshots.repository';
 import { NoteAnnexeCommentsRepository } from './repositories/note-annexe-comments.repository';
 import { ReportsRepository } from './repositories/reports.repository';
+import { SubsequentEventsRepository } from './repositories/subsequent-events.repository';
 import { DsfValidatorService } from './services/dsf-validator.service';
+import { FiscalYearSnapshotsService } from './services/fiscal-year-snapshots.service';
 import { ReportsPackageService } from './services/reports-package.service';
 import { ReportsPdfService } from './services/reports-pdf.service';
 import { ReportsService } from './services/reports.service';
 import { ReportsXlsxService } from './services/reports-xlsx.service';
+import { SubsequentEventsService } from './services/subsequent-events.service';
 
 /**
  * `ReportsModule` — Module 9 financial reports (waves 1-3).
@@ -39,7 +45,12 @@ import { ReportsXlsxService } from './services/reports-xlsx.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([JournalEntryLineEntity, NoteAnnexeCommentEntity]),
+    TypeOrmModule.forFeature([
+      JournalEntryLineEntity,
+      NoteAnnexeCommentEntity,
+      FiscalYearSnapshotEntity,
+      SubsequentEventEntity,
+    ]),
     AuthModule,
     RbacModule,
     AuditModule,
@@ -50,12 +61,21 @@ import { ReportsXlsxService } from './services/reports-xlsx.service';
   providers: [
     ReportsRepository,
     NoteAnnexeCommentsRepository,
+    FiscalYearSnapshotsRepository,
+    SubsequentEventsRepository,
     ReportsService,
     ReportsPdfService,
     ReportsXlsxService,
     ReportsPackageService,
     DsfValidatorService,
+    FiscalYearSnapshotsService,
+    SubsequentEventsService,
   ],
-  exports: [ReportsService, DsfValidatorService],
+  exports: [
+    ReportsService,
+    DsfValidatorService,
+    FiscalYearSnapshotsService,
+    SubsequentEventsService,
+  ],
 })
 export class ReportsModule {}
