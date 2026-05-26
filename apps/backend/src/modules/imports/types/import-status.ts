@@ -168,6 +168,7 @@ export interface ValidationError {
 export type ValidationErrorCode =
   | 'missing_required_field'
   | 'unknown_account'
+  | 'unknown_account_with_parent_hint'
   | 'invalid_date'
   | 'date_out_of_fiscal_year'
   | 'invalid_amount'

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import { REQUIRED_TARGET_FIELDS, type MappedRow } from '../types/mapping';
-import type { ValidationError } from '../types/import-status';
+import { getRequiredFieldsForDocumentType, type MappedRow } from '../types/mapping';
+import type { DocumentType, ValidationError } from '../types/import-status';
 
 /**
  * Référence partielle du plan comptable utilisée par `ValidationService`
@@ -22,6 +22,16 @@ export interface ChartAccountIndex {
    * O(1) en validation, ce qui compte sur un fichier 50 000 lignes.
    */
   readonly postingCodes: ReadonlySet<string>;
+  /**
+   * Set OPTIONNEL de tous les codes connus du référentiel SYSCOHADA
+   * AUDCIF (493 comptes après W1.1). Utilisé EXCLUSIVEMENT pour
+   * proposer un compte parent lorsqu'un compte feuille importé ne
+   * matche pas le chart de l'organisation (`unknown_account_with_parent_hint`).
+   *
+   * Si absent, le fallback hint est désactivé et `unknown_account`
+   * classique est émis — comportement historique préservé.
+   */
+  readonly allReferenceCodes?: ReadonlySet<string>;
 }
 
 export interface FiscalYearRange {
@@ -39,6 +49,21 @@ export interface ValidationContext {
    * matérialisé `FiscalYear`), la règle est silencieusement skip.
    */
   readonly fiscalYear?: FiscalYearRange;
+  /**
+   * Nature du document importé. Pilote :
+   *   - la liste des champs requis (voir
+   *     `getRequiredFieldsForDocumentType`) ;
+   *   - la règle débit/crédit : pour `trial_balance` / `general_ledger`
+   *     un compte peut présenter à la fois un cumul débiteur ET un
+   *     cumul créditeur, donc on autorise les deux simultanément ;
+   *   - le downgrade de `unknown_account` en
+   *     `unknown_account_with_parent_hint` quand un préfixe parent du
+   *     référentiel SYSCOHADA matche (cas balance d'un fichier Sage).
+   *
+   * Défaut `entries` pour rétrocompat — toute session sans
+   * `documentType` explicite garde le comportement historique.
+   */
+  readonly documentType?: DocumentType;
 }
 
 /**
@@ -71,9 +96,12 @@ export interface ValidationContext {
 export class ValidationService {
   validateRow(row: MappedRow, ctx: ValidationContext): ValidationError[] {
     const errors: ValidationError[] = [];
+    const documentType: DocumentType = ctx.documentType ?? 'entries';
+    const requiredFields = getRequiredFieldsForDocumentType(documentType);
 
-    // 1. Required fields.
-    for (const field of REQUIRED_TARGET_FIELDS) {
+    // 1. Required fields — depends on documentType so a Balance is not
+    //    asked for a `journal` it physically cannot carry.
+    for (const field of requiredFields) {
       const value = row[field];
       if (value === undefined || value === null || value.trim().length === 0) {
         errors.push({
@@ -84,20 +112,49 @@ export class ValidationService {
       }
     }
 
-    // 2. Account exists in chart.
+    // 2. Account exists in chart. Pour `trial_balance`, on tente un
+    //    fallback "préfixe parent" quand le compte feuille n'existe
+    //    pas — fréquent quand un fichier Sage utilise un découpage à
+    //    8 chiffres alors que l'org ne tient son plan qu'à 3-6 chiffres.
     const account = row.account?.trim();
     if (account !== undefined && account.length > 0) {
       if (!ctx.chart.postingCodes.has(account)) {
-        errors.push({
-          code: 'unknown_account',
-          message: `Le compte "${account}" n'existe pas dans le plan comptable ou n'est pas un compte de mouvement`,
-          field: 'account',
-        });
+        const allowParentHint =
+          documentType === 'trial_balance' && ctx.chart.allReferenceCodes !== undefined;
+        if (allowParentHint) {
+          const parent = findParentAccountByPrefix(
+            account,
+            ctx.chart.postingCodes,
+            ctx.chart.allReferenceCodes ?? new Set<string>(),
+          );
+          if (parent !== null) {
+            errors.push({
+              code: 'unknown_account_with_parent_hint',
+              message: `Le compte "${account}" n'existe pas mais le compte parent "${parent}" est disponible — créez-le ou mappez sur "${parent}"`,
+              field: 'account',
+            });
+          } else {
+            errors.push({
+              code: 'unknown_account',
+              message: `Le compte "${account}" n'existe pas dans le plan comptable ou n'est pas un compte de mouvement`,
+              field: 'account',
+            });
+          }
+        } else {
+          errors.push({
+            code: 'unknown_account',
+            message: `Le compte "${account}" n'existe pas dans le plan comptable ou n'est pas un compte de mouvement`,
+            field: 'account',
+          });
+        }
       }
     }
 
-    // 3 & 4. Date parsing + fiscal year check.
+    // 3 & 4. Date parsing + fiscal year check. Si la date n'est pas
+    //    requise pour ce documentType, on skip totalement (un fichier
+    //    Balance n'a pas de date par ligne).
     const dateRaw = row.date?.trim();
+    const dateRequired = requiredFields.includes('date');
     if (dateRaw !== undefined && dateRaw.length > 0) {
       const parsed = parseImportDate(dateRaw);
       if (parsed === null) {
@@ -106,7 +163,7 @@ export class ValidationService {
           message: `Date "${dateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY)`,
           field: 'date',
         });
-      } else if (ctx.fiscalYear) {
+      } else if (ctx.fiscalYear && dateRequired) {
         if (parsed < ctx.fiscalYear.startDate || parsed > ctx.fiscalYear.endDate) {
           errors.push({
             code: 'date_out_of_fiscal_year',
@@ -145,16 +202,28 @@ export class ValidationService {
     if (!debit.error && !credit.error) {
       const d = debit.value;
       const c = credit.value;
+      // Pour une balance ou un grand livre, un même compte présente
+      // simultanément un cumul débiteur ET un cumul créditeur (c'est
+      // la sémantique du document, pas une erreur). On garde
+      // `debit_credit_both_zero` (ligne vide = suspect) sauf pour
+      // balance où une ligne à 0/0 est juste un compte sans
+      // mouvement — informatif, pas bloquant.
+      const isCumulativeDocument =
+        documentType === 'trial_balance' || documentType === 'general_ledger';
       if (d === 0 && c === 0) {
-        errors.push({
-          code: 'debit_credit_both_zero',
-          message: 'Au moins un des montants débit ou crédit doit être > 0',
-        });
+        if (!isCumulativeDocument) {
+          errors.push({
+            code: 'debit_credit_both_zero',
+            message: 'Au moins un des montants débit ou crédit doit être > 0',
+          });
+        }
       } else if (d > 0 && c > 0) {
-        errors.push({
-          code: 'debit_credit_both_nonzero',
-          message: 'Débit et crédit ne peuvent pas être simultanément > 0',
-        });
+        if (!isCumulativeDocument) {
+          errors.push({
+            code: 'debit_credit_both_nonzero',
+            message: 'Débit et crédit ne peuvent pas être simultanément > 0',
+          });
+        }
       }
     }
 
@@ -262,6 +331,39 @@ function makeDate(year: number, month: number, day: number): Date | null {
     return null;
   }
   return d;
+}
+
+/**
+ * Cherche un compte parent connu (présent soit dans le chart de
+ * l'organisation, soit dans le référentiel SYSCOHADA) en descendant le
+ * code de la feuille vers la racine, préfixe par préfixe.
+ *
+ * Exemple — `account = "10100000"`, posting = {}, reference = {"101",
+ * "10"} → renvoie `"101"` (le plus long préfixe matché gagne, mais on
+ * s'arrête au premier match en descendant donc on prend le plus
+ * spécifique disponible). Si rien ne matche, renvoie `null`.
+ *
+ * Exporté pour les tests — la logique de descente de préfixe mérite
+ * une couverture isolée.
+ */
+export function findParentAccountByPrefix(
+  account: string,
+  postingCodes: ReadonlySet<string>,
+  allReferenceCodes: ReadonlySet<string>,
+): string | null {
+  const trimmed = account.trim();
+  if (trimmed.length < 2) return null;
+  // Descendre du préfixe le plus long (account[0..n-1]) au plus court
+  // (2 chars). Le premier match gagne — c'est le parent le plus
+  // spécifique disponible, donc celui qui apportera le plus
+  // d'information à l'utilisateur.
+  for (let len = trimmed.length - 1; len >= 2; len -= 1) {
+    const prefix = trimmed.slice(0, len);
+    if (postingCodes.has(prefix) || allReferenceCodes.has(prefix)) {
+      return prefix;
+    }
+  }
+  return null;
 }
 
 type AmountResult = { value: number; error: null } | { value: 0; error: 'invalid' | 'negative' };

@@ -308,6 +308,41 @@ describe('ImportSessionService', () => {
 
   // ─── sanitizeErrorMessage ──────────────────────────────────────────
 
+  describe('detectSuggestedDocumentType (static)', () => {
+    it('suggests trial_balance when only account + amounts are mapped (no date / journal / label)', () => {
+      const suggestion = ImportSessionService.detectSuggestedDocumentType({
+        compte: 'account',
+        debit: 'debit',
+        credit: 'credit',
+      });
+      expect(suggestion).toBe('trial_balance');
+    });
+
+    it('returns null when journal AND date are present (looks like entries)', () => {
+      const suggestion = ImportSessionService.detectSuggestedDocumentType({
+        compte: 'account',
+        journal: 'journal',
+        date: 'date',
+        debit: 'debit',
+        credit: 'credit',
+        libelle: 'label',
+      });
+      expect(suggestion).toBeNull();
+    });
+
+    it('returns null when date is present even if journal is missing', () => {
+      const suggestion = ImportSessionService.detectSuggestedDocumentType({
+        compte: 'account',
+        date: 'date',
+        debit: 'debit',
+        credit: 'credit',
+      });
+      // Has date → looks like general_ledger, not trial_balance — we
+      // stay conservative and do not suggest.
+      expect(suggestion).toBeNull();
+    });
+  });
+
   describe('sanitizeErrorMessage (static)', () => {
     it('strips POSIX absolute paths', () => {
       const raw = 'Cannot open file /var/uploads/org-1/sess-2/20240101-data.csv: ENOENT';

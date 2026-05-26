@@ -1,3 +1,5 @@
+import type { DocumentType } from './import-status';
+
 /**
  * Canonical target schema for an imported accounting line. Every parser
  * eventually projects the source row into this shape under
@@ -42,6 +44,10 @@ export const TARGET_FIELDS: readonly TargetField[] = [
  * commit. `partner` and `currency` restent optionnels au niveau
  * structurel — leurs règles métier sont gérées par `ValidationService`
  * (ex. partner obligatoire sur un journal de ventes).
+ *
+ * Conservé par rétrocompat — défaut du `documentType` historique
+ * `'entries'`. La logique adaptive vit dans
+ * `getRequiredFieldsForDocumentType`.
  */
 export const REQUIRED_TARGET_FIELDS: readonly TargetField[] = [
   'account',
@@ -49,6 +55,38 @@ export const REQUIRED_TARGET_FIELDS: readonly TargetField[] = [
   'date',
   'label',
 ] as const;
+
+/**
+ * Champs requis par nature de document. Une `Balance` n'a ni date ni
+ * journal par ligne (c'est un cumul à un instant T) ; un `Relevé
+ * bancaire` n'a pas de compte (le compte est implicite — le compte
+ * bancaire de l'organisation associé au fichier).
+ *
+ * Toute extension du `DocumentType` doit ajouter une entrée ici, sinon
+ * `getRequiredFieldsForDocumentType` retombera sur le comportement
+ * `entries` (défensif — pas un échec dur, mais loggable côté review).
+ */
+export const DOCUMENT_TYPE_REQUIRED_FIELDS: Readonly<
+  Record<DocumentType, readonly TargetField[]>
+> = {
+  entries: ['account', 'journal', 'date', 'label'],
+  general_ledger: ['account', 'date', 'label'],
+  trial_balance: ['account', 'label'],
+  bank_statement: ['date', 'label'],
+  auxiliary_ledger: ['account', 'partner', 'date', 'label'],
+  sales_purchases: ['account', 'date', 'label'],
+};
+
+/**
+ * Fonction pure exposant les champs requis pour un `DocumentType`
+ * donné. Retombe sur `REQUIRED_TARGET_FIELDS` si la clé est inconnue
+ * (futur ajout d'un type sans backfill du mapping).
+ */
+export function getRequiredFieldsForDocumentType(
+  documentType: DocumentType,
+): readonly TargetField[] {
+  return DOCUMENT_TYPE_REQUIRED_FIELDS[documentType] ?? REQUIRED_TARGET_FIELDS;
+}
 
 /**
  * Mapped projection of a source row onto the canonical schema. All

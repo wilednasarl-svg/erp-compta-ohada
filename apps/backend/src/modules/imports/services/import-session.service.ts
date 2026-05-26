@@ -13,6 +13,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { AppConfig } from '../../../config/configuration';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import { OrganizationAccountRepository } from '../../accounting-plan/repositories/organization-account.repository';
+import { ReferenceAccountRepository } from '../../accounting-plan/repositories/reference-account.repository';
 import type { TenantId } from '../../../common/persistence/tenant-scope';
 import type { ImportSessionEntity } from '../entities/import-session.entity';
 import { ImportFileRepository } from '../repositories/import-file.repository';
@@ -88,6 +89,16 @@ export interface PreviewResult {
   readonly unmappedTargets: readonly TargetField[];
   readonly totals: { total: number; withErrors: number };
   readonly entries: readonly PreviewEntry[];
+  /**
+   * Suggestion non-bloquante : si l'utilisateur n'a PAS explicitement
+   * choisi de `documentType` et que la structure du fichier ressemble
+   * fortement à une balance (compte + débit + crédit présents, mais
+   * date / journal / libellé absents), on propose un type au frontend
+   * pour qu'il affiche un toast type "Ce fichier semble être une
+   * balance — basculer sur 'trial_balance' ?". `null` si rien à suggérer
+   * ou si le documentType est déjà fixé par l'utilisateur.
+   */
+  readonly suggestedDocumentType: DocumentType | null;
 }
 
 /**
@@ -133,6 +144,7 @@ export class ImportSessionService {
     private readonly entries: EntriesService,
     private readonly audit: AuditTrailService,
     @Inject(ConfigService) private readonly config: ConfigService<AppConfig, true>,
+    private readonly referenceAccounts?: ReferenceAccountRepository,
   ) {}
 
   // ─── Create session ─────────────────────────────────────────────────
@@ -483,13 +495,25 @@ export class ImportSessionService {
     const accounts = await this.chartAccounts.listByOrganization(organizationId, {
       activeOnly: true,
     });
-    const chart = this.validation.buildChartIndex(
+    const baseChart = this.validation.buildChartIndex(
       accounts.map((a) => ({
         code: a.code,
         accountType: a.accountType,
         isActive: a.isActive,
       })),
     );
+
+    // Pour `trial_balance`, on enrichit le chart avec l'ensemble des
+    // codes du référentiel SYSCOHADA, ce qui permet à `ValidationService`
+    // de dégrader `unknown_account` en `unknown_account_with_parent_hint`
+    // quand un préfixe parent existe (cas typique d'un Sage 8 chiffres
+    // contre un plan org à 3-6 chiffres).
+    const allReferenceCodes =
+      documentType === 'trial_balance' && this.referenceAccounts !== undefined
+        ? await this.loadAllReferenceCodes()
+        : undefined;
+    const chart =
+      allReferenceCodes !== undefined ? { ...baseChart, allReferenceCodes } : baseChart;
 
     const stagingRows = await this.stagingEntries.listBySession(sessionId, organizationId, {
       limit: options.limit ?? 100,
@@ -498,7 +522,10 @@ export class ImportSessionService {
 
     const entries: PreviewEntry[] = stagingRows.map((row) => {
       const mapped = this.mapping.applyMapping(row.rawValues, proposal.headerToTarget);
-      const errors = this.validation.validateRow(mapped, { chart });
+      const errors = this.validation.validateRow(mapped, {
+        chart,
+        documentType: documentType ?? undefined,
+      });
       return {
         rowNumber: row.rowNumber,
         rawValues: row.rawValues,
@@ -506,6 +533,14 @@ export class ImportSessionService {
         errors,
       };
     });
+
+    // Auto-suggestion : si l'utilisateur n'a pas choisi de documentType
+    // et que la structure du mapping ressemble fortement à une balance,
+    // on propose `trial_balance` au frontend (toast non-bloquant).
+    const suggestedDocumentType =
+      documentType === null
+        ? detectSuggestedDocumentType(proposal.headerToTarget)
+        : null;
 
     // Fix projet-ferme-7kn: persist mapped values + validation errors
     // back to the staging rows so that SQL-level `countBySession` (which
@@ -557,7 +592,24 @@ export class ImportSessionService {
       unmappedTargets: proposal.unmappedTargets,
       totals: { total: totals.total, withErrors: totals.withErrors },
       entries,
+      suggestedDocumentType,
     };
+  }
+
+  /**
+   * Load every code of the SYSCOHADA reference chart into a Set for
+   * O(1) lookup during the parent-prefix hint resolution. Cached for
+   * the duration of a single preview call (`undefined` between calls
+   * so a future seed reload is picked up). Reference table is global
+   * (no tenant scope) so this is safe across orgs.
+   */
+  private async loadAllReferenceCodes(): Promise<ReadonlySet<string> | undefined> {
+    if (this.referenceAccounts === undefined) return undefined;
+    // The SYSCOHADA AUDCIF system is the only one used by the MVP — if
+    // an org runs on MINIMAL / ALLEGE the hint widens harmlessly to a
+    // superset.
+    const all = await this.referenceAccounts.listBySystem('NORMAL');
+    return new Set(all.map((a) => a.code));
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────
@@ -1019,6 +1071,19 @@ export class ImportSessionService {
    * Keeps the original message intact in audit log metadata (non-public).
    * Defense: audit Module 3 Sec-L1 — info disclosure via failure_reason.
    */
+  /**
+   * Exposed for tests (pure function, no I/O).
+   */
+  /**
+   * Délègue à la fonction `detectSuggestedDocumentType` exportée plus bas
+   * dans le fichier (fonction pure exposée pour les tests).
+   */
+  static detectSuggestedDocumentType(
+    mapping: Readonly<Record<string, TargetField>>,
+  ): DocumentType | null {
+    return detectSuggestedDocumentType(mapping);
+  }
+
   static sanitizeErrorMessage(raw: string): string {
     // POSIX absolute paths: /foo/bar, /var/uploads/orgid/...
     // Windows absolute paths: C:\foo\bar or \\share\path
@@ -1027,4 +1092,46 @@ export class ImportSessionService {
       .slice(0, 500);
     return sanitized || 'Parsing error';
   }
+}
+
+/**
+ * Heuristique pure : décide si le mapping détecté à l'auto-mapping
+ * suggère un `DocumentType` plus pertinent que `entries` (le défaut
+ * historique).
+ *
+ * Règle actuelle (MVP) :
+ *   - `trial_balance` proposé si on a un compte ET au moins un
+ *     montant (débit OU crédit), MAIS pas de date NI de journal.
+ *     Critère structurel : > 60 % des "champs typiques d'écriture"
+ *     manquants alors que les "champs typiques de balance" sont là.
+ *
+ * Le frontend reçoit la suggestion via `PreviewResult.suggestedDocumentType`.
+ * Elle est purement informative — aucune action serveur n'est
+ * déclenchée par sa présence.
+ */
+function detectSuggestedDocumentType(
+  mapping: Readonly<Record<string, TargetField>>,
+): DocumentType | null {
+  const targets = new Set(Object.values(mapping));
+  const hasAccount = targets.has('account');
+  const hasAmount = targets.has('debit') || targets.has('credit');
+  const hasDate = targets.has('date');
+  const hasJournal = targets.has('journal');
+  const hasLabel = targets.has('label');
+
+  // Balance pattern: compte + montant(s), pas de date NI de journal.
+  // Le libellé peut être absent (Sage exporte parfois juste compte +
+  // intitulé court qui se mappe ailleurs) — on ne s'en sert pas dans
+  // le critère.
+  if (hasAccount && hasAmount && !hasDate && !hasJournal) {
+    // Confirmation par ratio des "champs écriture" manquants
+    // (date + journal + label = 3 attendus pour entries).
+    const entriesFields = [hasDate, hasJournal, hasLabel];
+    const missing = entriesFields.filter((p) => !p).length;
+    if (missing / entriesFields.length > 0.6) {
+      return 'trial_balance';
+    }
+  }
+
+  return null;
 }
