@@ -144,15 +144,14 @@ export class AssetsController {
   ) {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
-    const asset = await this.assets.dispose(
+    const result = await this.assets.dispose(
       assetId,
       asTenantId(tokenOrgId),
-      body.disposalDate,
-      body.disposalValue ?? null,
+      body,
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { asset };
+    return result;
   }
 
   // ─── Post depreciation ─────────────────────────────────────────────

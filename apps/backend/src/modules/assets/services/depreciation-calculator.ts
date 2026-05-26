@@ -345,3 +345,98 @@ export function computeDecliningSchedule(input: DepreciationInput): Depreciation
 export function computeSchedule(input: DepreciationInput): DepreciationLine[] {
   return input.method === 'linear' ? computeLinearSchedule(input) : computeDecliningSchedule(input);
 }
+
+/**
+ * Calcule la dotation d'amortissement sur une portion d'exercice
+ * (W3.3 — prorata cession). On part de la dotation annuelle pleine
+ * applicable au fragment d'exercice [fromDate, toDate] et on rapporte
+ * au nombre de jours réellement courus.
+ *
+ * Convention :
+ *   - linéaire : dotation pleine d'exercice = `(coût - résiduel) /
+ *     totalDays × yearDays`. On peut directement réutiliser ce ratio en
+ *     rapportant aux jours du segment.
+ *   - dégressif : on applique `rate × VNC_début` proratisé en jours, ce
+ *     qui suffit pour la dotation prorata cession (la VNC de début est
+ *     calculée par le caller à partir du cumul amortissement passé).
+ *
+ * `fromDate` inclusif, `toDate` inclusif (convention SYSCOHADA jours).
+ * Renvoie `0.00` si le segment est vide ou si le bien est totalement
+ * amorti avant `fromDate` (caller responsable de la VNC d'entrée).
+ *
+ * NB : on retourne aussi `daysProrated` pour traçabilité (audit, lignes
+ * d'écriture mentionnant la fraction d'année).
+ */
+export interface PartialYearDepreciationInput extends DepreciationInput {
+  /** Cumul d'amortissement déjà passé (cents/DECIMAL string) — utile en dégressif. */
+  readonly accumulatedDepreciation?: string | number;
+}
+
+export function computePartialYearDepreciation(
+  input: PartialYearDepreciationInput,
+  fromDate: string,
+  toDate: string,
+): { amount: string; daysProrated: number } {
+  if (fromDate > toDate) {
+    return { amount: '0.00', daysProrated: 0 };
+  }
+  const cost = toCents(input.acquisitionCost);
+  const residual = toCents(input.residualValue);
+  const depreciable = cost - residual;
+  if (depreciable <= 0) {
+    return { amount: '0.00', daysProrated: 0 };
+  }
+  if (input.durationMonths <= 0) {
+    throw new Error(`durationMonths must be > 0, got ${input.durationMonths}`);
+  }
+
+  const segDays = daysBetween(fromDate, toDate);
+  if (segDays <= 0) {
+    return { amount: '0.00', daysProrated: 0 };
+  }
+
+  if (input.method === 'linear') {
+    // Total days of amortization, computed identically to computeLinearSchedule.
+    const start = parseYmd(input.putInServiceDate);
+    const lastDate = new Date(
+      Date.UTC(start.year, start.month - 1 + input.durationMonths, start.day),
+    );
+    lastDate.setUTCDate(lastDate.getUTCDate() - 1);
+    const finalEnd = formatYmd(
+      lastDate.getUTCFullYear(),
+      lastDate.getUTCMonth() + 1,
+      lastDate.getUTCDate(),
+    );
+    // Cap segment to the amortization window.
+    const effectiveStart = fromDate < input.putInServiceDate ? input.putInServiceDate : fromDate;
+    const effectiveEnd = toDate > finalEnd ? finalEnd : toDate;
+    if (effectiveStart > effectiveEnd) {
+      return { amount: '0.00', daysProrated: 0 };
+    }
+    const effDays = daysBetween(effectiveStart, effectiveEnd);
+    const totalDays = daysBetween(input.putInServiceDate, finalEnd);
+    const cents = Math.round((depreciable * effDays) / totalDays);
+    return { amount: fromCents(cents), daysProrated: effDays };
+  }
+
+  // Declining : taux × VNC début × prorata jours / jours dans l'année du segment.
+  if (input.decliningRate === null || input.decliningRate === undefined) {
+    throw new Error('decliningRate is required for declining method');
+  }
+  const rate =
+    typeof input.decliningRate === 'number' ? input.decliningRate : Number(input.decliningRate);
+  if (!Number.isFinite(rate) || rate <= 0 || rate >= 1) {
+    throw new Error(`decliningRate must be in (0, 1), got ${input.decliningRate}`);
+  }
+  const accumulated = input.accumulatedDepreciation
+    ? toCents(input.accumulatedDepreciation)
+    : 0;
+  const vncStart = Math.max(0, cost - residual - accumulated);
+  if (vncStart <= 0) {
+    return { amount: '0.00', daysProrated: segDays };
+  }
+  const yearDays = daysInYear(parseYmd(fromDate).year);
+  const cents = Math.round((vncStart * rate * segDays) / yearDays);
+  const capped = Math.min(cents, vncStart);
+  return { amount: fromCents(capped), daysProrated: segDays };
+}

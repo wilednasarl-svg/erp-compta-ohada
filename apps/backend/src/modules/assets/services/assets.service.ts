@@ -13,12 +13,29 @@ import { AssetsRepository } from '../repositories/assets.repository';
 import { DepreciationSchedulesRepository } from '../repositories/depreciation-schedules.repository';
 import { CreateAssetDto } from '../dto/create-asset.dto';
 import { UpdateAssetDto } from '../dto/update-asset.dto';
+import { DISPOSAL_ACCOUNT_CODES, type DisposeAssetDto } from '../dto/dispose-asset.dto';
 import {
   computeLinearSchedule,
   computeDecliningSchedule,
+  computePartialYearDepreciation,
   type DepreciationInput,
   type DepreciationLine,
 } from './depreciation-calculator';
+
+/**
+ * Récapitulatif d'une écriture comptable générée par `dispose()`.
+ * Retourné au caller pour traçabilité (UI peut afficher les trois écritures
+ * sans relancer un fetch des journal_entries).
+ */
+export interface DisposalJournalEntrySummary {
+  readonly id: string;
+  readonly type: 'prorata_depreciation' | 'asset_writeoff' | 'disposal_proceeds';
+  readonly lines: ReadonlyArray<{
+    readonly accountCode: string;
+    readonly debit: number;
+    readonly credit: number;
+  }>;
+}
 
 @Injectable()
 export class AssetsService {
@@ -277,34 +294,292 @@ export class AssetsService {
     });
   }
 
-  // ─── Dispose ────────────────────────────────────────────────────────
+  // ─── Dispose (W3.3 — cession complète SYSCOHADA) ────────────────────
 
   /**
-   * Mark an asset as disposed (cédé / mis au rebut).
-   * Deletes all remaining `pending` schedule lines.
+   * Cède une immobilisation et génère les écritures comptables
+   * SYSCOHADA correspondantes (App. 33 / 66 / 110, Tome 1 G04).
+   *
+   * Trois écritures peuvent être émises, toutes via
+   * `EntriesService.createDraft` puis `validate` (donc atomiquement
+   * postées) :
+   *
+   *  1. **Dotation prorata** — D 681 / C 28x pour la part d'amortissement
+   *     courue depuis la dernière dotation postée (ou depuis le début de
+   *     l'exercice) jusqu'à la date de cession. Émise uniquement si le
+   *     montant prorata est > 0.
+   *  2. **Sortie du bilan** — selon `disposalKind` :
+   *       - `recurring` : D 654 (VNC) + D 28x (cumul amort) / C 23-24 (brut).
+   *       - `hao`       : D 812 (VNC) + D 28x (cumul amort) / C 23-24 (brut).
+   *     Toujours émise (même si proceeds = 0).
+   *  3. **Prix de cession** — selon `disposalKind` :
+   *       - `recurring` : D 5121 ou 411 / C 754.
+   *       - `hao`       : D 485 ou 411 / C 822.
+   *     Émise uniquement si `proceedsAmount > 0` (rebut → pas d'écriture
+   *     produit).
+   *
+   * Le gain/perte n'est PAS comptabilisé sur une écriture séparée — il
+   * est implicite dans le delta proceeds vs VNC sur les comptes 754/822
+   * vs 654/812. On le persiste en `disposal_value` (proceeds) à titre
+   * informatif, mais le journal porte la vérité comptable.
+   *
+   * Toutes les écritures portent `sourceType: 'depreciation'` (réutilise
+   * la catégorie existante — le système comptable les retrouve via le
+   * code asset embarqué dans la description). À terme W4, on ajoutera
+   * un sourceType dédié `asset_disposal`.
    */
   async dispose(
     id: string,
     organizationId: TenantId,
-    disposalDate: string,
-    disposalValue: string | null,
+    dto: DisposeAssetDto,
     actorId: string,
     ctx: AuditContext,
-  ): Promise<AssetEntity> {
+    journalCode = 'OD',
+  ): Promise<{ asset: AssetEntity; journalEntries: DisposalJournalEntrySummary[] }> {
     assertTenantId(organizationId);
     const asset = await this.findById(id, organizationId);
 
-    return this.dataSource.transaction(async (manager) => {
-      await this.schedulesRepo.deletePendingByAsset(id, organizationId, manager);
+    // ─── Guards ─────────────────────────────────────────────────────
+    if (asset.status === 'disposed') {
+      throw new AppException(ERROR_CODES.ASSET_ALREADY_DISPOSED, {
+        message: `Asset '${asset.code}' is already disposed (on ${asset.disposalDate}).`,
+      });
+    }
+    if (dto.disposalDate < asset.acquisitionDate) {
+      throw new AppException(ERROR_CODES.ASSET_DISPOSAL_INVALID_DATE, {
+        message: `Disposal date ${dto.disposalDate} precedes acquisition date ${asset.acquisitionDate}.`,
+      });
+    }
+    const proceedsNum = Number(dto.proceedsAmount);
+    if (!Number.isFinite(proceedsNum) || proceedsNum < 0) {
+      throw new AppException(ERROR_CODES.ASSET_DISPOSAL_INVALID_DATE, {
+        message: `proceedsAmount must be a non-negative number, got "${dto.proceedsAmount}".`,
+      });
+    }
+
+    // ─── Load schedules (posted + pending) ─────────────────────────
+    const schedules = await this.schedulesRepo.listByAsset(id, organizationId);
+    const postedSchedules = schedules.filter((s) => s.status === 'posted');
+    const cumulPostedCents = postedSchedules.reduce(
+      (acc, s) => acc + Math.round(Number(s.depreciationAmount) * 100),
+      0,
+    );
+
+    // Last posted period end — anchor for the prorata.
+    const lastPostedEnd = postedSchedules.reduce<string | null>((acc, s) => {
+      if (!acc || s.periodEnd > acc) return s.periodEnd;
+      return acc;
+    }, null);
+
+    // Prorata window : day after lastPostedEnd → disposalDate. If no
+    // dotation has ever been posted, start from the put-in-service date
+    // (or 01/01 of the disposal year, whichever is later — but
+    // simplest/safest is from putInServiceDate).
+    const proratStart = lastPostedEnd
+      ? this.addOneDay(lastPostedEnd)
+      : asset.putInServiceDate;
+
+    const { amount: proratAmountStr, daysProrated } = computePartialYearDepreciation(
+      {
+        acquisitionCost: asset.acquisitionCost,
+        residualValue: asset.residualValue,
+        putInServiceDate: asset.putInServiceDate,
+        durationMonths: asset.durationMonths,
+        method: asset.depreciationMethod,
+        decliningRate: asset.decliningRate,
+        accumulatedDepreciation: (cumulPostedCents / 100).toFixed(2),
+      },
+      proratStart,
+      dto.disposalDate,
+    );
+    const proratAmountCents = Math.round(Number(proratAmountStr) * 100);
+
+    // ─── Resolve accounts (codes → ids) up-front so errors fail
+    //     before any draft entry is written. The asset's original
+    //     accountCode is resolved via its asset_account_id.
+    const [
+      assetAccountCode,
+      depreciationAccountCode,
+      expenseAccountCode,
+      vncAccountCode,
+      proceedsAccountCode,
+      defaultProceedsContraCode,
+    ] = await Promise.all([
+      this.resolveAccountIdToCode(asset.assetAccountId, organizationId),
+      this.resolveAccountIdToCode(asset.depreciationAccountId, organizationId),
+      this.resolveAccountIdToCode(asset.expenseAccountId, organizationId),
+      this.requireAccountByCode(
+        DISPOSAL_ACCOUNT_CODES[dto.disposalKind].vnc,
+        organizationId,
+        'disposalVncAccount',
+      ).then((a) => a.code),
+      this.requireAccountByCode(
+        DISPOSAL_ACCOUNT_CODES[dto.disposalKind].proceeds,
+        organizationId,
+        'disposalProceedsAccount',
+      ).then((a) => a.code),
+      proceedsNum > 0
+        ? this.requireAccountByCode(
+            dto.proceedsAccountCode ??
+              DISPOSAL_ACCOUNT_CODES[dto.disposalKind].defaultProceedsAccount,
+            organizationId,
+            'proceedsContraAccount',
+          ).then((a) => a.code)
+        : Promise.resolve('' as string),
+    ]);
+
+    // ─── Compute final figures ─────────────────────────────────────
+    const grossCents = Math.round(Number(asset.acquisitionCost) * 100);
+    const totalCumulCents = cumulPostedCents + proratAmountCents;
+    const vncCents = Math.max(0, grossCents - totalCumulCents);
+    const proceedsCents = Math.round(proceedsNum * 100);
+    const gainLossCents = proceedsCents - vncCents;
+
+    const journalEntries: DisposalJournalEntrySummary[] = [];
+
+    return this.dataSource.transaction(async (_manager) => {
+      // ─── 1. Prorata dotation (D 681 / C 28x) ────────────────────
+      if (proratAmountCents > 0) {
+        const proratLines: CreateLineInput[] = [
+          {
+            accountCode: expenseAccountCode,
+            debit: proratAmountCents / 100,
+            credit: 0,
+            description: `Dotation prorata cession ${asset.code} (${daysProrated} j)`,
+          },
+          {
+            accountCode: depreciationAccountCode,
+            debit: 0,
+            credit: proratAmountCents / 100,
+            description: `Amort. cumulé prorata cession ${asset.code}`,
+          },
+        ];
+        const proratEntry = await this.entriesService.createDraft(
+          organizationId,
+          {
+            journalCode,
+            entryDate: dto.disposalDate,
+            description: `Dotation prorata cession — ${asset.label} (${asset.code})`,
+            lines: proratLines,
+            sourceType: 'depreciation',
+          },
+          actorId,
+          ctx,
+        );
+        await this.entriesService.validate(organizationId, proratEntry.id, actorId, ctx);
+        journalEntries.push({
+          id: proratEntry.id,
+          type: 'prorata_depreciation',
+          lines: proratLines.map((l) => ({
+            accountCode: l.accountCode,
+            debit: l.debit,
+            credit: l.credit,
+          })),
+        });
+      }
+
+      // ─── 2. Sortie du bilan ─────────────────────────────────────
+      // Equation : D VNC + D 28x = C 23-24 (brut)
+      // Si totalCumul == 0 (asset fraîchement acquis), une seule ligne
+      // débit suffit ; même cas si VNC == 0 (totalement amorti).
+      const sortieLines: CreateLineInput[] = [];
+      if (vncCents > 0) {
+        sortieLines.push({
+          accountCode: vncAccountCode,
+          debit: vncCents / 100,
+          credit: 0,
+          description: `VNC sortie ${dto.disposalKind === 'hao' ? 'HAO' : 'courante'} ${asset.code}`,
+        });
+      }
+      if (totalCumulCents > 0) {
+        sortieLines.push({
+          accountCode: depreciationAccountCode,
+          debit: totalCumulCents / 100,
+          credit: 0,
+          description: `Reprise amort. cumulé ${asset.code}`,
+        });
+      }
+      sortieLines.push({
+        accountCode: assetAccountCode,
+        debit: 0,
+        credit: grossCents / 100,
+        description: `Sortie bilan ${asset.code} — ${dto.disposalDate}`,
+      });
+
+      const sortieEntry = await this.entriesService.createDraft(
+        organizationId,
+        {
+          journalCode,
+          entryDate: dto.disposalDate,
+          description: `Sortie ${dto.disposalKind === 'hao' ? 'HAO' : 'courante'} — ${asset.label} (${asset.code})`,
+          lines: sortieLines,
+          sourceType: 'depreciation',
+        },
+        actorId,
+        ctx,
+      );
+      await this.entriesService.validate(organizationId, sortieEntry.id, actorId, ctx);
+      journalEntries.push({
+        id: sortieEntry.id,
+        type: 'asset_writeoff',
+        lines: sortieLines.map((l) => ({
+          accountCode: l.accountCode,
+          debit: l.debit,
+          credit: l.credit,
+        })),
+      });
+
+      // ─── 3. Prix de cession ─────────────────────────────────────
+      if (proceedsCents > 0) {
+        const proceedsLines: CreateLineInput[] = [
+          {
+            accountCode: defaultProceedsContraCode,
+            debit: proceedsCents / 100,
+            credit: 0,
+            description: `Prix cession ${asset.code} — encaissé / dû`,
+          },
+          {
+            accountCode: proceedsAccountCode,
+            debit: 0,
+            credit: proceedsCents / 100,
+            description: `Produit cession ${dto.disposalKind === 'hao' ? 'HAO' : 'courante'} ${asset.code}`,
+          },
+        ];
+        const proceedsEntry = await this.entriesService.createDraft(
+          organizationId,
+          {
+            journalCode,
+            entryDate: dto.disposalDate,
+            description: `Prix de cession — ${asset.label} (${asset.code})`,
+            lines: proceedsLines,
+            sourceType: 'depreciation',
+          },
+          actorId,
+          ctx,
+        );
+        await this.entriesService.validate(organizationId, proceedsEntry.id, actorId, ctx);
+        journalEntries.push({
+          id: proceedsEntry.id,
+          type: 'disposal_proceeds',
+          lines: proceedsLines.map((l) => ({
+            accountCode: l.accountCode,
+            debit: l.debit,
+            credit: l.credit,
+          })),
+        });
+      }
+
+      // ─── 4. Clean pending schedules + update asset ──────────────
+      await this.schedulesRepo.deletePendingByAsset(id, organizationId, _manager);
       const disposed = await this.assetsRepo.update(
         id,
         organizationId,
         {
           status: 'disposed',
-          disposalDate,
-          disposalValue: disposalValue ?? null,
+          disposalDate: dto.disposalDate,
+          disposalValue: (proceedsCents / 100).toFixed(2),
         },
-        manager,
+        _manager,
       );
 
       await this.emitAudit(
@@ -312,16 +587,34 @@ export class AssetsService {
         id,
         {
           code: asset.code,
-          disposalDate,
-          disposalValue,
+          disposalDate: dto.disposalDate,
+          disposalKind: dto.disposalKind,
+          proceedsAmount: (proceedsCents / 100).toFixed(2),
+          grossAmount: (grossCents / 100).toFixed(2),
+          totalCumulativeDepreciation: (totalCumulCents / 100).toFixed(2),
+          proratAmount: (proratAmountCents / 100).toFixed(2),
+          proratDays: daysProrated,
+          netBookValue: (vncCents / 100).toFixed(2),
+          gainLoss: (gainLossCents / 100).toFixed(2),
+          journalEntries: journalEntries.map((e) => ({ id: e.id, type: e.type })),
+          note: dto.note ?? null,
         },
         ctx,
         actorId,
         organizationId,
       );
 
-      return disposed;
+      return { asset: disposed, journalEntries };
     });
+  }
+
+  private addOneDay(ymd: string): string {
+    const d = new Date(`${ymd}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   // ─── Post Depreciation ──────────────────────────────────────────────

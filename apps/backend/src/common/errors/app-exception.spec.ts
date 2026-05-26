@@ -178,6 +178,8 @@ describe('HTTP status mapping', () => {
       ASSET_CODE_TAKEN: 409,
       DEPRECIATION_SCHEDULE_NOT_FOUND: 404,
       DEPRECIATION_SCHEDULE_ALREADY_POSTED: 409,
+      ASSET_ALREADY_DISPOSED: 409,
+      ASSET_DISPOSAL_INVALID_DATE: 422,
       // Module 14 — Journal entry workflow & electronic signatures.
       ENTRY_SIGNATURE_INVALID_STATUS: 409,
       ENTRY_SIGNATURE_ALREADY_SIGNED: 409,
