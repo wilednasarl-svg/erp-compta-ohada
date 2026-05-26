@@ -37,8 +37,10 @@ interface DocumentView {
   readonly uploadedAt: string;
 }
 interface ListResponse {
-  readonly documents: ReadonlyArray<DocumentView>;
+  readonly rows: ReadonlyArray<DocumentView>;
   readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
 }
 
 /**
@@ -206,7 +208,7 @@ export default function DocumentsPage() {
 
             {docsQuery.isLoading ? (
               <p className="text-sm text-muted-foreground">Chargement…</p>
-            ) : docsQuery.data?.documents.length === 0 ? (
+            ) : (docsQuery.data?.rows.length ?? 0) === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun document.</p>
             ) : (
               <div className="overflow-x-auto rounded-md border">
@@ -222,7 +224,7 @@ export default function DocumentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(docsQuery.data?.documents ?? []).map((d) => (
+                    {(docsQuery.data?.rows ?? []).map((d) => (
                       <DocumentRow key={d.id} doc={d} />
                     ))}
                   </tbody>
@@ -244,7 +246,7 @@ export default function DocumentsPage() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={(docsQuery.data?.documents.length ?? 0) < pageSize}
+                disabled={(docsQuery.data?.rows.length ?? 0) < pageSize}
                 onClick={() => setPage((p) => p + 1)}
               >
                 Suivant
