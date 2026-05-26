@@ -155,13 +155,13 @@ describe('JournalsService.seedStandardJournals', () => {
     expect(journalRepo.create).toHaveBeenCalledTimes(STANDARD_JOURNALS.length);
   });
 
-  it('seeds AC, VE, BQ, CA, OD codes in order', async () => {
+  it('seeds AC, VE, BQ, CA, OD, PA codes in order', async () => {
     const { service, journalRepo } = buildService({ existingJournal: null });
 
     await service.seedStandardJournals(asTenantId(ORG_ID), {} as never);
 
     const codes = journalRepo.create.mock.calls.map((c: [Record<string, unknown>]) => c[0].code);
-    expect(codes).toEqual(['AC', 'VE', 'BQ', 'CA', 'OD']);
+    expect(codes).toEqual(['AC', 'VE', 'BQ', 'CA', 'OD', 'PA']);
   });
 
   it('passes the manager as second arg to each repo.create call', async () => {

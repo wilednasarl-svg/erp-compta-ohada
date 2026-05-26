@@ -13,10 +13,10 @@ import { OrganizationEntity } from '../../organizations/entities/organization.en
 import type { JournalKind } from '../types/journal.types';
 
 /**
- * `journals` row — voir migration 0037.
+ * `journals` row — voir migrations 0037 + 0093.
  *
- * Catalogue par organisation. 5 journaux SYSCOHADA standards seedés à la
- * création (AC, VE, BQ, CA, OD). Les sous-journaux personnalisés (ex
+ * Catalogue par organisation. 6 journaux SYSCOHADA standards seedés à la
+ * création (AC, VE, BQ, CA, OD, PA). Les sous-journaux personnalisés (ex
  * `BQ-01`, `BQ-02`) gardent le `kind` du journal parent.
  */
 @Entity({ name: 'journals' })

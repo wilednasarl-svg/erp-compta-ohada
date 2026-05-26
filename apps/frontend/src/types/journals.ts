@@ -8,7 +8,7 @@ export type JournalEntryStatus = 'draft' | 'validated' | 'cancelled';
 
 export type JournalEntrySourceType = 'manual' | 'import' | 'transformation';
 
-export type JournalKind = 'AC' | 'VE' | 'BQ' | 'CA' | 'OD';
+export type JournalKind = 'AC' | 'VE' | 'BQ' | 'CA' | 'OD' | 'PA';
 
 /** Shape retournée par POST /entries et GET /entries/:id (avec lignes). */
 export interface EntryView {

@@ -23,8 +23,8 @@ export class CreateJournalDto {
   @MaxLength(200)
   label!: string;
 
-  @ApiProperty({ enum: ['AC', 'VE', 'BQ', 'CA', 'OD'], description: 'Classe SYSCOHADA' })
-  @IsEnum(['AC', 'VE', 'BQ', 'CA', 'OD'])
+  @ApiProperty({ enum: ['AC', 'VE', 'BQ', 'CA', 'OD', 'PA'], description: 'Classe SYSCOHADA' })
+  @IsEnum(['AC', 'VE', 'BQ', 'CA', 'OD', 'PA'])
   kind!: JournalKind;
 
   @ApiPropertyOptional({ description: 'Compte par defaut (UUID)' })

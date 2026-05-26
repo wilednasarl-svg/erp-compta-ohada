@@ -2,7 +2,7 @@
  * Types et constantes du Module 8 — Journals & Entries.
  *
  * SYSCOHADA AUDCIF :
- *   - 5 journaux standards seedés à la création d'une organisation.
+ *   - 6 journaux standards seedés à la création d'une organisation.
  *   - Statut machine à 3 états sur une entry :
  *       draft → validated → cancelled (via contre-passation)
  *   - Une période comptable est : annuelle (exercice), trimestrielle ou
@@ -10,12 +10,14 @@
  */
 
 /**
- * 5 journaux SYSCOHADA standards seedés à la création d'org.
+ * 6 journaux SYSCOHADA standards seedés à la création d'org.
  *
- * Une org peut ajouter des sous-journaux personnalisés via
+ * `PA` (Paie) sépare les écritures de rémunération (661x → 422/43x/447)
+ * des autres opérations diverses pour traçabilité et lecture du grand
+ * livre paie. Une org peut ajouter des sous-journaux personnalisés via
  * `POST /journals` (ex: `BQ-01`, `BQ-02` pour plusieurs banques).
  */
-export type JournalKind = 'AC' | 'VE' | 'BQ' | 'CA' | 'OD';
+export type JournalKind = 'AC' | 'VE' | 'BQ' | 'CA' | 'OD' | 'PA';
 
 export interface StandardJournalSeed {
   readonly code: JournalKind;
@@ -29,6 +31,7 @@ export const STANDARD_JOURNALS: ReadonlyArray<StandardJournalSeed> = [
   { code: 'BQ', label: 'Journal de Banque', kind: 'BQ' },
   { code: 'CA', label: 'Journal de Caisse', kind: 'CA' },
   { code: 'OD', label: 'Journal des Opérations Diverses', kind: 'OD' },
+  { code: 'PA', label: 'Journal de Paie', kind: 'PA' },
 ];
 
 /**
