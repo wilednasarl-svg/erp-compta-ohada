@@ -212,6 +212,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'TITLE',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
 
   // ─── Classe 3 — Comptes de stocks ─────────────────────────────────────
@@ -294,6 +295,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'TITLE',
     normal_balance: 'C',
     applicable_systems: ['NORMAL', 'ALLEGE'],
+    is_opposing: true,
   },
 
   // ─── Classe 4 — Comptes de tiers ──────────────────────────────────────
@@ -387,6 +389,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'TITLE',
     normal_balance: 'C',
     applicable_systems: ['NORMAL', 'ALLEGE'],
+    is_opposing: true,
   },
 
   // ─── Classe 5 — Comptes de trésorerie ─────────────────────────────────
@@ -469,6 +472,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'TITLE',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
 
   // ─── Classe 6 — Comptes de charges ────────────────────────────────────
@@ -776,6 +780,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'D',
     applicable_systems: ['NORMAL', 'ALLEGE'],
+    is_opposing: true,
   },
 
   // ─── 41 — Clients (sens variable par sous-compte) ────────────────────
@@ -2129,6 +2134,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '292',
@@ -2137,6 +2143,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '293',
@@ -2145,6 +2152,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '294',
@@ -2153,6 +2161,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '295',
@@ -2161,6 +2170,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '296',
@@ -2169,6 +2179,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '297',
@@ -2177,6 +2188,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
 
   // ─── Classe 3 — Stocks : sous-comptes manquants ──────────────────────
@@ -2271,6 +2283,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL', 'ALLEGE'],
+    is_opposing: true,
   },
   {
     code: '392',
@@ -2279,6 +2292,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '393',
@@ -2287,6 +2301,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '394',
@@ -2295,6 +2310,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '395',
@@ -2303,6 +2319,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '396',
@@ -2311,6 +2328,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '397',
@@ -2319,6 +2337,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
 
   // ─── Classe 4 — Tiers : sous-comptes manquants (régul, effets, FX) ──
@@ -2793,6 +2812,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL', 'ALLEGE'],
+    is_opposing: true,
   },
   {
     code: '4912',
@@ -2801,6 +2821,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '492',
@@ -2809,6 +2830,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '493',
@@ -2817,6 +2839,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '494',
@@ -2825,6 +2848,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '495',
@@ -2833,6 +2857,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '496',
@@ -2841,6 +2866,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '497',
@@ -2849,6 +2875,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '499',
@@ -2857,6 +2884,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '4991',
@@ -2865,6 +2893,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
 
   // ─── Classe 5 — Trésorerie : sous-comptes manquants ──────────────────
@@ -2956,6 +2985,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '599',
@@ -2964,6 +2994,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
 
   // ─── Classe 6 — Charges : sous-comptes manquants ─────────────────────
@@ -3772,6 +3803,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'D',
     applicable_systems: ['NORMAL'],
+    is_opposing: true,
   },
   {
     code: '111',
@@ -3804,6 +3836,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'C',
     applicable_systems: ['NORMAL', 'MINIMAL', 'ALLEGE'],
+    is_opposing: true,
   },
   {
     code: '129',
@@ -3812,6 +3845,7 @@ export const OHADA_REFERENCE_CHART: ReadonlyArray<ReferenceAccountSeed> = [
     account_type: 'POSTING',
     normal_balance: 'D',
     applicable_systems: ['NORMAL', 'MINIMAL', 'ALLEGE'],
+    is_opposing: true,
   },
   {
     code: '131',

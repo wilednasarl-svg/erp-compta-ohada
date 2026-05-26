@@ -33,7 +33,6 @@ import { FinancialRatiosQueryDto } from '../dto/financial-ratios-query.dto';
 import { GeneralLedgerQueryDto } from '../dto/general-ledger-query.dto';
 import { ProfitLossQueryDto } from '../dto/profit-loss-query.dto';
 import { SigQueryDto } from '../dto/sig-query.dto';
-import { ImportDiagnosticParamsDto } from '../dto/import-diagnostic-query.dto';
 import { TrialBalanceQueryDto } from '../dto/trial-balance-query.dto';
 import {
   ReportsService,
@@ -363,10 +362,10 @@ export class ReportsController {
   })
   async importDiagnostic(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
-    @Param() params: ImportDiagnosticParamsDto,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
     @CurrentOrg() org: CurrentOrgContext,
   ): Promise<{ report: ImportDiagnosticReport }> {
-    const report = await this.reports.getImportDiagnostic(asTenantId(org.id), params.sessionId);
+    const report = await this.reports.getImportDiagnostic(asTenantId(org.id), sessionId);
     return { report };
   }
 
@@ -378,11 +377,11 @@ export class ReportsController {
   @ApiProduces('application/pdf')
   async importDiagnosticPdf(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
-    @Param() params: ImportDiagnosticParamsDto,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const report = await this.reports.getImportDiagnostic(asTenantId(org.id), params.sessionId);
+    const report = await this.reports.getImportDiagnostic(asTenantId(org.id), sessionId);
     const buffer = await this.pdf.importDiagnosticPdf(report, org.name);
     const dateStamp = report.session.createdAt.slice(0, 10);
     this.sendFile(

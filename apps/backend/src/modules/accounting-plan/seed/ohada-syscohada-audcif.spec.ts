@@ -234,4 +234,37 @@ describe('OHADA SYSCOHADA AUDCIF reference chart (seed)', () => {
       }
     });
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // W1.4 — Comptes opposants self-contained dans le seed.
+  //
+  // Migration 0090 backfille `is_opposing = true` par SQL sur les comptes
+  // déjà insérés. Mais pour les ajouts FUTURS au seed, il faut que le
+  // champ soit posé explicitement dès la définition (sinon un nouveau
+  // 295 ajouté dans 6 mois entrera en base sans le flag).
+  //
+  // Ce garde-fou impose : tout compte dont le code matche un préfixe
+  // opposant ('29x', '39x', '49x', '59x') ou un code opposant nommé
+  // ('109', '121', '129', '409') DOIT porter `is_opposing: true` dans
+  // sa définition.
+  // ───────────────────────────────────────────────────────────────────────
+  describe('W1.4 — comptes opposants explicitement marqués', () => {
+    const OPPOSING_PATTERN = /^(29\d*|39\d*|49\d*|59\d*|109|121|129|409)$/;
+
+    it('every opposing-prefix code carries is_opposing: true', () => {
+      const violations = OHADA_REFERENCE_CHART.filter(
+        (r) => OPPOSING_PATTERN.test(r.code) && r.is_opposing !== true,
+      ).map((r) => r.code);
+
+      expect(violations).toEqual([]);
+    });
+
+    it('no non-opposing-prefix code carries is_opposing: true (no false positive)', () => {
+      const falsePositives = OHADA_REFERENCE_CHART.filter(
+        (r) => r.is_opposing === true && !OPPOSING_PATTERN.test(r.code),
+      ).map((r) => r.code);
+
+      expect(falsePositives).toEqual([]);
+    });
+  });
 });
