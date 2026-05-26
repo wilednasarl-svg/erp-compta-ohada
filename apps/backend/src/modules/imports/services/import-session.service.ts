@@ -65,6 +65,9 @@ interface StagingLineDraft {
   readonly debit: number;
   readonly credit: number;
   readonly partner: string | null;
+  /** Axes analytiques (Option A — Migration 0092). */
+  readonly analyticAxisType: string | null;
+  readonly analyticAxisCode: string | null;
 }
 import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
@@ -878,6 +881,8 @@ export class ImportSessionService {
           debit: row.debit,
           credit: row.credit,
           description: row.label,
+          analyticAxisType: row.analyticAxisType,
+          analyticAxisCode: row.analyticAxisCode,
         }));
         const draft = await this.entries.createDraft(
           organizationId,
@@ -991,6 +996,14 @@ export class ImportSessionService {
     }
     const debit = parseFloat((mapped.debit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
     const credit = parseFloat((mapped.credit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
+    const rawAxisType = (mapped.analyticAxisType ?? '').trim();
+    const rawAxisCode = (mapped.analyticAxisCode ?? '').trim();
+    // Invariant axe (Migration 0092) : (type IS NULL) = (code IS NULL).
+    // Si une seule des 2 colonnes est mappée, on prend le code et
+    // l'utilisateur DOIT avoir fixé un axisType au niveau de la
+    // session (future feature — pour l'instant on accepte type seul).
+    const analyticAxisType = rawAxisType === '' ? null : rawAxisType.toUpperCase();
+    const analyticAxisCode = rawAxisCode === '' ? null : rawAxisCode;
     return {
       rowNumber,
       journalCode,
@@ -1000,6 +1013,8 @@ export class ImportSessionService {
       debit,
       credit,
       partner: mapped.partner ?? null,
+      analyticAxisType,
+      analyticAxisCode,
     };
   }
 

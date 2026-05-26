@@ -158,6 +158,8 @@ export class EntriesService {
           description: l.description ?? null,
           debit: l.debit.toFixed(2),
           credit: l.credit.toFixed(2),
+          analyticAxisType: l.analyticAxisType ?? null,
+          analyticAxisCode: l.analyticAxisCode ?? null,
         })),
         manager,
       );
@@ -368,6 +370,8 @@ export class EntriesService {
       debit: number;
       credit: number;
       description?: string | null;
+      analyticAxisType?: string | null;
+      analyticAxisCode?: string | null;
     }>
   > {
     const out = [];
@@ -386,11 +390,19 @@ export class EntriesService {
           message: `Account is not a POSTING account: ${line.accountCode}`,
         });
       }
+      // Invariant axe analytique : (type IS NULL) = (code IS NULL).
+      // Si l'un est fourni sans l'autre, on normalise les deux à null
+      // côté commit pour éviter une ligne incohérente en base.
+      const axisType = line.analyticAxisType ?? null;
+      const axisCode = line.analyticAxisCode ?? null;
+      const axisCoherent = axisType !== null && axisCode !== null;
       out.push({
         accountId: acct.id,
         debit: line.debit,
         credit: line.credit,
         description: line.description,
+        analyticAxisType: axisCoherent ? axisType : null,
+        analyticAxisCode: axisCoherent ? axisCode : null,
       });
     }
     return out;
