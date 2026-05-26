@@ -104,6 +104,28 @@ export class TvaDeclarationsController {
     return toEnvelopeDeclaration(declaration);
   }
 
+  @Post(':declarationId/centralize')
+  @RequirePermission('tva.write')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: TvaDeclarationEnvelopeResponse })
+  async centralize(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('declarationId', new ParseUUIDPipe({ version: '4' })) declarationId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
+  ): Promise<TvaDeclarationEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const { declaration } = await this.tvaDeclarations.centralize(
+      asTenantId(tokenOrgId),
+      declarationId,
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
+    return toEnvelopeDeclaration(declaration);
+  }
+
   @Post(':declarationId/cancel')
   @RequirePermission('tva.write')
   @HttpCode(HttpStatus.OK)

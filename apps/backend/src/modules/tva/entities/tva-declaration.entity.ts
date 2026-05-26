@@ -86,6 +86,13 @@ export class TvaDeclarationEntity {
   @Column({ name: 'cancelled_reason', type: 'text', nullable: true })
   cancelledReason!: string | null;
 
+  // W4.1 — Centralisation TVA (migration 0101).
+  @Column({ name: 'centralization_journal_entry_id', type: 'uuid', nullable: true })
+  centralizationJournalEntryId!: string | null;
+
+  @Column({ name: 'centralized_at', type: 'timestamptz', nullable: true })
+  centralizedAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

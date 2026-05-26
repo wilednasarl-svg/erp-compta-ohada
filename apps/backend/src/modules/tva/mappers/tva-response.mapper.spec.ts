@@ -47,6 +47,8 @@ function buildDeclaration(
     cancelledAt: null,
     cancelledById: null,
     cancelledReason: null,
+    centralizationJournalEntryId: null,
+    centralizedAt: null,
     createdAt: FIXED_DATE,
     updatedAt: FIXED_DATE,
     lines: [buildLine()],

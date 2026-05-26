@@ -21,7 +21,8 @@ export type JournalEntrySourceType =
   | 'import'
   | 'depreciation'
   | 'bank_reconciliation'
-  | 'impairment';
+  | 'impairment'
+  | 'tax_centralization';
 
 /**
  * `journal_entries` row — voir migration 0038.

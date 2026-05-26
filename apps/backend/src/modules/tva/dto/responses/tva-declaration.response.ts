@@ -128,6 +128,24 @@ export class TvaDeclarationResponse {
   cancelledReason!: string | null;
 
   @ApiProperty({
+    description:
+      'UUID de l\'écriture de journal OD générée par la centralisation TVA (W4.1). Null tant que la déclaration n\'a pas été centralisée.',
+    nullable: true,
+    type: String,
+    format: 'uuid',
+  })
+  centralizationJournalEntryId!: string | null;
+
+  @ApiProperty({
+    description:
+      'Date à laquelle la centralisation TVA a été exécutée (W4.1). Null tant que la déclaration n\'a pas été centralisée.',
+    nullable: true,
+    type: String,
+    format: 'date-time',
+  })
+  centralizedAt!: Date | null;
+
+  @ApiProperty({
     description: 'Lignes d\'agrégation par préfixe de compte SYSCOHADA',
     type: () => [TvaDeclarationLineResponse],
   })

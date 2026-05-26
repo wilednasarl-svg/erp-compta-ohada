@@ -4,6 +4,7 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { AuditContext, AuditTrailService } from '../../audit/services/audit-trail.service';
+import type { EntriesService, EntryView } from '../../journals/services/entries.service';
 import { TvaDeclarationEntity } from '../entities/tva-declaration.entity';
 import { TvaDeclarationLineEntity } from '../entities/tva-declaration-line.entity';
 import type { TvaDeclarationRepository } from '../repositories/tva-declaration.repository';
@@ -29,6 +30,7 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
   let mockTvaDeclarationRepo: TvaDeclarationRepository;
   let mockTvaAggregationRepo: TvaAggregationRepository;
   let mockAudit: AuditTrailService;
+  let mockEntriesService: EntriesService;
 
   let activeDeclaration: TvaDeclarationEntity | null = null;
   let aggregationRows: TvaAggregationRow[] = [];
@@ -91,11 +93,21 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
       record: jest.fn().mockResolvedValue(null),
     } as unknown as AuditTrailService;
 
+    mockEntriesService = {
+      createDraft: jest
+        .fn()
+        .mockResolvedValue({ id: 'entry-draft-uuid' } as Partial<EntryView>),
+      validate: jest
+        .fn()
+        .mockResolvedValue({ id: 'entry-draft-uuid', status: 'validated' } as Partial<EntryView>),
+    } as unknown as EntriesService;
+
     service = new TvaDeclarationsService(
       mockDataSource,
       mockTvaDeclarationRepo,
       mockTvaAggregationRepo,
       mockAudit,
+      mockEntriesService,
     );
   });
 
@@ -331,5 +343,197 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
     }
     expect(err).toBeInstanceOf(AppException);
     expect((err as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_NOT_CALCULATED);
+  });
+
+  it('refuse d\'annuler une déclaration centralisée (W4.1)', async () => {
+    const decl = {
+      id: 'decl-centralized',
+      organizationId: ORG_ID,
+      status: 'calculated',
+      centralizationJournalEntryId: 'entry-uuid',
+      centralizedAt: new Date(),
+    } as unknown as TvaDeclarationEntity;
+
+    jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(decl);
+
+    let err: unknown;
+    try {
+      await service.cancelDeclaration('decl-centralized', ORG_ID, {}, USER_ID, CTX);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(AppException);
+    expect((err as AppException).code).toBe(
+      ERROR_CODES.TVA_DECLARATION_CENTRALIZED_CANNOT_CANCEL,
+    );
+    // Aucun update : la déclaration reste calculated.
+    expect(mockTvaDeclarationRepo.save).not.toHaveBeenCalled();
+  });
+
+  // ─── W4.1 — Centralisation TVA ─────────────────────────────────────
+  describe('centralize() — W4.1', () => {
+    function buildCalculatedDeclaration(overrides: Partial<TvaDeclarationEntity> = {}) {
+      return {
+        id: 'decl-to-centralize',
+        organizationId: ORG_ID,
+        periodYear: 2026,
+        periodMonth: 5,
+        status: 'calculated',
+        tvaCollecteeTotal: '900.00',
+        tvaDeductibleBsTotal: '300.00',
+        tvaDeductibleImmoTotal: '200.00',
+        tvaADecaisser: '400.00',
+        creditTvaReportable: '0.00',
+        centralizationJournalEntryId: null,
+        centralizedAt: null,
+        ...overrides,
+      } as unknown as TvaDeclarationEntity;
+    }
+
+    it('génère une écriture équilibrée pour une déclaration calculated (TVA due)', async () => {
+      const decl = buildCalculatedDeclaration();
+      jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(decl);
+
+      const result = await service.centralize(ORG_ID, 'decl-to-centralize', USER_ID, CTX);
+
+      expect(mockEntriesService.createDraft).toHaveBeenCalledTimes(1);
+      const draftArgs = (mockEntriesService.createDraft as jest.Mock).mock.calls[0];
+      expect(draftArgs[0]).toBe(ORG_ID);
+      expect(draftArgs[1].journalCode).toBe('OD');
+      expect(draftArgs[1].entryDate).toBe('2026-05-31');
+      expect(draftArgs[1].sourceType).toBe('tax_centralization');
+
+      const lines = draftArgs[1].lines as Array<{
+        accountCode: string;
+        debit: number;
+        credit: number;
+      }>;
+
+      // D 443 = 900 ; C 4451 = 200 ; C 4452 = 300 ; C 4441 = 400.
+      const byAccount = Object.fromEntries(
+        lines.map((l) => [l.accountCode, { debit: l.debit, credit: l.credit }]),
+      );
+      expect(byAccount['443']).toEqual({ debit: 900, credit: 0 });
+      expect(byAccount['4451']).toEqual({ debit: 0, credit: 200 });
+      expect(byAccount['4452']).toEqual({ debit: 0, credit: 300 });
+      expect(byAccount['4441']).toEqual({ debit: 0, credit: 400 });
+
+      const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
+      const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+      expect(totalDebit).toBe(totalCredit);
+      expect(totalDebit).toBe(900);
+
+      // L'écriture est laissée en draft : le comptable la valide via journals/.
+      expect(mockEntriesService.validate).not.toHaveBeenCalled();
+
+      expect(result.declaration.centralizationJournalEntryId).toBe('entry-draft-uuid');
+      expect(result.declaration.centralizedAt).toBeInstanceOf(Date);
+      expect(result.journalEntry.id).toBe('entry-draft-uuid');
+      expect(mockAudit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'declaration_centralized' }),
+      );
+    });
+
+    it('génère une écriture avec D 4449 pour un crédit reportable', async () => {
+      const decl = buildCalculatedDeclaration({
+        tvaCollecteeTotal: '500.00',
+        tvaDeductibleBsTotal: '600.00',
+        tvaDeductibleImmoTotal: '200.00',
+        tvaADecaisser: '0.00',
+        creditTvaReportable: '300.00',
+      });
+      jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(decl);
+
+      await service.centralize(ORG_ID, 'decl-to-centralize', USER_ID, CTX);
+
+      const draftArgs = (mockEntriesService.createDraft as jest.Mock).mock.calls[0];
+      const lines = draftArgs[1].lines as Array<{
+        accountCode: string;
+        debit: number;
+        credit: number;
+      }>;
+
+      const byAccount = Object.fromEntries(
+        lines.map((l) => [l.accountCode, { debit: l.debit, credit: l.credit }]),
+      );
+      expect(byAccount['443']).toEqual({ debit: 500, credit: 0 });
+      expect(byAccount['4451']).toEqual({ debit: 0, credit: 200 });
+      expect(byAccount['4452']).toEqual({ debit: 0, credit: 600 });
+      expect(byAccount['4449']).toEqual({ debit: 300, credit: 0 });
+      expect(byAccount['4441']).toBeUndefined();
+
+      const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
+      const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+      expect(totalDebit).toBe(totalCredit);
+      expect(totalDebit).toBe(800);
+    });
+
+    it('rejette une déclaration non calculée avec TVA_DECLARATION_NOT_CALCULATED', async () => {
+      const decl = buildCalculatedDeclaration({ status: 'draft' });
+      jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(decl);
+
+      let err: unknown;
+      try {
+        await service.centralize(ORG_ID, 'decl-to-centralize', USER_ID, CTX);
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(AppException);
+      expect((err as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_NOT_CALCULATED);
+      expect(mockEntriesService.createDraft).not.toHaveBeenCalled();
+    });
+
+    it('rejette une déclaration déjà centralisée avec TVA_ALREADY_CENTRALIZED', async () => {
+      const decl = buildCalculatedDeclaration({
+        centralizationJournalEntryId: 'existing-entry-uuid',
+        centralizedAt: new Date('2026-05-31T23:59:00Z'),
+      });
+      jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(decl);
+
+      let err: unknown;
+      try {
+        await service.centralize(ORG_ID, 'decl-to-centralize', USER_ID, CTX);
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(AppException);
+      expect((err as AppException).code).toBe(ERROR_CODES.TVA_ALREADY_CENTRALIZED);
+      expect(mockEntriesService.createDraft).not.toHaveBeenCalled();
+    });
+
+    it('rejette une période vide (aucun mouvement TVA) avec JOURNAL_ENTRY_EMPTY_LINES', async () => {
+      const decl = buildCalculatedDeclaration({
+        tvaCollecteeTotal: '0.00',
+        tvaDeductibleBsTotal: '0.00',
+        tvaDeductibleImmoTotal: '0.00',
+        tvaADecaisser: '0.00',
+        creditTvaReportable: '0.00',
+      });
+      jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(decl);
+
+      let err: unknown;
+      try {
+        await service.centralize(ORG_ID, 'decl-to-centralize', USER_ID, CTX);
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(AppException);
+      expect((err as AppException).code).toBe(ERROR_CODES.JOURNAL_ENTRY_EMPTY_LINES);
+      expect(mockEntriesService.createDraft).not.toHaveBeenCalled();
+    });
+
+    it('respecte l\'isolation tenant : retourne TVA_DECLARATION_NOT_FOUND si la déclaration n\'appartient pas à l\'org', async () => {
+      jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(null);
+
+      let err: unknown;
+      try {
+        await service.centralize(ORG_ID, 'decl-from-other-tenant', USER_ID, CTX);
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(AppException);
+      expect((err as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_NOT_FOUND);
+      expect(mockEntriesService.createDraft).not.toHaveBeenCalled();
+    });
   });
 });

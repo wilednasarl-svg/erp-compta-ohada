@@ -5,6 +5,7 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
+import { EntriesService, type CreateLineInput, type EntryView } from '../../journals/services/entries.service';
 import { TvaDeclarationEntity } from '../entities/tva-declaration.entity';
 import { TvaDeclarationLineEntity } from '../entities/tva-declaration-line.entity';
 import { TvaDeclarationRepository } from '../repositories/tva-declaration.repository';
@@ -20,6 +21,14 @@ export interface CancelDeclarationInput {
   readonly reason?: string;
 }
 
+export interface CentralizeDeclarationResult {
+  readonly declaration: TvaDeclarationEntity;
+  readonly journalEntry: EntryView;
+}
+
+/** Journal d'opérations diverses (OD) — convention SYSCOHADA. */
+const TVA_CENTRALIZATION_JOURNAL_CODE = 'OD';
+
 @Injectable()
 export class TvaDeclarationsService {
   private static readonly MODULE = 'tva' as const;
@@ -30,6 +39,7 @@ export class TvaDeclarationsService {
     private readonly tvaDeclarationRepo: TvaDeclarationRepository,
     private readonly tvaAggregationRepo: TvaAggregationRepository,
     private readonly audit: AuditTrailService,
+    private readonly entriesService: EntriesService,
   ) {}
 
   async computeDeclaration(
@@ -234,6 +244,18 @@ export class TvaDeclarationsService {
       });
     }
 
+    // Une déclaration centralisée a déjà engendré une écriture comptable :
+    // l'annuler sans contre-passation laisserait les comptes 443/445x soldés
+    // dans le journal alors que la déclaration n'existe plus. Le comptable
+    // doit d'abord annuler l'écriture (qui libère le lien via FK ON DELETE
+    // SET NULL) avant de pouvoir annuler la déclaration.
+    if (decl.centralizationJournalEntryId != null) {
+      throw new AppException(ERROR_CODES.TVA_DECLARATION_CENTRALIZED_CANNOT_CANCEL, {
+        message:
+          'Cette déclaration a été centralisée : annulez d\'abord l\'écriture de centralisation dans le journal OD, puis ré-essayez.',
+      });
+    }
+
     decl.status = 'cancelled';
     decl.cancelledAt = new Date();
     decl.cancelledById = actorId;
@@ -257,5 +279,202 @@ export class TvaDeclarationsService {
       .catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
 
     return saved;
+  }
+
+  /**
+   * W4.1 — Centralisation TVA (Tome 1 G08, R15).
+   *
+   * À partir d'une déclaration `calculated`, génère une écriture de
+   * journal `OD` qui solde les comptes 443 (TVA collectée) et 445x
+   * (TVA déductible) vers 4441 (TVA due) ou 4449 (Crédit reportable).
+   *
+   * Construction des lignes (les montants sont les nets calculés à
+   * `computeDeclaration` — relire à nouveau l'agrégation ferait courir
+   * un risque d'incohérence si de nouvelles écritures sont validées
+   * après le calcul) :
+   *
+   *   Cas TVA due (collectée > déductibles) :
+   *     D 443   = tvaCollecteeTotal
+   *     C 4451  = tvaDeductibleImmoTotal (si > 0)
+   *     C 4452..4455 = tvaDeductibleBsTotal (regroupé sur 4452 par défaut)
+   *     C 4441  = tvaADecaisser
+   *
+   *   Cas crédit reportable (déductibles > collectée) :
+   *     D 443   = tvaCollecteeTotal
+   *     C 4451..4455 = totaux déductibles
+   *     D 4449  = creditTvaReportable
+   *
+   * Verrouille la déclaration : un second appel échoue avec
+   * `TVA_ALREADY_CENTRALIZED`. La déclaration doit être au statut
+   * `calculated` (sinon `TVA_DECLARATION_NOT_CALCULATED`).
+   */
+  async centralize(
+    organizationId: TenantId,
+    declarationId: string,
+    actorId: string,
+    ctx: AuditContext,
+  ): Promise<CentralizeDeclarationResult> {
+    assertTenantId(organizationId);
+
+    const decl = await this.findById(declarationId, organizationId);
+
+    if (decl.status !== 'calculated') {
+      throw new AppException(ERROR_CODES.TVA_DECLARATION_NOT_CALCULATED, {
+        message: `Seule une déclaration au statut 'calculated' peut être centralisée. Statut actuel: '${decl.status}'.`,
+      });
+    }
+
+    if (decl.centralizationJournalEntryId || decl.centralizedAt) {
+      throw new AppException(ERROR_CODES.TVA_ALREADY_CENTRALIZED, {
+        message: `La déclaration TVA ${declarationId} a déjà été centralisée le ${
+          decl.centralizedAt?.toISOString() ?? '?'
+        }.`,
+      });
+    }
+
+    const collected = Number(decl.tvaCollecteeTotal);
+    const deductibleBs = Number(decl.tvaDeductibleBsTotal);
+    const deductibleImmo = Number(decl.tvaDeductibleImmoTotal);
+    const toPay = Number(decl.tvaADecaisser);
+    const creditReportable = Number(decl.creditTvaReportable);
+
+    if (collected <= 0 && deductibleBs <= 0 && deductibleImmo <= 0) {
+      // Une période vide n'a rien à centraliser — mais on respecte
+      // l'invariant : signaler explicitement plutôt que produire une
+      // écriture vide rejetée par `EntriesService`.
+      throw new AppException(ERROR_CODES.JOURNAL_ENTRY_EMPTY_LINES, {
+        message:
+          'Aucun mouvement TVA sur la période : la centralisation n\'a pas d\'objet.',
+      });
+    }
+
+    const lines = this.buildCentralizationLines({
+      collected,
+      deductibleBs,
+      deductibleImmo,
+      toPay,
+      creditReportable,
+    });
+
+    // Date de l'écriture : dernier jour de la période.
+    const lastDay = new Date(decl.periodYear, decl.periodMonth, 0).getDate();
+    const entryDate = `${decl.periodYear}-${String(decl.periodMonth).padStart(2, '0')}-${String(
+      lastDay,
+    ).padStart(2, '0')}`;
+
+    const description = `Centralisation TVA ${String(decl.periodMonth).padStart(2, '0')}/${decl.periodYear}`;
+
+    // L'écriture est créée en `draft` et **non auto-validée** : le
+    // comptable doit la relire et la valider via le module journals.
+    // Cohérent avec la doctrine W4.1 (le système propose la centralisation,
+    // l'humain l'engage). L'idempotence est portée par
+    // `centralizationJournalEntryId` côté déclaration — si le comptable
+    // supprime le draft, le FK `ON DELETE SET NULL` libère la déclaration
+    // pour une re-centralisation.
+    const journalEntry = await this.entriesService.createDraft(
+      organizationId,
+      {
+        journalCode: TVA_CENTRALIZATION_JOURNAL_CODE,
+        entryDate,
+        description,
+        reference: `TVA-${decl.periodYear}-${String(decl.periodMonth).padStart(2, '0')}`,
+        sourceType: 'tax_centralization',
+        lines,
+      },
+      actorId,
+      ctx,
+    );
+
+    decl.centralizationJournalEntryId = journalEntry.id;
+    decl.centralizedAt = new Date();
+    const saved = await this.tvaDeclarationRepo.save(decl);
+
+    await this.audit
+      .record({
+        module: TvaDeclarationsService.MODULE,
+        action: 'declaration_centralized',
+        entityType: 'tva_declaration',
+        entityId: saved.id,
+        after: {
+          centralizationJournalEntryId: saved.centralizationJournalEntryId,
+          centralizedAt: saved.centralizedAt,
+          tvaADecaisser: saved.tvaADecaisser,
+          creditTvaReportable: saved.creditTvaReportable,
+        },
+        ctx: { ...ctx, userId: actorId, organizationId },
+      })
+      .catch((e) => this.logger.warn(`Audit failed: ${String(e)}`));
+
+    return { declaration: saved, journalEntry };
+  }
+
+  /**
+   * Construit les lignes de l'écriture de centralisation. Fonction pure
+   * (pas d'accès DB) pour rester testable de manière isolée.
+   *
+   * Convention SYSCOHADA :
+   *   - 443  est un compte de passif soldé en débit (annule le crédit).
+   *   - 4451 / 4452 sont des comptes d'actif soldés en crédit.
+   *   - 4441 (TVA due) : crédit si dette envers l'État.
+   *   - 4449 (crédit reportable) : débit si avoir sur l'État.
+   *
+   * Les sous-comptes 4453 / 4454 / 4455 sont agrégés dans `tvaDeductibleBsTotal`
+   * en wave 1 — on les regroupe sur la racine `4452` pour la
+   * contrepartie. Une future wave 2 pourra ventiler par sous-compte.
+   */
+  private buildCentralizationLines(input: {
+    collected: number;
+    deductibleBs: number;
+    deductibleImmo: number;
+    toPay: number;
+    creditReportable: number;
+  }): CreateLineInput[] {
+    const { collected, deductibleBs, deductibleImmo, toPay, creditReportable } = input;
+    const lines: CreateLineInput[] = [];
+
+    if (collected > 0) {
+      lines.push({
+        accountCode: TVA_ACCOUNT_PREFIXES.collected,
+        debit: collected,
+        credit: 0,
+        description: 'Solde TVA collectée',
+      });
+    }
+
+    if (deductibleImmo > 0) {
+      lines.push({
+        accountCode: TVA_ACCOUNT_PREFIXES.deductibleImmo,
+        debit: 0,
+        credit: deductibleImmo,
+        description: 'Solde TVA déductible sur immobilisations',
+      });
+    }
+
+    if (deductibleBs > 0) {
+      lines.push({
+        accountCode: TVA_ACCOUNT_PREFIXES.deductibleBs[0],
+        debit: 0,
+        credit: deductibleBs,
+        description: 'Solde TVA déductible biens & services',
+      });
+    }
+
+    if (toPay > 0) {
+      lines.push({
+        accountCode: TVA_ACCOUNT_PREFIXES.due,
+        debit: 0,
+        credit: toPay,
+        description: 'TVA due (à décaisser)',
+      });
+    } else if (creditReportable > 0) {
+      lines.push({
+        accountCode: TVA_ACCOUNT_PREFIXES.creditReportable,
+        debit: creditReportable,
+        credit: 0,
+        description: 'Crédit TVA reportable',
+      });
+    }
+
+    return lines;
   }
 }

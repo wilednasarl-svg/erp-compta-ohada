@@ -56,6 +56,8 @@ export function toTvaDeclarationResponse(
     cancelledAt: entity.cancelledAt,
     cancelledById: entity.cancelledById,
     cancelledReason: entity.cancelledReason,
+    centralizationJournalEntryId: entity.centralizationJournalEntryId ?? null,
+    centralizedAt: entity.centralizedAt ?? null,
     lines,
   };
 }
