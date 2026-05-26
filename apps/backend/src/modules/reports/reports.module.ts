@@ -5,9 +5,13 @@ import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module'
 import { AuthModule } from '../auth/auth.module';
 import { AuditModule } from '../audit/audit.module';
 import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.entity';
+import { JournalsModule } from '../journals/journals.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { ReportsController } from './controllers/reports.controller';
+import { NoteAnnexeCommentEntity } from './entities/note-annexe-comment.entity';
+import { NoteAnnexeCommentsRepository } from './repositories/note-annexe-comments.repository';
 import { ReportsRepository } from './repositories/reports.repository';
+import { DsfValidatorService } from './services/dsf-validator.service';
 import { ReportsPackageService } from './services/reports-package.service';
 import { ReportsPdfService } from './services/reports-pdf.service';
 import { ReportsService } from './services/reports.service';
@@ -35,20 +39,23 @@ import { ReportsXlsxService } from './services/reports-xlsx.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([JournalEntryLineEntity]),
+    TypeOrmModule.forFeature([JournalEntryLineEntity, NoteAnnexeCommentEntity]),
     AuthModule,
     RbacModule,
     AuditModule,
     AccountingPlanModule,
+    JournalsModule,
   ],
   controllers: [ReportsController],
   providers: [
     ReportsRepository,
+    NoteAnnexeCommentsRepository,
     ReportsService,
     ReportsPdfService,
     ReportsXlsxService,
     ReportsPackageService,
+    DsfValidatorService,
   ],
-  exports: [ReportsService],
+  exports: [ReportsService, DsfValidatorService],
 })
 export class ReportsModule {}

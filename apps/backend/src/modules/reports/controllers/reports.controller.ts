@@ -54,6 +54,10 @@ import {
   type SigReport,
   type TrialBalanceReport,
 } from '../services/reports.service';
+import {
+  DsfValidatorService,
+  type DsfValidationReport,
+} from '../services/dsf-validator.service';
 import { ReportsPackageService } from '../services/reports-package.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
 import { ReportsXlsxService } from '../services/reports-xlsx.service';
@@ -89,7 +93,25 @@ export class ReportsController {
     private readonly pdf: ReportsPdfService,
     private readonly xlsx: ReportsXlsxService,
     private readonly packageBuilder: ReportsPackageService,
+    private readonly dsfValidator: DsfValidatorService,
   ) {}
+
+  // ─── W5.4 — Validation pré-dépôt DSF ─────────────────────────────
+
+  @Get('dsf-validate/:exerciseId')
+  @RequirePermission('journals.reports')
+  @ApiOperation({
+    summary:
+      "Validation pré-dépôt DSF (W5.4) — checks d'équilibre Bilan + balance, clôture périodes, complétude notes annexes, comptes non classés. Verdict PASS/WARN/BLOCK.",
+  })
+  async dsfValidate(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Param('exerciseId', new ParseUUIDPipe({ version: '4' })) exerciseId: string,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: DsfValidationReport }> {
+    const report = await this.dsfValidator.validate(asTenantId(org.id), exerciseId);
+    return { report };
+  }
 
   // ─── JSON endpoints (existing waves 1-2) ─────────────────────────
 

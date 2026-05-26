@@ -39,13 +39,15 @@ function buildHarness() {
   const pdf = { sigPdf: jest.fn(), agingBalancePdf: jest.fn() };
   const xlsx = { sigXlsx: jest.fn() };
   const pkg = { buildAnnualPackage: jest.fn() };
+  const dsfValidator = { validate: jest.fn() };
   const controller = new ReportsController(
     reports as unknown as ReportsService,
     pdf as unknown as ReportsPdfService,
     xlsx as unknown as ReportsXlsxService,
     pkg as unknown as ReportsPackageService,
+    dsfValidator as unknown as import('../services/dsf-validator.service').DsfValidatorService,
   );
-  return { controller, reports, pdf, xlsx, pkg };
+  return { controller, reports, pdf, xlsx, pkg, dsfValidator };
 }
 
 function buildRes(): Response {
