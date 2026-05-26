@@ -2,11 +2,17 @@ import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 
 import type {
+  AgingBalanceReport,
   BalanceSheetGroup,
   BalanceSheetReport,
+  CashTrendReport,
+  FinancialRatiosReport,
   GeneralLedgerReport,
   ProfitLossAccountLine,
   ProfitLossReport,
+  SigReport,
+  TafireReport,
+  TftReport,
   TrialBalanceReport,
 } from './reports.service';
 
@@ -333,6 +339,284 @@ export class ReportsPdfService {
   }
 
   // ─── Internal helpers ────────────────────────────────────────────
+
+  // ─── SIG (Soldes Intermédiaires de Gestion) ──────────────────────
+  async sigPdf(report: SigReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+    const hasComp = report.previous !== undefined;
+    this.header(
+      doc,
+      orgName,
+      'Soldes Intermédiaires de Gestion (SIG)',
+      `Du ${report.fromDate} au ${report.toDate}` +
+        (hasComp ? ` — N-1 : ${report.previous.fromDate} → ${report.previous.toDate}` : ''),
+    );
+    const cols = hasComp
+      ? [
+          { label: 'Réf.', width: 50 },
+          { label: 'Libellé', width: 350 },
+          { label: 'Montant N', width: 100, align: 'right' as const },
+          { label: 'Montant N-1', width: 100, align: 'right' as const },
+          { label: '% Évol.', width: 60, align: 'right' as const },
+        ]
+      : [
+          { label: 'Réf.', width: 50 },
+          { label: 'Libellé', width: 450 },
+          { label: 'Montant N', width: 100, align: 'right' as const },
+        ];
+    let y = this.tableHeader(doc, cols);
+    y = this.sectionTitle(doc, 'PRODUITS', y);
+    for (const p of report.produits) {
+      if (Number(p.amount) < 0.005 && (!hasComp || Number(p.previousAmount ?? '0') < 0.005)) continue;
+      y = this.tableRow(
+        doc,
+        cols,
+        hasComp
+          ? [p.code, p.label, this.fmtAmt(p.amount), this.fmtAmt(p.previousAmount), '']
+          : [p.code, p.label, this.fmtAmt(p.amount)],
+        y,
+      );
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+    }
+    y = this.sectionTitle(doc, 'CHARGES', y);
+    for (const c of report.charges) {
+      if (Number(c.amount) < 0.005 && (!hasComp || Number(c.previousAmount ?? '0') < 0.005)) continue;
+      y = this.tableRow(
+        doc,
+        cols,
+        hasComp
+          ? [c.code, c.label, this.fmtAmt(c.amount), this.fmtAmt(c.previousAmount), '']
+          : [c.code, c.label, this.fmtAmt(c.amount)],
+        y,
+      );
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+    }
+    y = this.sectionTitle(doc, 'SOLDES INTERMÉDIAIRES (cascade XA → XI)', y);
+    for (const s of report.soldes) {
+      const pct = s.variationPercent ?? '';
+      y = this.tableRow(
+        doc,
+        cols,
+        hasComp
+          ? [s.code, `${s.label}  [${s.formula}]`, this.fmtAmt(s.amount), this.fmtAmt(s.previousAmount), pct === '' ? '' : `${pct}%`]
+          : [s.code, `${s.label}  [${s.formula}]`, this.fmtAmt(s.amount)],
+        y,
+        true,
+      );
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+    }
+    this.footer(doc);
+    return this.finalize(doc);
+  }
+
+  // ─── Ratios financiers ───────────────────────────────────────────
+  async financialRatiosPdf(report: FinancialRatiosReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+    this.header(
+      doc,
+      orgName,
+      'Ratios financiers',
+      `Au ${report.asAtDate} — Exercice débutant le ${report.fiscalYearStartDate}`,
+    );
+    const cols = [
+      { label: 'Code', width: 50 },
+      { label: 'Famille', width: 100 },
+      { label: 'Ratio', width: 200 },
+      { label: 'Formule', width: 250 },
+      { label: 'Valeur', width: 80, align: 'right' as const },
+      { label: 'Interprétation', width: 130 },
+    ];
+    let y = this.tableHeader(doc, cols);
+    for (const r of report.ratios) {
+      const v =
+        r.value === null
+          ? '—'
+          : r.unit === 'PERCENT'
+            ? `${r.value} %`
+            : r.unit === 'DAYS'
+              ? `${r.value} j`
+              : r.value;
+      y = this.tableRow(
+        doc,
+        cols,
+        [r.code, r.category, r.label, r.formula, v, r.interpretation ?? ''],
+        y,
+      );
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+    }
+    this.footer(doc);
+    return this.finalize(doc);
+  }
+
+  // ─── Balance âgée ────────────────────────────────────────────────
+  async agingBalancePdf(report: AgingBalanceReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+    const sideLabel = report.side === 'CLIENT' ? 'Clients (créances)' : 'Fournisseurs (dettes)';
+    this.header(doc, orgName, `Balance âgée — ${sideLabel}`, `Au ${report.asAtDate}`);
+    const bucketLabels = report.rows[0]?.buckets.map((b) => b.label) ?? [];
+    const bucketWidth = Math.max(60, Math.floor(420 / Math.max(bucketLabels.length, 1)));
+    const cols = [
+      { label: 'Compte', width: 70 },
+      { label: 'Intitulé', width: 200 },
+      ...bucketLabels.map((lab) => ({ label: lab, width: bucketWidth, align: 'right' as const })),
+      { label: 'Total', width: 90, align: 'right' as const },
+    ];
+    let y = this.tableHeader(doc, cols);
+    for (const row of report.rows) {
+      const values = [
+        row.accountCode,
+        row.accountLabel,
+        ...row.buckets.map((b) => this.fmtAmt(b.amount)),
+        this.fmtAmt(row.total),
+      ];
+      y = this.tableRow(doc, cols, values, y);
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+    }
+    const totalsRow = [
+      '',
+      'TOTAUX',
+      ...report.bucketTotals.map((b) => this.fmtAmt(b)),
+      this.fmtAmt(report.grandTotal),
+    ];
+    y = this.tableRow(doc, cols, totalsRow, y, true);
+    this.footer(doc);
+    return this.finalize(doc);
+  }
+
+  // ─── Trésorerie nette glissante ──────────────────────────────────
+  async cashTrendPdf(report: CashTrendReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+    this.header(
+      doc,
+      orgName,
+      'Trésorerie nette glissante',
+      `De ${report.fromMonth} à ${report.toMonth}`,
+    );
+    const cols = [
+      { label: 'Mois', width: 70 },
+      { label: 'Coupure', width: 100 },
+      { label: 'Débit cumulé', width: 110, align: 'right' as const },
+      { label: 'Crédit cumulé', width: 110, align: 'right' as const },
+      { label: 'Trésorerie nette', width: 130, align: 'right' as const },
+      { label: 'Variation MoM', width: 110, align: 'right' as const },
+    ];
+    let y = this.tableHeader(doc, cols);
+    for (const p of report.points) {
+      y = this.tableRow(
+        doc,
+        cols,
+        [
+          p.yearMonth,
+          p.asAtDate,
+          this.fmtAmt(p.totalDebit),
+          this.fmtAmt(p.totalCredit),
+          this.fmtAmt(p.netCash),
+          p.change !== null ? this.fmtAmt(p.change) : '',
+        ],
+        y,
+      );
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+    }
+    y += 10;
+    y = this.tableRow(doc, cols, ['', 'Trésorerie actuelle', '', '', this.fmtAmt(report.currentNetCash), ''], y, true);
+    y = this.tableRow(doc, cols, ['', 'Trésorerie min', '', '', this.fmtAmt(report.minNetCash), ''], y, true);
+    y = this.tableRow(doc, cols, ['', 'Trésorerie max', '', '', this.fmtAmt(report.maxNetCash), ''], y, true);
+    this.footer(doc);
+    return this.finalize(doc);
+  }
+
+  // ─── TAFIRE ──────────────────────────────────────────────────────
+  async tafirePdf(report: TafireReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+    this.header(doc, orgName, 'TAFIRE', `Du ${report.fromDate} au ${report.toDate}`);
+    const cols = [
+      { label: 'Réf.', width: 60 },
+      { label: 'Libellé', width: 520 },
+      { label: 'Montant', width: 120, align: 'right' as const },
+    ];
+    let y = this.tableHeader(doc, cols);
+    const renderSection = (title: string, sections: TafireReport['emplois']): void => {
+      y = this.sectionTitle(doc, title, y);
+      for (const s of sections) {
+        y = this.tableRow(doc, cols, [s.code, s.label, ''], y, true);
+        for (const ln of s.lines) {
+          if (y > doc.page.height - 60) {
+            doc.addPage();
+            y = this.tableHeader(doc, cols);
+          }
+          y = this.tableRow(doc, cols, [ln.code, `  ${ln.label}`, this.fmtAmt(ln.amount)], y);
+        }
+        y = this.tableRow(doc, cols, ['', `  Total ${s.label}`, this.fmtAmt(s.total)], y, true);
+        if (y > doc.page.height - 60) {
+          doc.addPage();
+          y = this.tableHeader(doc, cols);
+        }
+      }
+    };
+    renderSection('EMPLOIS', report.emplois);
+    renderSection('RESSOURCES', report.ressources);
+    y = this.tableRow(doc, cols, ['', 'Variation de trésorerie', this.fmtAmt(report.variationTresorerie)], y, true);
+    this.footer(doc);
+    return this.finalize(doc);
+  }
+
+  // ─── TFT ─────────────────────────────────────────────────────────
+  async tftPdf(report: TftReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+    this.header(
+      doc,
+      orgName,
+      'TFT (méthode indirecte)',
+      `Du ${report.fromDate} au ${report.toDate}`,
+    );
+    const cols = [
+      { label: 'Réf.', width: 60 },
+      { label: 'Libellé', width: 520 },
+      { label: 'Montant', width: 120, align: 'right' as const },
+    ];
+    let y = this.tableHeader(doc, cols);
+    const renderSection = (s: TftReport['fluxExploitation']): void => {
+      y = this.tableRow(doc, cols, [s.code, s.label, ''], y, true);
+      for (const ln of s.lines) {
+        if (y > doc.page.height - 60) {
+          doc.addPage();
+          y = this.tableHeader(doc, cols);
+        }
+        y = this.tableRow(doc, cols, [ln.code, `  ${ln.label}`, this.fmtAmt(ln.amount)], y);
+      }
+      y = this.tableRow(doc, cols, ['', `  Total ${s.label}`, this.fmtAmt(s.total)], y, true);
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+    };
+    renderSection(report.fluxExploitation);
+    renderSection(report.fluxInvestissement);
+    renderSection(report.fluxFinancement);
+    y = this.tableRow(doc, cols, ['', 'Variation totale (Σ flux)', this.fmtAmt(report.variationTresorerie)], y, true);
+    y = this.tableRow(doc, cols, ['', "Trésorerie à l'ouverture", this.fmtAmt(report.tresorerieOuverture)], y);
+    y = this.tableRow(doc, cols, ['', 'Trésorerie à la clôture', this.fmtAmt(report.tresorerieCloture)], y);
+    this.footer(doc);
+    return this.finalize(doc);
+  }
 
   private createDoc(): PDFKit.PDFDocument {
     return new PDFDocument({

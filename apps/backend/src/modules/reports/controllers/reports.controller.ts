@@ -695,6 +695,156 @@ export class ReportsController {
     );
   }
 
+  @Get('sig.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — SIG' })
+  @ApiProduces('application/pdf')
+  async sigPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: SigQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const compareWith =
+      query.compareFromDate !== undefined && query.compareToDate !== undefined
+        ? { fromDate: query.compareFromDate, toDate: query.compareToDate }
+        : undefined;
+    const report = await this.reports.getSig(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      compareWith,
+    });
+    const buffer = await this.pdf.sigPdf(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'sig', query.fromDate, query.toDate, 'pdf'),
+    );
+  }
+
+  @Get('financial-ratios.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Ratios financiers' })
+  @ApiProduces('application/pdf')
+  async financialRatiosPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: FinancialRatiosQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getFinancialRatios(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+    });
+    const buffer = await this.pdf.financialRatiosPdf(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'ratios-financiers', query.asAtDate, undefined, 'pdf'),
+    );
+  }
+
+  @Get('aging-balance.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Balance âgée' })
+  @ApiProduces('application/pdf')
+  async agingBalancePdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: AgingBalanceQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getAgingBalance(asTenantId(org.id), {
+      side: query.side,
+      asAtDate: query.asAtDate,
+      bucketBoundaries: query.bucketBoundaries,
+    });
+    const buffer = await this.pdf.agingBalancePdf(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(
+        org.name,
+        `balance-agee-${query.side.toLowerCase()}`,
+        query.asAtDate,
+        undefined,
+        'pdf',
+      ),
+    );
+  }
+
+  @Get('cash-trend.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Trésorerie nette glissante' })
+  @ApiProduces('application/pdf')
+  async cashTrendPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: CashTrendQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getCashTrend(asTenantId(org.id), {
+      fromMonth: query.fromMonth,
+      toMonth: query.toMonth,
+    });
+    const buffer = await this.pdf.cashTrendPdf(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'tresorerie-glissante', query.fromMonth, query.toMonth, 'pdf'),
+    );
+  }
+
+  @Get('tafire.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — TAFIRE' })
+  @ApiProduces('application/pdf')
+  async tafirePdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: PeriodQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getTafire(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    const buffer = await this.pdf.tafirePdf(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'tafire', query.fromDate, query.toDate, 'pdf'),
+    );
+  }
+
+  @Get('tft.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — TFT' })
+  @ApiProduces('application/pdf')
+  async tftPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: PeriodQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getTft(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    const buffer = await this.pdf.tftPdf(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(org.name, 'tft', query.fromDate, query.toDate, 'pdf'),
+    );
+  }
+
   // ─── Excel export endpoints (wave 3) ────────────────────────────
 
   @Get('trial-balance.xlsx')
