@@ -32,4 +32,14 @@ export class ProfitLossQueryDto {
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'compareToDate must be YYYY-MM-DD' })
   compareToDate?: string;
+
+  @ApiProperty({ required: false, description: "Type d'axe analytique (CHANTIER, BU, ...)" })
+  @IsOptional()
+  @IsString()
+  analyticAxisType?: string;
+
+  @ApiProperty({ required: false, description: "Code de l'axe analytique" })
+  @IsOptional()
+  @IsString()
+  analyticAxisCode?: string;
 }

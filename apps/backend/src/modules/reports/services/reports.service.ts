@@ -275,6 +275,9 @@ export interface ComparativeBalanceQuery {
   readonly accountCodeFrom?: string;
   readonly accountCodeTo?: string;
   readonly hideEmpty?: boolean;
+  /** Optional analytic axis filter (Migration 0092). */
+  readonly analyticAxisType?: string;
+  readonly analyticAxisCode?: string;
 }
 
 export interface ComparativeBalanceRow {
@@ -335,6 +338,9 @@ export interface MultiYearBalanceQuery {
   readonly accountCodeFrom?: string;
   readonly accountCodeTo?: string;
   readonly hideEmpty?: boolean;
+  /** Optional analytic axis filter (Migration 0092). */
+  readonly analyticAxisType?: string;
+  readonly analyticAxisCode?: string;
 }
 
 export interface MultiYearBalanceRow {
@@ -389,6 +395,9 @@ export interface SigQuery {
   readonly fromDate: string;
   readonly toDate: string;
   readonly compareWith?: { fromDate: string; toDate: string };
+  /** Optional analytic axis filter (Migration 0092). */
+  readonly analyticAxisType?: string;
+  readonly analyticAxisCode?: string;
 }
 
 export interface SigReport {
@@ -822,6 +831,8 @@ export class ReportsService {
       accountClass: query.accountClass,
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     };
 
     const [currentRows, previousRows] = await Promise.all([
@@ -962,7 +973,16 @@ export class ReportsService {
       this.assertDateRange(query.compareWith.fromDate, query.compareWith.toDate);
     }
 
-    const current = await this.computeSigBare(organizationId, query.fromDate, query.toDate);
+    const axis = {
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
+    };
+    const current = await this.computeSigBare(
+      organizationId,
+      query.fromDate,
+      query.toDate,
+      axis,
+    );
     if (query.compareWith === undefined) {
       return current;
     }
@@ -971,6 +991,7 @@ export class ReportsService {
       organizationId,
       query.compareWith.fromDate,
       query.compareWith.toDate,
+      axis,
     );
     return this.enrichSigWithComparison(current, previous, query.compareWith);
   }
@@ -979,8 +1000,14 @@ export class ReportsService {
     organizationId: TenantId,
     fromDate: string,
     toDate: string,
+    axis: { analyticAxisType?: string; analyticAxisCode?: string } = {},
   ): Promise<SigReport> {
-    const rows = await this.repo.trialBalance(organizationId, { fromDate, toDate });
+    const rows = await this.repo.trialBalance(organizationId, {
+      fromDate,
+      toDate,
+      analyticAxisType: axis.analyticAxisType,
+      analyticAxisCode: axis.analyticAxisCode,
+    });
     const posteAmounts = new Map<string, number>();
 
     for (const row of rows) {
@@ -2415,6 +2442,8 @@ export class ReportsService {
       accountClass: query.accountClass,
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     };
     const perPeriodRows = await Promise.all(
       query.periods.map((p) =>
@@ -2532,6 +2561,9 @@ export class ReportsService {
       fromDate: string;
       toDate: string;
       compareWith?: { fromDate: string; toDate: string };
+      /** Optional analytic axis filter (Migration 0092). */
+      analyticAxisType?: string;
+      analyticAxisCode?: string;
     },
   ): Promise<ProfitLossReport> {
     assertTenantId(organizationId);
@@ -2540,7 +2572,16 @@ export class ReportsService {
       this.assertDateRange(query.compareWith.fromDate, query.compareWith.toDate);
     }
 
-    const current = await this.computeProfitLossBare(organizationId, query.fromDate, query.toDate);
+    const axis = {
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
+    };
+    const current = await this.computeProfitLossBare(
+      organizationId,
+      query.fromDate,
+      query.toDate,
+      axis,
+    );
     if (query.compareWith === undefined) {
       return current;
     }
@@ -2549,6 +2590,7 @@ export class ReportsService {
       organizationId,
       query.compareWith.fromDate,
       query.compareWith.toDate,
+      axis,
     );
     return this.enrichProfitLossWithComparison(current, previous);
   }
@@ -2557,8 +2599,14 @@ export class ReportsService {
     organizationId: TenantId,
     fromDate: string,
     toDate: string,
+    axis: { analyticAxisType?: string; analyticAxisCode?: string } = {},
   ): Promise<ProfitLossReport> {
-    const rows = await this.repo.trialBalance(organizationId, { fromDate, toDate });
+    const rows = await this.repo.trialBalance(organizationId, {
+      fromDate,
+      toDate,
+      analyticAxisType: axis.analyticAxisType,
+      analyticAxisCode: axis.analyticAxisCode,
+    });
     const class6 = rows.filter((r) => r.accountClass === 6);
     const class7 = rows.filter((r) => r.accountClass === 7);
 

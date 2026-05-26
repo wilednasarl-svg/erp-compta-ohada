@@ -160,6 +160,8 @@ export class ReportsController {
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
       hideEmpty: query.hideEmpty,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     return { report };
   }
@@ -215,6 +217,8 @@ export class ReportsController {
     accountCodeFrom?: string;
     accountCodeTo?: string;
     hideEmpty?: boolean;
+    analyticAxisType?: string;
+    analyticAxisCode?: string;
   } {
     const periods = [{ fromDate: q.period1FromDate, toDate: q.period1ToDate }];
     periods.push({ fromDate: q.period2FromDate, toDate: q.period2ToDate });
@@ -233,6 +237,8 @@ export class ReportsController {
       accountCodeFrom: q.accountCodeFrom,
       accountCodeTo: q.accountCodeTo,
       hideEmpty: q.hideEmpty,
+      analyticAxisType: q.analyticAxisType,
+      analyticAxisCode: q.analyticAxisCode,
     };
   }
 
@@ -273,6 +279,8 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     return { report };
   }
@@ -296,6 +304,8 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     return { report };
   }
@@ -698,6 +708,8 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = await this.pdf.profitLossPdf(report, org.name);
     this.sendFile(
@@ -753,6 +765,8 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = await this.pdf.sigPdf(report, org.name);
     this.sendFile(
@@ -935,6 +949,8 @@ export class ReportsController {
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
       hideEmpty: query.hideEmpty,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = this.xlsx.comparativeBalanceXlsx(report, org.name);
     this.sendFile(
@@ -1000,6 +1016,8 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = this.xlsx.profitLossXlsx(report, org.name);
     this.sendFile(
@@ -1030,6 +1048,8 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = this.xlsx.profitLossOfficialXlsx(report, org.name);
     this.sendFile(
@@ -1064,6 +1084,8 @@ export class ReportsController {
       fromDate: query.fromDate,
       toDate: query.toDate,
       compareWith,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = this.xlsx.sigXlsx(report, org.name);
     this.sendFile(

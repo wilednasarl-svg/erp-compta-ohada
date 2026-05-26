@@ -65,4 +65,14 @@ export class ComparativeBalanceQueryDto {
   @Transform(({ value }: { value: unknown }) => value === true || value === 'true')
   @IsBoolean()
   hideEmpty?: boolean;
+
+  @ApiProperty({ required: false, description: "Type d'axe analytique (CHANTIER, BU, ...)" })
+  @IsOptional()
+  @IsString()
+  analyticAxisType?: string;
+
+  @ApiProperty({ required: false, description: "Code de l'axe analytique" })
+  @IsOptional()
+  @IsString()
+  analyticAxisCode?: string;
 }
