@@ -3,6 +3,9 @@
 NestJS 10 backend for the ERP Compta SaaS platform. Multi-tenant
 accounting workflow targeting OHADA jurisdictions.
 
+<!-- deploy: wave-2 reports (TFT/TAFIRE/Annexe) — 2026-05-26 -->
+
+
 ## Local setup
 
 ### Prerequisites
