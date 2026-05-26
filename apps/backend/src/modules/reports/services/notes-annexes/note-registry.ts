@@ -5,18 +5,22 @@
  *   - métadonnées statiques (id, label, section, applicableByDefault)
  *   - handler associé (fonction asynchrone qui calcule les rows)
  *
- * 31 notes implémentées (W2.4.a + W2.4.b) :
- *   N1, N2, N3A, N3C, N3D, N4, N6, N7, N8, N9, N10, N11, N12, N13, N14,
- *   N15, N16, N17, N18, N19, N20, N21, N22, N23, N24, N25, N26, N27,
- *   N28, N29, N30
+ * 38 notes implémentées (W2.4.a + W2.4.b + W2.4.c) :
+ *   N1, N2, N3A, N3B, N3C, N3D, N4, N5, N6, N7, N8, N9, N10, N11, N12,
+ *   N13, N14, N15, N16, N17, N18, N19, N20, N21, N22, N23, N24, N25,
+ *   N26, N27, N28, N29, N30, N32, N33, N34, N35, N36
  *
- * 5 notes restantes en stub avec `NotImplementedError` :
- *   N3B (variation incorporelles — analogue N3A à scoper sur 21x)
- *   N5  (actif circulant HAO 485/488)
- *   N31 (TFT détaillé — dépend du module cash-flow)
- *   N32, N33, N34, N35, N36 (textes / infos non comptables)
+ * 1 note restante en stub avec `NotImplementedError` :
+ *   N31 — TFT détaillé. Demande l'injection de CashFlowService dans
+ *   NoteHandlerDependencies (refactor à venir en W5.5).
+ *
+ * Les notes N32-N36 (effectif, engagements HB, parties liées, événements
+ * postérieurs, sectorielles) sont des notes "texte libre" : le handler
+ * renvoie { rows: [], applicable: true } pour qu'elles apparaissent dans
+ * la liasse ; le contenu est saisi via le `freeComment` du comptable.
  */
 
+import { freeCommentNote } from './handlers/_free-comment-note';
 import { handleN1Referentiel } from './handlers/note-1-referentiel';
 import { handleN10ValeursEncaisser } from './handlers/note-10-valeurs-encaisser';
 import { handleN11Disponibilites } from './handlers/note-11-disponibilites';
@@ -41,9 +45,11 @@ import { handleN28Provisions } from './handlers/note-28-provisions';
 import { handleN29Hao } from './handlers/note-29-hao';
 import { handleN30Impot } from './handlers/note-30-impot';
 import { handleN3aImmoCorp } from './handlers/note-3a-immo-corp';
+import { handleN3bImmoIncorp } from './handlers/note-3b-immo-incorp';
 import { handleN3cCessions } from './handlers/note-3c-cessions';
 import { handleN3dAmort } from './handlers/note-3d-amort';
 import { handleN4ImmoFinancieres } from './handlers/note-4-immo-financieres';
+import { handleN5ActifHao } from './handlers/note-5-actif-hao';
 import { handleN6Stocks } from './handlers/note-6-stocks';
 import { handleN7Clients } from './handlers/note-7-clients';
 import { handleN8AutresCreances } from './handlers/note-8-autres-creances';
@@ -111,16 +117,11 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
       handler: handleN3aImmoCorp,
     },
   ],
-  /**
-   * Note 3B — Immobilisations incorporelles : tableau de variation.
-   * Tableau analogue à 3A mais sur comptes 21x (frais d'étab.,
-   * R&D, brevets, logiciels…). Demande filtrage par classe d'actif.
-   */
   [
     'N3B' as NoteId,
     {
       metadata: meta('N3B', 'Note 3B — Immobilisations incorporelles', 'BILAN', true),
-      handler: stub('N3B' as NoteId, 'Variation des incorporelles (21x)'),
+      handler: handleN3bImmoIncorp,
     },
   ],
   [
@@ -144,12 +145,11 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
       handler: handleN4ImmoFinancieres,
     },
   ],
-  /** Note 5 — Actif circulant HAO. */
   [
     'N5' as NoteId,
     {
       metadata: meta('N5', 'Note 5 — Actif circulant HAO', 'BILAN', false),
-      handler: stub('N5' as NoteId, 'Comptes 485, 488'),
+      handler: handleN5ActifHao,
     },
   ],
   [
@@ -344,44 +344,39 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
       handler: stub('N31' as NoteId, 'Reprise du TFT avec ventilation'),
     },
   ],
-  /** Note 32 — Effectif moyen, masse salariale, organes de direction. */
   [
     'N32' as NoteId,
     {
       metadata: meta('N32', 'Note 32 — Effectif et rémunérations dirigeants', 'GENERAL', true),
-      handler: stub('N32' as NoteId, 'Effectif moyen + jetons de présence'),
+      handler: freeCommentNote,
     },
   ],
-  /** Note 33 — Engagements hors bilan donnés / reçus. */
   [
     'N33' as NoteId,
     {
       metadata: meta('N33', 'Note 33 — Engagements hors bilan', 'GENERAL', true),
-      handler: stub('N33' as NoteId, 'Cautions, garanties, crédits-bails'),
+      handler: freeCommentNote,
     },
   ],
-  /** Note 34 — Parties liées (transactions intragroupe). */
   [
     'N34' as NoteId,
     {
       metadata: meta('N34', 'Note 34 — Parties liées', 'GENERAL', false),
-      handler: stub('N34' as NoteId, 'IAS 24 transposé OHADA'),
+      handler: freeCommentNote,
     },
   ],
-  /** Note 35 — Événements postérieurs à la clôture. */
   [
     'N35' as NoteId,
     {
       metadata: meta('N35', 'Note 35 — Événements postérieurs à la clôture', 'GENERAL', true),
-      handler: stub('N35' as NoteId, 'Texte libre + classification ajustant/non-ajustant'),
+      handler: freeCommentNote,
     },
   ],
-  /** Note 36 — Informations sectorielles. */
   [
     'N36' as NoteId,
     {
       metadata: meta('N36', 'Note 36 — Informations sectorielles', 'GENERAL', false),
-      handler: stub('N36' as NoteId, 'Ventilation CA + résultat par segment'),
+      handler: freeCommentNote,
     },
   ],
 ]);

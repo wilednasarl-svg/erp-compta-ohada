@@ -21,7 +21,7 @@ const EXPECTED_NOTE_IDS: ReadonlyArray<NoteId> = [
 ] as ReadonlyArray<NoteId>;
 
 const STILL_STUB: ReadonlyArray<NoteId> = [
-  'N3B', 'N5', 'N31', 'N32', 'N33', 'N34', 'N35', 'N36',
+  'N31',
 ] as ReadonlyArray<NoteId>;
 
 function emptyDeps(): NoteHandlerDependencies {
@@ -64,8 +64,8 @@ describe('notes-annexes registry — structure', () => {
 describe('notes-annexes registry — handlers implémentés', () => {
   const implementedIds = ALL_NOTE_IDS.filter((id) => !STILL_STUB.includes(id));
 
-  it(`a au moins 31 notes implémentées (livraison W2.4.b)`, () => {
-    expect(implementedIds.length).toBeGreaterThanOrEqual(31);
+  it(`a au moins 38 notes implémentées (livraison W2.4.c)`, () => {
+    expect(implementedIds.length).toBeGreaterThanOrEqual(38);
   });
 
   it.each(implementedIds)(
