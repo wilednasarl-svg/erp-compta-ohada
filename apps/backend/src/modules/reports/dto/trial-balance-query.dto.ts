@@ -44,4 +44,22 @@ export class TrialBalanceQueryDto {
   @Transform(({ value }: { value: unknown }) => value === true || value === 'true')
   @IsBoolean()
   hideEmpty?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description: 'Type d\'axe analytique (CHANTIER, BU, ACTIVITE, PROJET)',
+    example: 'CHANTIER',
+  })
+  @IsOptional()
+  @IsString()
+  analyticAxisType?: string;
+
+  @ApiProperty({
+    required: false,
+    description: "Code de l'axe analytique (ex. AB123)",
+    example: 'AB123',
+  })
+  @IsOptional()
+  @IsString()
+  analyticAxisCode?: string;
 }

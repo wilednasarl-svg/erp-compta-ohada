@@ -34,6 +34,9 @@ export interface TrialBalanceQuery {
   readonly accountCodeFrom?: string;
   readonly accountCodeTo?: string;
   readonly hideEmpty?: boolean;
+  /** Optional analytic axis filter (Migration 0092). */
+  readonly analyticAxisType?: string;
+  readonly analyticAxisCode?: string;
 }
 
 export interface TrialBalanceReport {
@@ -605,7 +608,15 @@ export class ReportsService {
     assertTenantId(organizationId);
     this.assertDateRange(query.fromDate, query.toDate);
 
-    const rows = await this.repo.trialBalance(organizationId, query);
+    const rows = await this.repo.trialBalance(organizationId, {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      accountClass: query.accountClass,
+      accountCodeFrom: query.accountCodeFrom,
+      accountCodeTo: query.accountCodeTo,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
+    });
     const filtered =
       query.hideEmpty === true
         ? rows.filter(

@@ -131,6 +131,8 @@ export class ReportsController {
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
       hideEmpty: query.hideEmpty,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     return { report };
   }
@@ -599,6 +601,8 @@ export class ReportsController {
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
       hideEmpty: query.hideEmpty,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = await this.pdf.trialBalancePdf(report, org.name);
     this.sendFile(
@@ -864,6 +868,8 @@ export class ReportsController {
       accountCodeFrom: query.accountCodeFrom,
       accountCodeTo: query.accountCodeTo,
       hideEmpty: query.hideEmpty,
+      analyticAxisType: query.analyticAxisType,
+      analyticAxisCode: query.analyticAxisCode,
     });
     const buffer = this.xlsx.trialBalanceXlsx(report, org.name);
     this.sendFile(

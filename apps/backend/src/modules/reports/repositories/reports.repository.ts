@@ -51,6 +51,12 @@ export interface TrialBalanceFilters {
   readonly accountCodeTo?: string;
   /** Skip accounts that have no movement and no opening. */
   readonly hideEmpty?: boolean;
+  /** Optional analytic axis filter (Migration 0092). Filtre les lignes
+   *  par type d'axe analytique (CHANTIER, BU, ACTIVITE, PROJET). */
+  readonly analyticAxisType?: string;
+  /** Optional analytic axis code filter — typiquement associé à
+   *  `analyticAxisType` pour cibler un chantier / une BU spécifique. */
+  readonly analyticAxisCode?: string;
 }
 
 export interface GeneralLedgerFilters {
@@ -139,6 +145,16 @@ export class ReportsRepository {
     }
     if (filters.accountCodeTo !== undefined) {
       qb.andWhere('a.code <= :codeTo', { codeTo: filters.accountCodeTo });
+    }
+    if (filters.analyticAxisType !== undefined) {
+      qb.andWhere('l.analytic_axis_type = :axisType', {
+        axisType: filters.analyticAxisType,
+      });
+    }
+    if (filters.analyticAxisCode !== undefined) {
+      qb.andWhere('l.analytic_axis_code = :axisCode', {
+        axisCode: filters.analyticAxisCode,
+      });
     }
 
     const rows = await qb.getRawMany<{

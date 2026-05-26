@@ -74,6 +74,14 @@ export class JournalEntryLineEntity {
   @Column({ name: 'lettering_id', type: 'uuid', nullable: true })
   letteringId!: string | null;
 
+  // Axes analytiques — Option A (1 axe par ligne). Migration 0092.
+  // Convention applicative : (type IS NULL) = (code IS NULL).
+  @Column({ name: 'analytic_axis_type', type: 'varchar', length: 30, nullable: true })
+  analyticAxisType!: string | null;
+
+  @Column({ name: 'analytic_axis_code', type: 'varchar', length: 50, nullable: true })
+  analyticAxisCode!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }
