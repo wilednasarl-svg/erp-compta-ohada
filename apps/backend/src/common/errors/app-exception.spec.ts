@@ -218,6 +218,12 @@ describe('HTTP status mapping', () => {
       IMPAIRMENT_INVENTORY_NOT_FOUND: 404,
       IMPAIRMENT_INVALID_AMOUNT: 422,
       IMPAIRMENT_REPRISE_EXCEEDS_HISTORY: 422,
+      // W3.5 — Régularisations périodiques.
+      REGULARIZATION_BATCH_NOT_FOUND: 404,
+      REGULARIZATION_BATCH_NOT_DRAFT: 409,
+      REGULARIZATION_BATCH_NOT_EXECUTED: 409,
+      REGULARIZATION_BATCH_ALREADY_REVERSED: 409,
+      REGULARIZATION_ENTRY_INVALID_TYPE: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
