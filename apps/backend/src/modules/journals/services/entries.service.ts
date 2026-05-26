@@ -21,6 +21,9 @@ export interface CreateLineInput {
   readonly debit: number;
   readonly credit: number;
   readonly description?: string | null;
+  /** Axe analytique optionnel (Migration 0092 — Option A). */
+  readonly analyticAxisType?: string | null;
+  readonly analyticAxisCode?: string | null;
 }
 
 export interface CreateEntryInput {

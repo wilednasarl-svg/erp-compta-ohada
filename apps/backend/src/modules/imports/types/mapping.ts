@@ -26,7 +26,9 @@ export type TargetField =
   | 'credit'
   | 'label'
   | 'partner'
-  | 'currency';
+  | 'currency'
+  | 'analyticAxisType'
+  | 'analyticAxisCode';
 
 export const TARGET_FIELDS: readonly TargetField[] = [
   'account',
@@ -37,6 +39,8 @@ export const TARGET_FIELDS: readonly TargetField[] = [
   'label',
   'partner',
   'currency',
+  'analyticAxisType',
+  'analyticAxisCode',
 ] as const;
 
 /**
@@ -114,6 +118,22 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
   label: ['libelle', 'libelle ecriture', 'description', 'memo', 'label', 'narration'],
   partner: ['tiers', 'compte tiers', 'partner', 'client', 'fournisseur', 'code tiers'],
   currency: ['devise', 'monnaie', 'currency', 'ccy'],
+  analyticAxisType: ['type axe', 'type analytique', 'axe type', 'axis type', 'nature analytique'],
+  analyticAxisCode: [
+    'chantier',
+    'code chantier',
+    'bu',
+    'business unit',
+    'projet',
+    'code projet',
+    'activite',
+    'code activite',
+    'section analytique',
+    'axe',
+    'code axe',
+    'centre de cout',
+    'cost center',
+  ],
 } as const;
 
 /**
