@@ -2460,7 +2460,15 @@ function AnnexeTable({
     (acc, n) => ({ ...acc, [n.status]: (acc[n.status] ?? 0) + 1 }),
     {} as Record<string, number>,
   );
-  const supportedNotes = new Set(['Note 3A', 'Note 5', 'Note 15', 'Note 20']);
+  const supportedNotes = new Set([
+    'Note 3A',
+    'Note 3B',
+    'Note 5',
+    'Note 14',
+    'Note 15',
+    'Note 20',
+    'Note 28',
+  ]);
   return (
     <div className="space-y-4">
       <div className="flex gap-3 text-xs">
@@ -2474,7 +2482,7 @@ function AnnexeTable({
           {counts.MANUAL ?? 0} MANUAL
         </span>
         <span className="text-slate-500">
-          • Cliquer sur une note pour afficher son détail (4 notes implémentées : 3A, 5, 15, 20)
+          • Cliquer sur une note pour afficher son détail (7 notes implémentées : 3A, 3B, 5, 14, 15, 20, 28)
         </span>
       </div>
       <div className="overflow-x-auto">

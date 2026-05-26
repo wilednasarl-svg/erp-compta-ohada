@@ -9,6 +9,7 @@ import {
   CircleSlash,
   FileWarning,
   Loader2,
+  Package,
   PieChart as PieIcon,
   Scale,
   TrendingDown,
@@ -112,6 +113,14 @@ export default function ImportDashboardPage() {
               journaux, comptes, classes SYSCOHADA, qualité du fichier.
             </p>
           </div>
+          <Link
+            href="/reports"
+            className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
+            title="Générer le dossier annuel SYSCOHADA à partir des écritures validées"
+          >
+            <Package className="h-4 w-4" />
+            Générer les états financiers
+          </Link>
         </header>
 
         {analyticsQuery.isLoading && (

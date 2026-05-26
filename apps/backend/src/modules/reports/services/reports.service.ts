@@ -1654,12 +1654,18 @@ export class ReportsService {
     switch (query.noteCode) {
       case 'Note 3A':
         return this.computeNote3A(organizationId, query.asAtDate, query.fiscalYearStartDate);
+      case 'Note 3B':
+        return this.computeNote3B(organizationId, query.asAtDate, query.fiscalYearStartDate);
       case 'Note 5':
         return this.computeNote5(organizationId, query.asAtDate, query.fiscalYearStartDate);
+      case 'Note 14':
+        return this.computeNote14(organizationId, query.asAtDate, query.fiscalYearStartDate);
       case 'Note 15':
         return this.computeNote15(organizationId, query.asAtDate, query.fiscalYearStartDate);
       case 'Note 20':
         return this.computeNote20(organizationId, query.asAtDate, query.fiscalYearStartDate);
+      case 'Note 28':
+        return this.computeNote28(organizationId, query.asAtDate, query.fiscalYearStartDate);
       default:
         return {
           noteCode: query.noteCode,
@@ -1828,6 +1834,146 @@ export class ReportsService {
       coverage: 'COMPLETE',
       methodology:
         "Chiffre d'affaires SYSCOHADA = somme des postes TA (compte 701) + TB (702) + TC (704-706) + TD (707) sur la période [début exercice, asAtDate]. Cf. poste XB du SIG.",
+    };
+  }
+
+  private async computeNote3B(
+    organizationId: TenantId,
+    asAtDate: string,
+    fyStart: string,
+  ): Promise<AnnexeNoteDetailReport> {
+    const balances = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
+    // Amortissements (28x) + dépréciations (29x) sur immobilisations.
+    const filtered = balances.filter(
+      (b) => b.accountCode.startsWith('28') || b.accountCode.startsWith('29'),
+    );
+    const amortRows = filtered
+      .filter((b) => b.accountCode.startsWith('28'))
+      .map((b) => ({
+        code: b.accountCode,
+        label: b.accountLabel,
+        amount: (Number(b.totalCredit) - Number(b.totalDebit)).toFixed(2),
+      }));
+    const deprRows = filtered
+      .filter((b) => b.accountCode.startsWith('29'))
+      .map((b) => ({
+        code: b.accountCode,
+        label: b.accountLabel,
+        amount: (Number(b.totalCredit) - Number(b.totalDebit)).toFixed(2),
+      }));
+    const amortTotal = amortRows.reduce((s, r) => s + Number(r.amount), 0);
+    const deprTotal = deprRows.reduce((s, r) => s + Number(r.amount), 0);
+    const rows: AnnexeNoteDetailRow[] = [
+      ...(amortRows.length > 0
+        ? [
+            {
+              code: '28',
+              label: 'Amortissements des immobilisations',
+              amount: amortTotal.toFixed(2),
+              subRows: amortRows,
+            },
+          ]
+        : []),
+      ...(deprRows.length > 0
+        ? [
+            {
+              code: '29',
+              label: 'Dépréciations des immobilisations',
+              amount: deprTotal.toFixed(2),
+              subRows: deprRows,
+            },
+          ]
+        : []),
+    ];
+    return {
+      noteCode: 'Note 3B',
+      title: 'Amortissements et dépréciations des immobilisations',
+      asAtDate,
+      fiscalYearStartDate: fyStart,
+      rows,
+      total: (amortTotal + deprTotal).toFixed(2),
+      coverage: 'COMPLETE',
+      methodology:
+        "Solde net créditeur des comptes 28 (amortissements) et 29 (dépréciations). Pour les dotations de la période, voir Note 3C (basée sur le poste RL du SIG).",
+    };
+  }
+
+  private async computeNote14(
+    organizationId: TenantId,
+    asAtDate: string,
+    fyStart: string,
+  ): Promise<AnnexeNoteDetailReport> {
+    const balances = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
+    // Emprunts et dettes financières — préfixe 16 (emprunts auprès des
+    // établissements financiers, dettes financières diverses, dépôts et
+    // cautionnements reçus).
+    const filtered = balances.filter(
+      (b) =>
+        b.accountCode.startsWith('16') &&
+        Number(b.totalCredit) - Number(b.totalDebit) > 0.005,
+    );
+    const rows: AnnexeNoteDetailRow[] = filtered.map((b) => ({
+      code: b.accountCode,
+      label: b.accountLabel,
+      amount: (Number(b.totalCredit) - Number(b.totalDebit)).toFixed(2),
+    }));
+    const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+    return {
+      noteCode: 'Note 14',
+      title: 'Emprunts et dettes financières',
+      asAtDate,
+      fiscalYearStartDate: fyStart,
+      rows,
+      total: total.toFixed(2),
+      coverage: 'PARTIAL',
+      methodology:
+        "Solde créditeur des comptes 16x à la date. Pour la ventilation par échéance (< 1 an / 1-5 ans / > 5 ans), il faut un champ d'échéance par ligne d'emprunt — pas encore dans le modèle de données. À ce stade, l'agrégat global est livré.",
+    };
+  }
+
+  private async computeNote28(
+    organizationId: TenantId,
+    asAtDate: string,
+    fyStart: string,
+  ): Promise<AnnexeNoteDetailReport> {
+    // Impôt sur le résultat : poste RS = compte 89 sur la période.
+    const sig = await this.getSig(organizationId, { fromDate: fyStart, toDate: asAtDate });
+    const rs = sig.charges.find((c) => c.code === 'RS');
+    const rq = sig.charges.find((c) => c.code === 'RQ');
+    const xi = sig.soldes.find((s) => s.code === 'XI');
+    const xg = sig.soldes.find((s) => s.code === 'XG');
+    const rows: AnnexeNoteDetailRow[] = [
+      {
+        code: 'XG',
+        label: "Résultat des activités ordinaires (avant impôt et participation)",
+        amount: xg?.amount ?? '0.00',
+      },
+      {
+        code: 'RQ',
+        label: 'Participation des travailleurs',
+        amount: rq?.amount ?? '0.00',
+      },
+      {
+        code: 'RS',
+        label: "Impôt sur le résultat (charge)",
+        amount: rs?.amount ?? '0.00',
+      },
+      {
+        code: 'XI',
+        label: "Résultat net de l'exercice",
+        amount: xi?.amount ?? '0.00',
+      },
+    ];
+    return {
+      noteCode: 'Note 28',
+      title: "Impôt sur les bénéfices",
+      asAtDate,
+      fiscalYearStartDate: fyStart,
+      rows,
+      total: rs?.amount ?? '0.00',
+      coverage: 'COMPLETE',
+      methodology:
+        "Charge d'impôt = poste RS (compte 89) du SIG sur la période. Le rapprochement résultat avant impôt → impôt comptable → impôt courant nécessiterait le suivi des différences temporelles (IS différé, déficits reportables) qui n'est pas modélisé en V1.",
     };
   }
 
