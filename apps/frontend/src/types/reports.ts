@@ -274,6 +274,10 @@ export interface MarginByAxisRow {
   readonly achatsConsommes: string;
   readonly margeBrute: string;
   readonly margeBrutePercent: string | null;
+  readonly valeurAjoutee: string;
+  readonly tauxValeurAjoutee: string | null;
+  readonly excedentBrutExploit: string;
+  readonly tauxEbe: string | null;
   readonly chargesPersonnel: string;
   readonly autresCharges: string;
   readonly resultatNet: string;
@@ -283,6 +287,7 @@ export interface MarginByAxisReport {
   readonly fromDate: string;
   readonly toDate: string;
   readonly axisType: string;
+  readonly currency: 'XOF';
   readonly rows: ReadonlyArray<MarginByAxisRow>;
   readonly totals: MarginByAxisRow;
 }

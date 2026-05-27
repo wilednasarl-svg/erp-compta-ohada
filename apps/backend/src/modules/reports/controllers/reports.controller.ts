@@ -533,6 +533,66 @@ export class ReportsController {
     return { report };
   }
 
+  @Get('margin-by-axis.pdf')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export PDF — Marge par activité (aligné Note 34)' })
+  @ApiProduces('application/pdf')
+  async marginByAxisPdf(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: MarginByAxisQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getMarginByAxis(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      axisType: query.axisType,
+    });
+    const buffer = await this.pdf.marginByAxisPdf(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/pdf',
+      this.filename(
+        org.name,
+        `marge-par-activite-${query.axisType}`,
+        query.fromDate,
+        query.toDate,
+        'pdf',
+      ),
+    );
+  }
+
+  @Get('margin-by-axis.xlsx')
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Export Excel — Marge par activité (aligné Note 34)' })
+  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  async marginByAxisXlsx(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: MarginByAxisQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const report = await this.reports.getMarginByAxis(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      axisType: query.axisType,
+    });
+    const buffer = this.xlsx.marginByAxisXlsx(report, org.name);
+    this.sendFile(
+      res,
+      buffer,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      this.filename(
+        org.name,
+        `marge-par-activite-${query.axisType}`,
+        query.fromDate,
+        query.toDate,
+        'xlsx',
+      ),
+    );
+  }
+
   @Get('analytic-axes')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)

@@ -1102,6 +1102,22 @@ function MarginByAxisPanel({ orgId }: { readonly orgId: string }) {
     enabled: orgId !== '' && submitted !== null,
   });
 
+  const downloadPdf = (): void => {
+    if (submitted === null) return;
+    void api.download(
+      `/organizations/${orgId}/reports/margin-by-axis.pdf?${buildParams(submitted).toString()}`,
+      `marge-par-activite-${submitted.axisType}.pdf`,
+    );
+  };
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    void api.download(
+      `/organizations/${orgId}/reports/margin-by-axis.xlsx?${buildParams(submitted).toString()}`,
+      `marge-par-activite-${submitted.axisType}.xlsx`,
+    );
+  };
+
   return (
     <Card className="border-line bg-paper shadow-none">
       <CardHeader className="border-b border-line">
@@ -1178,7 +1194,19 @@ function MarginByAxisPanel({ orgId }: { readonly orgId: string }) {
 
         {query.isError ? <FormError error={query.error} /> : null}
 
-        {query.data !== undefined ? <MarginByAxisTable report={query.data} /> : null}
+        {query.data !== undefined ? (
+          <>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={downloadPdf}>
+                Exporter PDF
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={downloadXlsx}>
+                Exporter Excel
+              </Button>
+            </div>
+            <MarginByAxisTable report={query.data} />
+          </>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -1193,59 +1221,85 @@ function MarginByAxisTable({ report }: { readonly report: MarginByAxisReport }) 
       </p>
     );
   }
+  const pct = (v: string | null): string => (v !== null ? `${v}%` : '—');
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="bg-sunk text-left text-2xs uppercase tracking-wider text-ink-mute">
-            <th className="px-2 py-2">Axe</th>
-            <th className="px-2 py-2 text-right">Chiffre d&apos;affaires</th>
-            <th className="px-2 py-2 text-right">Achats consommés</th>
-            <th className="px-2 py-2 text-right">Marge brute</th>
-            <th className="px-2 py-2 text-right">% marge</th>
-            <th className="px-2 py-2 text-right">Charges personnel</th>
-            <th className="px-2 py-2 text-right">Autres charges</th>
-            <th className="px-2 py-2 text-right">Résultat net</th>
-          </tr>
-        </thead>
-        <tbody>
-          {report.rows.map((row) => {
-            const rn = Number(row.resultatNet);
-            return (
-              <tr key={row.axisCode} className="border-t border-line hover:bg-sunk/40">
-                <td className="px-2 py-1 font-mono text-xs font-semibold">{row.axisCode}</td>
-                <td className="px-2 py-1 text-right font-mono">{fmt(row.chiffreAffaires)}</td>
-                <td className="px-2 py-1 text-right font-mono">{fmt(row.achatsConsommes)}</td>
-                <td className="px-2 py-1 text-right font-mono">{fmt(row.margeBrute)}</td>
-                <td className="px-2 py-1 text-right font-mono text-xs text-ink-mute">
-                  {row.margeBrutePercent !== null ? `${row.margeBrutePercent}%` : '—'}
-                </td>
-                <td className="px-2 py-1 text-right font-mono">{fmt(row.chargesPersonnel)}</td>
-                <td className="px-2 py-1 text-right font-mono">{fmt(row.autresCharges)}</td>
-                <td
-                  className={`px-2 py-1 text-right font-mono font-semibold ${rn < 0 ? 'text-critical' : 'text-accent-ink'}`}
-                >
-                  {fmt(row.resultatNet)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
-            <td className="px-2 py-2">TOTAL</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.chiffreAffaires)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.achatsConsommes)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.margeBrute)}</td>
-            <td className="px-2 py-2 text-right font-mono text-xs text-ink-mute">
-              {report.totals.margeBrutePercent !== null ? `${report.totals.margeBrutePercent}%` : '—'}
-            </td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.chargesPersonnel)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.autresCharges)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.resultatNet)}</td>
-          </tr>
-        </tfoot>
-      </table>
+    <div className="space-y-2">
+      <p className="text-xs text-ink-mute">
+        Indicateurs alignés Note 34 (Tome 3 p. 69) restreints à l&apos;axe analytique.
+        Devise : <strong>{report.currency}</strong>.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-sunk text-left text-2xs uppercase tracking-wider text-ink-mute">
+              <th className="px-2 py-2">Axe</th>
+              <th className="px-2 py-2 text-right">CA</th>
+              <th className="px-2 py-2 text-right">Coût d&apos;achat</th>
+              <th className="px-2 py-2 text-right">Marge brute</th>
+              <th className="px-2 py-2 text-right">% MB</th>
+              <th className="px-2 py-2 text-right">Valeur ajoutée</th>
+              <th className="px-2 py-2 text-right">% VA</th>
+              <th className="px-2 py-2 text-right">EBE</th>
+              <th className="px-2 py-2 text-right">% EBE</th>
+              <th className="px-2 py-2 text-right">Résultat net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((row) => {
+              const rn = Number(row.resultatNet);
+              const mb = Number(row.margeBrute);
+              return (
+                <tr key={row.axisCode} className="border-t border-line hover:bg-sunk/40">
+                  <td className="px-2 py-1 font-mono text-xs font-semibold">{row.axisCode}</td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(row.chiffreAffaires)}</td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(row.achatsConsommes)}</td>
+                  <td
+                    className={`px-2 py-1 text-right font-mono ${mb < 0 ? 'text-critical' : ''}`}
+                  >
+                    {fmt(row.margeBrute)}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono text-xs text-ink-mute">
+                    {pct(row.margeBrutePercent)}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(row.valeurAjoutee)}</td>
+                  <td className="px-2 py-1 text-right font-mono text-xs text-ink-mute">
+                    {pct(row.tauxValeurAjoutee)}
+                  </td>
+                  <td className="px-2 py-1 text-right font-mono">{fmt(row.excedentBrutExploit)}</td>
+                  <td className="px-2 py-1 text-right font-mono text-xs text-ink-mute">
+                    {pct(row.tauxEbe)}
+                  </td>
+                  <td
+                    className={`px-2 py-1 text-right font-mono font-semibold ${rn < 0 ? 'text-critical' : 'text-accent-ink'}`}
+                  >
+                    {fmt(row.resultatNet)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
+              <td className="px-2 py-2">TOTAL</td>
+              <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.chiffreAffaires)}</td>
+              <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.achatsConsommes)}</td>
+              <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.margeBrute)}</td>
+              <td className="px-2 py-2 text-right font-mono text-xs text-ink-mute">
+                {pct(report.totals.margeBrutePercent)}
+              </td>
+              <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.valeurAjoutee)}</td>
+              <td className="px-2 py-2 text-right font-mono text-xs text-ink-mute">
+                {pct(report.totals.tauxValeurAjoutee)}
+              </td>
+              <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.excedentBrutExploit)}</td>
+              <td className="px-2 py-2 text-right font-mono text-xs text-ink-mute">
+                {pct(report.totals.tauxEbe)}
+              </td>
+              <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.resultatNet)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }

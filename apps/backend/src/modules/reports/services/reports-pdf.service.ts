@@ -12,6 +12,7 @@ import type {
   FinancialRatiosReport,
   GeneralLedgerReport,
   ImportDiagnosticReport,
+  MarginByAxisReport,
   ProfitLossReport,
   SigReport,
   TrialBalanceReport,
@@ -742,6 +743,85 @@ export class ReportsPdfService {
       this.fmtAmt(report.grandTotal),
     ];
     y = this.tableRow(doc, cols, totalsRow, y, true);
+    this.footer(doc);
+    return this.finalize(doc);
+  }
+
+  // ─── Marge par axe analytique (D3 — aligné Note 34) ──────────────
+  /**
+   * Restitution PDF du rapport « Marge par activité ». Une ligne par
+   * axe analytique (chantier, BU, projet…) avec les indicateurs Note 34
+   * restreints à l'axe : CA, coût d'achat, marge brute, taux de marge,
+   * valeur ajoutée, EBE et taux EBE. Pied avec totaux et ratios
+   * globaux. Devise : XOF.
+   */
+  async marginByAxisPdf(report: MarginByAxisReport, orgName: string): Promise<Buffer> {
+    const doc = this.createDoc();
+    this.header(
+      doc,
+      orgName,
+      `Marge par activité — Axe ${report.axisType}`,
+      `Du ${report.fromDate} au ${report.toDate} — Devise : ${report.currency}`,
+    );
+
+    const cols = [
+      { label: 'Axe', width: 90 },
+      { label: "Chiffre d'affaires", width: 95, align: 'right' as const },
+      { label: "Coût d'achat", width: 90, align: 'right' as const },
+      { label: 'Marge brute', width: 95, align: 'right' as const },
+      { label: '% MB', width: 50, align: 'right' as const },
+      { label: 'Valeur ajoutée', width: 95, align: 'right' as const },
+      { label: '% VA', width: 50, align: 'right' as const },
+      { label: 'EBE', width: 90, align: 'right' as const },
+      { label: '% EBE', width: 50, align: 'right' as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    const pctOrEmpty = (v: string | null): string => (v !== null ? `${v}%` : '—');
+
+    for (const r of report.rows) {
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+      y = this.tableRow(
+        doc,
+        cols,
+        [
+          r.axisCode,
+          this.fmtAmt(r.chiffreAffaires),
+          this.fmtAmt(r.achatsConsommes),
+          this.fmtAmt(r.margeBrute),
+          pctOrEmpty(r.margeBrutePercent),
+          this.fmtAmt(r.valeurAjoutee),
+          pctOrEmpty(r.tauxValeurAjoutee),
+          this.fmtAmt(r.excedentBrutExploit),
+          pctOrEmpty(r.tauxEbe),
+        ],
+        y,
+      );
+    }
+
+    const t = report.totals;
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        'TOTAL',
+        this.fmtAmt(t.chiffreAffaires),
+        this.fmtAmt(t.achatsConsommes),
+        this.fmtAmt(t.margeBrute),
+        pctOrEmpty(t.margeBrutePercent),
+        this.fmtAmt(t.valeurAjoutee),
+        pctOrEmpty(t.tauxValeurAjoutee),
+        this.fmtAmt(t.excedentBrutExploit),
+        pctOrEmpty(t.tauxEbe),
+      ],
+      y,
+      true,
+    );
+
     this.footer(doc);
     return this.finalize(doc);
   }

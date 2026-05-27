@@ -670,12 +670,38 @@ export interface AnalyticAxisSummary {
   readonly lineCount: number;
 }
 
+/**
+ * Ligne « Marge par axe analytique » alignée Note 34 (Tome 3 p. 69).
+ *
+ * Indicateurs livrés par axe :
+ *   - chiffreAffaires    : Σ classe 70 net créditeur
+ *   - achatsConsommes    : Σ 60* net débiteur (achats + variation stocks)
+ *   - margeBrute         : CA − achats
+ *   - margeBrutePercent  : marge / CA × 100 (null si CA = 0)
+ *   - valeurAjoutee      : CA − consommations externes (60 + 61 + 62)
+ *                          ≃ poste SIG XC restreint à l'axe
+ *   - tauxValeurAjoutee  : VA / CA × 100 (null si CA = 0)
+ *   - excedentBrutExploit: VA − charges personnel (66) − impôts/taxes (63)
+ *                          ≃ poste SIG XD restreint à l'axe
+ *   - tauxEbe            : EBE / CA × 100 (null si CA = 0)
+ *   - chargesPersonnel   : Σ 66 net débiteur (compat ascendant)
+ *   - autresCharges      : Σ classe 6/8 P&L hors 60 hors 66 (compat)
+ *   - resultatNet        : CA − total charges (CA − somme classes 6/8)
+ *
+ * Note : les ratios VA et EBE par axe sont approximatifs car les charges
+ * indirectes non ventilées (frais généraux, financiers globaux) sont
+ * exclues. Conforme à l'esprit Note 34 pour le pilotage.
+ */
 export interface MarginByAxisRow {
   readonly axisCode: string;
   readonly chiffreAffaires: string;
   readonly achatsConsommes: string;
   readonly margeBrute: string;
   readonly margeBrutePercent: string | null;
+  readonly valeurAjoutee: string;
+  readonly tauxValeurAjoutee: string | null;
+  readonly excedentBrutExploit: string;
+  readonly tauxEbe: string | null;
   readonly chargesPersonnel: string;
   readonly autresCharges: string;
   readonly resultatNet: string;
@@ -685,6 +711,8 @@ export interface MarginByAxisReport {
   readonly fromDate: string;
   readonly toDate: string;
   readonly axisType: string;
+  /** Devise SYSCOHADA — XOF par défaut. */
+  readonly currency: 'XOF';
   readonly rows: readonly MarginByAxisRow[];
   readonly totals: MarginByAxisRow;
 }
@@ -924,23 +952,30 @@ export class ReportsService {
   ) {}
 
   /**
-   * Marge par axe analytique (closes projet-ferme-le9).
+   * Marge par axe analytique — aligné Note 34 (D3).
    *
    * Pour chaque code d'axe utilisé (CHANTIER AB123, BU BETON, etc.)
-   * agrège les mouvements P&L de la période :
-   *   Chiffre d'affaires    = somme net créditeur classe 7
-   *   Achats consommés      = somme net débiteur 60x + variation stocks
-   *                           (60x signe négatif au global, ici on prend
-   *                           la valeur absolue pour lisibilité)
-   *   Marge brute           = CA − Achats consommés
-   *   Marge brute %         = Marge / CA × 100 (null si CA = 0)
-   *   Charges personnel     = somme net débiteur classe 66 (RK)
-   *   Autres charges        = somme net débiteur autres charges P&L
-   *   Résultat net (par axe) = CA − total charges
+   * agrège les mouvements P&L de la période et expose les indicateurs
+   * Note 34 (Tome 3 p. 69) restreints à l'axe :
+   *
+   *   Chiffre d'affaires       = Σ classe 70 net créditeur
+   *   Achats consommés         = Σ 60* net débiteur
+   *   Marge brute              = CA − Achats consommés
+   *   Taux de marge brute      = Marge / CA × 100 (null si CA = 0)
+   *   Valeur ajoutée           = CA − (60 + 61 + 62)    ≃ SIG XC
+   *   Taux de valeur ajoutée   = VA / CA × 100
+   *   Excédent brut exploit.   = VA − personnel (66) − impôts/taxes (63)
+   *                              ≃ SIG XD
+   *   Taux EBE                 = EBE / CA × 100
+   *   Charges personnel        = Σ 66 net débiteur (compat ascendant)
+   *   Autres charges           = Σ classe 6/8 hors 60 hors 66 (compat)
+   *   Résultat net (par axe)   = CA − total charges
    *
    * Limitation : seules les lignes imputées à un axe sont prises en
    * compte. Les frais généraux non ventilés ne remontent pas dans cette
    * vue — c'est volontaire (sinon il faudrait une clef de répartition).
+   * Les ratios VA et EBE par axe sont donc des indicateurs de pilotage,
+   * pas des valeurs DSF.
    */
   async getMarginByAxis(
     organizationId: TenantId,
@@ -956,51 +991,118 @@ export class ReportsService {
 
     const rows = await this.repo.marginByAxis(organizationId, query);
 
+    /**
+     * Ventilation fine par sous-classe SYSCOHADA pour calculer marge brute,
+     * valeur ajoutée et EBE par axe. Les conventions de signe sont :
+     *   - classe 7 : CA / produits → net créditeur
+     *   - classe 6 : charges       → net débiteur
+     *   - classe 8 : HAO           → net débiteur (charges HAO uniquement)
+     *
+     * Sous-classes 6x suivies :
+     *   60 : achats (consommations stockées)
+     *   61 : transports → conso externes
+     *   62 : services extérieurs → conso externes
+     *   63 : impôts et taxes
+     *   64 : autres charges d'exploitation
+     *   65 : autres charges
+     *   66 : charges de personnel
+     *   67 : frais financiers
+     *   68 + 69 : dotations + participation/impôts → résiduel
+     */
     interface Bucket {
       ca: number;
-      achats: number;
-      personnel: number;
-      autres: number;
+      achats: number; // 60
+      servicesExt: number; // 61 + 62
+      impotsTaxes: number; // 63
+      autresChargesExpl: number; // 64 + 65
+      personnel: number; // 66
+      financiers: number; // 67
+      dotationsAutres: number; // 68 + 69 + reste classe 6
+      hao: number; // classe 8
     }
+
+    const emptyBucket = (): Bucket => ({
+      ca: 0,
+      achats: 0,
+      servicesExt: 0,
+      impotsTaxes: 0,
+      autresChargesExpl: 0,
+      personnel: 0,
+      financiers: 0,
+      dotationsAutres: 0,
+      hao: 0,
+    });
+
     const byAxis = new Map<string, Bucket>();
     for (const r of rows) {
       const debit = Number(r.periodDebit);
       const credit = Number(r.periodCredit);
-      const bucket = byAxis.get(r.axisCode) ?? { ca: 0, achats: 0, personnel: 0, autres: 0 };
+      const bucket = byAxis.get(r.axisCode) ?? emptyBucket();
 
       if (r.accountClass === 7) {
         bucket.ca += credit - debit;
       } else if (r.accountClass === 6) {
         const net = debit - credit;
-        // 60 + 603 (variation stocks) = achats consommés
-        if (r.accountCode.startsWith('60')) {
+        const prefix2 = r.accountCode.slice(0, 2);
+        if (prefix2 === '60') {
           bucket.achats += net;
-        } else if (r.accountCode.startsWith('66')) {
+        } else if (prefix2 === '61' || prefix2 === '62') {
+          bucket.servicesExt += net;
+        } else if (prefix2 === '63') {
+          bucket.impotsTaxes += net;
+        } else if (prefix2 === '64' || prefix2 === '65') {
+          bucket.autresChargesExpl += net;
+        } else if (prefix2 === '66') {
           bucket.personnel += net;
+        } else if (prefix2 === '67') {
+          bucket.financiers += net;
         } else {
-          bucket.autres += net;
+          // 68, 69 ou code 6 non standard
+          bucket.dotationsAutres += net;
         }
       } else if (r.accountClass === 8) {
-        // HAO net débit → autres
-        bucket.autres += debit - credit;
+        bucket.hao += debit - credit;
       }
       byAxis.set(r.axisCode, bucket);
     }
 
+    const safeRate = (numerator: number, denom: number): string | null => {
+      if (Math.abs(denom) < 0.005) return null;
+      return ((numerator / Math.abs(denom)) * 100).toFixed(2);
+    };
+
     const buildRow = (axisCode: string, b: Bucket): MarginByAxisRow => {
-      const marge = b.ca - b.achats;
-      const margePercent = Math.abs(b.ca) < 0.005 ? null : ((marge / Math.abs(b.ca)) * 100).toFixed(2);
-      const totalCharges = b.achats + b.personnel + b.autres;
-      const rn = b.ca - totalCharges;
+      // Note 34 indicateurs principaux
+      const margeBrute = b.ca - b.achats;
+      const valeurAjoutee = b.ca - b.achats - b.servicesExt;
+      const ebe = valeurAjoutee - b.personnel - b.impotsTaxes;
+
+      // Compat ascendant : `autresCharges` = tout ce qui n'est ni achats
+      // ni personnel (services ext + impôts + autres expl + financiers
+      // + dotations + HAO).
+      const autresCharges =
+        b.servicesExt +
+        b.impotsTaxes +
+        b.autresChargesExpl +
+        b.financiers +
+        b.dotationsAutres +
+        b.hao;
+      const totalCharges = b.achats + b.personnel + autresCharges;
+      const resultatNet = b.ca - totalCharges;
+
       return {
         axisCode,
         chiffreAffaires: b.ca.toFixed(2),
         achatsConsommes: b.achats.toFixed(2),
-        margeBrute: marge.toFixed(2),
-        margeBrutePercent: margePercent,
+        margeBrute: margeBrute.toFixed(2),
+        margeBrutePercent: safeRate(margeBrute, b.ca),
+        valeurAjoutee: valeurAjoutee.toFixed(2),
+        tauxValeurAjoutee: safeRate(valeurAjoutee, b.ca),
+        excedentBrutExploit: ebe.toFixed(2),
+        tauxEbe: safeRate(ebe, b.ca),
         chargesPersonnel: b.personnel.toFixed(2),
-        autresCharges: b.autres.toFixed(2),
-        resultatNet: rn.toFixed(2),
+        autresCharges: autresCharges.toFixed(2),
+        resultatNet: resultatNet.toFixed(2),
       };
     };
 
@@ -1011,24 +1113,27 @@ export class ReportsService {
       return buildRow(k, b);
     });
 
-    const totalsBucket: Bucket = sortedKeys.reduce<Bucket>(
-      (acc, k) => {
-        const b = byAxis.get(k);
-        if (b === undefined) return acc;
-        return {
-          ca: acc.ca + b.ca,
-          achats: acc.achats + b.achats,
-          personnel: acc.personnel + b.personnel,
-          autres: acc.autres + b.autres,
-        };
-      },
-      { ca: 0, achats: 0, personnel: 0, autres: 0 },
-    );
+    const totalsBucket: Bucket = sortedKeys.reduce<Bucket>((acc, k) => {
+      const b = byAxis.get(k);
+      if (b === undefined) return acc;
+      return {
+        ca: acc.ca + b.ca,
+        achats: acc.achats + b.achats,
+        servicesExt: acc.servicesExt + b.servicesExt,
+        impotsTaxes: acc.impotsTaxes + b.impotsTaxes,
+        autresChargesExpl: acc.autresChargesExpl + b.autresChargesExpl,
+        personnel: acc.personnel + b.personnel,
+        financiers: acc.financiers + b.financiers,
+        dotationsAutres: acc.dotationsAutres + b.dotationsAutres,
+        hao: acc.hao + b.hao,
+      };
+    }, emptyBucket());
 
     return {
       fromDate: query.fromDate,
       toDate: query.toDate,
       axisType: query.axisType,
+      currency: 'XOF',
       rows: result,
       totals: buildRow('TOTAL', totalsBucket),
     };
