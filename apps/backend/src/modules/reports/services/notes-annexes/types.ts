@@ -125,6 +125,21 @@ export interface NoteHandlerDependencies {
   readonly inventory: NoteInventoryDeps;
   readonly accounts: NoteAccountsDeps;
   readonly cashFlow: NoteCashFlowDeps;
+  /**
+   * Dépendance C3 — données issues du profile DSF (R2).
+   * Alimente notamment la Note 27B (effectifs par qualification).
+   * Optionnelle pour rester rétro-compatible avec les tests historiques ;
+   * les handlers qui en dépendent vérifient sa présence avant usage.
+   */
+  readonly dsfProfile?: NoteDsfProfileDeps;
+  /**
+   * Dépendance C3 — indicateurs de synthèse pré-calculés (bilan + SIG
+   * + flux de trésorerie) consommés par la Note 34. Optionnelle pour
+   * rester rétro-compatible avec les tests historiques ; le handler
+   * retourne une ligne « source indisponible » si la dépendance n'est
+   * pas câblée (cas notamment du registry spec qui mock un dataset vide).
+   */
+  readonly synthesisIndicators?: NoteSynthesisIndicatorsDeps;
 }
 
 /** Sous-interfaces — minimales, écrites côté consommateur. */
@@ -184,6 +199,58 @@ export interface NoteCashFlowDeps {
     previousFromDate?: string,
     previousToDate?: string,
   ) => Promise<CashFlowReport>;
+}
+
+/**
+ * Sous-dépendance C3 — lit le profile DSF (R2) du tenant. Aujourd'hui
+ * la seule donnée consommée est le Record `workforceByQualification`
+ * (codes YA-YO masse salariale, Tome 3 p. 30) utilisé par la Note 27B.
+ *
+ * Le contrat est volontairement minimal pour éviter d'importer
+ * `OrganizationDsfProfileEntity` dans le moteur de notes (séparation
+ * pure de concerns + pas de cycle DI).
+ */
+export interface NoteDsfProfileDeps {
+  readonly getWorkforceByQualification: (
+    organizationId: TenantId | string,
+  ) => Promise<Readonly<Record<string, number>>>;
+}
+
+/**
+ * Bundle d'indicateurs de synthèse alimentant la Note 34. Les montants
+ * sont passés en string DECIMAL pour respecter la précision et le
+ * contrat de retour des autres handlers ; les ratios sont passés en
+ * number (sans unité monétaire). Les valeurs indisponibles
+ * (ex. ratios à dénominateur nul) sont `null`.
+ */
+export interface NoteSynthesisSnapshot {
+  readonly chiffreAffaires: string;
+  readonly valeurAjoutee: string;
+  readonly excedentBrutExploitation: string;
+  readonly resultatExploitation: string;
+  readonly resultatNet: string;
+  readonly totalActif: string;
+  readonly totalCapitauxPropres: string;
+  readonly dettesFinancieres: string;
+  readonly actifCirculant: string;
+  readonly tresorerieActif: string;
+  readonly passifCirculant: string;
+  readonly tresoreriePassif: string;
+  readonly variationTresorerie: string;
+}
+
+/**
+ * Sous-dépendance C3 — agrégateur d'indicateurs pour la Note 34
+ * (Fiche de synthèse). Le service met à disposition une fonction qui
+ * exécute en parallèle `getBalanceSheet`, `getSig` et `getCashFlow`
+ * et renvoie un snapshot normalisé.
+ */
+export interface NoteSynthesisIndicatorsDeps {
+  readonly getSnapshot: (
+    organizationId: TenantId | string,
+    periodStart: string,
+    periodEnd: string,
+  ) => Promise<NoteSynthesisSnapshot>;
 }
 
 /**

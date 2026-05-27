@@ -36,9 +36,12 @@ import type {
   NoteAssetsDeps,
   NoteCashFlowDeps,
   NoteDepreciationRecord,
+  NoteDsfProfileDeps,
   NoteInventoryDeps,
   NoteInventoryItem,
   NoteReportsDeps,
+  NoteSynthesisIndicatorsDeps,
+  NoteSynthesisSnapshot,
 } from './services/notes-annexes/types';
 import { ReportsPackageService } from './services/reports-package.service';
 import { ReportsPdfService } from './services/reports-pdf.service';
@@ -126,6 +129,8 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
         inventoryItemRepo: InventoryItemRepository,
         accountsRepo: OrganizationAccountRepository,
         cashFlowService: CashFlowService,
+        dsfProfilesRepo: OrganizationDsfProfilesRepository,
+        reportsService: ReportsService,
       ): NotesAnnexesService => {
         const reports: NoteReportsDeps = {
           accountBalancesAsAt: (orgId, asAtDate) =>
@@ -208,6 +213,77 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
             }),
         };
 
+        // C3 — dsfProfile dep : lit `workforceByQualification` du
+        // profile DSF (R2) pour la Note 27B.
+        const dsfProfile: NoteDsfProfileDeps = {
+          getWorkforceByQualification: async (orgId) => {
+            const profile = await dsfProfilesRepo.findByOrg(orgId);
+            return profile?.workforceByQualification ?? {};
+          },
+        };
+
+        // C3 — synthesisIndicators dep : assemble en parallèle bilan
+        // + SIG + flux de trésorerie pour produire un snapshot
+        // consommé par la Note 34 (Fiche de synthèse).
+        const synthesisIndicators: NoteSynthesisIndicatorsDeps = {
+          getSnapshot: async (orgId, periodStart, periodEnd): Promise<NoteSynthesisSnapshot> => {
+            // Le branding TenantId est validé en amont par les guards ;
+            // on caste pour ré-utiliser les signatures publiques de
+            // `ReportsService` et `CashFlowService`.
+            const tenant = orgId as never;
+            const [bilan, sig, flux] = await Promise.all([
+              reportsService.getBalanceSheet(tenant, {
+                asAtDate: periodEnd,
+                fiscalYearStartDate: periodStart,
+              }),
+              reportsService.getSig(tenant, { fromDate: periodStart, toDate: periodEnd }),
+              cashFlowService.getCashFlow(tenant, { fromDate: periodStart, toDate: periodEnd }),
+            ]);
+
+            const sectionTotal = (
+              sections: { key: string; total: string }[],
+              key: string,
+            ): string => sections.find((s) => s.key === key)?.total ?? '0.00';
+
+            const soldeByCode = (code: string): string =>
+              sig.soldes.find((s) => s.code === code)?.amount ?? '0.00';
+
+            return {
+              chiffreAffaires: soldeByCode('XB'),
+              valeurAjoutee: soldeByCode('XC'),
+              excedentBrutExploitation: soldeByCode('XD'),
+              resultatExploitation: soldeByCode('XE'),
+              resultatNet: soldeByCode('XI'),
+              totalActif: bilan.actif.total,
+              totalCapitauxPropres: sectionTotal(
+                bilan.passif.sections as unknown as { key: string; total: string }[],
+                'CAPITAUX_PROPRES',
+              ),
+              dettesFinancieres: sectionTotal(
+                bilan.passif.sections as unknown as { key: string; total: string }[],
+                'DETTES_FINANCIERES',
+              ),
+              actifCirculant: sectionTotal(
+                bilan.actif.sections as unknown as { key: string; total: string }[],
+                'CIRCULANT',
+              ),
+              tresorerieActif: sectionTotal(
+                bilan.actif.sections as unknown as { key: string; total: string }[],
+                'TRESORERIE_ACTIF',
+              ),
+              passifCirculant: sectionTotal(
+                bilan.passif.sections as unknown as { key: string; total: string }[],
+                'PASSIF_CIRCULANT',
+              ),
+              tresoreriePassif: sectionTotal(
+                bilan.passif.sections as unknown as { key: string; total: string }[],
+                'TRESORERIE_PASSIF',
+              ),
+              variationTresorerie: flux.netCashVariation,
+            };
+          },
+        };
+
         return new NotesAnnexesService(
           commentsRepo,
           reports,
@@ -215,6 +291,8 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
           inventory,
           accounts,
           cashFlow,
+          dsfProfile,
+          synthesisIndicators,
         );
       },
       inject: [
@@ -225,6 +303,8 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
         InventoryItemRepository,
         OrganizationAccountRepository,
         CashFlowService,
+        OrganizationDsfProfilesRepository,
+        ReportsService,
       ],
     },
   ],

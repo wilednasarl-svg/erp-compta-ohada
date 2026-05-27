@@ -138,9 +138,16 @@ import { handleN29Hao } from './handlers/note-29-hao';
 // dans ce registry — l'impôt est aujourd'hui couvert via le freeComment
 // de N31 et restera ainsi jusqu'à la refonte du handler.
 import { handleN31FluxTresorerie } from './handlers/note-31-flux-tresorerie';
+import { handleN34FicheSynthese } from './handlers/note-34-fiche-synthese';
 import { handleN3aImmoCorp } from './handlers/note-3a-immo-corp';
 import { handleN3cCessions } from './handlers/note-3c-cessions';
 import { handleN3dAmort } from './handlers/note-3d-amort';
+import { handleN3eReevaluations } from './handlers/note-3e-reevaluations';
+import { handleN3fChargesImmobilisees } from './handlers/note-3f-charges-immobilisees';
+import { handleN15bAutresFondsPropres } from './handlers/note-15b-autres-fonds-propres';
+import { handleN16bEngagementsRetraite } from './handlers/note-16b-engagements-retraite';
+import { handleN16bbisSuretesDonnees } from './handlers/note-16bbis-suretes-donnees';
+import { handleN27bEffectifs } from './handlers/note-27b-effectifs';
 import { handleN4ImmoFinancieres } from './handlers/note-4-immo-financieres';
 import { handleN5ActifHao } from './handlers/note-5-actif-hao';
 import { handleN6Stocks } from './handlers/note-6-stocks';
@@ -237,7 +244,7 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
         'BILAN',
         false,
       ),
-      handler: freeCommentNote,
+      handler: handleN3eReevaluations,
     },
   ],
   [
@@ -249,7 +256,7 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
         'BILAN',
         false,
       ),
-      handler: freeCommentNote,
+      handler: handleN3fChargesImmobilisees,
     },
   ],
   [
@@ -360,7 +367,7 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
     'N15B' as NoteId,
     {
       metadata: meta('N15B', 'Note 15B — Autres fonds propres', 'BILAN', false),
-      handler: freeCommentNote,
+      handler: handleN15bAutresFondsPropres,
     },
   ],
   [
@@ -384,14 +391,14 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
         'BILAN',
         false,
       ),
-      handler: freeCommentNote,
+      handler: handleN16bEngagementsRetraite,
     },
   ],
   [
     'N16Bbis' as NoteId,
     {
       metadata: meta('N16Bbis', 'Note 16B bis — Actifs et passifs éventuels', 'BILAN', false),
-      handler: freeCommentNote,
+      handler: handleN16bbisSuretesDonnees,
     },
   ],
   [
@@ -490,9 +497,9 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
         'N27B',
         'Note 27B — Effectifs, masse salariale et personnel extérieur',
         'CR',
-        false,
+        true,
       ),
-      handler: freeCommentNote,
+      handler: handleN27bEffectifs,
     },
   ],
   [
@@ -569,7 +576,7 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
         'GENERAL',
         true,
       ),
-      handler: freeCommentNote,
+      handler: handleN34FicheSynthese,
     },
   ],
   [

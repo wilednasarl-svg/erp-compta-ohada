@@ -9,10 +9,12 @@ import {
   type NoteCashFlowDeps,
   type NoteComputationContext,
   type NoteContent,
+  type NoteDsfProfileDeps,
   type NoteHandlerDependencies,
   type NoteId,
   type NoteInventoryDeps,
   type NoteReportsDeps,
+  type NoteSynthesisIndicatorsDeps,
   NotImplementedError,
 } from './types';
 
@@ -50,6 +52,14 @@ export class NotesAnnexesService {
     private readonly inventoryDeps: NoteInventoryDeps,
     private readonly accountsDeps: NoteAccountsDeps,
     private readonly cashFlowDeps: NoteCashFlowDeps,
+    /**
+     * Sous-deps optionnelles introduites en C3 (notes 27B et 34). On
+     * garde l'API à 6 args obligatoires pour la rétro-compatibilité
+     * des tests existants ; les nouvelles deps sont injectées
+     * positionnellement par la factory `reports.module.ts`.
+     */
+    private readonly dsfProfileDeps?: NoteDsfProfileDeps,
+    private readonly synthesisDeps?: NoteSynthesisIndicatorsDeps,
   ) {}
 
   /** Tous les NoteIds (36 IDs). */
@@ -93,6 +103,8 @@ export class NotesAnnexesService {
       inventory: this.inventoryDeps,
       accounts: this.accountsDeps,
       cashFlow: this.cashFlowDeps,
+      dsfProfile: this.dsfProfileDeps,
+      synthesisIndicators: this.synthesisDeps,
     };
 
     const handlerResult = await entry.handler(ctx, deps);
