@@ -1,17 +1,16 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { TvaDeclarationEntity } from '../tva/entities/tva-declaration.entity';
+import { MembershipEntity } from '../rbac/entities/membership.entity';
 import { EmailService } from './services/email.service';
+import { TvaNotificationService } from './services/tva-notification.service';
 
-/**
- * `EmailModule` (BE-MAIL-01) — owns the `EmailService` outbound mail
- * surface. Currently a single concrete class honoring `EMAIL_DRY_RUN`;
- * a follow-up (BE-MAIL-02) will plug in nodemailer for the real send
- * path.
- *
- * No entities — email is a pure outbound side-effect.
- */
 @Module({
-  providers: [EmailService],
+  imports: [
+    TypeOrmModule.forFeature([TvaDeclarationEntity, MembershipEntity]),
+  ],
+  providers: [EmailService, TvaNotificationService],
   exports: [EmailService],
 })
 export class EmailModule {}

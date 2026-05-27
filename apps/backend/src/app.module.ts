@@ -1,6 +1,7 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { LoggerModule } from './common/logging/logger.module';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
@@ -30,6 +31,7 @@ import { DashboardsModule } from './modules/dashboards/dashboards.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { AccountingScoreModule } from './modules/accounting-score/accounting-score.module';
 import { CollaborationModule } from './modules/collaboration/collaboration.module';
+import { EmailModule } from './modules/email/email.module';
 // Module 14 (signatures électroniques) est embarqué dans JournalsModule
 // via EntryWorkflowService — pas de module séparé.
 
@@ -40,6 +42,7 @@ import { CollaborationModule } from './modules/collaboration/collaboration.modul
       cache: true,
       load: [configuration],
     }),
+    ScheduleModule.forRoot(),
     // LoggerModule registers `pino-http` as a global Express middleware.
     // It MUST be imported AFTER ConfigModule (it consumes ConfigService)
     // and we apply `RequestIdMiddleware` first in `configure()` so the
@@ -152,6 +155,8 @@ import { CollaborationModule } from './modules/collaboration/collaboration.modul
     // wave 1 — emails + websocket arrivent en wave 2. Permissions :
     // collaboration.read, collaboration.write, collaboration.respond.
     CollaborationModule,
+    // Email — outbound mail + rappels TVA cron J-7/J-1.
+    EmailModule,
   ],
   controllers: [],
   providers: [
