@@ -5,15 +5,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -110,7 +102,7 @@ export default function ChartOfAccountsPage() {
   if (orgId === '') {
     return (
       <AppShell>
-        <div className="py-12 text-center text-muted-foreground">
+        <div className="py-12 text-center text-ink-mute">
           Sélectionnez une organisation pour voir son plan comptable.
         </div>
       </AppShell>
@@ -119,25 +111,28 @@ export default function ChartOfAccountsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl space-y-6 py-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Plan comptable</h1>
-          <p className="text-sm text-muted-foreground">
+      <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
+        <header className="border-b border-line pb-3">
+          <p className="eyebrow mb-2">Référentiel</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Plan comptable
+          </h1>
+          <p className="mt-2 text-sm text-ink-mute">
             Plan SYSCOHADA AUDCIF de l&apos;organisation — référentiel + sous-comptes personnalisés.
           </p>
-        </div>
+        </header>
 
         {/* Inline create */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ajouter un sous-compte</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Ajouter un sous-compte</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               Le code doit commencer par celui du parent et être plus long (ex : parent
-              <code className="mx-1 rounded bg-muted px-1">411</code> → enfant
-              <code className="mx-1 rounded bg-muted px-1">41100001</code>).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+              <code className="mx-1 rounded-xs bg-sunk px-1 font-mono text-ink">411</code> → enfant
+              <code className="mx-1 rounded-xs bg-sunk px-1 font-mono text-ink">41100001</code>).
+            </p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-4"
               onSubmit={(e) => {
@@ -178,7 +173,7 @@ export default function ChartOfAccountsPage() {
                 />
               </div>
               <div className="md:col-span-4">
-                <Button type="submit" disabled={createAccount.isPending}>
+                <Button type="submit" disabled={createAccount.isPending} className="press">
                   <Plus className="mr-2 size-4" />
                   {createAccount.isPending ? 'Création…' : 'Créer le sous-compte'}
                 </Button>
@@ -193,18 +188,18 @@ export default function ChartOfAccountsPage() {
                 )}
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {/* List */}
-        <Card>
-          <CardHeader>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <CardTitle>
+                <h2 className="font-display text-xl font-medium text-ink">
                   Comptes
                   {accountsQuery.data !== undefined && (
-                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    <span className="ml-2 text-sm font-normal text-ink-mute">
                       ({accountsQuery.data.length} total
                       {filtered.length !== accountsQuery.data.length
                         ? `, ${filtered.length} affichés`
@@ -212,17 +207,17 @@ export default function ChartOfAccountsPage() {
                       )
                     </span>
                   )}
-                </CardTitle>
-                <CardDescription>
-                  <Badge variant="outline" className="mr-2">
+                </h2>
+                <p className="mt-1 text-sm text-ink-mute">
+                  <span className="mr-2 inline-block rounded-xs bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
                     TITLE
-                  </Badge>
+                  </span>
                   = compte de regroupement (non mouvementable).
-                  <Badge variant="outline" className="mx-2">
+                  <span className="mx-2 inline-block rounded-xs bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
                     POSTING
-                  </Badge>
+                  </span>
                   = compte terminal (cible d&apos;écriture).
-                </CardDescription>
+                </p>
               </div>
               <Input
                 placeholder="Rechercher (code ou libellé)…"
@@ -231,10 +226,10 @@ export default function ChartOfAccountsPage() {
                 className="max-w-xs"
               />
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             {accountsQuery.isLoading && (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
+              <p className="text-sm text-ink-mute">Chargement…</p>
             )}
             {accountsQuery.error !== null && (
               <FormError
@@ -245,42 +240,50 @@ export default function ChartOfAccountsPage() {
               />
             )}
             {accountsQuery.data !== undefined && (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-sm border border-line">
                 <table className="w-full text-sm">
-                  <thead className="border-b text-left text-xs uppercase text-muted-foreground">
+                  <thead className="bg-sunk">
                     <tr>
-                      <th className="px-2 py-2">Code</th>
-                      <th className="px-2 py-2">Libellé</th>
-                      <th className="px-2 py-2">Type</th>
-                      <th className="px-2 py-2">Sens</th>
-                      <th className="px-2 py-2">Source</th>
-                      <th className="px-2 py-2">État</th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Code</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Libellé</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Type</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Sens</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Source</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">État</span></th>
                       <th className="px-2 py-2"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((account) => (
+                    {filtered.map((account, i) => (
                       <tr
                         key={account.id}
-                        className={
-                          account.isActive ? 'border-b' : 'border-b text-muted-foreground'
-                        }
+                        className={`${i % 2 === 0 ? 'bg-paper' : 'bg-sunk/25'} ${
+                          account.isActive ? 'text-ink' : 'text-ink-mute'
+                        }`}
                       >
                         <td className="px-2 py-2 font-mono">{account.code}</td>
                         <td className="px-2 py-2">{account.label}</td>
                         <td className="px-2 py-2">
-                          <Badge
-                            variant={account.accountType === 'TITLE' ? 'secondary' : 'outline'}
+                          <span
+                            className={`inline-block rounded-xs px-2 py-0.5 font-mono text-[11px] ${
+                              account.accountType === 'TITLE'
+                                ? 'bg-sunk text-ink-mute'
+                                : 'bg-accent-soft text-accent-ink'
+                            }`}
                           >
                             {account.accountType}
-                          </Badge>
+                          </span>
                         </td>
                         <td className="px-2 py-2">{account.normalBalance}</td>
                         <td className="px-2 py-2">
                           {account.isCustom ? (
-                            <Badge variant="default">Personnalisé</Badge>
+                            <span className="inline-block rounded-xs bg-accent-soft px-2 py-0.5 font-mono text-[11px] text-accent-ink">
+                              Personnalisé
+                            </span>
                           ) : (
-                            <Badge variant="outline">Référence</Badge>
+                            <span className="inline-block rounded-xs bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
+                              Référence
+                            </span>
                           )}
                         </td>
                         <td className="px-2 py-2">
@@ -291,6 +294,7 @@ export default function ChartOfAccountsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="press"
                               disabled={deleteAccount.isPending}
                               onClick={() => {
                                 if (
@@ -324,8 +328,8 @@ export default function ChartOfAccountsPage() {
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </AppShell>
   );

@@ -1044,7 +1044,7 @@ function DgDashboardView({
                   }
                 />
                 <Tooltip
-                  formatter={(value: number | string | readonly (string | number)[] | undefined, name: string | undefined) => [
+                  formatter={(value: number | string | readonly (string | number)[] | undefined, name: string | number | undefined) => [
                     new Intl.NumberFormat('fr-FR', {
                       style: 'currency',
                       currency: summary.currency || 'XOF',
@@ -1138,7 +1138,7 @@ function DgDashboardView({
                   }
                 />
                 <Tooltip
-                  formatter={(value: number | string | readonly (string | number)[] | undefined, name: string) => [
+                  formatter={(value: number | string | readonly (string | number)[] | undefined, name: string | number | undefined) => [
                     new Intl.NumberFormat('fr-FR', {
                       style: 'currency',
                       currency: summary.currency || 'XOF',

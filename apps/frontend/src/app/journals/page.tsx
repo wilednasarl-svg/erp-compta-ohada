@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Ban,
   CheckCircle2,
-  ChevronDown,
   ChevronUp,
   Loader2,
   Plus,
@@ -15,15 +14,7 @@ import {
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,32 +45,24 @@ interface EntryEnvelope {
   readonly entry: EntryView;
 }
 
+const SELECT_CLASS =
+  'flex h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none';
+
+const PANEL_CLASS = 'rounded-sm border border-line bg-paper p-5';
+
 /**
  * `/journals` — gestion des écritures comptables (Module 8).
- *
- * UX MVP :
- *   - barre de filtres (journal + statut) en haut,
- *   - liste paginée des écritures à gauche,
- *   - panneau détail à droite quand une écriture est sélectionnée
- *     (lignes débit/crédit + actions valider / contre-passer / supprimer),
- *   - formulaire de création en bas, dépliable.
- *
- * Comme la page Imports : pas de gating client par rôle — un user
- * sans `journals.write` recevra FORBIDDEN_PERMISSION à la soumission,
- * remonté inline. Visible-but-failable > invisible-and-confusing.
  */
 export default function JournalsPage() {
   const currentOrg = useCurrentOrg();
   const orgId = currentOrg?.id ?? '';
   const queryClient = useQueryClient();
 
-  // ─── Filtres ────────────────────────────────────────────────────────
   const [filterJournalId, setFilterJournalId] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<JournalEntryStatus | ''>('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  // ─── Données ────────────────────────────────────────────────────────
   const journalsQuery = useQuery<ReadonlyArray<JournalView>, ApiError>({
     queryKey: ['journals', orgId],
     queryFn: async () => {
@@ -100,14 +83,12 @@ export default function JournalsPage() {
     enabled: orgId !== '',
   });
 
-  // accountId → code map for resolving lines on the detail panel.
   const accountById = useMemo(() => {
     const m = new Map<string, AccountView>();
     for (const a of accountsQuery.data ?? []) m.set(a.id, a);
     return m;
   }, [accountsQuery.data]);
 
-  // journalId → code map for the list (which only returns journalId).
   const journalById = useMemo(() => {
     const m = new Map<string, JournalView>();
     for (const j of journalsQuery.data ?? []) m.set(j.id, j);
@@ -131,10 +112,9 @@ export default function JournalsPage() {
 
   const invalidateEntries = () => {
     void queryClient.invalidateQueries({ queryKey: ['entries', orgId] });
-    void queryClient.invalidateQueries({ queryKey: ['journals', orgId] }); // bumped next_entry_number
+    void queryClient.invalidateQueries({ queryKey: ['journals', orgId] });
   };
 
-  // ─── Sélection détail ───────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailQuery = useQuery<EntryView, ApiError>({
     queryKey: ['entry', orgId, selectedId],
@@ -147,15 +127,17 @@ export default function JournalsPage() {
     enabled: orgId !== '' && selectedId !== null,
   });
 
-  // ─── Création ───────────────────────────────────────────────────────
   const [showCreate, setShowCreate] = useState(false);
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-8">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Journaux & Écritures</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="eyebrow mb-2">Module 8 · Saisie</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Journaux &amp; Écritures
+          </h1>
+          <p className="mt-2 text-sm text-ink-mute">
             Saisie, validation et contre-passation des écritures comptables. Un brouillon
             peut être supprimé ; une écriture validée est immuable et ne s&apos;annule que
             par contre-passation.
@@ -163,69 +145,68 @@ export default function JournalsPage() {
         </header>
 
         {/* Filtres */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filtres</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[200px_200px_1fr]">
-              <div className="space-y-1">
-                <Label htmlFor="filter-journal">Journal</Label>
-                <select
-                  id="filter-journal"
-                  value={filterJournalId}
-                  onChange={(e) => {
-                    setFilterJournalId(e.target.value);
-                    setPage(1);
-                  }}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="">Tous</option>
-                  {(journalsQuery.data ?? []).map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.code} — {j.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="filter-status">Statut</Label>
-                <select
-                  id="filter-status"
-                  value={filterStatus}
-                  onChange={(e) => {
-                    setFilterStatus(e.target.value as JournalEntryStatus | '');
-                    setPage(1);
-                  }}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="">Tous</option>
-                  <option value="draft">Brouillon</option>
-                  <option value="validated">Validé</option>
-                  <option value="cancelled">Contre-passé</option>
-                </select>
-              </div>
-              <div className="flex items-end justify-end">
-                <Button
-                  type="button"
-                  variant={showCreate ? 'secondary' : 'default'}
-                  onClick={() => setShowCreate((v) => !v)}
-                >
-                  {showCreate ? (
-                    <ChevronUp className="mr-2 h-4 w-4" />
-                  ) : (
-                    <Plus className="mr-2 h-4 w-4" />
-                  )}
-                  {showCreate ? 'Masquer la saisie' : 'Nouvelle écriture'}
-                </Button>
-              </div>
+        <section className={PANEL_CLASS}>
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Filtres</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-3 pt-4 md:grid-cols-[200px_200px_1fr]">
+            <div className="space-y-1">
+              <Label htmlFor="filter-journal">Journal</Label>
+              <select
+                id="filter-journal"
+                value={filterJournalId}
+                onChange={(e) => {
+                  setFilterJournalId(e.target.value);
+                  setPage(1);
+                }}
+                className={SELECT_CLASS}
+              >
+                <option value="">Tous</option>
+                {(journalsQuery.data ?? []).map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.code} — {j.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-1">
+              <Label htmlFor="filter-status">Statut</Label>
+              <select
+                id="filter-status"
+                value={filterStatus}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value as JournalEntryStatus | '');
+                  setPage(1);
+                }}
+                className={SELECT_CLASS}
+              >
+                <option value="">Tous</option>
+                <option value="draft">Brouillon</option>
+                <option value="validated">Validé</option>
+                <option value="cancelled">Contre-passé</option>
+              </select>
+            </div>
+            <div className="flex items-end justify-end">
+              <Button
+                type="button"
+                variant={showCreate ? 'secondary' : 'default'}
+                onClick={() => setShowCreate((v) => !v)}
+                className="press"
+              >
+                {showCreate ? (
+                  <ChevronUp className="mr-2 h-4 w-4" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
+                {showCreate ? 'Masquer la saisie' : 'Nouvelle écriture'}
+              </Button>
+            </div>
+          </div>
+        </section>
 
         {/* Création */}
         {showCreate && (
-          <CreateEntryCard
+          <CreateEntrySection
             orgId={orgId}
             journals={journalsQuery.data ?? []}
             onCreated={() => {
@@ -237,22 +218,22 @@ export default function JournalsPage() {
 
         {/* Liste + détail */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_2fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>Écritures</CardTitle>
-              <CardDescription>
+          <section className={PANEL_CLASS}>
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">Écritures</h2>
+              <p className="mt-1 text-sm text-ink-mute">
                 {entriesQuery.data?.total ?? 0} résultat(s) — page {page}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="pt-4">
               {entriesQuery.isLoading ? (
-                <p className="text-sm text-muted-foreground">Chargement…</p>
+                <p className="text-sm text-ink-mute">Chargement…</p>
               ) : entriesQuery.data?.entries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-ink-mute">
                   Aucune écriture ne correspond aux filtres.
                 </p>
               ) : (
-                <ul className="divide-y rounded-md border">
+                <ul className="divide-y divide-line rounded-sm border border-line">
                   {(entriesQuery.data?.entries ?? []).map((e) => {
                     const isSelected = e.id === selectedId;
                     const journal = journalById.get(e.journalId);
@@ -261,19 +242,21 @@ export default function JournalsPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedId(e.id)}
-                          className={`flex w-full items-start gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted/60 ${
-                            isSelected ? 'bg-muted/60' : ''
+                          className={`press flex w-full items-start gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-sunk/60 ${
+                            isSelected ? 'bg-sunk/60' : ''
                           }`}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-muted-foreground">
+                              <span className="font-mono text-xs text-ink-mute">
                                 {journal?.code ?? '?'} N°{e.entryNumber}
                               </span>
                               <EntryStatusBadge status={e.status} />
                             </div>
-                            <div className="mt-0.5 truncate font-medium">{e.description}</div>
-                            <div className="mt-0.5 text-xs text-muted-foreground">
+                            <div className="mt-0.5 truncate font-medium text-ink">
+                              {e.description}
+                            </div>
+                            <div className="mt-0.5 text-xs text-ink-mute">
                               {e.entryDate}
                               {e.reference ? ` · ${e.reference}` : ''}
                             </div>
@@ -286,42 +269,42 @@ export default function JournalsPage() {
               )}
               <FormError error={entriesQuery.error} className="mt-3" />
 
-              {/* Pagination */}
               <div className="mt-3 flex items-center justify-between text-sm">
                 <Button
                   type="button"
                   variant="outline"
                   disabled={page === 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="press"
                 >
                   Précédent
                 </Button>
-                <span className="text-muted-foreground">Page {page}</span>
+                <span className="text-ink-mute">Page {page}</span>
                 <Button
                   type="button"
                   variant="outline"
                   disabled={(entriesQuery.data?.entries.length ?? 0) < pageSize}
                   onClick={() => setPage((p) => p + 1)}
+                  className="press"
                 >
                   Suivant
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
           {/* Détail */}
           {selectedId === null ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Détail</CardTitle>
-                <CardDescription>
+            <section className={PANEL_CLASS}>
+              <div className="border-b border-line pb-3">
+                <h2 className="font-display text-xl font-medium text-ink">Détail</h2>
+                <p className="mt-1 text-sm text-ink-mute">
                   Sélectionner une écriture pour voir ses lignes et agir dessus.
-                </CardDescription>
-              </CardHeader>
-              <CardContent />
-            </Card>
+                </p>
+              </div>
+            </section>
           ) : (
-            <EntryDetailCard
+            <EntryDetailSection
               orgId={orgId}
               entryQuery={detailQuery}
               accountById={accountById}
@@ -344,17 +327,21 @@ const STATUS_LABEL: Record<JournalEntryStatus, string> = {
   validated: 'Validé',
   cancelled: 'Contre-passé',
 };
-const STATUS_VARIANT: Record<
-  JournalEntryStatus,
-  'default' | 'secondary' | 'muted' | 'destructive'
-> = {
-  draft: 'muted',
-  validated: 'default',
-  cancelled: 'destructive',
-};
 
 function EntryStatusBadge({ status }: { status: JournalEntryStatus }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABEL[status]}</Badge>;
+  const cls =
+    status === 'validated'
+      ? 'bg-accent-soft text-accent-ink'
+      : status === 'cancelled'
+        ? 'bg-critical-soft text-critical-ink'
+        : 'bg-sunk text-ink-soft';
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}
+    >
+      {STATUS_LABEL[status]}
+    </span>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -369,7 +356,7 @@ interface DetailProps {
   readonly onMutated: () => void;
 }
 
-function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }: DetailProps) {
+function EntryDetailSection({ orgId, entryQuery, accountById, onClose, onMutated }: DetailProps) {
   const entry = entryQuery.data;
   const [cancelReason, setCancelReason] = useState('');
 
@@ -411,18 +398,18 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
 
   if (entryQuery.isLoading || !entry) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Détail</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
+      <section className={PANEL_CLASS}>
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">Détail</h2>
+        </div>
+        <div className="pt-4">
+          <p className="text-sm text-ink-mute">
             <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
             Chargement…
           </p>
           {entryQuery.error && <FormError error={entryQuery.error} className="mt-3" />}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     );
   }
 
@@ -431,58 +418,70 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
   const balanced = Math.abs(totalDebit - totalCredit) < 0.005;
 
   return (
-    <Card>
-      <CardHeader>
+    <section className={PANEL_CLASS}>
+      <div className="border-b border-line pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <h2 className="flex items-center gap-2 font-display text-xl font-medium text-ink">
               {entry.journalCode} N°{entry.entryNumber}
               <EntryStatusBadge status={entry.status} />
-            </CardTitle>
-            <CardDescription>
+            </h2>
+            <p className="mt-1 text-sm text-ink-mute">
               {entry.entryDate} · {entry.description}
               {entry.reference ? ` · ${entry.reference}` : ''}
-            </CardDescription>
+            </p>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          <Button type="button" variant="outline" size="sm" onClick={onClose} className="press">
             <X className="h-4 w-4" />
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {/* Lignes */}
-        <div className="overflow-x-auto rounded-md border">
+      </div>
+      <div className="space-y-5 pt-4">
+        <div className="overflow-x-auto rounded-sm border border-line">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+            <thead className="bg-sunk">
               <tr>
-                <th className="px-3 py-2 text-left">#</th>
-                <th className="px-3 py-2 text-left">Compte</th>
-                <th className="px-3 py-2 text-left">Libellé</th>
-                <th className="px-3 py-2 text-right">Débit</th>
-                <th className="px-3 py-2 text-right">Crédit</th>
+                <th className="px-3 py-2 text-left">
+                  <span className="eyebrow">#</span>
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <span className="eyebrow">Compte</span>
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <span className="eyebrow">Libellé</span>
+                </th>
+                <th className="px-3 py-2 text-right">
+                  <span className="eyebrow">Débit</span>
+                </th>
+                <th className="px-3 py-2 text-right">
+                  <span className="eyebrow">Crédit</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {entry.lines.map((l) => {
+              {entry.lines.map((l, idx) => {
                 const account = accountById.get(l.accountId);
                 return (
-                  <tr key={l.id} className="border-t">
-                    <td className="px-3 py-2 text-muted-foreground">{l.position}</td>
-                    <td className="px-3 py-2 font-mono">
+                  <tr
+                    key={l.id}
+                    className={`border-t border-line ${idx % 2 === 1 ? 'bg-sunk/30' : ''}`}
+                  >
+                    <td className="px-3 py-2 text-ink-mute">{l.position}</td>
+                    <td className="px-3 py-2 font-mono text-ink">
                       {account ? `${account.code} — ${account.label}` : l.accountId.slice(0, 8)}
                     </td>
-                    <td className="px-3 py-2">{l.description ?? '—'}</td>
-                    <td className="px-3 py-2 text-right font-mono">
+                    <td className="px-3 py-2 text-ink">{l.description ?? '—'}</td>
+                    <td className="px-3 py-2 text-right font-mono text-ink">
                       {Number(l.debit) > 0 ? Number(l.debit).toFixed(2) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono">
+                    <td className="px-3 py-2 text-right font-mono text-ink">
                       {Number(l.credit) > 0 ? Number(l.credit).toFixed(2) : '—'}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-            <tfoot className="border-t bg-muted/30 text-sm font-medium">
+            <tfoot className="border-t border-line bg-sunk/40 text-sm font-medium text-ink">
               <tr>
                 <td className="px-3 py-2" colSpan={3}>
                   Totaux
@@ -495,12 +494,11 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
         </div>
         <p className="text-xs">
           Équilibre :{' '}
-          <span className={balanced ? 'text-emerald-600' : 'text-destructive'}>
+          <span className={balanced ? 'text-accent-ink' : 'text-critical-ink'}>
             {balanced ? 'OK' : `écart de ${(totalDebit - totalCredit).toFixed(2)}`}
           </span>
         </p>
 
-        {/* Actions */}
         <div className="flex flex-wrap gap-2">
           {entry.status === 'draft' && (
             <>
@@ -508,6 +506,7 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
                 type="button"
                 onClick={() => validate.mutate(undefined)}
                 disabled={validate.isPending || !balanced}
+                className="press"
               >
                 {validate.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -521,6 +520,7 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
                 variant="destructive"
                 onClick={() => remove.mutate(undefined)}
                 disabled={remove.isPending}
+                className="press"
               >
                 {remove.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -548,6 +548,7 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
                 variant="destructive"
                 disabled={cancel.isPending || cancelReason.trim().length === 0}
                 onClick={() => cancel.mutate(undefined)}
+                className="press"
               >
                 {cancel.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -559,7 +560,7 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
             </div>
           )}
           {entry.status === 'cancelled' && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-mute">
               <Ban className="mr-1 inline h-4 w-4" />
               Écriture contre-passée — voir l&apos;écriture inverse créée lors de la
               contre-passation.
@@ -569,8 +570,8 @@ function EntryDetailCard({ orgId, entryQuery, accountById, onClose, onMutated }:
         <FormError error={validate.error} />
         <FormError error={cancel.error} />
         <FormError error={remove.error} />
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -600,7 +601,7 @@ const newLine = (): DraftLine => ({
   description: '',
 });
 
-function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
+function CreateEntrySection({ orgId, journals, onCreated }: CreateProps) {
   const [journalCode, setJournalCode] = useState<string>(journals[0]?.code ?? '');
   const [entryDate, setEntryDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState('');
@@ -629,8 +630,6 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
           description: l.description.trim() === '' ? null : l.description.trim(),
         })),
       };
-      // Cast through unknown : `CreateEntryPayload` uses `readonly`
-      // modifiers (no index signature) but the JSON body is shape-compatible.
       return api.post<EntryEnvelope>(
         `/organizations/${orgId}/entries`,
         payload as unknown as Record<string, unknown>,
@@ -647,15 +646,15 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Nouvelle écriture</CardTitle>
-        <CardDescription>
+    <section className={PANEL_CLASS}>
+      <div className="border-b border-line pb-3">
+        <h2 className="font-display text-xl font-medium text-ink">Nouvelle écriture</h2>
+        <p className="mt-1 text-sm text-ink-mute">
           Saisir l&apos;en-tête, puis au moins deux lignes équilibrées (Σ débit = Σ crédit).
           L&apos;écriture est créée en brouillon et peut être validée ensuite.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+        </p>
+      </div>
+      <div className="pt-4">
         <form
           className="space-y-4"
           onSubmit={(e) => {
@@ -671,7 +670,7 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
                 value={journalCode}
                 onChange={(e) => setJournalCode(e.target.value)}
                 required
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className={SELECT_CLASS}
               >
                 {journals.map((j) => (
                   <option key={j.id} value={j.code}>
@@ -713,21 +712,31 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
             </div>
           </div>
 
-          {/* Lignes */}
-          <div className="overflow-x-auto rounded-md border">
+          <div className="overflow-x-auto rounded-sm border border-line">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+              <thead className="bg-sunk">
                 <tr>
-                  <th className="px-3 py-2 text-left">Compte</th>
-                  <th className="px-3 py-2 text-left">Libellé ligne</th>
-                  <th className="px-3 py-2 text-right">Débit</th>
-                  <th className="px-3 py-2 text-right">Crédit</th>
+                  <th className="px-3 py-2 text-left">
+                    <span className="eyebrow">Compte</span>
+                  </th>
+                  <th className="px-3 py-2 text-left">
+                    <span className="eyebrow">Libellé ligne</span>
+                  </th>
+                  <th className="px-3 py-2 text-right">
+                    <span className="eyebrow">Débit</span>
+                  </th>
+                  <th className="px-3 py-2 text-right">
+                    <span className="eyebrow">Crédit</span>
+                  </th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody>
-                {lines.map((l) => (
-                  <tr key={l.key} className="border-t">
+                {lines.map((l, idx) => (
+                  <tr
+                    key={l.key}
+                    className={`border-t border-line ${idx % 2 === 1 ? 'bg-sunk/30' : ''}`}
+                  >
                     <td className="px-2 py-1.5">
                       <Input
                         value={l.accountCode}
@@ -773,6 +782,7 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
                         onClick={() =>
                           setLines((prev) => prev.filter((x) => x.key !== l.key))
                         }
+                        className="press"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -780,7 +790,7 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="border-t bg-muted/30 text-sm font-medium">
+              <tfoot className="border-t border-line bg-sunk/40 text-sm font-medium text-ink">
                 <tr>
                   <td className="px-3 py-2" colSpan={2}>
                     Totaux
@@ -793,6 +803,7 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => setLines((prev) => [...prev, newLine()])}
+                      className="press"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -804,7 +815,7 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
 
           <p className="text-xs">
             Équilibre :{' '}
-            <span className={balanced ? 'text-emerald-600' : 'text-destructive'}>
+            <span className={balanced ? 'text-accent-ink' : 'text-critical-ink'}>
               {balanced
                 ? 'OK'
                 : totalDebit === 0
@@ -814,7 +825,7 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
           </p>
 
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={create.isPending || !balanced}>
+            <Button type="submit" disabled={create.isPending || !balanced} className="press">
               {create.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -822,13 +833,13 @@ function CreateEntryCard({ orgId, journals, onCreated }: CreateProps) {
               )}
               Créer en brouillon
             </Button>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-ink-mute">
               Le bouton Valider apparaîtra dans le panneau détail.
             </span>
           </div>
           <FormError error={create.error} />
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

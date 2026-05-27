@@ -1,13 +1,11 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
@@ -18,22 +16,6 @@ interface MembersResponse {
   readonly members: ReadonlyArray<MemberView>;
 }
 
-/**
- * `/members` — admin / org-read view of the current org's active
- * memberships. Two mutations exposed inline on each row:
- *
- *   - Role change (admin OR `users.manage_roles`) — backend enforces
- *     the "at least one active admin per org" invariant (BE-RBAC-09).
- *   - Remove (admin OR `organizations.manage_members`) — same
- *     last-admin invariant; the backend returns ORG_LAST_ADMIN (409)
- *     and we surface the localised message via FormError.
- *
- * The page itself doesn't gate visibility per role: the backend will
- * refuse the mutations with FORBIDDEN_PERMISSION; we surface that
- * error contextually instead of pretending the controls don't exist.
- * For a richer UX a future refactor can read the current user's role
- * from the store + hide the controls preemptively.
- */
 export default function MembersPage() {
   const currentOrg = useCurrentOrg();
   const currentUser = useCurrentUser();
@@ -77,7 +59,7 @@ export default function MembersPage() {
     try {
       await changeRole.mutateAsync({ userId, roleCode: newRole });
     } catch {
-      // Surfaced via the inline FormError; nothing else to do here.
+      // surfaced via FormError
     } finally {
       setPendingRowId(null);
     }
@@ -87,14 +69,12 @@ export default function MembersPage() {
     const confirmed = window.confirm(
       `Retirer ${displayName(member)} de l'organisation ? Cette action est immédiate.`,
     );
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
     setPendingRowId(member.userId);
     try {
       await removeMember.mutateAsync(member.userId);
     } catch {
-      // Surfaced via the inline FormError.
+      // surfaced via FormError
     } finally {
       setPendingRowId(null);
     }
@@ -104,82 +84,106 @@ export default function MembersPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Membres</h1>
-          <p className="text-sm text-muted-foreground">
-            Gérez les membres actifs de l'organisation {currentOrg?.name}.
+      <div className="mx-auto max-w-[900px] animate-page-in space-y-10">
+        <header>
+          <p className="eyebrow mb-2">Organisation</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Membres</h1>
+          <p className="mt-3 max-w-[60ch] text-sm leading-relaxed text-ink-soft">
+            Gérez les membres actifs de l'organisation{currentOrg?.name ? ` ${currentOrg.name}` : ''}.
           </p>
-        </div>
+        </header>
 
         <FormError error={mutationError} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Membres actifs</CardTitle>
-            <CardDescription>
+        <section aria-labelledby="members-title" className="space-y-5">
+          <div className="border-b border-line pb-3">
+            <h2 id="members-title" className="font-display text-xl font-medium text-ink">
+              Membres actifs
+            </h2>
+            <p className="mt-1 text-xs text-ink-mute">
               Le rôle de chaque membre détermine ses permissions. Les modifications sont
-              journalisées dans `auth_events`.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {membersQuery.isLoading ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Chargement…</p>
-            ) : membersQuery.isError ? (
-              <FormError error={membersQuery.error} />
-            ) : (membersQuery.data ?? []).length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Aucun membre.</p>
-            ) : (
-              <ul className="divide-y">
-                {(membersQuery.data ?? []).map((member) => {
-                  const isSelf = member.userId === currentUser?.id;
-                  const isPending =
-                    pendingRowId === member.userId &&
-                    (changeRole.isPending || removeMember.isPending);
-                  return (
-                    <li
-                      key={member.userId}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{displayName(member)}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {member.email ?? '—'}
-                          {isSelf ? ' · vous' : ''}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">
-                        {ROLE_LABELS[member.role as RoleCode] ?? member.role}
-                      </Badge>
-                      <select
-                        aria-label={`Changer le rôle de ${displayName(member)}`}
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                        value={member.role}
-                        disabled={isPending}
-                        onChange={(e) => void handleRoleChange(member.userId, e.target.value as RoleCode)}
+              journalisées dans auth_events.
+            </p>
+          </div>
+
+          {membersQuery.isLoading ? (
+            <div className="flex items-center gap-2 py-8 text-sm text-ink-mute">
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+              Chargement…
+            </div>
+          ) : membersQuery.isError ? (
+            <FormError error={membersQuery.error} />
+          ) : (membersQuery.data ?? []).length === 0 ? (
+            <p className="py-8 text-center text-sm text-ink-mute">Aucun membre.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-sm border border-line">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line bg-sunk">
+                    <th className="px-4 py-2.5 text-left"><span className="eyebrow">Membre</span></th>
+                    <th className="px-4 py-2.5 text-left"><span className="eyebrow">Email</span></th>
+                    <th className="px-4 py-2.5 text-left"><span className="eyebrow">Rôle</span></th>
+                    <th className="px-4 py-2.5 text-right"><span className="eyebrow">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(membersQuery.data ?? []).map((member, i) => {
+                    const isSelf = member.userId === currentUser?.id;
+                    const isPending =
+                      pendingRowId === member.userId &&
+                      (changeRole.isPending || removeMember.isPending);
+                    return (
+                      <tr
+                        key={member.userId}
+                        className={`border-b border-line last:border-0 ${i % 2 === 1 ? 'bg-sunk/25' : 'bg-paper'}`}
                       >
-                        {ROLE_CODES.map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABELS[r]}
-                          </option>
-                        ))}
-                      </select>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void handleRemove(member)}
-                        disabled={isPending}
-                        aria-label={`Retirer ${displayName(member)}`}
-                      >
-                        <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Retirer
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+                        <td className="px-4 py-3 font-medium text-ink">
+                          {displayName(member)}
+                          {isSelf && (
+                            <span className="ml-2 text-xs text-ink-mute">(vous)</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-ink-soft">{member.email ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <select
+                            aria-label={`Changer le rôle de ${displayName(member)}`}
+                            className="h-8 rounded-xs border border-line-strong bg-paper px-2 text-xs text-ink transition-colors focus:border-accent focus:outline-none disabled:opacity-50"
+                            value={member.role}
+                            disabled={isPending}
+                            onChange={(e) =>
+                              void handleRoleChange(member.userId, e.target.value as RoleCode)
+                            }
+                          >
+                            {ROLE_CODES.map((r) => (
+                              <option key={r} value={r}>
+                                {ROLE_LABELS[r]}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => void handleRemove(member)}
+                            disabled={isPending}
+                            aria-label={`Retirer ${displayName(member)}`}
+                            className="press inline-flex h-7 w-7 items-center justify-center rounded-xs border border-line text-ink-mute transition-colors hover:border-critical hover:text-critical-ink disabled:opacity-40"
+                          >
+                            {isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
     </AppShell>
   );
@@ -189,8 +193,6 @@ function displayName(member: MemberView): string {
   const parts = [member.firstName, member.lastName].filter(
     (v): v is string => typeof v === 'string' && v.length > 0,
   );
-  if (parts.length > 0) {
-    return parts.join(' ');
-  }
+  if (parts.length > 0) return parts.join(' ');
   return member.email ?? member.userId;
 }

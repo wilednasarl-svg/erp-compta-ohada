@@ -135,3 +135,45 @@ export class TopAccountsEnvelopeResponse {
   @ApiProperty({ type: () => DashboardTopAccountsResponse })
   topAccounts!: DashboardTopAccountsResponse;
 }
+
+export class ConsolidatedMetricsResponse {
+  @ApiProperty({ description: 'Solde net trésorerie (DECIMAL string)' })
+  cashBalance!: string;
+  @ApiProperty({ description: 'Créances clients nettes (DECIMAL string)' })
+  receivables!: string;
+  @ApiProperty({ description: 'Dettes fournisseurs nettes (DECIMAL string)' })
+  payables!: string;
+  @ApiProperty({ description: 'Produits (DECIMAL string)' })
+  revenue!: string;
+  @ApiProperty({ description: 'Charges (DECIMAL string)' })
+  expenses!: string;
+  @ApiProperty({ description: 'Résultat net (DECIMAL string)' })
+  netResult!: string;
+}
+
+export class ConsolidatedOrganizationDataResponse {
+  @ApiProperty({ format: 'uuid' })
+  organizationId!: string;
+  @ApiProperty()
+  organizationName!: string;
+  @ApiProperty({ type: () => ConsolidatedMetricsResponse })
+  metrics!: ConsolidatedMetricsResponse;
+}
+
+export class ConsolidatedSummaryResponse {
+  @ApiProperty()
+  year!: number;
+  @ApiProperty()
+  organizationsCount!: number;
+  @ApiProperty()
+  currency!: string;
+  @ApiProperty({ type: () => ConsolidatedMetricsResponse })
+  metrics!: ConsolidatedMetricsResponse;
+  @ApiProperty({ type: () => ConsolidatedOrganizationDataResponse, isArray: true })
+  organizationsData!: ConsolidatedOrganizationDataResponse[];
+}
+
+export class ConsolidatedEnvelopeResponse {
+  @ApiProperty({ type: () => ConsolidatedSummaryResponse })
+  consolidated!: ConsolidatedSummaryResponse;
+}

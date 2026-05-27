@@ -5,15 +5,7 @@ import { CalendarPlus, Loader2, Lock, Unlock } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -86,24 +78,27 @@ export default function AccountingPeriodsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Périodes comptables</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
+        <header className="border-b border-line pb-3">
+          <p className="eyebrow mb-2">Référentiel</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Périodes comptables
+          </h1>
+          <p className="mt-2 text-sm text-ink-mute">
             Exercices fiscaux et sous-périodes. Un exercice peut être calendaire (1er janv.)
             ou décalé (ex. campagne agricole 1er avril). Fermer une période bloque toute
             saisie ; réouvrir exige un motif.
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Nouvel exercice</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Nouvel exercice</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               Omettre la date de début pour un exercice calendaire (Jan 1 → Déc 31).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-[120px_180px_180px_auto] md:items-end"
               onSubmit={(e) => {
@@ -129,7 +124,7 @@ export default function AccountingPeriodsPage() {
                   id="split"
                   value={split}
                   onChange={(e) => setSplit(e.target.value as Split)}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
                 >
                   <option value="MONTHLY">Mensuel</option>
                   <option value="QUARTERLY">Trimestriel</option>
@@ -146,7 +141,7 @@ export default function AccountingPeriodsPage() {
                   placeholder="2026-04-01"
                 />
               </div>
-              <Button type="submit" disabled={create.isPending}>
+              <Button type="submit" disabled={create.isPending} className="press">
                 {create.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -156,25 +151,25 @@ export default function AccountingPeriodsPage() {
               </Button>
             </form>
             <FormError error={create.error} className="mt-3" />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Exercices existants</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Exercices existants</h2>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             {periodsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
+              <p className="text-sm text-ink-mute">Chargement…</p>
             ) : tree.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun exercice créé.</p>
+              <p className="text-sm text-ink-mute">Aucun exercice créé.</p>
             ) : (
               <div className="space-y-4">
                 {tree.map(({ root, children }) => (
-                  <div key={root.id} className="rounded-md border">
+                  <div key={root.id} className="rounded-sm border border-line">
                     <PeriodRow orgId={orgId} period={root} bold />
                     {children.length > 0 && (
-                      <ul className="divide-y border-t bg-muted/20">
+                      <ul className="divide-y divide-line border-t border-line bg-sunk/20">
                         {children.map((c) => (
                           <li key={c.id} className="pl-6">
                             <PeriodRow orgId={orgId} period={c} />
@@ -187,8 +182,8 @@ export default function AccountingPeriodsPage() {
               </div>
             )}
             <FormError error={periodsQuery.error} className="mt-3" />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </AppShell>
   );
@@ -228,17 +223,24 @@ function PeriodRow({
     },
   );
 
+  const statusClass =
+    period.status === 'open'
+      ? 'bg-accent-soft text-accent-ink'
+      : 'bg-sunk text-ink-mute';
+
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className={bold ? 'font-semibold' : ''}>{period.label}</span>
-          <Badge variant={period.status === 'open' ? 'default' : 'muted'}>
+          <span className={bold ? 'font-semibold text-ink' : 'text-ink'}>{period.label}</span>
+          <span
+            className={`inline-block rounded-xs px-2 py-0.5 font-mono text-[11px] ${statusClass}`}
+          >
             {period.status === 'open' ? 'Ouvert' : 'Fermé'}
-          </Badge>
-          <span className="text-xs text-muted-foreground">{period.kind}</span>
+          </span>
+          <span className="text-xs text-ink-mute">{period.kind}</span>
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-ink-mute">
           {period.startDate} → {period.endDate}
         </div>
         {showReopen && (
@@ -254,6 +256,7 @@ function PeriodRow({
               type="button"
               size="sm"
               variant="destructive"
+              className="press"
               disabled={reopen.isPending || reason.trim() === ''}
               onClick={() => reopen.mutate(undefined)}
             >
@@ -270,6 +273,7 @@ function PeriodRow({
             type="button"
             size="sm"
             variant="outline"
+            className="press"
             disabled={close.isPending}
             onClick={() => close.mutate(undefined)}
           >
@@ -285,6 +289,7 @@ function PeriodRow({
             type="button"
             size="sm"
             variant="outline"
+            className="press"
             onClick={() => setShowReopen((v) => !v)}
           >
             <Unlock className="mr-1 h-3 w-3" />

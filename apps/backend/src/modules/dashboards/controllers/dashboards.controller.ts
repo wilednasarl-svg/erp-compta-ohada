@@ -31,14 +31,17 @@ import { AgingQueryDto } from '../dto/aging-query.dto';
 import {
   AgingEnvelopeResponse,
   CashflowEnvelopeResponse,
+  ConsolidatedEnvelopeResponse,
   EvolutionEnvelopeResponse,
   SummaryEnvelopeResponse,
   TopAccountsEnvelopeResponse,
 } from '../dto/responses';
+import { ConsolidatedQueryDto } from '../dto/consolidated-query.dto';
 import { SummaryQueryDto } from '../dto/summary-query.dto';
 import { TopAccountsQueryDto } from '../dto/top-accounts-query.dto';
 import { DashboardAgingService } from '../services/dashboard-aging.service';
 import { DashboardAnalyticsService } from '../services/dashboard-analytics.service';
+import { DashboardConsolidatedService } from '../services/dashboard-consolidated.service';
 import { DashboardSummaryService } from '../services/dashboard-summary.service';
 import { DayDashboardService, type DaySummary } from '../services/day-dashboard.service';
 
@@ -73,6 +76,7 @@ export class DashboardsController {
     private readonly summary: DashboardSummaryService,
     private readonly aging: DashboardAgingService,
     private readonly analytics: DashboardAnalyticsService,
+    private readonly consolidated: DashboardConsolidatedService,
     private readonly dayDashboard: DayDashboardService,
     private readonly audit: AuditTrailService,
   ) {}
@@ -112,6 +116,46 @@ export class DashboardsController {
     });
 
     return { summary: result };
+  }
+
+  @Get('consolidated')
+  @RequirePermission('dashboards.read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Vue consolidée KPIs comptables pour plusieurs organisations' })
+  @ApiOkResponse({ type: ConsolidatedEnvelopeResponse })
+  async getConsolidated(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Query() query: ConsolidatedQueryDto,
+    @Req() req: Request,
+  ): Promise<ConsolidatedEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const result = await this.consolidated.getConsolidatedSummary(
+      actorUserId,
+      query.organizationIds,
+      query.year,
+    );
+
+    // Audit fire-and-forget
+    void this.audit.record({
+      module: DashboardsController.MODULE,
+      action: 'view_consolidated_summary',
+      entityType: 'organization', // Using the primary path org as entity context
+      entityId: pathOrgId,
+      metadata: {
+        organizationsCount: result.organizationsCount,
+        year: query.year,
+      },
+      ctx: {
+        ...buildAuditRequestContext(req),
+        userId: actorUserId,
+        organizationId: tokenOrgId,
+      },
+    });
+
+    return { consolidated: result };
   }
 
   @Get('aging')

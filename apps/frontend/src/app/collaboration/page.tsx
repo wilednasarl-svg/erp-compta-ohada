@@ -5,15 +5,7 @@ import { Loader2, MessageSquare, Plus, Send } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,12 +50,15 @@ const STATUS_LABEL: Record<CollaborationStatus, string> = {
   cancelled: 'Annulée',
 };
 
-const STATUS_COLOR: Record<CollaborationStatus, string> = {
-  open: 'bg-blue-100 text-blue-900',
-  in_progress: 'bg-amber-100 text-amber-900',
-  completed: 'bg-emerald-100 text-emerald-900',
-  cancelled: 'bg-slate-200 text-slate-700',
+const STATUS_TONE: Record<CollaborationStatus, string> = {
+  open: 'bg-info/15 text-info-ink',
+  in_progress: 'bg-warn/15 text-warn-ink',
+  completed: 'bg-accent/15 text-accent-ink',
+  cancelled: 'bg-sunk text-ink-mute',
 };
+
+const TEXTAREA_CLS =
+  'w-full min-h-[80px] rounded-sm border border-line-strong bg-paper px-3 py-2 text-sm text-ink transition-colors focus:border-accent focus:outline-none';
 
 export default function CollaborationPage() {
   const currentOrg = useCurrentOrg();
@@ -101,28 +96,29 @@ export default function CollaborationPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="animate-page-in space-y-8">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Collaboration</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="eyebrow mb-2">Échanges cabinet ↔ client</p>
+            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Collaboration</h1>
+            <p className="mt-2 max-w-2xl text-sm text-ink-mute">
               Demandes de justificatifs et échanges cabinet ↔ client.
             </p>
           </div>
-          <Button onClick={() => setCreating((c) => !c)}>
+          <Button onClick={() => setCreating((c) => !c)} className="press">
             {creating ? 'Annuler' : <><Plus className="mr-2 h-4 w-4" /> Nouvelle demande</>}
           </Button>
         </div>
 
         {creating && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Nouvelle demande</CardTitle>
-              <CardDescription>
+          <section className="space-y-4">
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">Nouvelle demande</h2>
+              <p className="mt-1 text-sm text-ink-mute">
                 Le client recevra cette demande dans son fil collaboration.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="rounded-sm border border-line bg-paper p-5">
               <form onSubmit={handleCreate} className="space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="req-title">Titre</Label>
@@ -138,40 +134,50 @@ export default function CollaborationPage() {
                   <Label htmlFor="req-desc">Description (optionnelle)</Label>
                   <textarea
                     id="req-desc"
-                    className="w-full min-h-[80px] rounded-md border bg-background px-3 py-2 text-sm"
+                    className={TEXTAREA_CLS}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
                 {createMut.isError && <FormError error={createMut.error} />}
-                <Button type="submit" disabled={createMut.isPending || title.trim().length === 0}>
+                <Button type="submit" disabled={createMut.isPending || title.trim().length === 0} className="press">
                   {createMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Créer la demande
                 </Button>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         )}
 
         <div className="grid gap-4 md:grid-cols-[2fr_3fr]">
           <div className="space-y-2">
             {listQuery.isLoading ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground"><Loader2 className="inline h-4 w-4 animate-spin" /></CardContent></Card>
+              <div className="rounded-sm border border-line bg-paper py-8 text-center text-ink-mute">
+                <Loader2 className="inline h-4 w-4 animate-spin" />
+              </div>
             ) : listQuery.data?.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground">Aucune demande pour le moment.</CardContent></Card>
+              <div className="rounded-sm border border-line bg-paper py-8 text-center text-sm text-ink-mute">
+                Aucune demande pour le moment.
+              </div>
             ) : (
               listQuery.data?.map((req) => (
                 <button
                   key={req.id}
                   onClick={() => setActiveId(req.id)}
-                  className={`w-full text-left p-3 rounded-md border transition-colors hover:bg-accent ${activeId === req.id ? 'border-primary bg-accent' : ''}`}
+                  className={`press w-full rounded-sm border p-3 text-left transition-colors hover:bg-sunk/50 ${
+                    activeId === req.id ? 'border-accent bg-sunk/40' : 'border-line bg-paper'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">{req.title}</div>
-                      <div className="text-xs text-muted-foreground">{new Date(req.createdAt).toLocaleDateString('fr-FR')}</div>
+                      <div className="truncate text-sm font-medium text-ink">{req.title}</div>
+                      <div className="text-xs text-ink-mute">
+                        {new Date(req.createdAt).toLocaleDateString('fr-FR')}
+                      </div>
                     </div>
-                    <Badge className={STATUS_COLOR[req.status]}>{STATUS_LABEL[req.status]}</Badge>
+                    <span className={`inline-flex shrink-0 items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[req.status]}`}>
+                      {STATUS_LABEL[req.status]}
+                    </span>
                   </div>
                 </button>
               ))
@@ -182,10 +188,10 @@ export default function CollaborationPage() {
             {activeId ? (
               <RequestDetail requestId={activeId} />
             ) : (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">
-                <MessageSquare className="inline h-8 w-8 mb-2 opacity-50" />
+              <div className="rounded-sm border border-line bg-paper py-12 text-center text-ink-mute">
+                <MessageSquare className="mb-2 inline h-8 w-8 opacity-50" />
                 <div className="text-sm">Sélectionnez une demande pour voir le fil.</div>
-              </CardContent></Card>
+              </div>
             )}
           </div>
         </div>
@@ -236,7 +242,13 @@ function RequestDetail({ requestId }: { requestId: string }) {
     void qc.invalidateQueries({ queryKey: ['collaboration-requests'] });
   }
 
-  if (reqQuery.isLoading) return <Card><CardContent className="py-8 text-center"><Loader2 className="inline h-4 w-4 animate-spin" /></CardContent></Card>;
+  if (reqQuery.isLoading) {
+    return (
+      <div className="rounded-sm border border-line bg-paper py-8 text-center text-ink-mute">
+        <Loader2 className="inline h-4 w-4 animate-spin" />
+      </div>
+    );
+  }
   if (!reqQuery.data) return null;
 
   const req = reqQuery.data;
@@ -248,19 +260,21 @@ function RequestDetail({ requestId }: { requestId: string }) {
   }[req.status];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <CardTitle className="text-base">{req.title}</CardTitle>
-            <CardDescription>Créée {new Date(req.createdAt).toLocaleDateString('fr-FR')}</CardDescription>
-          </div>
-          <Badge className={STATUS_COLOR[req.status]}>{STATUS_LABEL[req.status]}</Badge>
+    <div className="rounded-sm border border-line bg-paper">
+      <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+        <div className="min-w-0">
+          <h2 className="font-display text-xl font-medium text-ink">{req.title}</h2>
+          <p className="mt-1 text-sm text-ink-mute">
+            Créée {new Date(req.createdAt).toLocaleDateString('fr-FR')}
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        <span className={`inline-flex shrink-0 items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[req.status]}`}>
+          {STATUS_LABEL[req.status]}
+        </span>
+      </div>
+      <div className="space-y-4 p-5">
         {req.description && (
-          <div className="text-sm whitespace-pre-wrap text-muted-foreground border-l-2 pl-3">
+          <div className="whitespace-pre-wrap border-l-2 border-line-strong pl-3 text-sm text-ink-soft">
             {req.description}
           </div>
         )}
@@ -274,6 +288,7 @@ function RequestDetail({ requestId }: { requestId: string }) {
                 variant="outline"
                 onClick={() => void handleStatus(s)}
                 disabled={statusMut.isPending}
+                className="press"
               >
                 → {STATUS_LABEL[s]}
               </Button>
@@ -282,14 +297,14 @@ function RequestDetail({ requestId }: { requestId: string }) {
         )}
 
         <div className="space-y-2">
-          <div className="text-sm font-medium">Commentaires</div>
+          <div className="eyebrow">Commentaires</div>
           {commentsQuery.data?.length === 0 ? (
-            <div className="text-sm text-muted-foreground">Aucun commentaire.</div>
+            <div className="text-sm text-ink-mute">Aucun commentaire.</div>
           ) : (
             commentsQuery.data?.map((c) => (
-              <div key={c.id} className="text-sm border rounded-md p-2">
-                <div className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleString('fr-FR')}</div>
-                <div className="whitespace-pre-wrap">{c.body}</div>
+              <div key={c.id} className="rounded-sm border border-line bg-sunk/20 p-3 text-sm">
+                <div className="text-xs text-ink-mute">{new Date(c.createdAt).toLocaleString('fr-FR')}</div>
+                <div className="whitespace-pre-wrap text-ink">{c.body}</div>
               </div>
             ))
           )}
@@ -301,11 +316,11 @@ function RequestDetail({ requestId }: { requestId: string }) {
             onChange={(e) => setBody(e.target.value)}
             placeholder="Ajouter un commentaire..."
           />
-          <Button type="submit" size="sm" disabled={commentMut.isPending || body.trim().length === 0}>
+          <Button type="submit" size="sm" disabled={commentMut.isPending || body.trim().length === 0} className="press">
             {commentMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

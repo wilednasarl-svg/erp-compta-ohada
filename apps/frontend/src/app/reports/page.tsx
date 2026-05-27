@@ -2044,7 +2044,7 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
                 setAccountClass(e.target.value);
                 setAccountId('');
               }}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              className="h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
             >
               <option value="">Toutes</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
@@ -2107,7 +2107,7 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
                 setAccountId(e.target.value);
                 setCodeQuery('');
               }}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              className="h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
               required
             >
               <option value="">
@@ -2502,7 +2502,7 @@ function ComparativeBalancePanel({ orgId }: { readonly orgId: string }) {
               id="cb-class"
               value={accountClass}
               onChange={(e) => setAccountClass(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              className="h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
             >
               <option value="">Toutes</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
@@ -3409,7 +3409,7 @@ function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
               id="ag-side"
               value={side}
               onChange={(e) => setSide(e.target.value as 'CLIENT' | 'FOURNISSEUR')}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              className="h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
             >
               <option value="CLIENT">Clients (411/412/416/418)</option>
               <option value="FOURNISSEUR">Fournisseurs (401/402/403/408)</option>

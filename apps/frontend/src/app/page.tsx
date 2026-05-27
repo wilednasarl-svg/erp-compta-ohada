@@ -11,10 +11,13 @@ import { Button } from '@/components/ui/button';
  */
 export default function HomePage() {
   return (
-    <main className="container flex min-h-screen flex-col items-center justify-center gap-8 py-16">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-canvas px-4 py-16">
       <div className="space-y-4 text-center">
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">ERP Compta</h1>
-        <p className="max-w-prose text-balance text-muted-foreground">
+        <p className="eyebrow">ERP Compta OHADA</p>
+        <h1 className="font-display text-4xl font-medium tracking-tight text-ink sm:text-5xl">
+          ERP Compta
+        </h1>
+        <p className="max-w-prose text-balance text-ink-mute">
           Plateforme SaaS de retraitement comptable OHADA — multi-cabinet, multi-rôle, multi-organisation.
         </p>
       </div>

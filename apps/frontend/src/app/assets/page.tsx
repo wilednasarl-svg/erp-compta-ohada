@@ -5,15 +5,7 @@ import { Ban, CheckCircle2, Loader2, Package, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,18 +56,19 @@ interface AssetResponse {
   readonly asset: AssetView;
 }
 
+/* Token-aligned status badge classes */
+const ASSET_STATUS_CLASS: Record<AssetStatus, string> = {
+  active: 'bg-accent-soft text-accent-ink',
+  disposed: 'bg-critical-soft text-critical-ink',
+};
+
+const SCHEDULE_STATUS_CLASS: Record<ScheduleStatus, string> = {
+  posted: 'bg-accent-soft text-accent-ink',
+  pending: 'bg-info-soft text-info-ink',
+};
+
 /**
  * `/assets` — Module 12 : Immobilisations & Amortissements SYSCOHADA.
- *
- * UX :
- *   - haut : formulaire de création (saisie code, comptes 21x/28x/681x,
- *     méthode linear/declining, durée mois).
- *   - liste paginée des assets avec statut active/disposed.
- *   - sélection → panneau détail avec échéancier d'amortissement
- *     (cumul, VNC) + actions post-dotation (par schedule) + dispose.
- *
- * Toutes les valeurs monétaires sont des strings DECIMAL côté wire
- * (précision préservée). Number() utilisé uniquement pour l'affichage.
  */
 export default function AssetsPage() {
   const currentOrg = useCurrentOrg();
@@ -145,205 +138,205 @@ export default function AssetsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-6">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Immobilisations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Registre des immobilisations corporelles et incorporelles SYSCOHADA. Calcul
-            automatique de l&apos;échéancier (linéaire ou dégressif) et passage des dotations
-            comme écritures comptables validées via Module 8.
+          <p className="eyebrow mb-2">Patrimoine</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Immobilisations
+          </h1>
+          <p className="mt-2 text-sm text-ink-mute">
+            Registre des immobilisations corporelles et incorporelles SYSCOHADA. Calcul automatique
+            de l&apos;échéancier (linéaire ou dégressif) et passage des dotations comme écritures
+            comptables validées via Module 8.
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Registre</CardTitle>
-                <CardDescription>
-                  {assetsQuery.data?.length ?? 0} immobilisation(s)
-                </CardDescription>
-              </div>
-              <Button
-                type="button"
-                variant={showCreate ? 'secondary' : 'default'}
-                onClick={() => setShowCreate((v) => !v)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {showCreate ? 'Annuler' : 'Nouvelle immobilisation'}
-              </Button>
-            </div>
-          </CardHeader>
-          {showCreate && (
-            <CardContent>
-              <form
-                className="space-y-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  create.mutate(undefined);
-                }}
-              >
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_1fr]">
-                  <div className="space-y-1">
-                    <Label htmlFor="a-code">Code</Label>
-                    <Input
-                      id="a-code"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      placeholder="IMMO-2026-001"
-                      pattern="[A-Z0-9-]{1,20}"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-label">Libellé</Label>
-                    <Input
-                      id="a-label"
-                      value={label}
-                      onChange={(e) => setLabel(e.target.value)}
-                      placeholder="Ordinateur portable MacBook Pro"
-                      maxLength={200}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="a-acq-date">Date acquisition</Label>
-                    <Input
-                      id="a-acq-date"
-                      type="date"
-                      value={acquisitionDate}
-                      onChange={(e) => setAcquisitionDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-svc-date">Date mise en service (optionnel)</Label>
-                    <Input
-                      id="a-svc-date"
-                      type="date"
-                      value={putInServiceDate}
-                      onChange={(e) => setPutInServiceDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-cost">Coût HT</Label>
-                    <Input
-                      id="a-cost"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={acquisitionCost}
-                      onChange={(e) => setAcquisitionCost(e.target.value)}
-                      placeholder="1500000.00"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="a-method">Méthode</Label>
-                    <select
-                      id="a-method"
-                      value={method}
-                      onChange={(e) => setMethod(e.target.value as DepreciationMethod)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                    >
-                      <option value="linear">Linéaire</option>
-                      <option value="declining">Dégressif</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-duration">Durée (mois)</Label>
-                    <Input
-                      id="a-duration"
-                      type="number"
-                      min="1"
-                      value={durationMonths}
-                      onChange={(e) => setDurationMonths(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-residual">Valeur résiduelle</Label>
-                    <Input
-                      id="a-residual"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={residualValue}
-                      onChange={(e) => setResidualValue(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-rate">Taux dégressif</Label>
-                    <Input
-                      id="a-rate"
-                      value={decliningRate}
-                      onChange={(e) => setDecliningRate(e.target.value)}
-                      placeholder="0.3500"
-                      disabled={method === 'linear'}
-                      required={method === 'declining'}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="a-asset-acc">Compte immobilisation (21x/22x/23x/24x)</Label>
-                    <Input
-                      id="a-asset-acc"
-                      value={assetAccount}
-                      onChange={(e) => setAssetAccount(e.target.value)}
-                      placeholder="2411"
-                      pattern="\d{1,10}"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-dep-acc">Compte amortissement cumulé (28x)</Label>
-                    <Input
-                      id="a-dep-acc"
-                      value={depreciationAccount}
-                      onChange={(e) => setDepreciationAccount(e.target.value)}
-                      placeholder="2841"
-                      pattern="\d{1,10}"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="a-exp-acc">Compte dotation (681x)</Label>
-                    <Input
-                      id="a-exp-acc"
-                      value={expenseAccount}
-                      onChange={(e) => setExpenseAccount(e.target.value)}
-                      placeholder="6811"
-                      pattern="\d{1,10}"
-                      required
-                    />
-                  </div>
-                </div>
-                <Button type="submit" disabled={create.isPending}>
-                  {create.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="mr-2 h-4 w-4" />
-                  )}
-                  Créer l&apos;immobilisation
-                </Button>
-                <FormError error={create.error} />
-              </form>
-            </CardContent>
-          )}
-          <CardContent>
-            {assetsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
-            ) : (assetsQuery.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucune immobilisation enregistrée.
+        <section className="rounded-sm border border-line bg-paper p-5">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <div>
+              <h2 className="font-display text-xl font-medium text-ink">Registre</h2>
+              <p className="mt-1 text-sm text-ink-mute">
+                {assetsQuery.data?.length ?? 0} immobilisation(s)
               </p>
+            </div>
+            <Button
+              type="button"
+              variant={showCreate ? 'secondary' : 'default'}
+              onClick={() => setShowCreate((v) => !v)}
+              className="press"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {showCreate ? 'Annuler' : 'Nouvelle immobilisation'}
+            </Button>
+          </div>
+
+          {showCreate && (
+            <form
+              className="mt-4 space-y-3 border-b border-line pb-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                create.mutate(undefined);
+              }}
+            >
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_1fr]">
+                <div className="space-y-1">
+                  <Label htmlFor="a-code">Code</Label>
+                  <Input
+                    id="a-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    placeholder="IMMO-2026-001"
+                    pattern="[A-Z0-9-]{1,20}"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-label">Libellé</Label>
+                  <Input
+                    id="a-label"
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    placeholder="Ordinateur portable MacBook Pro"
+                    maxLength={200}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="space-y-1">
+                  <Label htmlFor="a-acq-date">Date acquisition</Label>
+                  <Input
+                    id="a-acq-date"
+                    type="date"
+                    value={acquisitionDate}
+                    onChange={(e) => setAcquisitionDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-svc-date">Date mise en service (optionnel)</Label>
+                  <Input
+                    id="a-svc-date"
+                    type="date"
+                    value={putInServiceDate}
+                    onChange={(e) => setPutInServiceDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-cost">Coût HT</Label>
+                  <Input
+                    id="a-cost"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={acquisitionCost}
+                    onChange={(e) => setAcquisitionCost(e.target.value)}
+                    placeholder="1500000.00"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div className="space-y-1">
+                  <Label htmlFor="a-method">Méthode</Label>
+                  <select
+                    id="a-method"
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value as DepreciationMethod)}
+                    className="rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+                  >
+                    <option value="linear">Linéaire</option>
+                    <option value="declining">Dégressif</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-duration">Durée (mois)</Label>
+                  <Input
+                    id="a-duration"
+                    type="number"
+                    min="1"
+                    value={durationMonths}
+                    onChange={(e) => setDurationMonths(Number(e.target.value))}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-residual">Valeur résiduelle</Label>
+                  <Input
+                    id="a-residual"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={residualValue}
+                    onChange={(e) => setResidualValue(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-rate">Taux dégressif</Label>
+                  <Input
+                    id="a-rate"
+                    value={decliningRate}
+                    onChange={(e) => setDecliningRate(e.target.value)}
+                    placeholder="0.3500"
+                    disabled={method === 'linear'}
+                    required={method === 'declining'}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="space-y-1">
+                  <Label htmlFor="a-asset-acc">Compte immobilisation (21x/22x/23x/24x)</Label>
+                  <Input
+                    id="a-asset-acc"
+                    value={assetAccount}
+                    onChange={(e) => setAssetAccount(e.target.value)}
+                    placeholder="2411"
+                    pattern="\d{1,10}"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-dep-acc">Compte amortissement cumulé (28x)</Label>
+                  <Input
+                    id="a-dep-acc"
+                    value={depreciationAccount}
+                    onChange={(e) => setDepreciationAccount(e.target.value)}
+                    placeholder="2841"
+                    pattern="\d{1,10}"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="a-exp-acc">Compte dotation (681x)</Label>
+                  <Input
+                    id="a-exp-acc"
+                    value={expenseAccount}
+                    onChange={(e) => setExpenseAccount(e.target.value)}
+                    placeholder="6811"
+                    pattern="\d{1,10}"
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={create.isPending} className="press">
+                {create.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
+                Créer l&apos;immobilisation
+              </Button>
+              <FormError error={create.error} />
+            </form>
+          )}
+
+          <div className="mt-4">
+            {assetsQuery.isLoading ? (
+              <p className="text-sm text-ink-mute">Chargement…</p>
+            ) : (assetsQuery.data ?? []).length === 0 ? (
+              <p className="text-sm text-ink-mute">Aucune immobilisation enregistrée.</p>
             ) : (
-              <ul className="divide-y rounded-md border">
+              <ul className="divide-y divide-line rounded-sm border border-line">
                 {(assetsQuery.data ?? []).map((a) => {
                   const isSelected = a.id === selectedId;
                   return (
@@ -351,23 +344,25 @@ export default function AssetsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedId(isSelected ? null : a.id)}
-                        className={`flex w-full items-start gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted/60 ${
-                          isSelected ? 'bg-muted/60' : ''
+                        className={`press flex w-full items-start gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-sunk/60 ${
+                          isSelected ? 'bg-sunk/60' : ''
                         }`}
                       >
-                        <Package className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                        <Package className="mt-0.5 h-4 w-4 text-ink-mute" />
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-xs">{a.code}</span>
-                            <span className="font-medium">{a.label}</span>
-                            <Badge variant={a.status === 'active' ? 'default' : 'destructive'}>
+                            <span className="font-mono text-xs text-ink-soft">{a.code}</span>
+                            <span className="font-medium text-ink">{a.label}</span>
+                            <span
+                              className={`inline-flex items-center rounded-sm px-2 py-0.5 text-2xs uppercase tracking-wide ${ASSET_STATUS_CLASS[a.status]}`}
+                            >
                               {a.status === 'active' ? 'Actif' : 'Cédé'}
-                            </Badge>
+                            </span>
                           </div>
-                          <div className="mt-0.5 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                          <div className="mt-0.5 grid grid-cols-3 gap-3 text-xs text-ink-mute">
                             <span>
                               Coût :{' '}
-                              <span className="font-mono">
+                              <span className="font-mono text-ink-soft">
                                 {Number(a.acquisitionCost).toLocaleString('fr-FR', {
                                   minimumFractionDigits: 2,
                                 })}
@@ -386,8 +381,8 @@ export default function AssetsPage() {
               </ul>
             )}
             <FormError error={assetsQuery.error} className="mt-3" />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {selectedId !== null && (
           <AssetDetailCard
@@ -458,51 +453,67 @@ function AssetDetailCard({
   const a = assetQuery.data;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              {a?.code} — {a?.label}
-              {a && (
-                <Badge variant={a.status === 'active' ? 'default' : 'destructive'}>
-                  {a.status === 'active' ? 'Actif' : 'Cédé'}
-                </Badge>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Échéancier d&apos;amortissement et dotations passées en journal
-            </CardDescription>
-          </div>
-          <Button type="button" size="sm" variant="outline" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+    <section className="rounded-sm border border-line bg-paper p-5">
+      <div className="flex items-start justify-between border-b border-line pb-3">
+        <div>
+          <h2 className="flex items-center gap-2 font-display text-xl font-medium text-ink">
+            {a?.code} — {a?.label}
+            {a && (
+              <span
+                className={`inline-flex items-center rounded-sm px-2 py-0.5 text-2xs uppercase tracking-wide ${ASSET_STATUS_CLASS[a.status]}`}
+              >
+                {a.status === 'active' ? 'Actif' : 'Cédé'}
+              </span>
+            )}
+          </h2>
+          <p className="mt-1 text-sm text-ink-mute">
+            Échéancier d&apos;amortissement et dotations passées en journal
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        <Button type="button" size="sm" variant="outline" onClick={onClose} className="press">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="mt-4 space-y-4">
         {scheduleQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">Chargement échéancier…</p>
+          <p className="text-sm text-ink-mute">Chargement échéancier…</p>
         ) : (
-          <div className="overflow-x-auto rounded-md border">
+          <div className="overflow-x-auto rounded-sm border border-line">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+              <thead className="bg-sunk">
                 <tr>
-                  <th className="px-3 py-2 text-left">Exercice</th>
-                  <th className="px-3 py-2 text-left">Période</th>
-                  <th className="px-3 py-2 text-right">Dotation</th>
-                  <th className="px-3 py-2 text-right">Cumul</th>
-                  <th className="px-3 py-2 text-right">VNC</th>
-                  <th className="px-3 py-2 text-left">Statut</th>
-                  <th className="px-3 py-2 text-right">Action</th>
+                  <th className="px-3 py-2 text-left">
+                    <span className="eyebrow">Exercice</span>
+                  </th>
+                  <th className="px-3 py-2 text-left">
+                    <span className="eyebrow">Période</span>
+                  </th>
+                  <th className="px-3 py-2 text-right">
+                    <span className="eyebrow">Dotation</span>
+                  </th>
+                  <th className="px-3 py-2 text-right">
+                    <span className="eyebrow">Cumul</span>
+                  </th>
+                  <th className="px-3 py-2 text-right">
+                    <span className="eyebrow">VNC</span>
+                  </th>
+                  <th className="px-3 py-2 text-left">
+                    <span className="eyebrow">Statut</span>
+                  </th>
+                  <th className="px-3 py-2 text-right">
+                    <span className="eyebrow">Action</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {(scheduleQuery.data ?? []).map((r) => (
+                {(scheduleQuery.data ?? []).map((r, i) => (
                   <ScheduleRowItem
                     key={r.id}
                     orgId={orgId}
                     assetId={assetId}
                     row={r}
+                    rowIndex={i}
                     onMutated={() => {
                       onMutated();
                       void scheduleQuery.refetch();
@@ -516,12 +527,13 @@ function AssetDetailCard({
         <FormError error={scheduleQuery.error} />
 
         {a?.status === 'active' && (
-          <div className="border-t pt-4">
+          <div className="border-t border-line pt-4">
             {!showDispose ? (
               <Button
                 type="button"
                 variant="destructive"
                 onClick={() => setShowDispose(true)}
+                className="press"
               >
                 <Ban className="mr-2 h-4 w-4" />
                 Céder / Mettre au rebut
@@ -557,7 +569,12 @@ function AssetDetailCard({
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit" variant="destructive" disabled={dispose.isPending}>
+                  <Button
+                    type="submit"
+                    variant="destructive"
+                    disabled={dispose.isPending}
+                    className="press"
+                  >
                     {dispose.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -565,7 +582,12 @@ function AssetDetailCard({
                     )}
                     Confirmer
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => setShowDispose(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowDispose(false)}
+                    className="press"
+                  >
                     Annuler
                   </Button>
                 </div>
@@ -575,7 +597,7 @@ function AssetDetailCard({
           </div>
         )}
         {a?.status === 'disposed' && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-mute">
             <Ban className="mr-1 inline h-4 w-4" />
             Immobilisation cédée le {a.disposalDate}
             {a.disposalValue
@@ -585,8 +607,8 @@ function AssetDetailCard({
               : ' (mise au rebut)'}
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -594,39 +616,42 @@ function ScheduleRowItem({
   orgId,
   assetId,
   row,
+  rowIndex,
   onMutated,
 }: {
   orgId: string;
   assetId: string;
   row: ScheduleRow;
+  rowIndex: number;
   onMutated: () => void;
 }) {
   const post = useApiMutation(
     async () =>
-      api.post(
-        `/organizations/${orgId}/assets/${assetId}/schedules/${row.id}/post`,
-        {},
-      ),
+      api.post(`/organizations/${orgId}/assets/${assetId}/schedules/${row.id}/post`, {}),
     { onSuccess: onMutated },
   );
 
+  const stripe = rowIndex % 2 === 0 ? 'bg-paper' : 'bg-sunk/25';
+
   return (
-    <tr className="border-t">
-      <td className="px-3 py-2 font-mono">{row.fiscalYear}</td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">
+    <tr className={`border-t border-line ${stripe}`}>
+      <td className="px-3 py-2 font-mono text-ink">{row.fiscalYear}</td>
+      <td className="px-3 py-2 text-xs text-ink-mute">
         {row.periodStart} → {row.periodEnd}
       </td>
-      <td className="px-3 py-2 text-right font-mono">
+      <td className="px-3 py-2 text-right font-mono text-ink">
         {Number(row.depreciationAmount).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
       </td>
-      <td className="px-3 py-2 text-right font-mono">
+      <td className="px-3 py-2 text-right font-mono text-ink">
         {Number(row.cumulativeDepreciation).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
       </td>
-      <td className="px-3 py-2 text-right font-mono">
+      <td className="px-3 py-2 text-right font-mono text-ink">
         {Number(row.netBookValue).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
       </td>
       <td className="px-3 py-2">
-        <Badge variant={row.status === 'posted' ? 'default' : 'muted'}>
+        <span
+          className={`inline-flex items-center rounded-sm px-2 py-0.5 text-2xs uppercase tracking-wide ${SCHEDULE_STATUS_CLASS[row.status]}`}
+        >
           {row.status === 'posted' ? (
             <>
               <CheckCircle2 className="mr-1 inline h-3 w-3" />
@@ -635,7 +660,7 @@ function ScheduleRowItem({
           ) : (
             'En attente'
           )}
-        </Badge>
+        </span>
       </td>
       <td className="px-3 py-2 text-right">
         {row.status === 'pending' && (
@@ -644,16 +669,13 @@ function ScheduleRowItem({
             size="sm"
             disabled={post.isPending}
             onClick={() => post.mutate(undefined)}
+            className="press"
           >
-            {post.isPending ? (
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-            ) : null}
+            {post.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
             Poster
           </Button>
         )}
-        {post.error && (
-          <FormError error={post.error} className="mt-1 text-right" />
-        )}
+        {post.error && <FormError error={post.error} className="mt-1 text-right" />}
       </td>
     </tr>
   );

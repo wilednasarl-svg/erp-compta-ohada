@@ -5,15 +5,7 @@ import { Loader2, Play, Plus, TestTube } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +27,9 @@ interface RuleView {
 interface ListResponse {
   readonly rules: ReadonlyArray<RuleView>;
 }
+
+const TEXTAREA_CLS =
+  'w-full rounded-sm border border-line-strong bg-paper p-2 font-mono text-xs text-ink transition-colors focus:border-accent focus:outline-none';
 
 /**
  * `/rules` — moteur de règles (Module 5).
@@ -105,24 +100,26 @@ export default function RulesPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-8">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Règles d&apos;automatisation</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="eyebrow mb-2">Automatisation</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Règles d&apos;automatisation</h1>
+          <p className="mt-2 max-w-2xl text-sm text-ink-mute">
             Évalue des conditions (compte, montant, journal, libellé) puis déclenche des
             actions (reclassement, centre de coûts, tag). Toujours simuler avant d&apos;appliquer.
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Nouvelle règle</CardTitle>
-            <CardDescription>
-              Conditions et actions au format JSON. Voir <code>docs/produit/module-5-rules.md</code>{' '}
-              pour les variantes disponibles (account_prefix, amount_range, reclassify_account…).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Nouvelle règle</h2>
+            <p className="mt-1 text-sm text-ink-mute">
+              Conditions et actions au format JSON. Voir{' '}
+              <code className="rounded-sm bg-sunk px-1 py-0.5 text-xs text-ink-soft">docs/produit/module-5-rules.md</code> pour
+              les variantes disponibles (account_prefix, amount_range, reclassify_account…).
+            </p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             <form
               className="space-y-3"
               onSubmit={(e) => {
@@ -170,7 +167,7 @@ export default function RulesPage() {
                     value={conditionsJson}
                     onChange={(e) => setConditionsJson(e.target.value)}
                     rows={6}
-                    className="w-full rounded-md border border-input bg-background p-2 font-mono text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className={TEXTAREA_CLS}
                   />
                 </div>
                 <div className="space-y-1">
@@ -180,11 +177,11 @@ export default function RulesPage() {
                     value={actionsJson}
                     onChange={(e) => setActionsJson(e.target.value)}
                     rows={6}
-                    className="w-full rounded-md border border-input bg-background p-2 font-mono text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className={TEXTAREA_CLS}
                   />
                 </div>
               </div>
-              <Button type="submit" disabled={create.isPending || name.trim() === ''}>
+              <Button type="submit" disabled={create.isPending || name.trim() === ''} className="press">
                 {create.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -194,28 +191,26 @@ export default function RulesPage() {
               </Button>
               <FormError error={create.error} />
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Règles existantes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {rulesQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
-            ) : (rulesQuery.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucune règle.</p>
-            ) : (
-              <ul className="divide-y rounded-md border">
-                {(rulesQuery.data ?? []).map((r) => (
-                  <RuleRow key={r.id} orgId={orgId} rule={r} />
-                ))}
-              </ul>
-            )}
-            <FormError error={rulesQuery.error} className="mt-3" />
-          </CardContent>
-        </Card>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Règles existantes</h2>
+          </div>
+          {rulesQuery.isLoading ? (
+            <p className="text-sm text-ink-mute">Chargement…</p>
+          ) : (rulesQuery.data ?? []).length === 0 ? (
+            <p className="text-sm text-ink-mute">Aucune règle.</p>
+          ) : (
+            <ul className="divide-y divide-line rounded-sm border border-line bg-paper">
+              {(rulesQuery.data ?? []).map((r) => (
+                <RuleRow key={r.id} orgId={orgId} rule={r} />
+              ))}
+            </ul>
+          )}
+          <FormError error={rulesQuery.error} className="mt-3" />
+        </section>
       </div>
     </AppShell>
   );
@@ -235,22 +230,26 @@ function RuleRow({ orgId, rule }: { orgId: string; rule: RuleView }) {
   );
 
   return (
-    <li className="px-3 py-2.5 text-sm">
+    <li className="px-3 py-2.5 text-sm transition-colors hover:bg-sunk/50">
       <div className="flex items-start justify-between gap-3">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex-1 text-left"
+          className="press flex-1 text-left"
         >
           <div className="flex items-center gap-2">
-            <span className="font-medium">{rule.name}</span>
-            <Badge variant={rule.isActive ? 'default' : 'muted'}>
+            <span className="font-medium text-ink">{rule.name}</span>
+            <span
+              className={`inline-flex items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${
+                rule.isActive ? 'bg-accent/15 text-accent-ink' : 'bg-sunk text-ink-mute'
+              }`}
+            >
               {rule.isActive ? 'Actif' : 'Inactif'}
-            </Badge>
-            <span className="text-xs text-muted-foreground">priorité {rule.priority}</span>
+            </span>
+            <span className="text-xs text-ink-mute">priorité {rule.priority}</span>
           </div>
           {rule.description && (
-            <div className="text-xs text-muted-foreground">{rule.description}</div>
+            <div className="text-xs text-ink-mute">{rule.description}</div>
           )}
         </button>
         <div className="flex shrink-0 gap-1">
@@ -260,6 +259,7 @@ function RuleRow({ orgId, rule }: { orgId: string; rule: RuleView }) {
             variant="outline"
             disabled={simulate.isPending}
             onClick={() => simulate.mutate(undefined)}
+            className="press"
           >
             {simulate.isPending ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -273,6 +273,7 @@ function RuleRow({ orgId, rule }: { orgId: string; rule: RuleView }) {
             size="sm"
             disabled={apply.isPending}
             onClick={() => apply.mutate(undefined)}
+            className="press"
           >
             {apply.isPending ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -286,23 +287,23 @@ function RuleRow({ orgId, rule }: { orgId: string; rule: RuleView }) {
       {open && (
         <div className="mt-2 grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
           <div>
-            <div className="font-mono text-[10px] uppercase text-muted-foreground">conditions</div>
-            <pre className="overflow-x-auto rounded bg-muted p-2 font-mono text-[11px]">
+            <div className="eyebrow mb-1">conditions</div>
+            <pre className="overflow-x-auto rounded-sm bg-sunk p-2 font-mono text-[11px] text-ink-soft">
               {JSON.stringify(rule.conditions, null, 2)}
             </pre>
           </div>
           <div>
-            <div className="font-mono text-[10px] uppercase text-muted-foreground">actions</div>
-            <pre className="overflow-x-auto rounded bg-muted p-2 font-mono text-[11px]">
+            <div className="eyebrow mb-1">actions</div>
+            <pre className="overflow-x-auto rounded-sm bg-sunk p-2 font-mono text-[11px] text-ink-soft">
               {JSON.stringify(rule.actions, null, 2)}
             </pre>
           </div>
         </div>
       )}
       {simResult !== null && (
-        <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs">
-          <div className="font-mono text-[10px] uppercase text-emerald-700">simulation result</div>
-          <pre className="overflow-x-auto font-mono text-[11px]">
+        <div className="mt-2 rounded-sm border border-accent/30 bg-accent/10 p-2 text-xs">
+          <div className="eyebrow mb-1 text-accent-ink">simulation result</div>
+          <pre className="overflow-x-auto font-mono text-[11px] text-accent-ink">
             {JSON.stringify(simResult, null, 2)}
           </pre>
         </div>

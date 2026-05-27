@@ -5,15 +5,7 @@ import { ArrowRightLeft, Loader2, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +21,9 @@ interface TransformationHistoryEntry {
   readonly after: Record<string, unknown> | null;
   readonly notes: string | null;
 }
+
+const SELECT_CLS =
+  'flex h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none';
 
 /**
  * `/transformations` — retraitements comptables (Module 4).
@@ -51,25 +46,26 @@ export default function TransformationsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-8">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Transformations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="eyebrow mb-2">Retraitements comptables</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Transformations</h1>
+          <p className="mt-2 max-w-2xl text-sm text-ink-mute">
             Retraitements comptables : reclassement (changer le compte d&apos;une ligne) et
             ajustement (ajouter un débit / crédit complémentaire). Les écritures sources
             restent intactes ; chaque retraitement est tracé.
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sélectionner une écriture</CardTitle>
-            <CardDescription>
-              Coller l&apos;UUID d&apos;une <code>journal_entry</code> validée. L&apos;UUID est
-              visible sur /journals dans le panneau détail.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Sélectionner une écriture</h2>
+            <p className="mt-1 text-sm text-ink-mute">
+              Coller l&apos;UUID d&apos;une <code className="rounded-sm bg-sunk px-1 py-0.5 text-xs text-ink-soft">journal_entry</code>{' '}
+              validée. L&apos;UUID est visible sur /journals dans le panneau détail.
+            </p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end"
               onSubmit={(e) => {
@@ -87,13 +83,13 @@ export default function TransformationsPage() {
                   required
                 />
               </div>
-              <Button type="submit">
+              <Button type="submit" className="press">
                 <Search className="mr-2 h-4 w-4" />
                 Charger
               </Button>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {activeEntryId && (
           <EntryTransformPanel orgId={orgId} entryId={activeEntryId} />
@@ -165,18 +161,17 @@ function EntryTransformPanel({ orgId, entryId }: { orgId: string; entryId: strin
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <section className="space-y-4">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">
             <ArrowRightLeft className="mr-2 inline h-4 w-4" />
             Reclasser une ligne
-          </CardTitle>
-          <CardDescription>
-            Génère une contre-passation de la ligne source + une nouvelle ligne sur le compte
-            cible.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h2>
+          <p className="mt-1 text-sm text-ink-mute">
+            Génère une contre-passation de la ligne source + une nouvelle ligne sur le compte cible.
+          </p>
+        </div>
+        <div className="rounded-sm border border-line bg-paper p-5">
           <form
             className="space-y-3"
             onSubmit={(e) => {
@@ -202,7 +197,7 @@ function EntryTransformPanel({ orgId, entryId }: { orgId: string; entryId: strin
               <Label htmlFor="rc-notes">Notes</Label>
               <Input id="rc-notes" value={rcNotes} onChange={(e) => setRcNotes(e.target.value)} />
             </div>
-            <Button type="submit" disabled={reclassify.isPending}>
+            <Button type="submit" disabled={reclassify.isPending} className="press">
               {reclassify.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -212,20 +207,20 @@ function EntryTransformPanel({ orgId, entryId }: { orgId: string; entryId: strin
             </Button>
             <FormError error={reclassify.error} />
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <section className="space-y-4">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">
             <Plus className="mr-2 inline h-4 w-4" />
             Ajustement
-          </CardTitle>
-          <CardDescription>
+          </h2>
+          <p className="mt-1 text-sm text-ink-mute">
             Ajoute une ligne complémentaire (débit OU crédit) à l&apos;écriture.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="rounded-sm border border-line bg-paper p-5">
           <form
             className="space-y-3"
             onSubmit={(e) => {
@@ -244,7 +239,7 @@ function EntryTransformPanel({ orgId, entryId }: { orgId: string; entryId: strin
                   id="adj-side"
                   value={adjSide}
                   onChange={(e) => setAdjSide(e.target.value as 'debit' | 'credit')}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className={SELECT_CLS}
                 >
                   <option value="debit">Débit</option>
                   <option value="credit">Crédit</option>
@@ -267,7 +262,7 @@ function EntryTransformPanel({ orgId, entryId }: { orgId: string; entryId: strin
               <Label htmlFor="adj-notes">Notes</Label>
               <Input id="adj-notes" value={adjNotes} onChange={(e) => setAdjNotes(e.target.value)} />
             </div>
-            <Button type="submit" disabled={adjust.isPending}>
+            <Button type="submit" disabled={adjust.isPending} className="press">
               {adjust.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -277,36 +272,42 @@ function EntryTransformPanel({ orgId, entryId }: { orgId: string; entryId: strin
             </Button>
             <FormError error={adjust.error} />
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>Historique des transformations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {historyQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Chargement…</p>
-          ) : (historyQuery.data?.history ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune transformation appliquée.</p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {(historyQuery.data?.history ?? []).map((h) => (
-                <li key={h.id} className="rounded border p-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{h.type}</Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(h.createdAt).toLocaleString('fr-FR')}
-                    </span>
-                  </div>
-                  {h.notes && <div className="mt-1 text-xs">{h.notes}</div>}
-                </li>
-              ))}
-            </ul>
-          )}
-          <FormError error={historyQuery.error} className="mt-2" />
-        </CardContent>
-      </Card>
+      <section className="space-y-4 lg:col-span-2">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">Historique des transformations</h2>
+        </div>
+        {historyQuery.isLoading ? (
+          <p className="text-sm text-ink-mute">Chargement…</p>
+        ) : (historyQuery.data?.history ?? []).length === 0 ? (
+          <p className="text-sm text-ink-mute">Aucune transformation appliquée.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {(historyQuery.data?.history ?? []).map((h) => (
+              <li key={h.id} className="rounded-sm border border-line bg-paper p-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${
+                      h.type === 'reclassify'
+                        ? 'bg-info/15 text-info-ink'
+                        : 'bg-warn/15 text-warn-ink'
+                    }`}
+                  >
+                    {h.type}
+                  </span>
+                  <span className="text-xs text-ink-mute">
+                    {new Date(h.createdAt).toLocaleString('fr-FR')}
+                  </span>
+                </div>
+                {h.notes && <div className="mt-1 text-xs text-ink-soft">{h.notes}</div>}
+              </li>
+            ))}
+          </ul>
+        )}
+        <FormError error={historyQuery.error} className="mt-2" />
+      </section>
     </div>
   );
 }

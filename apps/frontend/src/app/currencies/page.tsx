@@ -5,15 +5,7 @@ import { ArrowRight, Coins, Loader2, Plus, Repeat } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -173,10 +165,13 @@ export default function CurrenciesPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Devises & Taux de change</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
+        <header className="border-b border-line pb-3">
+          <p className="eyebrow mb-2">Référentiel</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Devises & Taux de change
+          </h1>
+          <p className="mt-2 text-sm text-ink-mute">
             Référentiel ISO 4217 et historique des taux multi-source (manuel, BCEAO, BCE,
             importé). Le convertisseur sélectionne automatiquement le taux le plus récent
             ≤ à la date demandée.
@@ -184,15 +179,15 @@ export default function CurrenciesPage() {
         </header>
 
         {/* DEVISES */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Devises</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Devises</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               XOF (FCFA UEMOA) seedé par défaut à la création d&apos;org. Ajouter EUR, USD,
               KES etc. selon les flux multi-devises de l&apos;entreprise.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          <div className="space-y-4 rounded-sm border border-line bg-paper p-5">
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-[100px_2fr_120px_140px_auto] md:items-end"
               onSubmit={(e) => {
@@ -229,7 +224,7 @@ export default function CurrenciesPage() {
                   id="c-dec"
                   value={decimals}
                   onChange={(e) => setDecimals(Number(e.target.value) as 0 | 2 | 3)}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  className="rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
                 >
                   <option value={0}>0 (XOF, JPY)</option>
                   <option value={2}>2 (EUR, USD)</option>
@@ -246,7 +241,7 @@ export default function CurrenciesPage() {
                   maxLength={8}
                 />
               </div>
-              <Button type="submit" disabled={createCurrency.isPending}>
+              <Button type="submit" disabled={createCurrency.isPending} className="press">
                 {createCurrency.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -258,32 +253,41 @@ export default function CurrenciesPage() {
             <FormError error={createCurrency.error} />
 
             {currenciesQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
+              <p className="text-sm text-ink-mute">Chargement…</p>
             ) : (currenciesQuery.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucune devise.</p>
+              <p className="text-sm text-ink-mute">Aucune devise.</p>
             ) : (
-              <div className="overflow-x-auto rounded-md border">
+              <div className="overflow-x-auto rounded-sm border border-line">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <thead className="bg-sunk">
                     <tr>
-                      <th className="px-3 py-2 text-left">Code</th>
-                      <th className="px-3 py-2 text-left">Libellé</th>
-                      <th className="px-3 py-2 text-left">Symbole</th>
-                      <th className="px-3 py-2 text-right">Décimales</th>
-                      <th className="px-3 py-2 text-left">Statut</th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Code</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Libellé</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Symbole</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">Décimales</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Statut</span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(currenciesQuery.data ?? []).map((c) => (
-                      <tr key={c.id} className="border-t">
-                        <td className="px-3 py-2 font-mono font-medium">{c.code}</td>
-                        <td className="px-3 py-2">{c.label}</td>
-                        <td className="px-3 py-2">{c.symbol ?? '—'}</td>
-                        <td className="px-3 py-2 text-right">{c.decimalPlaces}</td>
+                    {(currenciesQuery.data ?? []).map((c, i) => (
+                      <tr
+                        key={c.id}
+                        className={i % 2 === 0 ? 'bg-paper' : 'bg-sunk/25'}
+                      >
+                        <td className="px-3 py-2 font-mono font-medium text-ink">{c.code}</td>
+                        <td className="px-3 py-2 text-ink">{c.label}</td>
+                        <td className="px-3 py-2 text-ink">{c.symbol ?? '—'}</td>
+                        <td className="px-3 py-2 text-right text-ink">{c.decimalPlaces}</td>
                         <td className="px-3 py-2">
-                          <Badge variant={c.isActive ? 'default' : 'muted'}>
+                          <span
+                            className={`inline-block rounded-xs px-2 py-0.5 font-mono text-[11px] ${
+                              c.isActive
+                                ? 'bg-accent-soft text-accent-ink'
+                                : 'bg-sunk text-ink-mute'
+                            }`}
+                          >
                             {c.isActive ? 'Actif' : 'Inactif'}
-                          </Badge>
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -292,19 +296,19 @@ export default function CurrenciesPage() {
               </div>
             )}
             <FormError error={currenciesQuery.error} />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {/* TAUX */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Taux de change</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Taux de change</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               Historique pluridates. Le convertisseur prend toujours le taux le plus récent
               ≤ à la date demandée.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          <div className="space-y-4 rounded-sm border border-line bg-paper p-5">
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-[80px_80px_140px_180px_140px_1fr_auto] md:items-end"
               onSubmit={(e) => {
@@ -362,7 +366,7 @@ export default function CurrenciesPage() {
                   id="r-src"
                   value={source}
                   onChange={(e) => setSource(e.target.value as RateSource)}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  className="rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
                 >
                   <option value="manual">Manuel</option>
                   <option value="bceao">BCEAO</option>
@@ -380,7 +384,7 @@ export default function CurrenciesPage() {
                   maxLength={200}
                 />
               </div>
-              <Button type="submit" disabled={createRate.isPending}>
+              <Button type="submit" disabled={createRate.isPending} className="press">
                 {createRate.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -392,35 +396,40 @@ export default function CurrenciesPage() {
             <FormError error={createRate.error} />
 
             {ratesQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
+              <p className="text-sm text-ink-mute">Chargement…</p>
             ) : sortedRates.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun taux enregistré.</p>
+              <p className="text-sm text-ink-mute">Aucun taux enregistré.</p>
             ) : (
-              <div className="overflow-x-auto rounded-md border">
+              <div className="overflow-x-auto rounded-sm border border-line">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <thead className="bg-sunk">
                     <tr>
-                      <th className="px-3 py-2 text-left">Date</th>
-                      <th className="px-3 py-2 text-left">Paire</th>
-                      <th className="px-3 py-2 text-right">Taux</th>
-                      <th className="px-3 py-2 text-left">Source</th>
-                      <th className="px-3 py-2 text-left">Référence</th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Date</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Paire</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">Taux</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Source</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Référence</span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedRates.slice(0, 100).map((r) => (
-                      <tr key={r.id} className="border-t">
-                        <td className="px-3 py-2 font-mono">{r.rateDate}</td>
-                        <td className="px-3 py-2">
+                    {sortedRates.slice(0, 100).map((r, i) => (
+                      <tr
+                        key={r.id}
+                        className={i % 2 === 0 ? 'bg-paper' : 'bg-sunk/25'}
+                      >
+                        <td className="px-3 py-2 font-mono text-ink">{r.rateDate}</td>
+                        <td className="px-3 py-2 text-ink">
                           <span className="font-mono">{r.fromCurrencyCode}</span>
-                          <ArrowRight className="mx-1 inline h-3 w-3 text-muted-foreground" />
+                          <ArrowRight className="mx-1 inline h-3 w-3 text-ink-mute" />
                           <span className="font-mono">{r.toCurrencyCode}</span>
                         </td>
-                        <td className="px-3 py-2 text-right font-mono">{r.rate}</td>
+                        <td className="px-3 py-2 text-right font-mono text-ink">{r.rate}</td>
                         <td className="px-3 py-2">
-                          <Badge variant="outline">{r.source}</Badge>
+                          <span className="inline-block rounded-xs bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
+                            {r.source}
+                          </span>
                         </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                        <td className="px-3 py-2 text-xs text-ink-mute">
                           {r.sourceRef ?? '—'}
                         </td>
                       </tr>
@@ -430,19 +439,19 @@ export default function CurrenciesPage() {
               </div>
             )}
             <FormError error={ratesQuery.error} />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {/* CONVERTISSEUR */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Convertisseur</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Convertisseur</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               Conversion à la date passée. Si aucun taux n&apos;est trouvé à cette date,
               le backend remonte une erreur explicite.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-[160px_80px_80px_140px_auto] md:items-end"
               onSubmit={(e) => {
@@ -494,7 +503,7 @@ export default function CurrenciesPage() {
                   required
                 />
               </div>
-              <Button type="submit" disabled={convert.isPending}>
+              <Button type="submit" disabled={convert.isPending} className="press">
                 {convert.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -505,26 +514,26 @@ export default function CurrenciesPage() {
             </form>
             <FormError error={convert.error} className="mt-3" />
             {convResult && (
-              <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm">
+              <div className="mt-3 rounded-sm border border-accent/30 bg-accent-soft p-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <Coins className="h-4 w-4 text-emerald-600" />
-                  <span className="font-medium">
+                  <Coins className="h-4 w-4 text-accent-ink" />
+                  <span className="font-medium text-ink">
                     {convAmount} {convResult.fromCurrencyCode}
                   </span>
-                  <ArrowRight className="h-3 w-3" />
-                  <span className="font-mono font-medium text-emerald-700">
+                  <ArrowRight className="h-3 w-3 text-ink-mute" />
+                  <span className="font-mono font-medium text-accent-ink">
                     {convResult.amount} {convResult.toCurrencyCode}
                   </span>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
+                <div className="mt-1 text-xs text-ink-mute">
                   Taux appliqué : 1 {convResult.fromCurrencyCode} ={' '}
                   <span className="font-mono">{convResult.rate}</span>{' '}
                   {convResult.toCurrencyCode} (taux du {convResult.rateDate})
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </AppShell>
   );

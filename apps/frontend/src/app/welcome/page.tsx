@@ -217,7 +217,7 @@ const MODULE_GROUPS: ReadonlyArray<ModuleGroup> = [
 export default function WelcomePage() {
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1200px] pb-24">
+      <div className="animate-page-in mx-auto max-w-[1200px] pb-24">
         <header className="border-b border-line py-12 space-y-6">
           <p className="eyebrow">Documentation interactive</p>
           <h1 className="font-display text-4xl font-medium tracking-tight text-ink sm:text-5xl">

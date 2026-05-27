@@ -1,19 +1,11 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownToLine, ArrowUpFromLine, Loader2, Package, Plus, Settings } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Loader2, Package, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,12 +57,15 @@ const MOVEMENT_LABEL: Record<MovementType, string> = {
   inventory_count: 'Inventaire',
 };
 
-const MOVEMENT_COLOR: Record<MovementType, string> = {
-  purchase: 'bg-emerald-100 text-emerald-900',
-  sale: 'bg-blue-100 text-blue-900',
-  adjustment: 'bg-amber-100 text-amber-900',
-  inventory_count: 'bg-slate-200 text-slate-700',
+const MOVEMENT_TONE: Record<MovementType, string> = {
+  purchase: 'bg-accent/15 text-accent-ink',
+  sale: 'bg-info/15 text-info-ink',
+  adjustment: 'bg-warn/15 text-warn-ink',
+  inventory_count: 'bg-sunk text-ink-soft',
 };
+
+const SELECT_CLS =
+  'w-full rounded-sm border border-line-strong bg-paper px-3 py-2 text-sm text-ink transition-colors focus:border-accent focus:outline-none';
 
 export default function InventoryPage() {
   const currentOrg = useCurrentOrg();
@@ -104,127 +99,162 @@ export default function InventoryPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="animate-page-in space-y-8">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Inventaire & Stock</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="eyebrow mb-2">Stocks & valorisation</p>
+            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Inventaire & Stock</h1>
+            <p className="mt-2 max-w-2xl text-sm text-ink-mute">
               Registre articles + mouvements + valorisation Coût Moyen Pondéré (CMP) SYSCOHADA.
             </p>
           </div>
-          <Button onClick={() => setCreatingItem((v) => !v)}>
+          <Button onClick={() => setCreatingItem((v) => !v)} className="press">
             {creatingItem ? 'Annuler' : <><Plus className="mr-2 h-4 w-4" /> Nouvel article</>}
           </Button>
         </div>
 
-        <div className="flex gap-2 border-b">
+        <div className="flex gap-2 border-b border-line">
           <button
             onClick={() => setTab('items')}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors ${tab === 'items' ? 'border-primary font-medium' : 'border-transparent text-muted-foreground'}`}
+            className={`press border-b-2 px-4 py-2 text-sm transition-colors ${
+              tab === 'items' ? 'border-accent font-medium text-ink' : 'border-transparent text-ink-mute hover:text-ink'
+            }`}
           >
-            <Package className="inline h-4 w-4 mr-1" /> Articles
+            <Package className="mr-1 inline h-4 w-4" /> Articles
           </button>
           <button
             onClick={() => setTab('movements')}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors ${tab === 'movements' ? 'border-primary font-medium' : 'border-transparent text-muted-foreground'}`}
+            className={`press border-b-2 px-4 py-2 text-sm transition-colors ${
+              tab === 'movements' ? 'border-accent font-medium text-ink' : 'border-transparent text-ink-mute hover:text-ink'
+            }`}
           >
-            <ArrowDownToLine className="inline h-4 w-4 mr-1" /> Mouvements
+            <ArrowDownToLine className="mr-1 inline h-4 w-4" /> Mouvements
           </button>
         </div>
 
-        {creatingItem && <CreateItemForm orgId={orgId} onSuccess={() => { setCreatingItem(false); void qc.invalidateQueries({ queryKey: ['inventory-items'] }); }} />}
+        {creatingItem && (
+          <CreateItemForm
+            orgId={orgId}
+            onSuccess={() => {
+              setCreatingItem(false);
+              void qc.invalidateQueries({ queryKey: ['inventory-items'] });
+            }}
+          />
+        )}
 
-        {movementFor && <MovementForm orgId={orgId} item={movementFor} onSuccess={() => { setMovementFor(null); void qc.invalidateQueries({ queryKey: ['inventory'] }); }} onCancel={() => setMovementFor(null)} />}
+        {movementFor && (
+          <MovementForm
+            orgId={orgId}
+            item={movementFor}
+            onSuccess={() => {
+              setMovementFor(null);
+              void qc.invalidateQueries({ queryKey: ['inventory'] });
+            }}
+            onCancel={() => setMovementFor(null)}
+          />
+        )}
 
         {tab === 'items' ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Articles en stock</CardTitle>
-              <CardDescription>{itemsQuery.data?.length ?? 0} articles</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {itemsQuery.isLoading ? (
-                <div className="py-8 text-center"><Loader2 className="inline h-4 w-4 animate-spin" /></div>
-              ) : itemsQuery.data?.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground text-sm">Aucun article.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b text-muted-foreground">
-                      <tr>
-                        <th className="text-left py-2 px-2">Code</th>
-                        <th className="text-left py-2 px-2">Désignation</th>
-                        <th className="text-left py-2 px-2">Famille</th>
-                        <th className="text-right py-2 px-2">Qté</th>
-                        <th className="text-right py-2 px-2">CMP</th>
-                        <th className="text-right py-2 px-2">Valeur</th>
-                        <th className="text-right py-2 px-2">Actions</th>
+          <section className="space-y-4">
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">Articles en stock</h2>
+              <p className="mt-1 text-sm text-ink-mute">{itemsQuery.data?.length ?? 0} articles</p>
+            </div>
+            {itemsQuery.isLoading ? (
+              <div className="py-8 text-center text-ink-mute">
+                <Loader2 className="inline h-4 w-4 animate-spin" />
+              </div>
+            ) : itemsQuery.data?.length === 0 ? (
+              <div className="py-8 text-center text-sm text-ink-mute">Aucun article.</div>
+            ) : (
+              <div className="overflow-x-auto rounded-sm border border-line">
+                <table className="w-full text-sm">
+                  <thead className="bg-sunk">
+                    <tr>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Code</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Désignation</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Famille</span></th>
+                      <th className="px-2 py-2 text-right"><span className="eyebrow">Qté</span></th>
+                      <th className="px-2 py-2 text-right"><span className="eyebrow">CMP</span></th>
+                      <th className="px-2 py-2 text-right"><span className="eyebrow">Valeur</span></th>
+                      <th className="px-2 py-2 text-right"><span className="eyebrow">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemsQuery.data?.map((it, idx) => (
+                      <tr
+                        key={it.id}
+                        className={`border-t border-line transition-colors hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
+                      >
+                        <td className="px-2 py-2 font-mono text-ink">{it.code}</td>
+                        <td className="px-2 py-2 text-ink">{it.label}</td>
+                        <td className="px-2 py-2 text-xs text-ink-mute">{FAMILY_LABEL[it.family]}</td>
+                        <td className="px-2 py-2 text-right font-mono text-ink">
+                          {Number(it.qtyOnHand).toFixed(2)} {it.unitOfMeasure}
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono text-ink">{Number(it.cmp).toFixed(2)}</td>
+                        <td className="px-2 py-2 text-right font-mono text-ink">
+                          {new Intl.NumberFormat('fr-FR').format(Number(it.qtyOnHand) * Number(it.cmp))}
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <Button size="sm" variant="outline" onClick={() => setMovementFor(it)} className="press">
+                            <ArrowUpFromLine className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {itemsQuery.data?.map((it) => (
-                        <tr key={it.id} className="border-b last:border-0">
-                          <td className="py-2 px-2 font-mono">{it.code}</td>
-                          <td className="py-2 px-2">{it.label}</td>
-                          <td className="py-2 px-2 text-xs">{FAMILY_LABEL[it.family]}</td>
-                          <td className="py-2 px-2 text-right font-mono">{Number(it.qtyOnHand).toFixed(2)} {it.unitOfMeasure}</td>
-                          <td className="py-2 px-2 text-right font-mono">{Number(it.cmp).toFixed(2)}</td>
-                          <td className="py-2 px-2 text-right font-mono">
-                            {new Intl.NumberFormat('fr-FR').format(Number(it.qtyOnHand) * Number(it.cmp))}
-                          </td>
-                          <td className="py-2 px-2 text-right">
-                            <Button size="sm" variant="outline" onClick={() => setMovementFor(it)}>
-                              <ArrowUpFromLine className="h-3.5 w-3.5" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Historique des mouvements</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {movementsQuery.isLoading ? (
-                <div className="py-8 text-center"><Loader2 className="inline h-4 w-4 animate-spin" /></div>
-              ) : movementsQuery.data?.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground text-sm">Aucun mouvement.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b text-muted-foreground">
-                      <tr>
-                        <th className="text-left py-2 px-2">Date</th>
-                        <th className="text-left py-2 px-2">Type</th>
-                        <th className="text-right py-2 px-2">Quantité</th>
-                        <th className="text-right py-2 px-2">Prix unitaire</th>
-                        <th className="text-right py-2 px-2">CMP après</th>
-                        <th className="text-left py-2 px-2">Réf.</th>
+          <section className="space-y-4">
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">Historique des mouvements</h2>
+            </div>
+            {movementsQuery.isLoading ? (
+              <div className="py-8 text-center text-ink-mute">
+                <Loader2 className="inline h-4 w-4 animate-spin" />
+              </div>
+            ) : movementsQuery.data?.length === 0 ? (
+              <div className="py-8 text-center text-sm text-ink-mute">Aucun mouvement.</div>
+            ) : (
+              <div className="overflow-x-auto rounded-sm border border-line">
+                <table className="w-full text-sm">
+                  <thead className="bg-sunk">
+                    <tr>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Date</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Type</span></th>
+                      <th className="px-2 py-2 text-right"><span className="eyebrow">Quantité</span></th>
+                      <th className="px-2 py-2 text-right"><span className="eyebrow">Prix unitaire</span></th>
+                      <th className="px-2 py-2 text-right"><span className="eyebrow">CMP après</span></th>
+                      <th className="px-2 py-2 text-left"><span className="eyebrow">Réf.</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movementsQuery.data?.map((m, idx) => (
+                      <tr
+                        key={m.id}
+                        className={`border-t border-line transition-colors hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
+                      >
+                        <td className="px-2 py-2 text-ink">{m.movementDate}</td>
+                        <td className="px-2 py-2">
+                          <span className={`inline-flex items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${MOVEMENT_TONE[m.type]}`}>
+                            {MOVEMENT_LABEL[m.type]}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 text-right font-mono text-ink">{m.qty}</td>
+                        <td className="px-2 py-2 text-right font-mono text-ink">{m.unitPrice ?? '—'}</td>
+                        <td className="px-2 py-2 text-right font-mono text-ink">{m.cmpAfter}</td>
+                        <td className="px-2 py-2 font-mono text-xs text-ink-mute">{m.reference ?? '—'}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {movementsQuery.data?.map((m) => (
-                        <tr key={m.id} className="border-b last:border-0">
-                          <td className="py-2 px-2">{m.movementDate}</td>
-                          <td className="py-2 px-2"><Badge className={MOVEMENT_COLOR[m.type]}>{MOVEMENT_LABEL[m.type]}</Badge></td>
-                          <td className="py-2 px-2 text-right font-mono">{m.qty}</td>
-                          <td className="py-2 px-2 text-right font-mono">{m.unitPrice ?? '—'}</td>
-                          <td className="py-2 px-2 text-right font-mono">{m.cmpAfter}</td>
-                          <td className="py-2 px-2 font-mono text-xs">{m.reference ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         )}
       </div>
     </AppShell>
@@ -259,9 +289,11 @@ function CreateItemForm({ orgId, onSuccess }: { orgId: string; onSuccess: () => 
   }
 
   return (
-    <Card>
-      <CardHeader><CardTitle className="text-base">Nouvel article</CardTitle></CardHeader>
-      <CardContent>
+    <section className="space-y-4">
+      <div className="border-b border-line pb-3">
+        <h2 className="font-display text-xl font-medium text-ink">Nouvel article</h2>
+      </div>
+      <div className="rounded-sm border border-line bg-paper p-5">
         <form onSubmit={handle} className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="i-code">Code SKU</Label>
@@ -273,7 +305,12 @@ function CreateItemForm({ orgId, onSuccess }: { orgId: string; onSuccess: () => 
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="i-family">Famille</Label>
-            <select id="i-family" className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={family} onChange={(e) => setFamily(e.target.value as StockFamily)}>
+            <select
+              id="i-family"
+              className={SELECT_CLS}
+              value={family}
+              onChange={(e) => setFamily(e.target.value as StockFamily)}
+            >
               {(['marchandises', 'matieres', 'fournitures', 'en_cours', 'produits_finis', 'en_route'] as const).map((f) => (
                 <option key={f} value={f}>{FAMILY_LABEL[f]}</option>
               ))}
@@ -297,18 +334,23 @@ function CreateItemForm({ orgId, onSuccess }: { orgId: string; onSuccess: () => 
           </div>
           {mut.isError && <div className="md:col-span-2"><FormError error={mut.error} /></div>}
           <div className="md:col-span-2">
-            <Button type="submit" disabled={mut.isPending}>
+            <Button type="submit" disabled={mut.isPending} className="press">
               {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Créer l'article
+              Créer l&apos;article
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
-function MovementForm({ orgId, item, onSuccess, onCancel }: { orgId: string; item: ItemView; onSuccess: () => void; onCancel: () => void }) {
+function MovementForm({ orgId, item, onSuccess, onCancel }: {
+  orgId: string;
+  item: ItemView;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
   const [type, setType] = useState<MovementType>('purchase');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [qty, setQty] = useState('');
@@ -332,19 +374,26 @@ function MovementForm({ orgId, item, onSuccess, onCancel }: { orgId: string; ite
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Mouvement — {item.code}</CardTitle>
-          <Button size="sm" variant="ghost" onClick={onCancel}>×</Button>
+    <section className="space-y-4">
+      <div className="flex items-end justify-between gap-3 border-b border-line pb-3">
+        <div>
+          <h2 className="font-display text-xl font-medium text-ink">Mouvement — {item.code}</h2>
+          <p className="mt-1 text-sm text-ink-mute">
+            {item.label} · Stock : {item.qtyOnHand} {item.unitOfMeasure} · CMP : {item.cmp}
+          </p>
         </div>
-        <CardDescription>{item.label} · Stock: {item.qtyOnHand} {item.unitOfMeasure} · CMP: {item.cmp}</CardDescription>
-      </CardHeader>
-      <CardContent>
+        <Button size="sm" variant="ghost" onClick={onCancel} className="press">×</Button>
+      </div>
+      <div className="rounded-sm border border-line bg-paper p-5">
         <form onSubmit={handle} className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="m-type">Type</Label>
-            <select id="m-type" className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={type} onChange={(e) => setType(e.target.value as MovementType)}>
+            <select
+              id="m-type"
+              className={SELECT_CLS}
+              value={type}
+              onChange={(e) => setType(e.target.value as MovementType)}
+            >
               <option value="purchase">Achat (entrée chiffrée)</option>
               <option value="sale">Vente (sortie au CMP)</option>
               <option value="adjustment">Ajustement</option>
@@ -371,13 +420,13 @@ function MovementForm({ orgId, item, onSuccess, onCancel }: { orgId: string; ite
           </div>
           {mut.isError && <div className="md:col-span-2"><FormError error={mut.error} /></div>}
           <div className="md:col-span-2">
-            <Button type="submit" disabled={mut.isPending}>
+            <Button type="submit" disabled={mut.isPending} className="press">
               {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Enregistrer le mouvement
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

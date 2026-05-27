@@ -20,7 +20,7 @@ export interface DaySummaryActivity {
 
 export interface DaySummary {
   readonly pending: DaySummaryPending;
-  readonly exercise: { readonly label: string; readonly startDate: string; readonly endDate: string } | null;
+  readonly exercise: { readonly id: string; readonly label: string; readonly startDate: string; readonly endDate: string } | null;
   readonly activePeriod: { readonly label: string; readonly endDate: string } | null;
   readonly entriesThisMonth: number;
   readonly pendingThisMonth: number;
@@ -75,8 +75,8 @@ export class DayDashboardService {
          WHERE organization_id = $1 AND status IN ('draft', 'calculated')`,
         [id],
       ),
-      this.ds.query<Array<{ label: string; start_date: string; end_date: string }>>(
-        `SELECT label, start_date, end_date
+      this.ds.query<Array<{ id: string; label: string; start_date: string; end_date: string }>>(
+        `SELECT id, label, start_date, end_date
          FROM accounting_periods
          WHERE organization_id = $1 AND kind = 'ANNUAL' AND status = 'open'
          ORDER BY start_date DESC LIMIT 1`,
@@ -132,7 +132,7 @@ export class DayDashboardService {
         auxLettering: toInt(unletteredAuxRows[0]?.count),
         tvaDeclarations: toInt(pendingTvaRows[0]?.count),
       },
-      exercise: ex ? { label: ex.label, startDate: ex.start_date, endDate: ex.end_date } : null,
+      exercise: ex ? { id: ex.id, label: ex.label, startDate: ex.start_date, endDate: ex.end_date } : null,
       activePeriod: ap ? { label: ap.label, endDate: ap.end_date } : null,
       entriesThisMonth: toInt(entriesMonthRows[0]?.count),
       pendingThisMonth: toInt(pendingMonthRows[0]?.count),

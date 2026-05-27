@@ -8,14 +8,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,59 +97,74 @@ export default function MfaSettingsPage() {
   });
 
   return (
-    <main className="container max-w-2xl space-y-6 py-10">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Authentification à deux facteurs</h1>
-        <p className="text-sm text-muted-foreground">
-          Ajoutez une étape de vérification à la connexion via une application TOTP (Google
-          Authenticator, 1Password, Authy, …).
-        </p>
-      </header>
+    <main className="container max-w-2xl space-y-8 py-10">
+      <div className="animate-page-in space-y-8">
+        <header className="space-y-2">
+          <p className="eyebrow mb-2">Sécurité</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Authentification à deux facteurs
+          </h1>
+          <p className="text-sm text-ink-mute">
+            Ajoutez une étape de vérification à la connexion via une application TOTP (Google
+            Authenticator, 1Password, Authy, …).
+          </p>
+        </header>
 
-      {stage.kind === 'idle' ? (
-        <Card>
-          <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-            <ShieldAlert className="mt-1 h-5 w-5 text-muted-foreground" />
-            <div className="space-y-1">
-              <CardTitle>MFA non activée</CardTitle>
-              <CardDescription>
-                Sans MFA, votre compte est protégé uniquement par votre mot de passe. Activer la MFA
-                ajoute un code à 6 chiffres demandé à chaque connexion.
-              </CardDescription>
+        {stage.kind === 'idle' ? (
+          <section className="space-y-4">
+            <div className="border-b border-line pb-3">
+              <div className="flex flex-row items-start gap-3">
+                <ShieldAlert className="mt-1 h-5 w-5 text-ink-mute" />
+                <div className="space-y-1">
+                  <h2 className="font-display text-xl font-medium text-ink">MFA non activée</h2>
+                  <p className="text-sm text-ink-mute">
+                    Sans MFA, votre compte est protégé uniquement par votre mot de passe. Activer
+                    la MFA ajoute un code à 6 chiffres demandé à chaque connexion.
+                  </p>
+                </div>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <FormError error={setupMutation.error} />
-          </CardContent>
-          <CardFooter className="gap-3">
-            <Button onClick={() => void onActivate()} disabled={setupMutation.isPending}>
-              {setupMutation.isPending ? 'Préparation…' : 'Activer la MFA'}
-            </Button>
-            {/*
-             * The "Désactiver" button reveals a code-entry form rather
-             * than calling disable directly: the backend now requires a
-             * fresh TOTP / backup code as a step-up factor (prevents a
-             * leaked access token from stripping MFA).
-             */}
-            <Button variant="ghost" onClick={() => setStage({ kind: 'disabling' })}>
-              Désactiver
-            </Button>
-          </CardFooter>
-        </Card>
-      ) : null}
+            <div className="space-y-4">
+              <FormError error={setupMutation.error} />
+              <div className="flex gap-3">
+                <Button
+                  className="press"
+                  onClick={() => void onActivate()}
+                  disabled={setupMutation.isPending}
+                >
+                  {setupMutation.isPending ? 'Préparation…' : 'Activer la MFA'}
+                </Button>
+                {/*
+                 * The "Désactiver" button reveals a code-entry form rather
+                 * than calling disable directly: the backend now requires a
+                 * fresh TOTP / backup code as a step-up factor (prevents a
+                 * leaked access token from stripping MFA).
+                 */}
+                <Button
+                  variant="ghost"
+                  className="press"
+                  onClick={() => setStage({ kind: 'disabling' })}
+                >
+                  Désactiver
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
-      {stage.kind === 'disabling' ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Confirmer la désactivation</CardTitle>
-            <CardDescription>
-              Saisissez un code TOTP courant ou un code de secours pour confirmer la désactivation
-              de la MFA. Cette vérification empêche qu'un jeton d'accès volé désactive
-              silencieusement votre second facteur.
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={onDisable} noValidate>
-            <CardContent className="space-y-4">
+        {stage.kind === 'disabling' ? (
+          <section className="space-y-4">
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">
+                Confirmer la désactivation
+              </h2>
+              <p className="mt-1 text-sm text-ink-mute">
+                Saisissez un code TOTP courant ou un code de secours pour confirmer la
+                désactivation de la MFA. Cette vérification empêche qu&apos;un jeton d&apos;accès
+                volé désactive silencieusement votre second facteur.
+              </p>
+            </div>
+            <form onSubmit={onDisable} noValidate className="space-y-4">
               <FormError error={disableMutation.error} />
               <div className="space-y-2">
                 <Label htmlFor="disable-code">Code</Label>
@@ -169,116 +176,127 @@ export default function MfaSettingsPage() {
                   {...disableForm.register('code')}
                 />
                 {disableForm.formState.errors.code !== undefined ? (
-                  <p className="text-xs text-destructive">
+                  <p className="text-xs text-critical-ink">
                     {disableForm.formState.errors.code.message}
                   </p>
                 ) : null}
               </div>
-            </CardContent>
-            <CardFooter className="gap-3">
-              <Button type="submit" variant="destructive" disabled={disableMutation.isPending}>
-                {disableMutation.isPending ? 'Désactivation…' : 'Désactiver la MFA'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setStage({ kind: 'idle' })}
-                disabled={disableMutation.isPending}
-              >
-                Annuler
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-      ) : null}
-
-      {stage.kind === 'setup' ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Scanner le code dans votre application</CardTitle>
-            <CardDescription>
-              Ouvrez votre application d'authentification et ajoutez un nouveau compte. Saisissez
-              ensuite le code à 6 chiffres généré pour confirmer.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2 rounded-md border bg-muted/30 p-4 font-mono text-xs break-all">
-              <div>
-                <span className="text-muted-foreground">URI otpauth :</span>
-                <br />
-                {stage.setup.otpauthUri}
-              </div>
-              <div>
-                <span className="text-muted-foreground">Secret (saisie manuelle) :</span>
-                <br />
-                {stage.setup.secret}
-              </div>
-            </div>
-
-            <form onSubmit={onVerify} noValidate className="space-y-4">
-              <FormError error={verifyMutation.error} />
-              <div className="space-y-2">
-                <Label htmlFor="code">Code à 6 chiffres</Label>
-                <Input
-                  id="code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  autoFocus
-                  {...verifyForm.register('code')}
-                />
-                {verifyForm.formState.errors.code !== undefined ? (
-                  <p className="text-xs text-destructive">
-                    {verifyForm.formState.errors.code.message}
-                  </p>
-                ) : null}
-              </div>
               <div className="flex gap-3">
-                <Button type="submit" disabled={verifyMutation.isPending}>
-                  {verifyMutation.isPending ? 'Vérification…' : 'Confirmer'}
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  className="press"
+                  disabled={disableMutation.isPending}
+                >
+                  {disableMutation.isPending ? 'Désactivation…' : 'Désactiver la MFA'}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
+                  className="press"
                   onClick={() => setStage({ kind: 'idle' })}
-                  disabled={verifyMutation.isPending}
+                  disabled={disableMutation.isPending}
                 >
                   Annuler
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      ) : null}
+          </section>
+        ) : null}
 
-      {stage.kind === 'activated' ? (
-        <Card>
-          <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-            <ShieldCheck className="mt-1 h-5 w-5 text-emerald-600" />
-            <div className="space-y-1">
-              <CardTitle>MFA activée</CardTitle>
-              <CardDescription>
-                Conservez ces 10 codes de secours dans un endroit sûr. Chacun fonctionne une seule
-                fois et remplace le code TOTP si vous perdez l'accès à votre application. Cette
-                liste ne sera pas affichée à nouveau.
-              </CardDescription>
+        {stage.kind === 'setup' ? (
+          <section className="space-y-4">
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">
+                Scanner le code dans votre application
+              </h2>
+              <p className="mt-1 text-sm text-ink-mute">
+                Ouvrez votre application d&apos;authentification et ajoutez un nouveau compte.
+                Saisissez ensuite le code à 6 chiffres généré pour confirmer.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <ul className="grid grid-cols-2 gap-2 rounded-md border bg-muted/30 p-4 font-mono text-sm">
-              {stage.backupCodes.map((code) => (
-                <li key={code} className="select-all">
-                  {code}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Retour au tableau de bord</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      ) : null}
+            <div className="space-y-4">
+              <div className="space-y-2 rounded-sm border border-line bg-sunk/30 p-4 font-mono text-xs break-all text-ink">
+                <div>
+                  <span className="text-ink-mute">URI otpauth :</span>
+                  <br />
+                  {stage.setup.otpauthUri}
+                </div>
+                <div>
+                  <span className="text-ink-mute">Secret (saisie manuelle) :</span>
+                  <br />
+                  {stage.setup.secret}
+                </div>
+              </div>
+
+              <form onSubmit={onVerify} noValidate className="space-y-4">
+                <FormError error={verifyMutation.error} />
+                <div className="space-y-2">
+                  <Label htmlFor="code">Code à 6 chiffres</Label>
+                  <Input
+                    id="code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    {...verifyForm.register('code')}
+                  />
+                  {verifyForm.formState.errors.code !== undefined ? (
+                    <p className="text-xs text-critical-ink">
+                      {verifyForm.formState.errors.code.message}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex gap-3">
+                  <Button type="submit" className="press" disabled={verifyMutation.isPending}>
+                    {verifyMutation.isPending ? 'Vérification…' : 'Confirmer'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="press"
+                    onClick={() => setStage({ kind: 'idle' })}
+                    disabled={verifyMutation.isPending}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </section>
+        ) : null}
+
+        {stage.kind === 'activated' ? (
+          <section className="space-y-4">
+            <div className="border-b border-line pb-3">
+              <div className="flex flex-row items-start gap-3">
+                <ShieldCheck className="mt-1 h-5 w-5 text-accent-ink" />
+                <div className="space-y-1">
+                  <h2 className="font-display text-xl font-medium text-ink">MFA activée</h2>
+                  <p className="text-sm text-ink-mute">
+                    Conservez ces 10 codes de secours dans un endroit sûr. Chacun fonctionne une
+                    seule fois et remplace le code TOTP si vous perdez l&apos;accès à votre
+                    application. Cette liste ne sera pas affichée à nouveau.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <ul className="grid grid-cols-2 gap-2 rounded-sm border border-line bg-sunk/30 p-4 font-mono text-sm text-ink">
+                {stage.backupCodes.map((code) => (
+                  <li key={code} className="select-all">
+                    {code}
+                  </li>
+                ))}
+              </ul>
+              <div>
+                <Button asChild variant="outline" className="press">
+                  <Link href="/dashboard">Retour au tableau de bord</Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : null}
+      </div>
     </main>
   );
 }

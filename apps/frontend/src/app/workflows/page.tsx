@@ -5,15 +5,7 @@ import { Loader2, Play } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,24 +62,27 @@ export default function WorkflowsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-8">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Workflows de validation</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="eyebrow mb-2">Validation</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Workflows de validation
+          </h1>
+          <p className="mt-2 text-sm text-ink-mute">
             Pipeline d&apos;approbation multi-niveaux : draft → in_review → approved →
             locked. Cible vague 1 : import_session.
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Démarrer une instance</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Démarrer une instance</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               Saisir l&apos;UUID d&apos;un import_session (visible dans /imports). L&apos;instance
               démarre au statut <code>draft</code>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="space-y-3">
             <form
               className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end"
               onSubmit={(e) => {
@@ -105,7 +100,11 @@ export default function WorkflowsPage() {
                   required
                 />
               </div>
-              <Button type="submit" disabled={start.isPending || targetId.trim() === ''}>
+              <Button
+                type="submit"
+                className="press"
+                disabled={start.isPending || targetId.trim() === ''}
+              >
                 {start.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -115,8 +114,8 @@ export default function WorkflowsPage() {
               </Button>
             </form>
             <FormError error={start.error} className="mt-2" />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {startedInstance && (
           <InstancePanel
@@ -163,35 +162,36 @@ function InstancePanel({
 
   const current = historyQuery.data?.history?.at(-1);
 
+  const statusBadgeClass =
+    current?.toStatus === 'locked'
+      ? 'bg-critical-soft text-critical-ink'
+      : current?.toStatus === 'approved'
+        ? 'bg-accent-soft text-accent-ink'
+        : 'bg-sunk text-ink-mute';
+
   return (
-    <Card>
-      <CardHeader>
+    <section className="space-y-4">
+      <div className="border-b border-line pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <h2 className="flex items-center gap-2 font-display text-xl font-medium text-ink">
               Instance {instanceId.slice(0, 8)}…
               {current && (
-                <Badge
-                  variant={
-                    current.toStatus === 'locked'
-                      ? 'destructive'
-                      : current.toStatus === 'approved'
-                        ? 'default'
-                        : 'muted'
-                  }
+                <span
+                  className={`inline-block rounded-xs px-2 py-0.5 font-mono text-[11px] ${statusBadgeClass}`}
                 >
                   {current.toStatus}
-                </Badge>
+                </span>
               )}
-            </CardTitle>
-            <CardDescription>Polling histoire toutes les 5 s.</CardDescription>
+            </h2>
+            <p className="mt-1 text-sm text-ink-mute">Polling histoire toutes les 5 s.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={onClosed}>
+          <Button variant="outline" size="sm" className="press" onClick={onClosed}>
             Fermer
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      </div>
+      <div className="space-y-4">
         <form
           className="grid grid-cols-1 gap-3 md:grid-cols-[200px_1fr_auto] md:items-end"
           onSubmit={(e) => {
@@ -205,7 +205,7 @@ function InstancePanel({
               id="to"
               value={toStatus}
               onChange={(e) => setToStatus(e.target.value as WorkflowStatus)}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
             >
               <option value="draft">draft</option>
               <option value="in_review">in_review</option>
@@ -217,43 +217,43 @@ function InstancePanel({
             <Label htmlFor="cmt">Commentaire (optionnel)</Label>
             <Input id="cmt" value={comment} onChange={(e) => setComment(e.target.value)} />
           </div>
-          <Button type="submit" disabled={transition.isPending}>
-            {transition.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+          <Button type="submit" className="press" disabled={transition.isPending}>
+            {transition.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Transitionner
           </Button>
         </form>
         <FormError error={transition.error} />
 
         <div>
-          <h3 className="mb-2 text-sm font-medium">Historique</h3>
+          <h3 className="mb-2 text-sm font-medium text-ink">Historique</h3>
           {historyQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Chargement…</p>
+            <p className="text-sm text-ink-mute">Chargement…</p>
           ) : (historyQuery.data?.history ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucune transition.</p>
+            <p className="text-sm text-ink-mute">Aucune transition.</p>
           ) : (
-            <ol className="space-y-2 border-l-2 border-muted pl-3">
+            <ol className="space-y-2 border-l border-line pl-3">
               {(historyQuery.data?.history ?? []).map((h) => (
                 <li key={h.id} className="text-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     {h.fromStatus && (
-                      <span className="text-xs text-muted-foreground">{h.fromStatus} →</span>
+                      <span className="text-xs text-ink-mute">{h.fromStatus} →</span>
                     )}
-                    <Badge variant="outline">{h.toStatus}</Badge>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="inline-block rounded-xs bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
+                      {h.toStatus}
+                    </span>
+                    <span className="text-xs text-ink-mute">
                       {new Date(h.createdAt).toLocaleString('fr-FR')} · user{' '}
                       {h.actorUserId.slice(0, 8)}
                     </span>
                   </div>
-                  {h.comment && <div className="mt-0.5 text-xs">{h.comment}</div>}
+                  {h.comment && <div className="mt-0.5 text-xs text-ink">{h.comment}</div>}
                 </li>
               ))}
             </ol>
           )}
           <FormError error={historyQuery.error} className="mt-2" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

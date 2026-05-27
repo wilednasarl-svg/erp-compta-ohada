@@ -36,15 +36,6 @@ import {
 } from 'recharts';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -67,14 +58,6 @@ const VALIDATION_ERROR_LABELS: Record<string, string> = {
 
 /**
  * `/imports/[sessionId]/dashboard` — analytique d'une session d'import.
- *
- * Surface : 4 KPI cards, courbe journalière débit/crédit, histogramme
- * par journal, top 10 comptes, répartition par classe SYSCOHADA,
- * distribution des erreurs de validation.
- *
- * Donnée : `GET /organizations/:orgId/imports/sessions/:sessionId/analytics`.
- * Calculée à la volée côté backend depuis les staging entries — pas de
- * snapshot, donc toujours frais. Fonctionne avant ET après commit.
  */
 export default function ImportDashboardPage() {
   const params = useParams<{ sessionId: string }>();
@@ -95,27 +78,28 @@ export default function ImportDashboardPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-6">
         <header className="flex items-start justify-between gap-4">
           <div>
             <Link
               href="/imports"
-              className="mb-2 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+              className="mb-2 inline-flex items-center text-sm text-ink-mute transition-colors hover:text-ink"
             >
               <ArrowLeft className="mr-1 h-3.5 w-3.5" />
               Retour aux imports
             </Link>
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <p className="eyebrow mb-2">Session d&apos;import</p>
+            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
               Analyse de la session d&apos;import
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-ink-mute">
               Vue analytique calculée à la volée à partir des lignes en staging — débit/crédit,
               journaux, comptes, classes SYSCOHADA, qualité du fichier.
             </p>
           </div>
           <Link
             href="/reports"
-            className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
+            className="press inline-flex items-center gap-2 rounded-sm border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-paper transition-colors hover:bg-accent-ink"
             title="Générer le dossier annuel SYSCOHADA à partir des écritures validées"
           >
             <Package className="h-4 w-4" />
@@ -124,12 +108,12 @@ export default function ImportDashboardPage() {
         </header>
 
         {analyticsQuery.isLoading && (
-          <Card>
-            <CardContent className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
+          <section className="rounded-sm border border-line bg-paper p-5">
+            <div className="flex items-center gap-2 py-12 text-sm text-ink-mute">
               <Loader2 className="h-4 w-4 animate-spin" />
               Calcul de l&apos;analyse en cours…
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         )}
 
         {analyticsQuery.error && <FormError error={analyticsQuery.error} />}
@@ -152,19 +136,23 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
       {/* KPIs */}
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          icon={<BookOpen className="h-4 w-4" />}
+          icon={<BookOpen className="h-4 w-4 text-ink-mute" />}
           label="Lignes importées"
           value={fmtInt(kpis.totalLines)}
           hint={`${kpis.distinctJournals} journaux · ${kpis.distinctAccounts} comptes`}
         />
         <KpiCard
-          icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+          icon={<TrendingUp className="h-4 w-4 text-accent-ink" />}
           label="Total débit"
           value={fmtMoney(kpis.totalDebit, analytics.currency)}
           hint={`Crédit : ${fmtMoney(kpis.totalCredit, analytics.currency)}`}
         />
         <KpiCard
-          icon={<Scale className={kpis.isBalanced ? 'h-4 w-4 text-emerald-600' : 'h-4 w-4 text-amber-600'} />}
+          icon={
+            <Scale
+              className={`h-4 w-4 ${kpis.isBalanced ? 'text-accent-ink' : 'text-warn-ink'}`}
+            />
+          }
           label="Équilibre D − C"
           value={fmtMoney(kpis.netBalance, analytics.currency)}
           hint={kpis.isBalanced ? 'Écritures équilibrées' : 'Déséquilibre détecté'}
@@ -173,9 +161,9 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
         <KpiCard
           icon={
             kpis.errorLines === 0 ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 text-accent-ink" />
             ) : (
-              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertTriangle className="h-4 w-4 text-critical-ink" />
             )
           }
           label="Taux de validité"
@@ -187,40 +175,36 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
 
       {/* Period + partners */}
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Période couverte</CardDescription>
-            <CardTitle className="text-base">
-              {kpis.periodStart ?? '—'} → {kpis.periodEnd ?? '—'}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Tiers distincts</CardDescription>
-            <CardTitle className="text-base">
-              <Users className="mr-2 inline h-4 w-4 text-muted-foreground" />
-              {fmtInt(kpis.distinctPartners)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Devise</CardDescription>
-            <CardTitle className="text-base">{analytics.currency}</CardTitle>
-          </CardHeader>
-        </Card>
+        <div className="rounded-sm border border-line bg-paper p-5">
+          <p className="text-xs uppercase tracking-wide text-ink-mute">Période couverte</p>
+          <p className="mt-2 font-display text-xl font-medium text-ink">
+            {kpis.periodStart ?? '—'} → {kpis.periodEnd ?? '—'}
+          </p>
+        </div>
+        <div className="rounded-sm border border-line bg-paper p-5">
+          <p className="text-xs uppercase tracking-wide text-ink-mute">Tiers distincts</p>
+          <p className="mt-2 font-display text-xl font-medium text-ink">
+            <Users className="mr-2 inline h-4 w-4 text-ink-mute" />
+            {fmtInt(kpis.distinctPartners)}
+          </p>
+        </div>
+        <div className="rounded-sm border border-line bg-paper p-5">
+          <p className="text-xs uppercase tracking-wide text-ink-mute">Devise</p>
+          <p className="mt-2 font-display text-xl font-medium text-ink">{analytics.currency}</p>
+        </div>
       </section>
 
       {/* Évolution journalière */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Évolution journalière débit / crédit</CardTitle>
-          <CardDescription>
+      <section className="rounded-sm border border-line bg-paper p-5">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">
+            Évolution journalière débit / crédit
+          </h2>
+          <p className="mt-1 text-sm text-ink-mute">
             Somme des débits et crédits par jour ouvré présent dans le fichier importé.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="mt-4">
           {daily.length === 0 ? (
             <EmptyHint icon={<CircleSlash className="h-4 w-4" />}>
               Aucune date valide dans le fichier — impossible de tracer l&apos;évolution
@@ -238,7 +222,7 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
                   }))}
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(var(--line))" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtShort(v)} />
                   <Tooltip formatter={(v) => fmtMoney(Number(v), analytics.currency)} />
@@ -246,7 +230,7 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
                   <Line
                     type="monotone"
                     dataKey="debit"
-                    stroke="#16a34a"
+                    stroke="oklch(var(--accent))"
                     strokeWidth={2}
                     dot={false}
                     name="Débit"
@@ -254,7 +238,7 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
                   <Line
                     type="monotone"
                     dataKey="credit"
-                    stroke="#dc2626"
+                    stroke="oklch(var(--critical))"
                     strokeWidth={2}
                     dot={false}
                     name="Crédit"
@@ -262,7 +246,7 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
                   <Line
                     type="monotone"
                     dataKey="net"
-                    stroke="#2563eb"
+                    stroke="oklch(var(--info))"
                     strokeDasharray="5 5"
                     dot={false}
                     name="Net"
@@ -271,19 +255,19 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
               </ResponsiveContainer>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Histogramme par journal + Classes SYSCOHADA */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Répartition par journal</CardTitle>
-            <CardDescription>
+        <div className="rounded-sm border border-line bg-paper p-5">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Répartition par journal</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               Volume débit + crédit par journal ({byJournal.length} journaux).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="mt-4">
             {byJournal.length === 0 ? (
               <EmptyHint icon={<CircleSlash className="h-4 w-4" />}>
                 Pas de journal renseigné dans le fichier.
@@ -299,96 +283,115 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
                     }))}
                     margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(var(--line))" />
                     <XAxis dataKey="journal" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmtShort(v)} />
                     <Tooltip formatter={(v) => fmtMoney(Number(v), analytics.currency)} />
                     <Legend />
-                    <Bar dataKey="Débit" fill="#16a34a" />
-                    <Bar dataKey="Crédit" fill="#dc2626" />
+                    <Bar dataKey="Débit" fill="oklch(var(--accent))" />
+                    <Bar dataKey="Crédit" fill="oklch(var(--critical))" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <PieIcon className="mr-2 inline h-4 w-4" />
+        <div className="rounded-sm border border-line bg-paper p-5">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">
+              <PieIcon className="mr-2 inline h-4 w-4 text-ink-mute" />
               Classes SYSCOHADA
-            </CardTitle>
-            <CardDescription>Distribution des lignes par 1er digit du compte.</CardDescription>
-          </CardHeader>
-          <CardContent>
+            </h2>
+            <p className="mt-1 text-sm text-ink-mute">
+              Distribution des lignes par 1er digit du compte.
+            </p>
+          </div>
+          <div className="mt-4">
             <ClassPie data={byAccountClass} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </section>
 
       {/* Top comptes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Top 10 comptes par mouvement</CardTitle>
-          <CardDescription>
+      <section className="rounded-sm border border-line bg-paper p-5">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">Top 10 comptes par mouvement</h2>
+          <p className="mt-1 text-sm text-ink-mute">
             Comptes avec le plus grand écart |débit − crédit|.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="mt-4">
           {topAccounts.length === 0 ? (
             <EmptyHint icon={<CircleSlash className="h-4 w-4" />}>
               Aucun compte renseigné dans le fichier.
             </EmptyHint>
           ) : (
-            <div className="overflow-x-auto rounded-md border">
+            <div className="overflow-x-auto rounded-sm border border-line">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                <thead className="bg-sunk">
                   <tr>
-                    <th className="px-3 py-2 text-left">#</th>
-                    <th className="px-3 py-2 text-left">Compte</th>
-                    <th className="px-3 py-2 text-right">Débit</th>
-                    <th className="px-3 py-2 text-right">Crédit</th>
-                    <th className="px-3 py-2 text-right">Mouvement</th>
-                    <th className="px-3 py-2 text-right">Lignes</th>
+                    <th className="px-3 py-2 text-left">
+                      <span className="eyebrow">#</span>
+                    </th>
+                    <th className="px-3 py-2 text-left">
+                      <span className="eyebrow">Compte</span>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <span className="eyebrow">Débit</span>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <span className="eyebrow">Crédit</span>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <span className="eyebrow">Mouvement</span>
+                    </th>
+                    <th className="px-3 py-2 text-right">
+                      <span className="eyebrow">Lignes</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {topAccounts.map((a, i) => (
-                    <tr key={a.account} className="border-t">
-                      <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                      <td className="px-3 py-2 font-mono">{a.account}</td>
-                      <td className="px-3 py-2 text-right text-emerald-700">
-                        {fmtMoney(a.debit, analytics.currency)}
-                      </td>
-                      <td className="px-3 py-2 text-right text-red-700">
-                        {fmtMoney(a.credit, analytics.currency)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold">
-                        {fmtMoney(a.movement, analytics.currency)}
-                      </td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">{a.lines}</td>
-                    </tr>
-                  ))}
+                  {topAccounts.map((a, i) => {
+                    const stripe = i % 2 === 0 ? 'bg-paper' : 'bg-sunk/25';
+                    return (
+                      <tr key={a.account} className={`border-t border-line ${stripe}`}>
+                        <td className="px-3 py-2 text-ink-mute">{i + 1}</td>
+                        <td className="px-3 py-2 font-mono text-ink">{a.account}</td>
+                        <td className="px-3 py-2 text-right font-mono text-accent-ink">
+                          {fmtMoney(a.debit, analytics.currency)}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-critical-ink">
+                          {fmtMoney(a.credit, analytics.currency)}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold text-ink">
+                          {fmtMoney(a.movement, analytics.currency)}
+                        </td>
+                        <td className="px-3 py-2 text-right text-ink-mute">{a.lines}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Qualité — erreurs */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <FileWarning className="mr-2 inline h-4 w-4" />
+      <section className="rounded-sm border border-line bg-paper p-5">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">
+            <FileWarning className="mr-2 inline h-4 w-4 text-ink-mute" />
             Qualité du fichier
-          </CardTitle>
-          <CardDescription>Codes d&apos;erreurs détectés par la validation.</CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h2>
+          <p className="mt-1 text-sm text-ink-mute">
+            Codes d&apos;erreurs détectés par la validation.
+          </p>
+        </div>
+        <div className="mt-4">
           {errorBreakdown.length === 0 ? (
-            <p className="flex items-center gap-2 text-sm text-emerald-700">
+            <p className="flex items-center gap-2 text-sm text-accent-ink">
               <CheckCircle2 className="h-4 w-4" />
               Aucune erreur de validation détectée. Le fichier est prêt pour commit.
             </p>
@@ -396,43 +399,43 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
             <div className="space-y-2">
               {errorBreakdown.map((e) => (
                 <div key={e.code} className="flex items-center gap-3">
-                  <div className="w-56 text-sm">
+                  <div className="w-56 text-sm text-ink">
                     {VALIDATION_ERROR_LABELS[e.code] ?? e.code}
                   </div>
-                  <div className="relative h-5 flex-1 overflow-hidden rounded bg-muted">
+                  <div className="relative h-5 flex-1 overflow-hidden rounded-sm bg-sunk">
                     <div
-                      className="absolute inset-y-0 left-0 bg-destructive/80"
+                      className="absolute inset-y-0 left-0 bg-critical-ink/80"
                       style={{ width: `${Math.min(100, e.sharePercent * 4)}%` }}
                     />
                   </div>
-                  <div className="w-24 text-right text-sm tabular-nums">
+                  <div className="w-24 text-right text-sm tabular-nums text-ink">
                     {fmtInt(e.count)}{' '}
-                    <span className="text-muted-foreground">({e.sharePercent.toFixed(1)}%)</span>
+                    <span className="text-ink-mute">({e.sharePercent.toFixed(1)}%)</span>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Insights synthétique */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Analyse de synthèse</CardTitle>
-          <CardDescription>Lecture rapide automatique du fichier importé.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm">
-            {buildInsights(analytics).map((insight, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="mt-0.5">{insight.icon}</span>
-                <span>{insight.text}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      <section className="rounded-sm border border-line bg-paper p-5">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-display text-xl font-medium text-ink">Analyse de synthèse</h2>
+          <p className="mt-1 text-sm text-ink-mute">
+            Lecture rapide automatique du fichier importé.
+          </p>
+        </div>
+        <ul className="mt-4 space-y-2 text-sm text-ink">
+          {buildInsights(analytics).map((insight, idx) => (
+            <li key={idx} className="flex items-start gap-2">
+              <span className="mt-0.5">{insight.icon}</span>
+              <span>{insight.text}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </>
   );
 }
@@ -450,40 +453,34 @@ interface KpiCardProps {
 }
 
 function KpiCard({ icon, label, value, hint, tone = 'default' }: KpiCardProps) {
-  const toneRing =
+  const toneBorder =
     tone === 'success'
-      ? 'ring-1 ring-emerald-100'
+      ? 'border-accent-soft'
       : tone === 'warning'
-        ? 'ring-1 ring-amber-100'
-        : '';
+        ? 'border-warn-soft'
+        : 'border-line';
   return (
-    <Card className={toneRing}>
-      <CardHeader className="pb-2">
-        <CardDescription className="flex items-center gap-1.5">
-          {icon}
-          {label}
-        </CardDescription>
-        <CardTitle className="text-2xl tabular-nums">{value}</CardTitle>
-      </CardHeader>
-      {hint !== undefined && (
-        <CardContent className="pt-0">
-          <p className="text-xs text-muted-foreground">{hint}</p>
-        </CardContent>
-      )}
-    </Card>
+    <div className={`rounded-sm border bg-paper p-5 ${toneBorder}`}>
+      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-mute">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-2 font-display text-2xl font-medium tabular-nums text-ink">{value}</div>
+      {hint !== undefined && <p className="mt-1 text-xs text-ink-mute">{hint}</p>}
+    </div>
   );
 }
 
 const CLASS_COLORS = [
-  '#2563eb', // blue
-  '#16a34a', // green
-  '#f59e0b', // amber
-  '#dc2626', // red
-  '#7c3aed', // violet
-  '#0ea5e9', // sky
-  '#ec4899', // pink
-  '#65a30d', // lime
-  '#94a3b8', // slate (autre)
+  'oklch(var(--info))',
+  'oklch(var(--accent))',
+  'oklch(var(--warn))',
+  'oklch(var(--critical))',
+  'oklch(52% 0.16 295)', // violet
+  'oklch(60% 0.14 220)', // sky
+  'oklch(58% 0.18 350)', // pink
+  'oklch(62% 0.15 125)', // lime
+  'oklch(var(--ink-mute))', // neutral / autre
 ];
 
 interface ClassPieProps {
@@ -545,7 +542,7 @@ function EmptyHint({
   readonly children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/30 px-4 py-6 text-sm text-muted-foreground">
+    <div className="flex items-center gap-2 rounded-sm border border-dashed border-line bg-sunk/30 px-4 py-6 text-sm text-ink-mute">
       {icon}
       <span>{children}</span>
     </div>
@@ -562,19 +559,19 @@ function buildInsights(a: ImportAnalytics): Array<{ icon: React.ReactNode; text:
 
   // Volumétrie
   out.push({
-    icon: <BookOpen className="h-4 w-4 text-muted-foreground" />,
+    icon: <BookOpen className="h-4 w-4 text-ink-mute" />,
     text: `${fmtInt(kpis.totalLines)} ligne(s) projetée(s) sur ${kpis.distinctJournals} journal/journaux et ${kpis.distinctAccounts} compte(s).`,
   });
 
   // Équilibre
   if (kpis.isBalanced) {
     out.push({
-      icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+      icon: <CheckCircle2 className="h-4 w-4 text-accent-ink" />,
       text: `Le fichier est équilibré (débit = crédit = ${fmtMoney(kpis.totalDebit, a.currency)}).`,
     });
   } else {
     out.push({
-      icon: <Scale className="h-4 w-4 text-amber-600" />,
+      icon: <Scale className="h-4 w-4 text-warn-ink" />,
       text: `Déséquilibre de ${fmtMoney(kpis.netBalance, a.currency)} entre débit et crédit — l'écriture comptable ne sera pas acceptée telle quelle.`,
     });
   }
@@ -583,7 +580,7 @@ function buildInsights(a: ImportAnalytics): Array<{ icon: React.ReactNode; text:
   if (byJournal.length > 0) {
     const top = byJournal[0]!;
     out.push({
-      icon: <TrendingUp className="h-4 w-4 text-blue-600" />,
+      icon: <TrendingUp className="h-4 w-4 text-info-ink" />,
       text: `Journal le plus actif : "${top.journal}" (${fmtInt(top.lines)} ligne(s), ${fmtMoney(top.total, a.currency)} de volume).`,
     });
   }
@@ -592,7 +589,7 @@ function buildInsights(a: ImportAnalytics): Array<{ icon: React.ReactNode; text:
   if (topAccounts.length > 0) {
     const top = topAccounts[0]!;
     out.push({
-      icon: <TrendingUp className="h-4 w-4 text-blue-600" />,
+      icon: <TrendingUp className="h-4 w-4 text-info-ink" />,
       text: `Compte avec le mouvement le plus fort : ${top.account} → ${fmtMoney(top.movement, a.currency)}.`,
     });
   }
@@ -601,7 +598,7 @@ function buildInsights(a: ImportAnalytics): Array<{ icon: React.ReactNode; text:
   const dominantClass = [...byAccountClass].sort((x, y) => y.lines - x.lines)[0];
   if (dominantClass !== undefined && dominantClass.lines > 0) {
     out.push({
-      icon: <PieIcon className="h-4 w-4 text-violet-600" />,
+      icon: <PieIcon className="h-4 w-4 text-ink-soft" />,
       text: `${dominantClass.classLabel} concentre ${fmtInt(dominantClass.lines)} ligne(s).`,
     });
   }
@@ -609,13 +606,13 @@ function buildInsights(a: ImportAnalytics): Array<{ icon: React.ReactNode; text:
   // Erreurs
   if (errorBreakdown.length === 0) {
     out.push({
-      icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+      icon: <CheckCircle2 className="h-4 w-4 text-accent-ink" />,
       text: `Aucune erreur de validation — le fichier est prêt pour commit définitif au journal.`,
     });
   } else {
     const dominantErr = errorBreakdown[0]!;
     out.push({
-      icon: <AlertTriangle className="h-4 w-4 text-destructive" />,
+      icon: <AlertTriangle className="h-4 w-4 text-critical-ink" />,
       text: `Erreur la plus fréquente : "${VALIDATION_ERROR_LABELS[dominantErr.code] ?? dominantErr.code}" sur ${fmtInt(dominantErr.count)} ligne(s) (${dominantErr.sharePercent.toFixed(1)}%).`,
     });
   }
@@ -623,7 +620,7 @@ function buildInsights(a: ImportAnalytics): Array<{ icon: React.ReactNode; text:
   // Période
   if (kpis.periodStart !== null && kpis.periodEnd !== null) {
     out.push({
-      icon: <TrendingDown className="h-4 w-4 text-muted-foreground" />,
+      icon: <TrendingDown className="h-4 w-4 text-ink-mute" />,
       text: `Période couverte : du ${kpis.periodStart} au ${kpis.periodEnd}.`,
     });
   }

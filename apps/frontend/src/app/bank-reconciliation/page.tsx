@@ -5,15 +5,7 @@ import { Banknote, FileUp, Layers, Link2, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -138,80 +130,126 @@ export default function BankReconciliationPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="animate-page-in space-y-6">
+        <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Rapprochement bancaire</h1>
-            <p className="text-sm text-muted-foreground">
-              Comptes bancaires + import CSV des relevés + matching auto/manuel des lignes.
+            <p className="eyebrow mb-2">Trésorerie</p>
+            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+              Rapprochement bancaire
+            </h1>
+            <p className="mt-2 text-sm text-ink-mute">
+              Comptes bancaires, import CSV des relevés, et matching auto/manuel des lignes.
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => setCreatingAccount((v) => !v)} variant="outline">
-              {creatingAccount ? 'Annuler' : <><Plus className="mr-2 h-4 w-4" /> Compte bancaire</>}
+            <Button
+              onClick={() => setCreatingAccount((v) => !v)}
+              variant="outline"
+              className="press"
+            >
+              {creatingAccount ? (
+                'Annuler'
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" /> Compte bancaire
+                </>
+              )}
             </Button>
             {activeAccountId !== null && (
-              <Button onClick={() => setImporting((v) => !v)}>
-                {importing ? 'Annuler' : <><FileUp className="mr-2 h-4 w-4" /> Importer un relevé</>}
+              <Button onClick={() => setImporting((v) => !v)} className="press">
+                {importing ? (
+                  'Annuler'
+                ) : (
+                  <>
+                    <FileUp className="mr-2 h-4 w-4" /> Importer un relevé
+                  </>
+                )}
               </Button>
             )}
           </div>
-        </div>
+        </header>
 
-        {creatingAccount && <CreateAccountForm orgId={orgId} onSuccess={() => { setCreatingAccount(false); void qc.invalidateQueries({ queryKey: ['bank-accounts'] }); }} />}
+        {creatingAccount && (
+          <CreateAccountForm
+            orgId={orgId}
+            onSuccess={() => {
+              setCreatingAccount(false);
+              void qc.invalidateQueries({ queryKey: ['bank-accounts'] });
+            }}
+          />
+        )}
 
         {importing && activeAccountId && (
           <ImportStatementForm
             orgId={orgId}
             bankAccountId={activeAccountId}
-            onSuccess={() => { setImporting(false); void qc.invalidateQueries({ queryKey: ['bank-proposals'] }); }}
+            onSuccess={() => {
+              setImporting(false);
+              void qc.invalidateQueries({ queryKey: ['bank-proposals'] });
+            }}
           />
         )}
 
         <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Comptes bancaires</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+          {/* Accounts list */}
+          <section className="rounded-sm border border-line bg-paper p-5">
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">Comptes bancaires</h2>
+            </div>
+            <div className="mt-3 space-y-2">
               {accountsQuery.isLoading ? (
-                <Loader2 className="inline h-4 w-4 animate-spin" />
+                <Loader2 className="inline h-4 w-4 animate-spin text-ink-mute" />
               ) : accountsQuery.data?.length === 0 ? (
-                <div className="text-sm text-muted-foreground py-4 text-center">Aucun compte. Créez-en un.</div>
+                <div className="py-4 text-center text-sm text-ink-mute">
+                  Aucun compte. Créez-en un.
+                </div>
               ) : (
-                accountsQuery.data?.map((acc) => (
-                  <button
-                    key={acc.id}
-                    onClick={() => setActiveAccountId(acc.id)}
-                    className={`w-full text-left p-3 rounded-md border transition-colors hover:bg-accent ${activeAccountId === acc.id ? 'border-primary bg-accent' : ''}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4 text-muted-foreground" />
-                      <div className="min-w-0">
-                        <div className="font-medium text-sm">{acc.code}</div>
-                        <div className="text-xs text-muted-foreground truncate">{acc.label} · {acc.bankName}</div>
+                accountsQuery.data?.map((acc) => {
+                  const isActive = activeAccountId === acc.id;
+                  return (
+                    <button
+                      key={acc.id}
+                      onClick={() => setActiveAccountId(acc.id)}
+                      className={`press w-full rounded-sm border p-3 text-left transition-colors ${
+                        isActive
+                          ? 'border-accent bg-accent-soft'
+                          : 'border-line bg-paper hover:bg-sunk/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-ink-mute" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-ink">{acc.code}</div>
+                          <div className="truncate text-xs text-ink-mute">
+                            {acc.label} · {acc.bankName}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  );
+                })
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Lignes de relevé à rapprocher</CardTitle>
-              <CardDescription>
-                Tri par score Jaro-Winkler (libellé) + écart date (≤ 5 j). Mode multi-lignes (1:N) optionnel.
-              </CardDescription>
+          {/* Proposals */}
+          <section className="rounded-sm border border-line bg-paper p-5">
+            <div className="border-b border-line pb-3">
+              <h2 className="font-display text-xl font-medium text-ink">
+                Lignes de relevé à rapprocher
+              </h2>
+              <p className="mt-1 text-sm text-ink-mute">
+                Tri par score Jaro-Winkler (libellé) + écart date (≤ 5 j). Mode multi-lignes (1:N)
+                optionnel.
+              </p>
               {activeAccountId !== null && (
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ink-soft">
+                  <label className="flex cursor-pointer items-center gap-1.5">
                     <input
                       type="checkbox"
                       checked={multiLineEnabled}
                       onChange={(e) => setMultiLineEnabled(e.target.checked)}
-                      className="h-3.5 w-3.5"
+                      className="h-3.5 w-3.5 accent-accent"
                     />
                     <Layers className="h-3.5 w-3.5" />
                     Multi-lignes (1:N)
@@ -229,72 +267,105 @@ export default function BankReconciliationPage() {
                     />
                   </label>
                   {activeAccount && activeAccount.currency !== 'XOF' && (
-                    <Badge variant="outline">
+                    <span className="inline-flex items-center rounded-sm border border-line-strong bg-info-soft px-2 py-0.5 text-2xs uppercase tracking-wide text-info-ink">
                       Devise compte : {activeAccount.currency} (FX requis)
-                    </Badge>
+                    </span>
                   )}
                 </div>
               )}
-            </CardHeader>
-            <CardContent>
+            </div>
+
+            <div className="mt-4">
               {!activeAccountId ? (
-                <div className="text-sm text-muted-foreground py-8 text-center">Sélectionnez un compte.</div>
+                <div className="py-8 text-center text-sm text-ink-mute">
+                  Sélectionnez un compte.
+                </div>
               ) : proposalsQuery.isLoading ? (
-                <div className="py-8 text-center"><Loader2 className="inline h-4 w-4 animate-spin" /></div>
+                <div className="py-8 text-center">
+                  <Loader2 className="inline h-4 w-4 animate-spin text-ink-mute" />
+                </div>
               ) : proposalsQuery.data?.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground text-sm">Aucune ligne en attente.</div>
+                <div className="py-8 text-center text-sm text-ink-mute">
+                  Aucune ligne en attente.
+                </div>
               ) : (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                <div className="max-h-[600px] space-y-3 overflow-y-auto">
                   {proposalsQuery.data?.map((p) => (
-                    <div key={p.statementLineId} className="border rounded-md p-3 space-y-2">
+                    <div
+                      key={p.statementLineId}
+                      className="space-y-2 rounded-sm border border-line bg-paper p-3"
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{p.description}</div>
-                          <div className="text-xs text-muted-foreground">{p.transactionDate}</div>
+                          <div className="truncate text-sm font-medium text-ink">
+                            {p.description}
+                          </div>
+                          <div className="text-xs text-ink-mute">{p.transactionDate}</div>
                         </div>
-                        <div className={`text-sm font-mono ${p.direction === 'credit' ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {p.direction === 'credit' ? '+' : '-'}{new Intl.NumberFormat('fr-FR').format(Number(p.amount))}
+                        <div
+                          className={`font-mono text-sm ${
+                            p.direction === 'credit' ? 'text-accent-ink' : 'text-critical-ink'
+                          }`}
+                        >
+                          {p.direction === 'credit' ? '+' : '-'}
+                          {new Intl.NumberFormat('fr-FR').format(Number(p.amount))}
                         </div>
                       </div>
                       {p.proposals.length === 0 ? (
-                        <div className="text-xs text-muted-foreground italic">Aucune écriture candidate.</div>
+                        <div className="text-xs italic text-ink-mute">
+                          Aucune écriture candidate.
+                        </div>
                       ) : (
                         <div className="space-y-1">
                           {p.proposals.slice(0, 6).map((c) => {
                             const selected = selectedByLine[p.statementLineId] ?? [];
                             const isChecked = selected.includes(c.journalEntryLineId);
                             return (
-                              <div key={c.journalEntryLineId} className="flex items-center justify-between gap-2 bg-muted/40 rounded px-2 py-1.5 text-xs">
+                              <div
+                                key={c.journalEntryLineId}
+                                className="flex items-center justify-between gap-2 rounded-sm bg-sunk/40 px-2 py-1.5 text-xs"
+                              >
                                 {multiLineEnabled && (
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    onChange={() => toggleCandidate(p.statementLineId, c.journalEntryLineId)}
-                                    className="h-3.5 w-3.5"
+                                    onChange={() =>
+                                      toggleCandidate(p.statementLineId, c.journalEntryLineId)
+                                    }
+                                    className="h-3.5 w-3.5 accent-accent"
                                   />
                                 )}
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate">
-                                    <Badge className="mr-1" variant="outline">{c.journalCode}/{c.entryNumber}</Badge>
+                                  <div className="truncate text-ink">
+                                    <span className="mr-1 inline-flex items-center rounded-sm border border-line-strong bg-paper px-1.5 py-0.5 font-mono text-2xs text-ink-soft">
+                                      {c.journalCode}/{c.entryNumber}
+                                    </span>
                                     {c.description}
                                   </div>
-                                  <div className="text-muted-foreground">{c.entryDate} · score {(c.score * 100).toFixed(0)}%</div>
+                                  <div className="text-ink-mute">
+                                    {c.entryDate} · score {(c.score * 100).toFixed(0)}%
+                                  </div>
                                 </div>
                                 {!multiLineEnabled && (
                                   <Button
                                     size="sm"
                                     variant="outline"
+                                    className="press"
                                     onClick={() => {
-                                      void matchMut.mutateAsync({
-                                        statementLineId: p.statementLineId,
-                                        journalEntryLineIds: [c.journalEntryLineId],
-                                      }).then((res) => {
-                                        if (res?.matchGroupId) {
-                                          // eslint-disable-next-line no-console
-                                          console.info('Match group:', res.matchGroupId.slice(0, 6));
-                                        }
-                                        return qc.invalidateQueries({ queryKey: ['bank-proposals'] });
-                                      });
+                                      void matchMut
+                                        .mutateAsync({
+                                          statementLineId: p.statementLineId,
+                                          journalEntryLineIds: [c.journalEntryLineId],
+                                        })
+                                        .then((res) => {
+                                          if (res?.matchGroupId) {
+                                            // eslint-disable-next-line no-console
+                                            console.info('Match group:', res.matchGroupId.slice(0, 6));
+                                          }
+                                          return qc.invalidateQueries({
+                                            queryKey: ['bank-proposals'],
+                                          });
+                                        });
                                     }}
                                     disabled={matchMut.isPending}
                                   >
@@ -304,41 +375,56 @@ export default function BankReconciliationPage() {
                               </div>
                             );
                           })}
-                          {multiLineEnabled && (selectedByLine[p.statementLineId]?.length ?? 0) > 0 && (
-                            <div className="flex items-center justify-between pt-1">
-                              <div className="text-xs text-muted-foreground">
-                                {selectedByLine[p.statementLineId]?.length} ligne(s) sélectionnée(s)
+                          {multiLineEnabled &&
+                            (selectedByLine[p.statementLineId]?.length ?? 0) > 0 && (
+                              <div className="flex items-center justify-between pt-1">
+                                <div className="text-xs text-ink-mute">
+                                  {selectedByLine[p.statementLineId]?.length} ligne(s)
+                                  sélectionnée(s)
+                                </div>
+                                <Button
+                                  size="sm"
+                                  className="press"
+                                  onClick={() => {
+                                    const ids = selectedByLine[p.statementLineId] ?? [];
+                                    void matchMut
+                                      .mutateAsync({
+                                        statementLineId: p.statementLineId,
+                                        journalEntryLineIds: ids,
+                                      })
+                                      .then((res) => {
+                                        if (res?.matchGroupId) {
+                                          // eslint-disable-next-line no-console
+                                          console.info(
+                                            'Match group:',
+                                            res.matchGroupId.slice(0, 6),
+                                            'FX:',
+                                            res.fxRateApplied ?? 'n/a',
+                                          );
+                                        }
+                                        setSelectedByLine((prev) => ({
+                                          ...prev,
+                                          [p.statementLineId]: [],
+                                        }));
+                                        return qc.invalidateQueries({
+                                          queryKey: ['bank-proposals'],
+                                        });
+                                      });
+                                  }}
+                                  disabled={matchMut.isPending}
+                                >
+                                  <Link2 className="mr-1 h-3.5 w-3.5" /> Rapprocher (groupe)
+                                </Button>
                               </div>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  const ids = selectedByLine[p.statementLineId] ?? [];
-                                  void matchMut.mutateAsync({
-                                    statementLineId: p.statementLineId,
-                                    journalEntryLineIds: ids,
-                                  }).then((res) => {
-                                    if (res?.matchGroupId) {
-                                      // eslint-disable-next-line no-console
-                                      console.info('Match group:', res.matchGroupId.slice(0, 6), 'FX:', res.fxRateApplied ?? 'n/a');
-                                    }
-                                    setSelectedByLine((prev) => ({ ...prev, [p.statementLineId]: [] }));
-                                    return qc.invalidateQueries({ queryKey: ['bank-proposals'] });
-                                  });
-                                }}
-                                disabled={matchMut.isPending}
-                              >
-                                <Link2 className="mr-1 h-3.5 w-3.5" /> Rapprocher (groupe)
-                              </Button>
-                            </div>
-                          )}
+                            )}
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </div>
       </div>
     </AppShell>
@@ -354,7 +440,11 @@ function CreateAccountForm({ orgId, onSuccess }: { orgId: string; onSuccess: () 
 
   const mut = useApiMutation(async () => {
     return api.post(`/organizations/${orgId}/bank-accounts`, {
-      code, label, bankName, chartAccountId, currency,
+      code,
+      label,
+      bankName,
+      chartAccountId,
+      currency,
     });
   });
 
@@ -365,24 +455,85 @@ function CreateAccountForm({ orgId, onSuccess }: { orgId: string; onSuccess: () 
   }
 
   return (
-    <Card>
-      <CardHeader><CardTitle className="text-base">Nouveau compte bancaire</CardTitle></CardHeader>
-      <CardContent>
-        <form onSubmit={handle} className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1.5"><Label htmlFor="b-code">Code</Label><Input id="b-code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="BNQ-001" required /></div>
-          <div className="space-y-1.5"><Label htmlFor="b-label">Libellé</Label><Input id="b-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Compte courant principal" required /></div>
-          <div className="space-y-1.5"><Label htmlFor="b-bank">Banque</Label><Input id="b-bank" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="BICICI" required /></div>
-          <div className="space-y-1.5"><Label htmlFor="b-cur">Devise</Label><Input id="b-cur" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} required /></div>
-          <div className="space-y-1.5 md:col-span-2"><Label htmlFor="b-cha">ID compte chart-of-accounts (521x)</Label><Input id="b-cha" value={chartAccountId} onChange={(e) => setChartAccountId(e.target.value)} placeholder="UUID" required /></div>
-          {mut.isError && <div className="md:col-span-2"><FormError error={mut.error} /></div>}
-          <div className="md:col-span-2"><Button type="submit" disabled={mut.isPending}>{mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Créer</Button></div>
-        </form>
-      </CardContent>
-    </Card>
+    <section className="rounded-sm border border-line bg-paper p-5">
+      <div className="border-b border-line pb-3">
+        <h2 className="font-display text-xl font-medium text-ink">Nouveau compte bancaire</h2>
+      </div>
+      <form onSubmit={handle} className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="b-code">Code</Label>
+          <Input
+            id="b-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="BNQ-001"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="b-label">Libellé</Label>
+          <Input
+            id="b-label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Compte courant principal"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="b-bank">Banque</Label>
+          <Input
+            id="b-bank"
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
+            placeholder="BICICI"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="b-cur">Devise</Label>
+          <Input
+            id="b-cur"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            maxLength={3}
+            required
+          />
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="b-cha">ID compte chart-of-accounts (521x)</Label>
+          <Input
+            id="b-cha"
+            value={chartAccountId}
+            onChange={(e) => setChartAccountId(e.target.value)}
+            placeholder="UUID"
+            required
+          />
+        </div>
+        {mut.isError && (
+          <div className="md:col-span-2">
+            <FormError error={mut.error} />
+          </div>
+        )}
+        <div className="md:col-span-2">
+          <Button type="submit" disabled={mut.isPending} className="press">
+            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Créer
+          </Button>
+        </div>
+      </form>
+    </section>
   );
 }
 
-function ImportStatementForm({ orgId, bankAccountId, onSuccess }: { orgId: string; bankAccountId: string; onSuccess: () => void }) {
+function ImportStatementForm({
+  orgId,
+  bankAccountId,
+  onSuccess,
+}: {
+  orgId: string;
+  bankAccountId: string;
+  onSuccess: () => void;
+}) {
   const [fileName, setFileName] = useState('');
   const [fileContent, setFileContent] = useState('');
   const [periodStart, setPeriodStart] = useState('');
@@ -418,30 +569,74 @@ function ImportStatementForm({ orgId, bankAccountId, onSuccess }: { orgId: strin
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Importer un relevé CSV</CardTitle>
-        <CardDescription>Wave 1 : encodage automatique en base64. Format attendu : date,libellé,montant.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handle} className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1.5 md:col-span-2">
-            <Label htmlFor="s-file">Fichier CSV</Label>
-            <Input id="s-file" type="file" accept=".csv,text/csv" onChange={handleFile} required />
-          </div>
-          <div className="space-y-1.5"><Label htmlFor="s-start">Période début</Label><Input id="s-start" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required /></div>
-          <div className="space-y-1.5"><Label htmlFor="s-end">Période fin</Label><Input id="s-end" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required /></div>
-          <div className="space-y-1.5"><Label htmlFor="s-open">Solde d'ouverture</Label><Input id="s-open" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} placeholder="15000000.00" required /></div>
-          <div className="space-y-1.5"><Label htmlFor="s-close">Solde de clôture</Label><Input id="s-close" value={closingBalance} onChange={(e) => setClosingBalance(e.target.value)} placeholder="12500000.00" required /></div>
-          {mut.isError && <div className="md:col-span-2"><FormError error={mut.error} /></div>}
+    <section className="rounded-sm border border-line bg-paper p-5">
+      <div className="border-b border-line pb-3">
+        <h2 className="font-display text-xl font-medium text-ink">Importer un relevé CSV</h2>
+        <p className="mt-1 text-sm text-ink-mute">
+          Wave 1 : encodage automatique en base64. Format attendu : date, libellé, montant.
+        </p>
+      </div>
+      <form onSubmit={handle} className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="s-file">Fichier CSV</Label>
+          <Input id="s-file" type="file" accept=".csv,text/csv" onChange={handleFile} required />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="s-start">Période début</Label>
+          <Input
+            id="s-start"
+            type="date"
+            value={periodStart}
+            onChange={(e) => setPeriodStart(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="s-end">Période fin</Label>
+          <Input
+            id="s-end"
+            type="date"
+            value={periodEnd}
+            onChange={(e) => setPeriodEnd(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="s-open">Solde d&apos;ouverture</Label>
+          <Input
+            id="s-open"
+            value={openingBalance}
+            onChange={(e) => setOpeningBalance(e.target.value)}
+            placeholder="15000000.00"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="s-close">Solde de clôture</Label>
+          <Input
+            id="s-close"
+            value={closingBalance}
+            onChange={(e) => setClosingBalance(e.target.value)}
+            placeholder="12500000.00"
+            required
+          />
+        </div>
+        {mut.isError && (
           <div className="md:col-span-2">
-            <Button type="submit" disabled={mut.isPending || fileContent.length === 0}>
-              {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Importer
-            </Button>
+            <FormError error={mut.error} />
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        )}
+        <div className="md:col-span-2">
+          <Button
+            type="submit"
+            disabled={mut.isPending || fileContent.length === 0}
+            className="press"
+          >
+            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Importer
+          </Button>
+        </div>
+      </form>
+    </section>
   );
 }

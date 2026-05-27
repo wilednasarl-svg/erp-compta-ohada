@@ -5,15 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -74,78 +66,75 @@ export default function AuditLogsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-8">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Audit logs</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="eyebrow mb-2">Compliance</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Audit logs</h1>
+          <p className="mt-2 text-sm text-ink-mute">
             Journal append-only de toutes les actions sensibles : auth, écritures,
             documents, transformations. Conserve `before` / `after` pour reconstituer la
             diff exacte sans accès à la DB.
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Filtres</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="space-y-1">
-                <Label htmlFor="f-mod">Module</Label>
-                <Input
-                  id="f-mod"
-                  value={filterModule}
-                  onChange={(e) => {
-                    setFilterModule(e.target.value);
-                    setCursor(null);
-                  }}
-                  placeholder="auth, journals, imports…"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="f-act">Action</Label>
-                <Input
-                  id="f-act"
-                  value={filterAction}
-                  onChange={(e) => {
-                    setFilterAction(e.target.value);
-                    setCursor(null);
-                  }}
-                  placeholder="entry_created, login_failed…"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="f-eid">Entity ID</Label>
-                <Input
-                  id="f-eid"
-                  value={filterEntityId}
-                  onChange={(e) => {
-                    setFilterEntityId(e.target.value);
-                    setCursor(null);
-                  }}
-                  placeholder="UUID exact"
-                />
-              </div>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Filtres</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="space-y-1">
+              <Label htmlFor="f-mod">Module</Label>
+              <Input
+                id="f-mod"
+                value={filterModule}
+                onChange={(e) => {
+                  setFilterModule(e.target.value);
+                  setCursor(null);
+                }}
+                placeholder="auth, journals, imports…"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-1">
+              <Label htmlFor="f-act">Action</Label>
+              <Input
+                id="f-act"
+                value={filterAction}
+                onChange={(e) => {
+                  setFilterAction(e.target.value);
+                  setCursor(null);
+                }}
+                placeholder="entry_created, login_failed…"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="f-eid">Entity ID</Label>
+              <Input
+                id="f-eid"
+                value={filterEntityId}
+                onChange={(e) => {
+                  setFilterEntityId(e.target.value);
+                  setCursor(null);
+                }}
+                placeholder="UUID exact"
+              />
+            </div>
+          </div>
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Événements récents</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Événements récents</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               Tri antéchronologique. Cliquer une ligne pour voir le payload before/after.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="space-y-3">
             {logsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
+              <p className="text-sm text-ink-mute">Chargement…</p>
             ) : (logsQuery.data?.logs ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucun événement ne correspond aux filtres.
-              </p>
+              <p className="text-sm text-ink-mute">Aucun événement ne correspond aux filtres.</p>
             ) : (
-              <ul className="divide-y rounded-md border">
+              <ul className="divide-y divide-line rounded-sm border border-line bg-paper">
                 {(logsQuery.data?.logs ?? []).map((log) => (
                   <LogRow key={log.id} log={log} />
                 ))}
@@ -154,20 +143,27 @@ export default function AuditLogsPage() {
             <FormError error={logsQuery.error} className="mt-3" />
 
             <div className="mt-3 flex items-center justify-between text-sm">
-              <Button type="button" variant="outline" disabled={cursor === null} onClick={() => setCursor(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="press"
+                disabled={cursor === null}
+                onClick={() => setCursor(null)}
+              >
                 Page 1
               </Button>
               <Button
                 type="button"
                 variant="outline"
+                className="press"
                 disabled={!logsQuery.data?.nextCursor}
                 onClick={() => setCursor(logsQuery.data?.nextCursor ?? null)}
               >
                 Suivant
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </AppShell>
   );
@@ -185,7 +181,7 @@ function LogRow({ log }: { log: AuditLogRow }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-3 px-3 py-2 text-left text-sm hover:bg-muted/60"
+        className="flex w-full items-start gap-3 px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-sunk/50"
       >
         <span className="mt-0.5">
           {hasPayload ? (
@@ -200,16 +196,18 @@ function LogRow({ log }: { log: AuditLogRow }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{log.module}</Badge>
-            <span className="font-medium">{log.action}</span>
+            <span className="inline-block rounded-xs bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
+              {log.module}
+            </span>
+            <span className="font-medium text-ink">{log.action}</span>
             {log.entityType && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-ink-mute">
                 {log.entityType}
                 {log.entityId ? `:${log.entityId.slice(0, 8)}` : ''}
               </span>
             )}
           </div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
+          <div className="mt-0.5 text-xs text-ink-mute">
             {new Date(log.createdAt).toLocaleString('fr-FR')}
             {log.userId ? ` · user ${log.userId.slice(0, 8)}` : ''}
             {log.ipAddress ? ` · ${log.ipAddress}` : ''}
@@ -217,7 +215,7 @@ function LogRow({ log }: { log: AuditLogRow }) {
         </div>
       </button>
       {open && hasPayload && (
-        <div className="space-y-2 border-t bg-muted/20 px-7 py-3 text-xs">
+        <div className="space-y-2 border-t border-line bg-sunk/20 px-7 py-3 text-xs">
           {log.before && Object.keys(log.before).length > 0 && (
             <Block title="before" payload={log.before} />
           )}
@@ -236,8 +234,8 @@ function LogRow({ log }: { log: AuditLogRow }) {
 function Block({ title, payload }: { title: string; payload: Record<string, unknown> }) {
   return (
     <div>
-      <div className="font-mono text-[10px] uppercase text-muted-foreground">{title}</div>
-      <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-[11px]">
+      <div className="font-mono text-[10px] uppercase text-ink-mute">{title}</div>
+      <pre className="overflow-x-auto rounded-sm border border-line bg-paper p-2 font-mono text-[11px] text-ink">
         {JSON.stringify(payload, null, 2)}
       </pre>
     </div>

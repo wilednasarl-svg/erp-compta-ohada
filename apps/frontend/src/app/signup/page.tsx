@@ -7,14 +7,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,77 +44,73 @@ export default function SignupPage() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     await signup.mutateAsync(values);
-    // Spec flow: signup does NOT auto-login (no token issued). Bounce
-    // to login with the email prefilled.
     router.push(`/login?email=${encodeURIComponent(values.email)}`);
   });
 
   return (
-    <main className="container flex min-h-screen items-center justify-center py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Créer un compte</CardTitle>
-          <CardDescription>
-            Configurez votre compte ERP Compta. Vous créerez ensuite votre première organisation.
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={onSubmit} noValidate>
-          <CardContent className="space-y-4">
-            <FormError error={signup.error} />
+    <main className="flex min-h-screen items-center justify-center bg-canvas px-4 py-12">
+      <div className="w-full max-w-md animate-page-in space-y-8 rounded-sm border border-line bg-paper p-8">
+        <header>
+          <p className="eyebrow mb-2">ERP Compta OHADA</p>
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
+            Créer un compte
+          </h1>
+          <p className="mt-2 text-sm text-ink-mute">
+            Configurez votre compte. Vous créerez votre première organisation à l'étape suivante.
+          </p>
+        </header>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" {...form.register('email')} />
-              {form.formState.errors.email !== undefined ? (
-                <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
-              ) : null}
-            </div>
+        <form onSubmit={onSubmit} noValidate className="space-y-5">
+          <FormError error={signup.error} />
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                {...form.register('password')}
-              />
-              {form.formState.errors.password !== undefined ? (
-                <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Minimum 12 caractères. Mélangez chiffres, lettres et symboles.
-                </p>
-              )}
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" autoComplete="email" {...form.register('email')} />
+            {form.formState.errors.email !== undefined && (
+              <p className="text-xs text-critical-ink">{form.formState.errors.email.message}</p>
+            )}
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">Prénom</Label>
-                <Input
-                  id="firstName"
-                  autoComplete="given-name"
-                  {...form.register('firstName')}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Nom</Label>
-                <Input id="lastName" autoComplete="family-name" {...form.register('lastName')} />
-              </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Mot de passe</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              {...form.register('password')}
+            />
+            {form.formState.errors.password !== undefined ? (
+              <p className="text-xs text-critical-ink">{form.formState.errors.password.message}</p>
+            ) : (
+              <p className="text-xs text-ink-mute">
+                Minimum 12 caractères. Mélangez chiffres, lettres et symboles.
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="firstName">Prénom</Label>
+              <Input id="firstName" autoComplete="given-name" {...form.register('firstName')} />
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3">
-            <Button type="submit" className="w-full" disabled={signup.isPending}>
-              {signup.isPending ? 'Création…' : 'Créer le compte'}
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Déjà un compte ?{' '}
-              <Link href="/login" className="font-medium text-foreground hover:underline">
-                Se connecter
-              </Link>
-            </p>
-          </CardFooter>
+            <div className="space-y-1.5">
+              <Label htmlFor="lastName">Nom</Label>
+              <Input id="lastName" autoComplete="family-name" {...form.register('lastName')} />
+            </div>
+          </div>
+
+          <Button type="submit" className="press w-full" disabled={signup.isPending}>
+            {signup.isPending ? 'Création…' : 'Créer le compte'}
+          </Button>
+
+          <p className="text-center text-sm text-ink-mute">
+            Déjà un compte ?{' '}
+            <Link href="/login" className="font-medium text-ink hover:underline">
+              Se connecter
+            </Link>
+          </p>
         </form>
-      </Card>
+      </div>
     </main>
   );
 }

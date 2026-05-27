@@ -5,15 +5,7 @@ import { Download, Loader2, Paperclip, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +34,14 @@ interface ListResponse {
   readonly page: number;
   readonly pageSize: number;
 }
+
+const OCR_TONE: Record<OcrStatus, string> = {
+  pending: 'bg-sunk/60 text-ink-soft',
+  processing: 'bg-info/15 text-info-ink',
+  completed: 'bg-accent/15 text-accent-ink',
+  failed: 'bg-critical/15 text-critical-ink',
+  skipped: 'bg-sunk/60 text-ink-mute',
+};
 
 /**
  * `/documents` — pièces comptables (factures, contrats, justificatifs).
@@ -117,24 +117,25 @@ export default function DocumentsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="animate-page-in space-y-8">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">Documents</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="eyebrow mb-2">Pièces justificatives</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Documents</h1>
+          <p className="mt-2 max-w-2xl text-sm text-ink-mute">
             Pièces comptables : factures, contrats, justificatifs. Stockage hash-addressé
             avec dédoublonnage SHA-256 ; OCR (Module 10 vague 2) extraira les champs
             automatiquement.
           </p>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Téléverser un document</CardTitle>
-            <CardDescription>
-              Tags séparés par virgules (ex. <code>facture, fournisseur, mars-2026</code>).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Téléverser un document</h2>
+            <p className="mt-1 text-sm text-ink-mute">
+              Tags séparés par virgules (ex. <code className="rounded-sm bg-sunk px-1 py-0.5 text-xs text-ink-soft">facture, fournisseur, mars-2026</code>).
+            </p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-5">
             <form
               className="space-y-3"
               onSubmit={(e) => {
@@ -149,7 +150,7 @@ export default function DocumentsPage() {
                     id="file"
                     type="file"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    className="cursor-pointer file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1 file:text-sm"
+                    className="cursor-pointer file:mr-3 file:rounded-sm file:border file:border-line-strong file:bg-paper file:px-3 file:py-1 file:text-sm"
                     required
                   />
                 </div>
@@ -173,7 +174,7 @@ export default function DocumentsPage() {
                   maxLength={2000}
                 />
               </div>
-              <Button type="submit" disabled={!file || upload.isPending}>
+              <Button type="submit" disabled={!file || upload.isPending} className="press">
                 {upload.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -183,83 +184,84 @@ export default function DocumentsPage() {
               </Button>
               <FormError error={upload.error} />
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Bibliothèque</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-display text-xl font-medium text-ink">Bibliothèque</h2>
+            <p className="mt-1 text-sm text-ink-mute">
               {docsQuery.data?.total ?? 0} document(s) — page {page}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 flex gap-2">
-              <Input
-                value={filterTag}
-                onChange={(e) => {
-                  setFilterTag(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Filtrer par tag…"
-                className="max-w-xs"
-              />
-            </div>
+            </p>
+          </div>
 
-            {docsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
-            ) : (docsQuery.data?.rows.length ?? 0) === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun document.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Fichier</th>
-                      <th className="px-3 py-2 text-left">Tags</th>
-                      <th className="px-3 py-2 text-right">Taille</th>
-                      <th className="px-3 py-2 text-left">OCR</th>
-                      <th className="px-3 py-2 text-left">Date</th>
-                      <th className="px-3 py-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(docsQuery.data?.rows ?? []).map((d) => (
-                      <DocumentRow key={d.id} doc={d} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <FormError error={docsQuery.error} className="mt-3" />
+          <div className="mb-3 flex gap-2">
+            <Input
+              value={filterTag}
+              onChange={(e) => {
+                setFilterTag(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Filtrer par tag…"
+              className="max-w-xs"
+            />
+          </div>
 
-            <div className="mt-3 flex items-center justify-between text-sm">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Précédent
-              </Button>
-              <span className="text-muted-foreground">Page {page}</span>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={(docsQuery.data?.rows.length ?? 0) < pageSize}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Suivant
-              </Button>
+          {docsQuery.isLoading ? (
+            <p className="text-sm text-ink-mute">Chargement…</p>
+          ) : (docsQuery.data?.rows.length ?? 0) === 0 ? (
+            <p className="text-sm text-ink-mute">Aucun document.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-sm border border-line">
+              <table className="w-full text-sm">
+                <thead className="bg-sunk">
+                  <tr>
+                    <th className="px-3 py-2 text-left"><span className="eyebrow">Fichier</span></th>
+                    <th className="px-3 py-2 text-left"><span className="eyebrow">Tags</span></th>
+                    <th className="px-3 py-2 text-right"><span className="eyebrow">Taille</span></th>
+                    <th className="px-3 py-2 text-left"><span className="eyebrow">OCR</span></th>
+                    <th className="px-3 py-2 text-left"><span className="eyebrow">Date</span></th>
+                    <th className="px-3 py-2 text-right"><span className="eyebrow">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(docsQuery.data?.rows ?? []).map((d, idx) => (
+                    <DocumentRow key={d.id} doc={d} alt={idx % 2 === 1} />
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </CardContent>
-        </Card>
+          )}
+          <FormError error={docsQuery.error} className="mt-3" />
+
+          <div className="mt-3 flex items-center justify-between text-sm">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="press"
+            >
+              Précédent
+            </Button>
+            <span className="text-ink-mute">Page {page}</span>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={(docsQuery.data?.rows.length ?? 0) < pageSize}
+              onClick={() => setPage((p) => p + 1)}
+              className="press"
+            >
+              Suivant
+            </Button>
+          </div>
+        </section>
       </div>
     </AppShell>
   );
 }
 
-function DocumentRow({ doc }: { doc: DocumentView }) {
+function DocumentRow({ doc, alt }: { doc: DocumentView; alt: boolean }) {
   const qc = useQueryClient();
   const [downloading, setDownloading] = useState(false);
 
@@ -288,39 +290,42 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
   });
 
   return (
-    <tr className="border-t">
+    <tr className={`border-t border-line transition-colors hover:bg-sunk/50 ${alt ? 'bg-sunk/20' : ''}`}>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
-          <Paperclip className="h-3 w-3 text-muted-foreground" />
-          <span className="font-medium">{doc.filename}</span>
+          <Paperclip className="h-3 w-3 text-ink-mute" />
+          <span className="font-medium text-ink">{doc.filename}</span>
         </div>
         {doc.description && (
-          <div className="text-xs text-muted-foreground">{doc.description}</div>
+          <div className="text-xs text-ink-mute">{doc.description}</div>
         )}
       </td>
       <td className="px-3 py-2">
         <div className="flex flex-wrap gap-1">
           {doc.tags.map((t) => (
-            <Badge key={t} variant="outline">
+            <span
+              key={t}
+              className="inline-flex items-center rounded-sm border border-line bg-paper px-1.5 py-0.5 text-[11px] font-medium text-ink-soft"
+            >
               {t}
-            </Badge>
+            </span>
           ))}
         </div>
       </td>
-      <td className="px-3 py-2 text-right font-mono text-xs">
+      <td className="px-3 py-2 text-right font-mono text-xs text-ink">
         {(doc.sizeBytes / 1024).toFixed(1)} KB
       </td>
       <td className="px-3 py-2">
-        <Badge variant={doc.ocrStatus === 'completed' ? 'default' : 'muted'}>
+        <span className={`inline-flex items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${OCR_TONE[doc.ocrStatus]}`}>
           {doc.ocrStatus}
-        </Badge>
+        </span>
       </td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">
+      <td className="px-3 py-2 text-xs text-ink-mute">
         {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex justify-end gap-1">
-          <Button type="button" size="sm" variant="outline" disabled={downloading} onClick={downloadFile}>
+          <Button type="button" size="sm" variant="outline" disabled={downloading} onClick={downloadFile} className="press">
             {downloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
           </Button>
           <Button
@@ -329,6 +334,7 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
             variant="outline"
             disabled={remove.isPending}
             onClick={() => remove.mutate(undefined)}
+            className="press"
           >
             {remove.isPending ? (
               <Loader2 className="h-3 w-3 animate-spin" />
