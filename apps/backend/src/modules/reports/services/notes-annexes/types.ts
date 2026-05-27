@@ -20,15 +20,21 @@ import type { CashFlowReport } from '../cash-flow.service';
 
 /**
  * Identifiant d'une note annexe SYSCOHADA. Format : 'N' suivi du numéro
- * (1..36), avec optionnellement un suffixe A/B/C/D/E pour les sous-notes.
+ * (1..36), avec optionnellement un suffixe A/B/C/D/E/F ou la variante
+ * 'Bbis' (NOTE 16B bis de la doctrine Tome 3).
+ *
+ * Le type littéral permet aux template strings de couvrir N1..N99, et
+ * les variantes explicites 'Bbis' / 'F' couvrent le cas hors-grille.
  */
 export type NoteId =
   | `N${number}`
   | `N${number}A`
   | `N${number}B`
+  | `N${number}Bbis`
   | `N${number}C`
   | `N${number}D`
-  | `N${number}E`;
+  | `N${number}E`
+  | `N${number}F`;
 
 /** Section de la liasse à laquelle la note se rattache. */
 export type NoteSection = 'IDENTIFICATION' | 'BILAN' | 'CR' | 'TFT' | 'GENERAL';

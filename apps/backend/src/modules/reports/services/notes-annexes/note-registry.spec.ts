@@ -1,23 +1,70 @@
 /**
- * Garde-fous structurels sur le registry des 36 notes annexes SYSCOHADA.
+ * Garde-fous structurels sur le registre des notes annexes SYSCOHADA
+ * Tome 3 (pages 35-70 — voir l'en-tête de `note-registry.ts` pour la
+ * doctrine et le tableau de remapping).
  *
  * Vérifie :
- *   - les 36 NoteId canoniques sont présents (N1..N36 avec sous-notes 3A/B/C/D)
+ *   - les NoteId canoniques de la doctrine sont présents (N1, N2, N3A..F,
+ *     N4..N14, N15A/B, N16A/B/Bbis/C, N17..N19, N21..N26, N27A/B,
+ *     N28..N36)
  *   - chaque entrée a une métadonnée bien formée et un handler appelable
- *   - les handlers non-stub retournent { rows, applicable } sans planter
+ *   - les handlers branchés retournent { rows, applicable } sans planter
  *     sur un dataset vide
- *   - la coverage W2.4 (>=31 notes implémentées) ne régresse pas
+ *   - la coverage doctrine ne régresse pas (≥ 45 entrées)
  */
 import { ALL_NOTE_IDS, NOTE_REGISTRY } from './note-registry';
 import type { NoteHandlerDependencies, NoteId } from './types';
 
+/**
+ * Liste figée des NoteIds doctrine. NOTE : N20 est volontairement omis
+ * (la grille R4 du Tome 3 ne le réserve pas).
+ */
 const EXPECTED_NOTE_IDS: ReadonlyArray<NoteId> = [
-  'N1', 'N2',
-  'N3A', 'N3B', 'N3C', 'N3D',
-  'N4', 'N5', 'N6', 'N7', 'N8', 'N9',
-  'N10', 'N11', 'N12', 'N13', 'N14', 'N15', 'N16', 'N17', 'N18', 'N19',
-  'N20', 'N21', 'N22', 'N23', 'N24', 'N25', 'N26', 'N27', 'N28', 'N29',
-  'N30', 'N31', 'N32', 'N33', 'N34', 'N35', 'N36',
+  'N1',
+  'N2',
+  'N3A',
+  'N3B',
+  'N3C',
+  'N3D',
+  'N3E',
+  'N3F',
+  'N4',
+  'N5',
+  'N6',
+  'N7',
+  'N8',
+  'N9',
+  'N10',
+  'N11',
+  'N12',
+  'N13',
+  'N14',
+  'N15A',
+  'N15B',
+  'N16A',
+  'N16B',
+  'N16Bbis',
+  'N16C',
+  'N17',
+  'N18',
+  'N19',
+  'N21',
+  'N22',
+  'N23',
+  'N24',
+  'N25',
+  'N26',
+  'N27A',
+  'N27B',
+  'N28',
+  'N29',
+  'N30',
+  'N31',
+  'N32',
+  'N33',
+  'N34',
+  'N35',
+  'N36',
 ] as ReadonlyArray<NoteId>;
 
 /**
@@ -55,7 +102,7 @@ function emptyDeps(): NoteHandlerDependencies {
 }
 
 describe('notes-annexes registry — structure', () => {
-  it('contains all 39 expected NoteIds (N1..N36 + 3A/B/C/D)', () => {
+  it('contient toutes les NoteIds doctrine SYSCOHADA Tome 3 (45 entrées, N20 omis)', () => {
     const present = new Set(ALL_NOTE_IDS);
     for (const expected of EXPECTED_NOTE_IDS) {
       expect(present.has(expected)).toBe(true);
@@ -82,8 +129,8 @@ describe('notes-annexes registry — structure', () => {
 describe('notes-annexes registry — handlers implémentés', () => {
   const implementedIds = ALL_NOTE_IDS.filter((id) => !STILL_STUB.includes(id));
 
-  it(`a au moins 39 notes implémentées (livraison W2.4.c — toutes notes)`, () => {
-    expect(implementedIds.length).toBeGreaterThanOrEqual(39);
+  it("a au moins 45 entrées doctrine branchées (handler ou freeComment)", () => {
+    expect(implementedIds.length).toBeGreaterThanOrEqual(45);
   });
 
   it.each(implementedIds)(

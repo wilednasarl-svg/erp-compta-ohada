@@ -3,14 +3,16 @@ import type { NoteId } from '../../services/notes-annexes';
 import { buildHarness } from './test-helpers';
 
 describe('NotesAnnexesService — smoke', () => {
-  it('exposes the 36 SYSCOHADA notes via listNoteIds', () => {
+  it('expose la liste doctrine SYSCOHADA Tome 3 via listNoteIds (45 entrées)', () => {
     const { service } = buildHarness();
     const ids = service.listNoteIds();
-    // 35 + 2 sub-notes (3A..3D) - 1 N3 omitted in favour of subs.
-    // The registry contains all canonical entries; we check >= 35.
-    expect(ids.length).toBeGreaterThanOrEqual(35);
+    // Doctrine Tome 3 = 45 entrées (sub-notes 3A..F, 15A/B, 16A/B/Bbis/C,
+    // 27A/B). N20 est volontairement omis.
+    expect(ids.length).toBe(45);
     expect(ids).toContain('N1');
+    expect(ids).toContain('N16Bbis');
     expect(ids).toContain('N36');
+    expect(ids).not.toContain('N20');
     expect(ALL_NOTE_IDS).toBe(ids);
   });
 
@@ -81,19 +83,29 @@ describe('NotesAnnexesService — smoke', () => {
   });
 });
 
-describe('NotesAnnexesService — N1 & N2', () => {
-  it('N1 always applicable, returns the doctrine rows', async () => {
-    const { service, request } = buildHarness();
+describe('NotesAnnexesService — N1 & N2 (doctrine Tome 3)', () => {
+  it("N1 (sûretés réelles) — freeComment, applicable=true par défaut côté handler", async () => {
+    const { service, request, commentsMock } = buildHarness();
+    // applicableByDefault = false côté metadata ; on force via le repo
+    // pour exercer le handler.
+    commentsMock.getOne.mockResolvedValue({
+      applicable: true,
+      commentText: '',
+      noteId: 'N1',
+    });
     const n1 = await service.getNote(request, 'N1' as NoteId);
     expect(n1.applicable).toBe(true);
-    expect(n1.rows.find((r) => r.key === 'REFERENTIEL')).toBeDefined();
-    expect(n1.rows.find((r) => r.key === 'METHODE_STOCK')).toBeDefined();
+    // Handler freeCommentNote : 0 row, le contenu est saisi via
+    // `freeComment` côté comptable.
+    expect(n1.rows.length).toBe(0);
+    expect(n1.metadata.label).toMatch(/sûretés réelles/i);
   });
 
-  it('N2 returns the conformity declaration', async () => {
+  it('N2 (informations obligatoires) — retourne la déclaration de conformité', async () => {
     const { service, request } = buildHarness();
     const n2 = await service.getNote(request, 'N2' as NoteId);
     expect(n2.applicable).toBe(true);
     expect(n2.rows[0]?.values.statut).toBe('CONFORME');
+    expect(n2.metadata.label).toMatch(/informations obligatoires/i);
   });
 });
