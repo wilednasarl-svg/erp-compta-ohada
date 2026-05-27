@@ -91,7 +91,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     title: 'États',
     items: [
-      { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat, TAFIRE' },
+      { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat, TFT, SIG, Annexe' },
       { href: '/tva', label: 'TVA', icon: Percent, hint: 'Déclarations UEMOA / DGI' },
       { href: '/inventory', label: 'Inventaire', icon: Warehouse, hint: 'Stocks et inventaire physique' },
       { href: '/assets', label: 'Immobilisations', icon: Package, hint: 'Amortissements et dotations' },

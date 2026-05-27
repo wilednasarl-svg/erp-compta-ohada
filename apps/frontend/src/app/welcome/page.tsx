@@ -104,14 +104,14 @@ const STEPS: ReadonlyArray<GuideStep> = [
     id: 'etats',
     number: '05',
     title: 'Préparer les états financiers',
-    summary: 'Générez Bilan, Compte de résultat, TAFIRE et déclarations TVA conformes Tome 3.',
+    summary: 'Générez Bilan, Compte de résultat, TFT et déclarations TVA conformes Tome 3.',
     description:
-      "Une fois les écritures saisies et les comptes lettrés, vos états financiers OHADA se génèrent depuis la balance. Bilan actif/passif, Compte de résultat par destination, TAFIRE, Balance générale et déclaration TVA UEMOA — tout est exportable PDF/XLSX.",
+      "Une fois les écritures saisies et les comptes lettrés, vos états financiers OHADA se génèrent depuis la balance. Bilan actif/passif, Compte de résultat par destination, TFT (ex-TAFIRE), Balance générale et déclaration TVA UEMOA — tout est exportable PDF/XLSX.",
     href: '/reports',
     hrefLabel: 'Générer les états',
     icon: FileBarChart,
     bullets: [
-      'Bilan, Compte de résultat, TAFIRE conformes SYSCOHADA',
+      'Bilan, Compte de résultat, TFT conformes SYSCOHADA 2017',
       'Balance générale, balance âgée, grand livre',
       'Déclarations TVA UEMOA prêtes pour la DGI',
     ],

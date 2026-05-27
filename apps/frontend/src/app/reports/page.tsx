@@ -4106,7 +4106,7 @@ function TftPanel({ orgId }: { readonly orgId: string }) {
           TFT — Tableau des Flux de Trésorerie
         </CardTitle>
         <CardDescription>
-          Méthode indirecte conforme SYSCOHADA Révisé (Tome 3 page 34).
+          Remplace le TAFIRE depuis SYSCOHADA Révisé 2017. Méthode indirecte conforme (Tome 3 page 34).
           Nomenclature officielle des codes Z : <strong>ZA</strong> ouverture,
           <strong> ZB</strong> opérationnel, <strong>ZC</strong> investissement,
           <strong> ZD</strong> financement capitaux propres, <strong>ZE</strong> capitaux

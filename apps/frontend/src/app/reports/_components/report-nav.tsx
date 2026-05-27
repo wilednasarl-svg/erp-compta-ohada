@@ -126,7 +126,7 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
         mode: 'tft',
         label: 'TFT',
         icon: GitBranch,
-        hint: 'Tableau des flux de trésorerie (méthode directe).',
+        hint: 'Tableau des flux de trésorerie (méthode directe) — remplace le TAFIRE depuis SYSCOHADA 2017.',
       },
       {
         mode: 'annexe',
