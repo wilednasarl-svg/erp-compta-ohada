@@ -53,6 +53,8 @@ import type {
   AnnexeReport,
   BalanceSheetReport,
   BilanMasse,
+  CashFlowReport,
+  CashFlowSection,
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatio,
@@ -67,7 +69,6 @@ import type {
   ProfitLossLine,
   ProfitLossReport,
   SigReport,
-  TftReport,
   TrialBalanceReport,
 } from '@/types/reports';
 
@@ -99,7 +100,7 @@ interface AgingBalanceEnvelope {
   readonly report: AgingBalanceReport;
 }
 interface TftEnvelope {
-  readonly report: TftReport;
+  readonly report: CashFlowReport;
 }
 interface AnnexeEnvelope {
   readonly report: AnnexeReport;
@@ -3862,17 +3863,39 @@ function formatRatioValue(ratio: FinancialRatio): { value: string; unit: string 
   return { value: formatted, unit: null };
 }
 
-// ─── TFT ───────────────────────────────────────────────────────────────
+// ─── TFT (Tableau Flux Trésorerie) — codes Z Tome 3 p.34 ──────────────
+//
+// Refonte B3 : consomme le nouveau shape `CashFlowReport` (vague A).
+// Présentation conforme doctrine SYSCOHADA Révisé : ouverture ZA, 4
+// sections détaillées (ZB, ZC, ZD, ZE), totaux ZF/ZG/ZH, contrôle de
+// cohérence et colonne comparative N-1.
+
+type CashFlowSubmitted = {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly compareEnabled: boolean;
+  readonly previousFromDate: string;
+  readonly previousToDate: string;
+};
 
 function TftPanel({ orgId }: { readonly orgId: string }) {
   const [fromDate, setFromDate] = useState<string>(yearStartIso());
   const [toDate, setToDate] = useState<string>(todayIso());
-  const [submitted, setSubmitted] = useState<{ fromDate: string; toDate: string } | null>(null);
+  const [compareEnabled, setCompareEnabled] = useState<boolean>(true);
+  const [previousFromDate, setPreviousFromDate] = useState<string>(previousYearStartIso());
+  const [previousToDate, setPreviousToDate] = useState<string>(previousYearEndIso());
+  const [submitted, setSubmitted] = useState<CashFlowSubmitted | null>(null);
 
-  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
-    new URLSearchParams({ fromDate: s.fromDate, toDate: s.toDate });
+  const buildParams = (s: CashFlowSubmitted): URLSearchParams => {
+    const params = new URLSearchParams({ fromDate: s.fromDate, toDate: s.toDate });
+    if (s.compareEnabled) {
+      params.set('previousFromDate', s.previousFromDate);
+      params.set('previousToDate', s.previousToDate);
+    }
+    return params;
+  };
 
-  const query = useQuery<TftReport, ApiError>({
+  const query = useQuery<CashFlowReport, ApiError>({
     queryKey: ['reports', 'tft', orgId, submitted],
     queryFn: async () => {
       if (submitted === null) throw new Error('not submitted');
@@ -3892,78 +3915,178 @@ function TftPanel({ orgId }: { readonly orgId: string }) {
     );
   };
 
+  const downloadPdf = (): void => {
+    if (submitted === null) return;
+    void api.download(
+      `/organizations/${orgId}/reports/tft.pdf?${buildParams(submitted).toString()}`,
+      'tft.pdf',
+    );
+  };
+
   return (
     <Card className="border-line bg-paper shadow-none">
       <CardHeader className="border-b border-line">
-        <CardTitle className="font-display text-2xl font-medium tracking-tight">TFT — Tableau de Flux de Trésorerie (méthode indirecte)</CardTitle>
+        <CardTitle className="font-display text-2xl font-medium tracking-tight">
+          TFT — Tableau des Flux de Trésorerie
+        </CardTitle>
         <CardDescription>
-          Décomposition des variations de trésorerie en 3 catégories OHADA :
-          activités d&apos;exploitation, d&apos;investissement, de financement.
-          Méthode indirecte (à partir du résultat net + ajustements non-cash).
+          Méthode indirecte conforme SYSCOHADA Révisé (Tome 3 page 34).
+          Nomenclature officielle des codes Z : <strong>ZA</strong> ouverture,
+          <strong> ZB</strong> opérationnel, <strong>ZC</strong> investissement,
+          <strong> ZD</strong> financement capitaux propres, <strong>ZE</strong> capitaux
+          étrangers, <strong>ZF</strong> total financement, <strong>ZG</strong> variation,
+          <strong> ZH</strong> clôture. Devise : <span className="font-mono">XOF</span>.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-6 pt-6">
         <form
-          className="grid gap-3 sm:grid-cols-3"
+          className="grid gap-5 lg:grid-cols-[auto_1fr_auto] lg:items-end"
           onSubmit={(e) => {
             e.preventDefault();
-            setSubmitted({ fromDate, toDate });
+            setSubmitted({
+              fromDate,
+              toDate,
+              compareEnabled,
+              previousFromDate,
+              previousToDate,
+            });
           }}
         >
-          <div className="space-y-1">
-            <Label htmlFor="tft-from">Du</Label>
-            <Input
-              id="tft-from"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="tft-to">Au</Label>
-            <Input
-              id="tft-to"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex items-end gap-2">
-            <Button type="submit" disabled={query.isFetching}>
-              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Générer
-            </Button>
-            {query.data !== undefined ? (
-              <Button type="button" variant="outline" onClick={downloadXlsx}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export
+          <FilterGroup title="Période" subtitle="Exercice de référence">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="tft-from" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Du
+                </Label>
+                <Input
+                  id="tft-from"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="tft-to" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Au
+                </Label>
+                <Input
+                  id="tft-to"
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+          </FilterGroup>
+
+          <FilterGroup title="Comparaison N-1" subtitle="Période antérieure">
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex h-9 cursor-pointer items-center gap-2 self-end whitespace-nowrap rounded-sm border border-line-strong bg-paper px-3 text-sm text-ink-soft transition-colors hover:bg-sunk has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:checked]:text-accent-ink">
+                <input
+                  type="checkbox"
+                  checked={compareEnabled}
+                  onChange={(e) => setCompareEnabled(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-accent"
+                />
+                Activer
+              </label>
+              <div className="space-y-1">
+                <Label htmlFor="tft-prev-from" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Du N-1
+                </Label>
+                <Input
+                  id="tft-prev-from"
+                  type="date"
+                  value={previousFromDate}
+                  onChange={(e) => setPreviousFromDate(e.target.value)}
+                  disabled={!compareEnabled}
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="tft-prev-to" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Au N-1
+                </Label>
+                <Input
+                  id="tft-prev-to"
+                  type="date"
+                  value={previousToDate}
+                  onChange={(e) => setPreviousToDate(e.target.value)}
+                  disabled={!compareEnabled}
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+          </FilterGroup>
+
+          <div className="flex flex-col items-stretch gap-1 lg:items-end">
+            <span className="select-none text-2xs uppercase tracking-wider text-transparent">.</span>
+            <div className="flex flex-wrap items-end gap-2">
+              <Button type="submit" disabled={query.isFetching} className="h-9">
+                {query.isFetching ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wallet className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                )}
+                Générer le TFT
               </Button>
-            ) : null}
+              {query.data !== undefined && (
+                <>
+                  <Button type="button" variant="outline" onClick={downloadXlsx}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    XLSX
+                  </Button>
+                  <Button type="button" variant="outline" onClick={downloadPdf}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    PDF
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </form>
 
         {query.isError ? <FormError error={query.error} /> : null}
 
-        {query.data !== undefined ? <TftTable report={query.data} /> : null}
+        {query.data !== undefined ? (
+          <CashFlowView report={query.data} />
+        ) : submitted === null ? (
+          <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+            <p className="text-sm text-ink-soft">
+              Choisir la période puis cliquer sur{' '}
+              <span className="font-medium text-ink">Générer le TFT</span>.
+            </p>
+            <p className="mt-1 text-xs text-ink-mute">
+              Par défaut, exercice ouvert au 1<sup>er</sup> janvier comparé à l&apos;exercice
+              précédent.
+            </p>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
 }
 
-function TftTable({ report }: { readonly report: TftReport }) {
-  const variationNum = Number(report.variationTresorerie);
+/**
+ * Vue principale : 1 ligne ZA + 4 sections (ZB-ZE) + 3 totaux (ZF-ZH)
+ * + contrôle cohérence. 4 colonnes : Réf | Libellé | Montant N | Montant N-1.
+ * Sous-totaux Z en gras avec accent visuel. Sections introduites par
+ * un titre uppercase + filet de séparation (doctrine Tome 3 p.34).
+ */
+function CashFlowView({ report }: { readonly report: CashFlowReport }) {
+  const variationNum = Number(report.netCashVariation);
   const isPositive = Number.isFinite(variationNum) && variationNum > 0;
   const isNegative = Number.isFinite(variationNum) && variationNum < 0;
+  const coherenceNum = Number(report.coherenceCheck);
+  const coherenceOk = Number.isFinite(coherenceNum) && Math.abs(coherenceNum) <= 1;
 
   return (
-    <div className="space-y-8">
-      {/* Bandeau récap : la mécanique cash en 3 chiffres clés —
-          ouverture, variation totale (signed), clôture. C'est la
-          ligne de fond du rapport, lue en premier. La variation
-          bascule de couleur (accent-soft / critical-soft) selon
-          le signe pour signaler immédiatement le cash flow net. */}
+    <div className="space-y-6">
+      {/* Bandeau récap : ZA → ZG → ZH, mécanique cash en 1 coup d'œil. */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
         <div className="bg-paper px-4 py-3">
           <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
@@ -3973,10 +4096,10 @@ function TftTable({ report }: { readonly report: TftReport }) {
         </div>
         <div className="bg-paper px-4 py-3">
           <p className="text-2xs uppercase tracking-wider text-ink-mute">
-            Trésorerie ouverture
+            ZA · Trésorerie 1<sup>er</sup> janvier
           </p>
           <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
-            {fmt(report.tresorerieOuverture)}
+            {fmt(report.openingCash)}
           </p>
         </div>
         <div
@@ -3999,7 +4122,7 @@ function TftTable({ report }: { readonly report: TftReport }) {
                   : 'text-ink-mute',
             )}
           >
-            {isPositive ? '▲' : isNegative ? '▼' : '·'} Variation
+            {isPositive ? '▲' : isNegative ? '▼' : '·'} ZG · Variation nette
           </p>
           <p
             className={cn(
@@ -4011,42 +4134,252 @@ function TftTable({ report }: { readonly report: TftReport }) {
                   : 'text-ink-soft',
             )}
           >
-            {fmt(report.variationTresorerie)}
+            {fmt(report.netCashVariation)}
           </p>
         </div>
         <div className="bg-paper px-4 py-3">
           <p className="text-2xs uppercase tracking-wider text-ink-mute">
-            Trésorerie clôture
+            ZH · Trésorerie 31 décembre
           </p>
           <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
-            {fmt(report.tresorerieCloture)}
+            {fmt(report.closingCash)}
           </p>
         </div>
       </div>
 
-      <OhadaStatementBlock
-        title="Activités d'exploitation"
-        subtitle="Cash généré par l'activité courante"
-        sections={[report.fluxExploitation]}
-        accent="info"
-      />
-      <OhadaStatementBlock
-        title="Activités d'investissement"
-        subtitle="Acquisitions et cessions d'immobilisations"
-        sections={[report.fluxInvestissement]}
-        accent="warn"
-      />
-      <OhadaStatementBlock
-        title="Activités de financement"
-        subtitle="Emprunts, remboursements, dividendes, augmentation de capital"
-        sections={[report.fluxFinancement]}
-        accent="accent"
-      />
+      {/* Tableau structuré 4 colonnes — Réf | Libellé | Montant N | N-1. */}
+      <div className="overflow-hidden rounded-md border border-line">
+        <table className="w-full text-sm">
+          <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
+            <tr>
+              <th className="w-16 px-3 py-2 text-left font-medium">Réf.</th>
+              <th className="px-3 py-2 text-left font-medium">Libellé</th>
+              <th className="w-40 px-3 py-2 text-right font-medium">
+                Montant N
+                <span className="ml-1 font-mono text-2xs text-ink-mute">(XOF)</span>
+              </th>
+              <th className="w-40 px-3 py-2 text-right font-medium">
+                Montant N-1
+                <span className="ml-1 font-mono text-2xs text-ink-mute">(XOF)</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* ZA — ouverture, ligne pleine largeur en haut. */}
+            <CashFlowTotalRow
+              code="ZA"
+              label="Trésorerie nette au 1er janvier"
+              amount={report.openingCash}
+              previous={report.previous?.openingCash}
+              tone="neutral-strong"
+            />
 
-      {report.methodologyNotes.length > 0 ? (
-        <MethodologyDetails notes={report.methodologyNotes} />
-      ) : null}
+            <CashFlowSectionRows
+              section={report.operatingFlows}
+              sectionTitle="Flux de trésorerie provenant des activités opérationnelles"
+              previousSubtotal={report.previous?.operatingFlow}
+              tone="info"
+            />
+            <CashFlowSectionRows
+              section={report.investingFlows}
+              sectionTitle="Flux de trésorerie provenant des opérations d'investissement"
+              previousSubtotal={report.previous?.investingFlow}
+              tone="warn"
+            />
+            <CashFlowSectionRows
+              section={report.financingFlowsEquity}
+              sectionTitle="Flux de trésorerie provenant du financement par les capitaux propres"
+              previousSubtotal={report.previous?.financingFlowEquity}
+              tone="accent"
+            />
+            <CashFlowSectionRows
+              section={report.financingFlowsDebt}
+              sectionTitle="Trésorerie provenant du financement par les capitaux étrangers"
+              previousSubtotal={report.previous?.financingFlowDebt}
+              tone="accent"
+            />
+
+            {/* Totaux ZF, ZG, ZH — encadrés visuels. */}
+            <CashFlowTotalRow
+              code="ZF"
+              label="Flux de trésorerie provenant des activités de financement (D + E)"
+              amount={report.financingFlowsTotal}
+              previous={report.previous?.financingFlowTotal}
+              tone="accent"
+            />
+            <CashFlowTotalRow
+              code="ZG"
+              label="VARIATION DE LA TRÉSORERIE NETTE DE LA PÉRIODE (B + C + F)"
+              amount={report.netCashVariation}
+              previous={report.previous?.netCashVariation}
+              tone="strong"
+            />
+            <CashFlowTotalRow
+              code="ZH"
+              label="Trésorerie nette au 31 décembre (G + A)"
+              amount={report.closingCash}
+              previous={report.previous?.closingCash}
+              tone="strong"
+            />
+          </tbody>
+        </table>
+      </div>
+
+      {/* Contrôle de cohérence : ZH calculé ≈ trésorerie comptes classe 5. */}
+      <div
+        className={cn(
+          'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
+          coherenceOk
+            ? 'border-info/30 bg-info-soft/30 text-info-ink'
+            : 'border-critical/40 bg-critical-soft/40 text-critical-ink',
+        )}
+      >
+        {coherenceOk ? (
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} />
+        ) : (
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} />
+        )}
+        <div>
+          <p className="font-medium">
+            Contrôle de cohérence : |ZH calculé − trésorerie comptes classe 5|
+          </p>
+          <p className="mt-0.5 font-mono tabular-nums">
+            écart = {fmt(report.coherenceCheck)} XOF —{' '}
+            {coherenceOk
+              ? 'cohérent (≤ 1 FCFA).'
+              : 'défaut de mapping ou compte non classé : vérifier le PCG (classe 5).'}
+          </p>
+        </div>
+      </div>
     </div>
+  );
+}
+
+/**
+ * Sous-bloc de lignes d'une section ZB/ZC/ZD/ZE : un en-tête de section
+ * (titre uppercase + filet), les postes FA-FQ, puis le sous-total Z.
+ */
+function CashFlowSectionRows({
+  section,
+  sectionTitle,
+  previousSubtotal,
+  tone,
+}: {
+  readonly section: CashFlowSection;
+  readonly sectionTitle: string;
+  readonly previousSubtotal?: string;
+  readonly tone: 'info' | 'warn' | 'accent';
+}) {
+  const toneClasses: Record<typeof tone, { dot: string; subtotal: string }> = {
+    info: {
+      dot: 'bg-info',
+      subtotal: 'border-y border-info/30 bg-info-soft/40 text-info-ink',
+    },
+    warn: {
+      dot: 'bg-warn',
+      subtotal: 'border-y border-warn/30 bg-warn-soft/40 text-warn-ink',
+    },
+    accent: {
+      dot: 'bg-accent',
+      subtotal: 'border-y border-accent/30 bg-accent-soft/40 text-accent-ink',
+    },
+  };
+  const t = toneClasses[tone];
+
+  return (
+    <>
+      {/* En-tête de section — pleine largeur, uppercase, filet visuel. */}
+      <tr className="border-t-2 border-line-strong bg-sunk/50">
+        <td className="px-3 py-2" colSpan={4}>
+          <div className="flex items-center gap-2">
+            <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', t.dot)} />
+            <span className="text-2xs font-medium uppercase tracking-wider text-ink">
+              {sectionTitle}
+            </span>
+          </div>
+        </td>
+      </tr>
+
+      {/* Postes de détail : FA-FQ. */}
+      {section.postes.map((poste) => {
+        const n = Number(poste.amount);
+        const isZero = !Number.isFinite(n) || n === 0;
+        return (
+          <tr key={poste.code} className="border-t border-line">
+            <td className="px-3 py-1.5 font-mono text-xs text-ink-mute">{poste.code}</td>
+            <td className="px-3 py-1.5 pl-6 text-xs text-ink-soft">
+              {poste.label}
+              {poste.source !== undefined && poste.source !== '' ? (
+                <span className="ml-2 font-mono text-2xs text-ink-mute">
+                  · {poste.source}
+                </span>
+              ) : null}
+            </td>
+            <td
+              className={cn(
+                'px-3 py-1.5 text-right font-mono tabular-nums',
+                isZero ? 'text-ink-mute' : 'text-ink',
+              )}
+            >
+              {isZero ? '—' : fmt(poste.amount)}
+            </td>
+            <td className="px-3 py-1.5 text-right font-mono text-ink-mute tabular-nums">
+              {/* N-1 non détaillé en doctrine : on n'affiche rien par poste. */}
+              —
+            </td>
+          </tr>
+        );
+      })}
+
+      {/* Sous-total Z de section — gras + accent. */}
+      <tr className={cn('font-medium', t.subtotal)}>
+        <td className="px-3 py-2 font-mono text-xs font-semibold">{section.code}</td>
+        <td className="px-3 py-2 text-2xs uppercase tracking-wider">{section.label}</td>
+        <td className="px-3 py-2 text-right font-mono text-base tabular-nums">
+          {fmt(section.subtotal)}
+        </td>
+        <td className="px-3 py-2 text-right font-mono text-base tabular-nums">
+          {previousSubtotal !== undefined ? fmt(previousSubtotal) : '—'}
+        </td>
+      </tr>
+    </>
+  );
+}
+
+/**
+ * Ligne de total (ZA, ZF, ZG, ZH) — pleine largeur, sans détail de postes.
+ * `tone='strong'` (ZG, ZH) = couleur ink soutenue ; `accent` (ZF) = teinte
+ * accent ; `neutral-strong` (ZA) = bandeau sombre supérieur.
+ */
+function CashFlowTotalRow({
+  code,
+  label,
+  amount,
+  previous,
+  tone,
+}: {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  readonly previous?: string;
+  readonly tone: 'neutral-strong' | 'strong' | 'accent';
+}) {
+  const toneClasses: Record<typeof tone, string> = {
+    'neutral-strong': 'border-y-2 border-line-strong bg-sunk text-ink',
+    strong: 'border-y-2 border-line-strong bg-paper font-semibold text-ink',
+    accent: 'border-y border-accent/30 bg-accent-soft/30 text-accent-ink',
+  };
+  return (
+    <tr className={cn('font-medium', toneClasses[tone])}>
+      <td className="px-3 py-2.5 font-mono text-sm font-semibold">{code}</td>
+      <td className="px-3 py-2.5 text-sm uppercase tracking-wide">{label}</td>
+      <td className="px-3 py-2.5 text-right font-mono text-base tabular-nums">
+        {fmt(amount)}
+      </td>
+      <td className="px-3 py-2.5 text-right font-mono text-base tabular-nums">
+        {previous !== undefined ? fmt(previous) : '—'}
+      </td>
+    </tr>
   );
 }
 
@@ -4341,149 +4674,6 @@ function AnnexeNoteDetailInline({
         <p className="text-xs italic text-ink-mute">{detail.methodology}</p>
       ) : null}
     </div>
-  );
-}
-
-// ─── Bloc réutilisable de section OHADA ────────────────────────────────
-
-/**
- * Bloc d'état OHADA — utilisé par TFT (3 catégories de flux).
- * Chaque section a son code OHADA,
- * son label, ses lignes détaillées et son total.
- *
- * `accent` colore le marqueur visuel (puce + bordure du total) selon
- * la nature du bloc : `accent` pour ressources/positif, `critical`
- * pour emplois, `warn` pour investissement, `info` pour exploitation.
- * Le contenu reste neutre — c'est la sémantique structurelle qui
- * gagne en couleur, pas la valeur affichée.
- */
-function OhadaStatementBlock({
-  title,
-  subtitle,
-  sections,
-  accent = 'neutral',
-}: {
-  readonly title: string;
-  readonly subtitle?: string;
-  readonly sections: ReadonlyArray<{
-    readonly code: string;
-    readonly label: string;
-    readonly total: string;
-    readonly lines: ReadonlyArray<{
-      readonly code: string;
-      readonly label: string;
-      readonly amount: string;
-    }>;
-  }>;
-  readonly accent?: 'accent' | 'critical' | 'warn' | 'info' | 'neutral';
-}) {
-  const accentClasses: Record<typeof accent, { dot: string; total: string }> = {
-    accent: {
-      dot: 'bg-accent',
-      total: 'border-l-2 border-accent/40 bg-accent-soft/40 text-accent-ink',
-    },
-    critical: {
-      dot: 'bg-critical',
-      total: 'border-l-2 border-critical/40 bg-critical-soft/40 text-critical-ink',
-    },
-    warn: {
-      dot: 'bg-warn',
-      total: 'border-l-2 border-warn/40 bg-warn-soft/40 text-warn-ink',
-    },
-    info: {
-      dot: 'bg-info',
-      total: 'border-l-2 border-info/40 bg-info-soft/40 text-info-ink',
-    },
-    neutral: {
-      dot: 'bg-ink-mute',
-      total: 'border-l-2 border-line-strong bg-sunk/60 text-ink',
-    },
-  };
-  const tone = accentClasses[accent];
-
-  return (
-    <section>
-      <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
-        <span aria-hidden className={cn('h-2 w-2 self-center rounded-full', tone.dot)} />
-        <h4 className="font-display text-base font-medium tracking-tight text-ink">{title}</h4>
-        {subtitle && (
-          <p className="ml-2 text-xs text-ink-soft">{subtitle}</p>
-        )}
-      </header>
-      <div className="overflow-hidden rounded-md border border-line">
-        <table className="w-full text-sm">
-          <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium">Réf.</th>
-              <th className="px-3 py-2 text-left font-medium">Libellé</th>
-              <th className="px-3 py-2 text-right font-medium">Montant</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sections.map((section) => (
-              <Fragment key={section.code}>
-                <tr className="border-t border-line bg-sunk/40">
-                  <td className="px-3 py-1.5 font-mono text-xs font-semibold text-ink">
-                    {section.code}
-                  </td>
-                  <td className="px-3 py-1.5 font-medium text-ink" colSpan={2}>
-                    {section.label}
-                  </td>
-                </tr>
-                {section.lines.map((line) => {
-                  const num = Number(line.amount);
-                  const isZero = !Number.isFinite(num) || num === 0;
-                  return (
-                    <tr key={line.code} className="border-t border-line">
-                      <td className="px-3 py-1.5 font-mono text-xs text-ink-mute">{line.code}</td>
-                      <td className="px-3 py-1.5 pl-8 text-xs text-ink-soft">{line.label}</td>
-                      <td
-                        className={cn(
-                          'px-3 py-1.5 text-right font-mono tabular-nums',
-                          isZero ? 'text-ink-mute' : 'text-ink',
-                        )}
-                      >
-                        {isZero ? '—' : fmt(line.amount)}
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr className={cn('border-t border-line font-medium', tone.total)}>
-                  <td className="px-3 py-2"></td>
-                  <td className="px-3 py-2 text-right text-2xs uppercase tracking-wider">
-                    Total {section.label}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-base tabular-nums">
-                    {fmt(section.total)}
-                  </td>
-                </tr>
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-/**
- * Repli méthodologique : panneau <details> qui contient les notes
- * explicatives sur le calcul. Repli par défaut — ne consomme pas la
- * lecture diagonale, mais reste accessible pour le réviseur OHADA.
- */
-function MethodologyDetails({ notes }: { readonly notes: ReadonlyArray<string> }) {
-  return (
-    <details className="rounded-md border border-line bg-sunk/40 p-3 text-xs text-ink-soft">
-      <summary className="cursor-pointer font-medium text-ink">
-        <Info className="mr-1.5 inline h-3.5 w-3.5" strokeWidth={1.5} />
-        Notes méthodologiques ({notes.length})
-      </summary>
-      <ul className="mt-2 list-disc space-y-1 pl-4">
-        {notes.map((n, i) => (
-          <li key={i}>{n}</li>
-        ))}
-      </ul>
-    </details>
   );
 }
 

@@ -49,6 +49,12 @@ export interface OhadaStatementSection {
   readonly total: string;
 }
 
+/**
+ * @deprecated Conservé pour compat ascendante de panels annexes le
+ * temps que tous les consommateurs migrent vers `CashFlowReport`
+ * (vague A — codes Z Tome 3 p.34). Le panel TFT principal consomme
+ * désormais `CashFlowReport`.
+ */
 export interface TftReport {
   readonly fromDate: string;
   readonly toDate: string;
@@ -59,6 +65,84 @@ export interface TftReport {
   readonly tresorerieOuverture: string;
   readonly tresorerieCloture: string;
   readonly methodologyNotes: ReadonlyArray<string>;
+}
+
+// ─── TFT — Cash Flow Report (SYSCOHADA Tome 3 p.34, codes Z) ──────────
+//
+// Nomenclature officielle (doctrine OHADA Révisé) :
+//   ZA = trésorerie nette au 1er janvier (ouverture)
+//   ZB = sous-total flux opérationnels         (somme FA…FE)
+//   ZC = sous-total flux d'investissement      (somme FF…FJ)
+//   ZD = sous-total financement capitaux propres (somme FK…FN)
+//   ZE = sous-total financement capitaux étrangers (somme FO…FQ)
+//   ZF = total financement                     (ZD + ZE)
+//   ZG = variation totale de trésorerie        (ZB + ZC + ZF)
+//   ZH = trésorerie nette au 31 décembre       (ZA + ZG)
+
+export interface CashFlowPoste {
+  /** Code poste à 2 lettres : `FA`, `FB`, …, `FQ`. */
+  readonly code: string;
+  readonly label: string;
+  /** DECIMAL string ; signe conservé (peut être négatif). */
+  readonly amount: string;
+  /** Description courte de la formule de calcul, pour traçabilité. */
+  readonly source?: string;
+}
+
+/** Sous-section regroupant des postes de détail + un sous-total Z. */
+export interface CashFlowSection {
+  readonly code: 'ZB' | 'ZC' | 'ZD' | 'ZE';
+  readonly label: string;
+  readonly postes: ReadonlyArray<CashFlowPoste>;
+  readonly subtotal: string;
+}
+
+/**
+ * Résumé période N-1 — exposé en colonne comparatif. Détail poste par
+ * poste non requis par la doctrine pour N-1 ; seuls les agrégats Z.
+ */
+export interface CashFlowPreviousSummary {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly openingCash: string;          // ZA
+  readonly closingCash: string;          // ZH
+  readonly netCashVariation: string;     // ZG
+  readonly operatingFlow: string;        // ZB
+  readonly investingFlow: string;        // ZC
+  readonly financingFlowEquity: string;  // ZD
+  readonly financingFlowDebt: string;    // ZE
+  readonly financingFlowTotal: string;   // ZF
+}
+
+/**
+ * Rapport TFT conforme SYSCOHADA Révisé Tome 3 page 34.
+ * Miroir du backend `CashFlowReport` (cash-flow.service.ts).
+ */
+export interface CashFlowReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  /** ZA — Trésorerie nette à l'ouverture. */
+  readonly openingCash: string;
+  /** Section ZB : flux opérationnels (FA-FE). */
+  readonly operatingFlows: CashFlowSection;
+  /** Section ZC : flux d'investissement (FF-FJ). */
+  readonly investingFlows: CashFlowSection;
+  /** Section ZD : flux financement capitaux propres (FK-FN). */
+  readonly financingFlowsEquity: CashFlowSection;
+  /** Section ZE : flux financement capitaux étrangers (FO-FQ). */
+  readonly financingFlowsDebt: CashFlowSection;
+  /** ZF — financement total (= ZD + ZE). */
+  readonly financingFlowsTotal: string;
+  /** ZG — variation totale (= ZB + ZC + ZF). */
+  readonly netCashVariation: string;
+  /** ZH — Trésorerie nette à la clôture (= ZA + ZG). */
+  readonly closingCash: string;
+  /**
+   * |ZH − trésorerie nette comptes classe 5 à toDate|. Doit ≈ 0 sur
+   * des données saines. > 1 FCFA → défaut de mapping.
+   */
+  readonly coherenceCheck: string;
+  readonly previous?: CashFlowPreviousSummary;
 }
 
 export interface AnnexeNote {
