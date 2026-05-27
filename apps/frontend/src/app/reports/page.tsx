@@ -638,39 +638,128 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
       </div>
 
       {report.unclassified.length > 0 && (
-        <section className="rounded-md border border-warn/30 bg-warn-soft/60 p-4">
-          <header className="flex items-baseline gap-2 border-b border-warn/30 pb-2">
-            <AlertTriangle className="h-4 w-4 self-center text-warn" strokeWidth={1.5} />
-            <h4 className="font-display text-base font-medium tracking-tight text-warn-ink">
-              Comptes hors référentiel
-            </h4>
-            <span className="font-mono text-xs tabular-nums text-warn-ink/80">
-              {report.unclassified.length}
-            </span>
-          </header>
-          <p className="mt-2 text-xs text-warn-ink/90">
-            Ces comptes du plan comptable n&apos;ont matché aucun poste lettré SYSCOHADA. Ils
-            ne figurent pas dans le bilan officiel — vérifier que leurs codes sont conformes
-            au PCG OHADA.
-          </p>
-          <ul className="mt-2 space-y-1 text-xs">
-            {report.unclassified.slice(0, 10).map((p) => (
-              <li key={p.code} className="flex justify-between gap-2">
-                <span className="font-mono text-warn-ink">
-                  {p.code} · {p.label}
-                </span>
-                <span className="font-mono tabular-nums text-warn-ink">{fmt(p.net)}</span>
-              </li>
-            ))}
-            {report.unclassified.length > 10 && (
-              <li className="text-warn-ink/70">
-                … et {report.unclassified.length - 10} autres
-              </li>
-            )}
-          </ul>
-        </section>
+        <UnclassifiedAccounts items={report.unclassified} fmt={fmt} />
       )}
     </div>
+  );
+}
+
+function UnclassifiedAccounts({
+  items,
+  fmt,
+}: {
+  readonly items: ReadonlyArray<{ code: string; label: string; net: string; side?: string }>;
+  readonly fmt: (v: string) => string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const actif  = items.filter(p => p.side !== 'PASSIF');
+  const passif = items.filter(p => p.side === 'PASSIF');
+  const totalActif  = actif.reduce((s, p)  => s + Number(p.net), 0);
+  const totalPassif = passif.reduce((s, p) => s + Number(p.net), 0);
+  const totalGlobal = items.reduce((s, p)  => s + Number(p.net), 0);
+  const visible = expanded ? items : items.slice(0, 10);
+
+  function correctionHint(code: string): string {
+    const prefix = code.slice(0, 3);
+    if (code.startsWith('130')) return '→ À réimputer sur 110 (Report à nouveau) ou 119';
+    if (code.startsWith('131')) return '→ À réimputer sur 110 (Report à nouveau créditeur)';
+    if (code.startsWith('466')) return '→ À réimputer sur 411 (Clients) ou 401 (Fournisseurs)';
+    if (code.startsWith('467')) return '→ À réimputer sur 412 (Effets à recevoir) ou 404';
+    if (prefix >= '100' && prefix < '200') return "→ Classe 1 : vérifier le sous-compte SYSCOHADA applicable";
+    if (prefix >= '200' && prefix < '300') return "→ Classe 2 : vérifier le compte d'immobilisation SYSCOHADA";
+    if (prefix >= '300' && prefix < '400') return "→ Classe 3 : vérifier le compte de stock SYSCOHADA";
+    if (prefix >= '400' && prefix < '500') return "→ Classe 4 : vérifier le tiers (clients, fournisseurs, État…)";
+    if (prefix >= '500' && prefix < '600') return "→ Classe 5 : vérifier le compte de trésorerie SYSCOHADA";
+    return "→ Vérifier la conformité au PCG OHADA";
+  }
+
+  function downloadCsv() {
+    const header = 'Compte;Libellé;Côté;Solde net;Action suggérée';
+    const lines = items.map(p =>
+      `${p.code};"${p.label}";${p.side ?? 'ACTIF'};${p.net};"${correctionHint(p.code)}"`
+    );
+    const blob = new Blob([header + '\n' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'comptes-hors-referentiel.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section className="rounded-md border border-warn/30 bg-warn-soft/60 p-4">
+      <header className="flex flex-wrap items-center gap-2 border-b border-warn/30 pb-3">
+        <AlertTriangle className="h-4 w-4 text-warn" strokeWidth={1.5} />
+        <h4 className="font-display text-base font-medium tracking-tight text-warn-ink">
+          Comptes hors référentiel
+        </h4>
+        <span className="rounded-full bg-warn/20 px-2 py-0.5 font-mono text-xs tabular-nums text-warn-ink">
+          {items.length}
+        </span>
+        <div className="ml-auto flex gap-2">
+          <button
+            onClick={downloadCsv}
+            className="flex items-center gap-1 rounded border border-warn/40 bg-white/60 px-2 py-1 text-xs text-warn-ink hover:bg-white/80"
+          >
+            <Download className="h-3 w-3" />
+            Exporter CSV
+          </button>
+        </div>
+      </header>
+
+      <p className="mt-2 text-xs text-warn-ink/90">
+        Ces comptes n&apos;ont matché aucun poste lettré SYSCOHADA et sont exclus du bilan
+        officiel. Pour chaque compte, passer une OD de régularisation vers le compte SYSCOHADA
+        correct.
+      </p>
+
+      {/* Totaux par côté */}
+      <div className="mt-3 flex flex-wrap gap-4 rounded border border-warn/20 bg-white/40 px-3 py-2 text-xs">
+        <div className="flex gap-1">
+          <span className="text-warn-ink/70">Côté actif :</span>
+          <span className="font-mono font-medium tabular-nums text-warn-ink">{actif.length} comptes · {fmt(totalActif.toFixed(2))}</span>
+        </div>
+        <div className="flex gap-1">
+          <span className="text-warn-ink/70">Côté passif :</span>
+          <span className="font-mono font-medium tabular-nums text-warn-ink">{passif.length} comptes · {fmt(totalPassif.toFixed(2))}</span>
+        </div>
+        <div className="ml-auto flex gap-1 font-semibold">
+          <span className="text-warn-ink/70">Impact total :</span>
+          <span className="font-mono tabular-nums text-warn-ink">{fmt(totalGlobal.toFixed(2))}</span>
+        </div>
+      </div>
+
+      {/* Liste des comptes */}
+      <ul className="mt-3 space-y-1 text-xs">
+        {visible.map((p) => (
+          <li key={`${p.code}-${p.label}`} className="rounded border border-warn/10 bg-white/30 px-2 py-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono font-medium text-warn-ink">
+                {p.code}
+              </span>
+              <span className="shrink-0 rounded bg-warn/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-warn-ink/80">
+                {p.side ?? 'ACTIF'}
+              </span>
+              <span className="flex-1 truncate text-warn-ink/80">{p.label}</span>
+              <span className="font-mono tabular-nums text-warn-ink">{fmt(p.net)}</span>
+            </div>
+            <p className="mt-0.5 text-[10px] text-warn-ink/60 italic">{correctionHint(p.code)}</p>
+          </li>
+        ))}
+      </ul>
+
+      {items.length > 10 && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="mt-2 text-xs text-warn-ink/70 underline underline-offset-2 hover:text-warn-ink"
+        >
+          {expanded
+            ? 'Réduire la liste'
+            : `Voir les ${items.length - 10} autres comptes`}
+        </button>
+      )}
+    </section>
   );
 }
 
