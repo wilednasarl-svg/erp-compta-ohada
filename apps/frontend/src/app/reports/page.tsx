@@ -5466,6 +5466,49 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
     URL.revokeObjectURL(url);
   };
 
+  const exportBalanceXls = (): void => {
+    if (!parsed) return;
+    const escape = (s: string): string =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const headerRow =
+      '<Row>' +
+      ['Compte', 'Libellé', 'Solde Débiteur', 'Solde Créditeur']
+        .map((h) => `<Cell><Data ss:Type="String">${escape(h)}</Data></Cell>`)
+        .join('') +
+      '</Row>';
+    const dataRows = parsed.rows
+      .map(
+        (r) =>
+          '<Row>' +
+          `<Cell><Data ss:Type="String">${escape(r.code)}</Data></Cell>` +
+          `<Cell><Data ss:Type="String">${escape(r.label)}</Data></Cell>` +
+          `<Cell><Data ss:Type="Number">${Number(r.debit)}</Data></Cell>` +
+          `<Cell><Data ss:Type="Number">${Number(r.credit)}</Data></Cell>` +
+          '</Row>',
+      )
+      .join('\n');
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<?mso-application progid="Excel.Sheet"?>',
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
+      ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
+      '<Worksheet ss:Name="Balance">',
+      '<Table>',
+      headerRow,
+      dataRows,
+      '</Table>',
+      '</Worksheet>',
+      '</Workbook>',
+    ].join('\n');
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `balance-${asAtDate}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Card className="border-line bg-paper shadow-none">
       <CardHeader className="border-b border-line">
@@ -5693,6 +5736,16 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
                 >
                   <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
                   CSV
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={exportBalanceXls}
+                  className="h-7 gap-1.5 text-xs"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  XLS
                 </Button>
                 <Button
                   type="button"
