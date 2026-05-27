@@ -11,7 +11,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -25,10 +30,26 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequirePermission } from '../../rbac/decorators/require-permission.decorator';
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
-import { AssetsService } from '../services/assets.service';
 import { CreateAssetDto } from '../dto/create-asset.dto';
-import { UpdateAssetDto } from '../dto/update-asset.dto';
 import { DisposeAssetDto } from '../dto/dispose-asset.dto';
+import {
+  AssetDisposalResponse,
+  AssetEnvelopeResponse,
+  AssetWithScheduleResponse,
+  ListAssetsResponse,
+  ListSchedulesResponse,
+  ScheduleEnvelopeResponse,
+} from '../dto/responses';
+import { UpdateAssetDto } from '../dto/update-asset.dto';
+import {
+  toAssetDisposal,
+  toAssetEnvelope,
+  toAssetWithSchedule,
+  toListAssets,
+  toListSchedules,
+  toScheduleEnvelope,
+} from '../mappers/asset-response.mapper';
+import { AssetsService } from '../services/assets.service';
 
 @ApiTags('Assets')
 @ApiBearerAuth('bearer')
@@ -42,13 +63,14 @@ export class AssetsController {
   @Get()
   @RequirePermission('assets.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListAssetsResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ) {
+  ): Promise<ListAssetsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const assets = await this.assets.listForOrg(asTenantId(tokenOrgId));
-    return { assets };
+    return toListAssets(assets);
   }
 
   // ─── Get one asset ──────────────────────────────────────────────────
@@ -56,14 +78,15 @@ export class AssetsController {
   @Get(':assetId')
   @RequirePermission('assets.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AssetEnvelopeResponse })
   async getOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('assetId', new ParseUUIDPipe({ version: '4' })) assetId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ) {
+  ): Promise<AssetEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const asset = await this.assets.findById(assetId, asTenantId(tokenOrgId));
-    return { asset };
+    return toAssetEnvelope(asset);
   }
 
   // ─── Get depreciation schedule ──────────────────────────────────────
@@ -71,14 +94,15 @@ export class AssetsController {
   @Get(':assetId/schedule')
   @RequirePermission('assets.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListSchedulesResponse })
   async getSchedule(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('assetId', new ParseUUIDPipe({ version: '4' })) assetId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ) {
+  ): Promise<ListSchedulesResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const schedule = await this.assets.getSchedule(assetId, asTenantId(tokenOrgId));
-    return { schedule };
+    return toListSchedules(schedule);
   }
 
   // ─── Create ─────────────────────────────────────────────────────────
@@ -86,13 +110,14 @@ export class AssetsController {
   @Post()
   @RequirePermission('assets.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: AssetWithScheduleResponse })
   async create(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: CreateAssetDto,
     @Req() req: Request,
-  ) {
+  ): Promise<AssetWithScheduleResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.assets.create(
@@ -101,7 +126,7 @@ export class AssetsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return result;
+    return toAssetWithSchedule(result.asset, result.schedule);
   }
 
   // ─── Update ─────────────────────────────────────────────────────────
@@ -109,6 +134,7 @@ export class AssetsController {
   @Patch(':assetId')
   @RequirePermission('assets.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AssetWithScheduleResponse })
   async update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('assetId', new ParseUUIDPipe({ version: '4' })) assetId: string,
@@ -116,7 +142,7 @@ export class AssetsController {
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: UpdateAssetDto,
     @Req() req: Request,
-  ) {
+  ): Promise<AssetWithScheduleResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.assets.update(
@@ -126,7 +152,7 @@ export class AssetsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return result;
+    return toAssetWithSchedule(result.asset, result.schedule);
   }
 
   // ─── Dispose ────────────────────────────────────────────────────────
@@ -134,6 +160,7 @@ export class AssetsController {
   @Post(':assetId/dispose')
   @RequirePermission('assets.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AssetDisposalResponse })
   async dispose(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('assetId', new ParseUUIDPipe({ version: '4' })) assetId: string,
@@ -141,7 +168,7 @@ export class AssetsController {
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: DisposeAssetDto,
     @Req() req: Request,
-  ) {
+  ): Promise<AssetDisposalResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.assets.dispose(
@@ -151,7 +178,7 @@ export class AssetsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return result;
+    return toAssetDisposal(result.asset, result.journalEntries);
   }
 
   // ─── Post depreciation ─────────────────────────────────────────────
@@ -159,13 +186,14 @@ export class AssetsController {
   @Post('schedules/:scheduleId/post')
   @RequirePermission('assets.post_depreciation')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ScheduleEnvelopeResponse })
   async postDepreciation(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('scheduleId', new ParseUUIDPipe({ version: '4' })) scheduleId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Req() req: Request,
-  ) {
+  ): Promise<ScheduleEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const schedule = await this.assets.postDepreciation(
@@ -174,7 +202,7 @@ export class AssetsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { schedule };
+    return toScheduleEnvelope(schedule);
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────
