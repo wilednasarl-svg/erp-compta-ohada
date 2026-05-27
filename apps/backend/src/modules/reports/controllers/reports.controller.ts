@@ -24,6 +24,7 @@ import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
 import { AnnexeNoteDetailQueryDto } from '../dto/annexe-note-detail-query.dto';
 import { AnnexeQueryDto } from '../dto/annexe-query.dto';
 import { AnnualPackageQueryDto } from '../dto/annual-package-query.dto';
+import { DsfPackageQueryDto } from '../dto/dsf-package-query.dto';
 import { MarginByAxisQueryDto } from '../dto/margin-by-axis-query.dto';
 import { PeriodQueryDto } from '../dto/period-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
@@ -135,6 +136,42 @@ export class ReportsController {
   }
 
   // ─── JSON endpoints (existing waves 1-2) ─────────────────────────
+
+  // ─── W5.3 — Liasse DSF complète déposable ────────────────────────
+  @Get('dsf-package.zip')
+  @RequirePermission('journals.reports')
+  @ApiOperation({
+    summary:
+      'Liasse DSF SYSCOHADA déposable (W5.3) — page de garde + R1-R4 + Bilan + CR + TFT (PDF & XLSX) + 36 notes annexes (JSON).',
+  })
+  @ApiProduces('application/zip')
+  async dsfPackage(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: DsfPackageQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.packageBuilder.buildDsfPackage(
+      asTenantId(org.id),
+      query.exerciseId,
+      {
+        fromDate: query.fromDate,
+        toDate: query.toDate,
+        fiscalYearStartDate: query.fiscalYearStartDate,
+        orgName: org.name,
+      },
+    );
+    const slug = (org.name ?? 'organization')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    this.sendFile(
+      res,
+      buffer,
+      'application/zip',
+      `dsf-${slug}-${query.toDate}.zip`,
+    );
+  }
 
   @Get('annual-package.zip')
   @RequirePermission('journals.reports')

@@ -224,6 +224,9 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   // W5.1 — Identification DSF SYSCOHADA.
   [ERROR_CODES.DSF_PROFILE_NOT_FOUND]: 404,
   [ERROR_CODES.DSF_PROFILE_INVALID]: 422,
+
+  // W5.3 — Bundle ZIP DSF complet.
+  [ERROR_CODES.DSF_PACKAGE_PROFILE_INCOMPLETE]: 422,
 };
 
 /**

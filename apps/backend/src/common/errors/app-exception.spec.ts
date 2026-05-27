@@ -254,6 +254,8 @@ describe('HTTP status mapping', () => {
       // W5.1 — Identification DSF.
       DSF_PROFILE_NOT_FOUND: 404,
       DSF_PROFILE_INVALID: 422,
+      // W5.3 — Bundle ZIP DSF complet.
+      DSF_PACKAGE_PROFILE_INCOMPLETE: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

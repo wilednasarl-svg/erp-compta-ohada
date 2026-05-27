@@ -224,6 +224,9 @@ export const ERROR_CODES = {
   // W5.1 — Identification DSF SYSCOHADA (Fiches R1-R4, Tome 3 p. 18-31).
   DSF_PROFILE_NOT_FOUND: 'DSF_PROFILE_NOT_FOUND',
   DSF_PROFILE_INVALID: 'DSF_PROFILE_INVALID',
+
+  // W5.3 — Bundle ZIP DSF complet (page de garde + R1-R4 + 4 états + notes).
+  DSF_PACKAGE_PROFILE_INCOMPLETE: 'DSF_PACKAGE_PROFILE_INCOMPLETE',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
