@@ -873,6 +873,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/tva/declarations/{declarationId}/centralize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TvaDeclarationsController_centralize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/tva/declarations/{declarationId}/cancel": {
         parameters: {
             query?: never;
@@ -979,10 +995,10 @@ export interface paths {
         get: operations["ImportsController_getSession"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["ImportsController_deleteSession"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["ImportsController_updateSession"];
         trace?: never;
     };
     "/organizations/{id}/imports/sessions/{sessionId}/files": {
@@ -1075,6 +1091,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
+         * Reclasser une écriture (changer compte, journal, analytique)
          * @description POST /organizations/:id/transformations/reclassify
          *
          *     Reclassify a source staging entry by changing its account, journal,
@@ -1098,6 +1115,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
+         * Créer une écriture d'ajustement liée à une écriture source
          * @description POST /organizations/:id/transformations/adjust
          *
          *     Create an adjustment entry (écriture de régularisation) linked to a
@@ -1119,6 +1137,7 @@ export interface paths {
             cookie?: never;
         };
         /**
+         * Historique complet des transformations d'une écriture
          * @description GET /organizations/:id/transformations/entries/:entryId/history
          *
          *     Return the full transformation history for a source entry, ordered
@@ -1301,6 +1320,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/reports/dsf-validate/{exerciseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Validation pré-dépôt DSF (W5.4) — checks d'équilibre Bilan + balance, clôture périodes, complétude notes annexes, comptes non classés. Verdict PASS/WARN/BLOCK. */
+        get: operations["ReportsController_dsfValidate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/dsf-package.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liasse DSF SYSCOHADA déposable (W5.3) — page de garde + R1-R4 + Bilan + CR + TFT (PDF & XLSX) + 36 notes annexes (JSON). */
+        get: operations["ReportsController_dsfPackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/annual-package.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TAFIRE + TFT + Annexe + Aging clients/fournisseurs) */
+        get: operations["ReportsController_annualPackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/reports/trial-balance": {
         parameters: {
             query?: never;
@@ -1310,6 +1380,57 @@ export interface paths {
         };
         /** Balance générale (par compte, sur la période) */
         get: operations["ReportsController_trialBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/comparative-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Balance comparative N / N-1 (mouvements deux exercices + solde cumulé) */
+        get: operations["ReportsController_comparativeBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/multi-year-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Balance pluri-exercices (2 à 5 périodes côte à côte) */
+        get: operations["ReportsController_multiYearBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/multi-year-balance.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Balance pluri-exercices */
+        get: operations["ReportsController_multiYearBalanceXlsx"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1352,6 +1473,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/reports/sig": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Soldes Intermédiaires de Gestion (SIG) — cascade SYSCOHADA XA → XI */
+        get: operations["ReportsController_sig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/reports/balance-sheet": {
         parameters: {
             query?: never;
@@ -1361,6 +1499,295 @@ export interface paths {
         };
         /** Bilan OHADA (actif/passif ventilés selon SYSCOHADA AUDCIF) à une date */
         get: operations["ReportsController_balanceSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/tafire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** TAFIRE (Tableau Financier Ressources/Emplois) — OHADA Vol. 3 */
+        get: operations["ReportsController_tafire"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/import-diagnostic/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diagnostic d'import — balance des comptes + anomalies + plan de normalisation pour une session d'import (lit le staging, PAS les journaux validés) */
+        get: operations["ReportsController_importDiagnostic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/import-diagnostic/{sessionId}.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — Diagnostic d'import (rapport de conformité) */
+        get: operations["ReportsController_importDiagnosticPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/tft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3 */
+        get: operations["ReportsController_tft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/annexe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Annexe (Notes 1-36 SYSCOHADA AUDCIF) — squelette + statut */
+        get: operations["ReportsController_annexe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/annexe/note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail d'une note d'annexe (3A, 5, 15, 20 implémentés) */
+        get: operations["ReportsController_annexeNoteDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/margin-by-axis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Marge brute par axe analytique (chantier / BU / activité) */
+        get: operations["ReportsController_marginByAxis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/analytic-axes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les axes analytiques utilisés dans l'organisation (avec compteurs) */
+        get: operations["ReportsController_analyticAxes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/aging-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Balance âgée clients ou fournisseurs (FIFO sur lignes) */
+        get: operations["ReportsController_agingBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/tafire.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — TAFIRE OHADA */
+        get: operations["ReportsController_tafireXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/tft.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — TFT OHADA (méthode indirecte) */
+        get: operations["ReportsController_tftXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/annexe.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Annexe (Notes 1-36) */
+        get: operations["ReportsController_annexeXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/aging-balance.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Balance âgée */
+        get: operations["ReportsController_agingBalanceXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/cash-trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trésorerie nette glissante mois par mois (classe 5) */
+        get: operations["ReportsController_cashTrend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/cash-trend.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Trésorerie nette glissante */
+        get: operations["ReportsController_cashTrendXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/financial-ratios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ratios financiers (structure, liquidité, solvabilité, rentabilité) */
+        get: operations["ReportsController_financialRatios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/financial-ratios.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Ratios financiers */
+        get: operations["ReportsController_financialRatiosXlsx"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1437,6 +1864,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/reports/sig.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — SIG */
+        get: operations["ReportsController_sigPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/financial-ratios.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — Ratios financiers */
+        get: operations["ReportsController_financialRatiosPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/aging-balance.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — Balance âgée */
+        get: operations["ReportsController_agingBalancePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/cash-trend.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — Trésorerie nette glissante */
+        get: operations["ReportsController_cashTrendPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/tafire.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — TAFIRE */
+        get: operations["ReportsController_tafirePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/tft.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — TFT */
+        get: operations["ReportsController_tftPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/reports/trial-balance.xlsx": {
         parameters: {
             query?: never;
@@ -1446,6 +1975,23 @@ export interface paths {
         };
         /** Export Excel — Balance générale */
         get: operations["ReportsController_trialBalanceXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/comparative-balance.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Balance comparative N / N-1 */
+        get: operations["ReportsController_comparativeBalanceXlsx"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1480,6 +2026,57 @@ export interface paths {
         };
         /** Export Excel — Compte de résultat */
         get: operations["ReportsController_profitLossXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/profit-loss-official.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Compte de Résultat OFFICIEL (cascade Vol. 3 SYSCOHADA) */
+        get: operations["ReportsController_profitLossOfficialXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/sig.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Soldes Intermédiaires de Gestion */
+        get: operations["ReportsController_sigXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/balance-sheet-official.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Bilan OFFICIEL avec codes de poste OHADA (AE/AI/AM/AZ/CH/CL/CR/CU/DZ) */
+        get: operations["ReportsController_balanceSheetOfficialXlsx"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1579,6 +2176,76 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AssetsController_postDepreciation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/inventory/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List inventory items */
+        get: operations["InventoryItemsController_list"];
+        put?: never;
+        /** Create an inventory item */
+        post: operations["InventoryItemsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/inventory/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a single inventory item */
+        get: operations["InventoryItemsController_getOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an inventory item */
+        patch: operations["InventoryItemsController_update"];
+        trace?: never;
+    };
+    "/organizations/{id}/inventory/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List inventory movements */
+        get: operations["InventoryMovementsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/inventory/items/{itemId}/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an inventory movement */
+        post: operations["InventoryMovementsController_record"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1883,70 +2550,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/organizations/{id}/inventory/items": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["InventoryItemsController_list"];
-        put?: never;
-        post: operations["InventoryItemsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/organizations/{id}/inventory/items/{itemId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["InventoryItemsController_getOne"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["InventoryItemsController_update"];
-        trace?: never;
-    };
-    "/organizations/{id}/inventory/movements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["InventoryMovementsController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/organizations/{id}/inventory/items/{itemId}/movements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["InventoryMovementsController_record"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/organizations/{id}/accounting-score/recalculate": {
         parameters: {
             query?: never;
@@ -2061,8 +2664,56 @@ export interface components {
             /** @enum {string} */
             system: "NORMAL" | "MINIMAL" | "ALLEGE";
         };
+        OrganizationResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            type: "firm" | "company";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            deletedAt: string | null;
+        };
+        MembershipResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            roleId: string;
+            /** @enum {string} */
+            status: "active" | "suspended";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateOrganizationResponse: {
+            organization: components["schemas"]["OrganizationResponse"];
+            membership: components["schemas"]["MembershipResponse"];
+            system: string;
+        };
+        OrganizationSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            role: string;
+        };
+        ListOrganizationsResponse: {
+            organizations: components["schemas"]["OrganizationSummaryResponse"][];
+        };
         UpdateOrganizationDto: {
             name?: string;
+        };
+        OrganizationEnvelopeResponse: {
+            organization: components["schemas"]["OrganizationResponse"];
         };
         ChangeMemberRoleDto: {
             /** @enum {string} */
@@ -2102,6 +2753,44 @@ export interface components {
             mfaChallengeToken: string;
             code: string;
         };
+        ReferenceAccountViewResponse: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            label: string;
+            /** @enum {number} */
+            class: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+            /** @enum {string} */
+            accountType: "TITLE" | "POSTING";
+            /** @enum {string} */
+            normalBalance: "D" | "C";
+            applicableSystems: string[];
+        };
+        ListReferenceAccountsResponse: {
+            accounts: components["schemas"]["ReferenceAccountViewResponse"][];
+        };
+        AccountViewResponse: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            label: string;
+            /** @enum {number} */
+            class: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+            /** @enum {string} */
+            accountType: "TITLE" | "POSTING";
+            /** @enum {string} */
+            normalBalance: "D" | "C";
+            /** Format: uuid */
+            parentId: string | null;
+            isCustom: boolean;
+            isActive: boolean;
+        };
+        ListAccountsResponse: {
+            accounts: components["schemas"]["AccountViewResponse"][];
+        };
+        AccountEnvelopeResponse: {
+            account: components["schemas"]["AccountViewResponse"];
+        };
         CreateAccountDto: {
             /**
              * @description Code of the existing account under which the new sub-account is
@@ -2122,6 +2811,10 @@ export interface components {
         UpdateAccountDto: {
             label?: string;
             isActive?: boolean;
+        };
+        ImportChartResponse: {
+            added: number;
+            skipped: number;
         };
         CreateFiscalYearDto: {
             /**
@@ -2155,9 +2848,179 @@ export interface components {
              * @description Classe SYSCOHADA
              * @enum {string}
              */
-            kind: "AC" | "VE" | "BQ" | "CA" | "OD";
+            kind: "AC" | "VE" | "BQ" | "CA" | "OD" | "PA";
             /** @description Compte par defaut (UUID) */
             defaultAccountId?: string | null;
+        };
+        JournalEntryListItemResponse: {
+            /**
+             * Format: uuid
+             * @description UUID de l'écriture
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID de l'organisation
+             */
+            organizationId: string;
+            /**
+             * Format: uuid
+             * @description UUID du journal
+             */
+            journalId: string;
+            /**
+             * Format: uuid
+             * @description UUID de la période comptable
+             */
+            periodId: string;
+            /** @description Numéro de l'écriture dans le journal (séquence par journal/org) */
+            entryNumber: number;
+            /**
+             * @description Date comptable au format ISO (YYYY-MM-DD)
+             * @example 2026-05-31
+             */
+            entryDate: string;
+            /** @description Libellé de l'écriture */
+            description: string;
+            /** @description Référence externe (facture, pièce justificative) */
+            reference: string | null;
+            /**
+             * @description Statut de l'écriture
+             * @enum {string}
+             */
+            status: "draft" | "validated" | "cancelled";
+            /**
+             * @description Origine de l'écriture
+             * @enum {string}
+             */
+            sourceType: "manual" | "import" | "depreciation" | "bank_reconciliation" | "impairment" | "tax_centralization";
+            /**
+             * Format: uuid
+             * @description UUID de la session d'import (si sourceType=import)
+             */
+            sourceImportSessionId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID de l'écriture annulée (si contre-passation)
+             */
+            cancelsId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID du créateur
+             */
+            createdById: string | null;
+            /**
+             * Format: uuid
+             * @description UUID du validateur
+             */
+            validatedById: string | null;
+            /**
+             * Format: date-time
+             * @description Date de validation
+             */
+            validatedAt: string | null;
+            /**
+             * Format: date-time
+             * @description Date d'annulation
+             */
+            cancelledAt: string | null;
+            /**
+             * Format: uuid
+             * @description UUID de l'annulateur
+             */
+            cancelledById: string | null;
+            /** @description Motif d'annulation */
+            cancelledReason: string | null;
+            /**
+             * Format: date-time
+             * @description Date de création
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Date de modification
+             */
+            updatedAt: string;
+        };
+        ListEntriesResponse: {
+            /** @description En-têtes d'écritures de la page courante (sans les lignes) */
+            entries: components["schemas"]["JournalEntryListItemResponse"][];
+            /** @description Total absolu d'écritures pour les filtres courants (toutes pages confondues) */
+            total: number;
+        };
+        JournalEntryLineResponse: {
+            /**
+             * Format: uuid
+             * @description UUID de la ligne
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID du compte référencé
+             */
+            accountId: string;
+            /** @description Position 1-N de la ligne dans l'écriture */
+            position: number;
+            /** @description Libellé libre de la ligne */
+            description: string | null;
+            /** @description Montant débit. DECIMAL(15,2) en string. */
+            debit: string;
+            /** @description Montant crédit. DECIMAL(15,2) en string. */
+            credit: string;
+        };
+        JournalEntryDetailResponse: {
+            /**
+             * Format: uuid
+             * @description UUID de l'écriture
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID de l'organisation
+             */
+            organizationId: string;
+            /** @description Code court du journal (AC, VT, BQ, OD) */
+            journalCode: string;
+            /**
+             * Format: uuid
+             * @description UUID de la période comptable
+             */
+            periodId: string;
+            /** @description Numéro de l'écriture */
+            entryNumber: number;
+            /** @description Date comptable (YYYY-MM-DD) */
+            entryDate: string;
+            /** @description Libellé */
+            description: string;
+            /** @description Référence externe */
+            reference: string | null;
+            /**
+             * @description Statut
+             * @enum {string}
+             */
+            status: "draft" | "validated" | "cancelled";
+            /**
+             * @description Origine
+             * @enum {string}
+             */
+            sourceType: "manual" | "import" | "depreciation" | "bank_reconciliation" | "impairment" | "tax_centralization";
+            /**
+             * Format: uuid
+             * @description UUID du créateur
+             */
+            createdById: string | null;
+            /**
+             * Format: date-time
+             * @description Date de validation
+             */
+            validatedAt: string | null;
+            /**
+             * Format: date-time
+             * @description Date d'annulation
+             */
+            cancelledAt: string | null;
+            /** @description Lignes débit/crédit de l'écriture */
+            lines: components["schemas"]["JournalEntryLineResponse"][];
         };
         CreateEntryLineDto: {
             /** @description Code compte SYSCOHADA (ex: 621000) */
@@ -2442,6 +3305,16 @@ export interface components {
             cancelledById: string | null;
             /** @description Motif d'annulation libre (null si non annulée) */
             cancelledReason: string | null;
+            /**
+             * Format: uuid
+             * @description UUID de l'écriture de journal OD générée par la centralisation TVA (W4.1). Null tant que la déclaration n'a pas été centralisée.
+             */
+            centralizationJournalEntryId: string | null;
+            /**
+             * Format: date-time
+             * @description Date à laquelle la centralisation TVA a été exécutée (W4.1). Null tant que la déclaration n'a pas été centralisée.
+             */
+            centralizedAt: string | null;
             /** @description Lignes d'agrégation par préfixe de compte SYSCOHADA */
             lines: components["schemas"]["TvaDeclarationLineResponse"][];
         };
@@ -2472,6 +3345,32 @@ export interface components {
              */
             reason?: string;
         };
+        CurrencyResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /**
+             * @description Code ISO 4217 (3 lettres)
+             * @example XOF
+             */
+            code: string;
+            label: string;
+            /**
+             * @description Nombre de décimales d'affichage (0|2|3)
+             * @enum {number}
+             */
+            decimalPlaces: 0 | 2 | 3;
+            symbol: string | null;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListCurrenciesResponse: {
+            currencies: components["schemas"]["CurrencyResponse"][];
+        };
         CreateCurrencyDto: {
             /**
              * @description Code ISO 4217 (3 lettres maj)
@@ -2501,12 +3400,42 @@ export interface components {
              */
             isActive: boolean;
         };
+        CurrencyEnvelopeResponse: {
+            currency: components["schemas"]["CurrencyResponse"];
+        };
         UpdateCurrencyDto: {
             /** @example Shilling kényan (renommé) */
             label?: string;
             /** @example KSh */
             symbol?: string;
             isActive?: boolean;
+        };
+        ExchangeRateResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            fromCurrencyId: string;
+            /** Format: uuid */
+            toCurrencyId: string;
+            /** @description YYYY-MM-DD */
+            rateDate: string;
+            /**
+             * @description Taux NUMERIC(20,10) en string
+             * @example 655.957
+             */
+            rate: string;
+            /** @enum {string} */
+            source: "manual" | "bceao" | "ecb" | "imported";
+            sourceRef: string | null;
+            /** Format: uuid */
+            createdById: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ListExchangeRatesResponse: {
+            rates: components["schemas"]["ExchangeRateResponse"][];
         };
         CreateExchangeRateDto: {
             /**
@@ -2538,6 +3467,26 @@ export interface components {
             /** @description Référence externe (URL, batch_id…) */
             sourceRef?: string;
         };
+        ExchangeRateEnvelopeResponse: {
+            rate: components["schemas"]["ExchangeRateResponse"];
+        };
+        FxConversionResponse: {
+            /** @description Montant converti (string DECIMAL) */
+            amount: string;
+            /** @description Code ISO 4217 cible */
+            currency: string;
+            /** @description Taux appliqué (string DECIMAL). 1.0 si identité. */
+            appliedRate: string;
+            /** @description Date à laquelle le taux a été lu (YYYY-MM-DD) */
+            asOfDate: string;
+            /** @enum {string} */
+            appliedSource: "manual" | "bceao" | "ecb" | "imported";
+            /** @description true si le taux a été inversé (paire inverse trouvée en base et 1/rate appliqué) */
+            inverted: boolean;
+        };
+        FxConversionEnvelopeResponse: {
+            conversion: components["schemas"]["FxConversionResponse"];
+        };
         CreateImportSessionDto: {
             /**
              * @description Type de source déclaré à la création
@@ -2554,6 +3503,15 @@ export interface components {
              * @enum {string}
              */
             documentType?: "entries" | "general_ledger" | "trial_balance" | "bank_statement" | "auxiliary_ledger" | "sales_purchases";
+        };
+        UpdateImportSessionDto: {
+            /** @description Libellé humain de la session (null pour effacer). */
+            label?: string | null;
+            /**
+             * @description Nature comptable du document (null pour repasser en auto-détection). Interdit après commit.
+             * @enum {string|null}
+             */
+            documentType?: "entries" | "general_ledger" | "trial_balance" | "bank_statement" | "auxiliary_ledger" | "sales_purchases" | null;
         };
         UpdateMappingOverrideDto: {
             /**
@@ -2578,6 +3536,31 @@ export interface components {
             /** @description Raison / note de la transformation (conservée dans l'audit). */
             notes?: string;
         };
+        TransformationSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @description reclassification | adjustment | correction | ventilation | grouping */
+            type: string;
+            /** @enum {string} */
+            status: "active" | "cancelled";
+            /** Format: uuid */
+            sourceEntryId: string;
+            /** @description Diff sparse des champs avant la transformation */
+            beforeValues: Record<string, never>;
+            /** @description Diff sparse des champs après la transformation */
+            afterValues: Record<string, never>;
+            notes: string | null;
+            /** Format: uuid */
+            createdById: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelReason: string | null;
+        };
+        TransformationEnvelopeResponse: {
+            transformation: components["schemas"]["TransformationSummaryResponse"];
+        };
         AdjustEntryDto: {
             sourceEntryId: string;
             /**
@@ -2590,6 +3573,9 @@ export interface components {
             adjustmentLabel: string;
             /** @description Note explicative sur la raison de l'ajustement. */
             notes?: string;
+        };
+        TransformationHistoryResponse: {
+            history: components["schemas"]["TransformationSummaryResponse"][];
         };
         CreateRuleDto: {
             /** @example Reclassement charges bancaires admin */
@@ -2630,7 +3616,32 @@ export interface components {
              */
             actions: Record<string, never>[];
         };
-        RuleEntity: Record<string, never>;
+        RuleResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            name: string;
+            description: string | null;
+            isActive: boolean;
+            priority: number;
+            conditions: Record<string, never>[];
+            actions: Record<string, never>[];
+            /** Format: uuid */
+            createdById: string;
+            /** Format: uuid */
+            updatedById: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RuleEnvelopeResponse: {
+            rule: components["schemas"]["RuleResponse"];
+        };
+        ListRulesResponse: {
+            rules: components["schemas"]["RuleResponse"][];
+        };
         UpdateRuleDto: {
             name?: string;
             description?: string | null;
@@ -2661,7 +3672,39 @@ export interface components {
              */
             importSessionId?: string;
         };
-        RuleExecutionEntity: Record<string, never>;
+        RuleExecutionResultResponse: {
+            /** Format: uuid */
+            ruleId: string;
+            /** @enum {string} */
+            mode: "simulation" | "apply";
+            matchedCount: number;
+            appliedCount: number;
+            matches: Record<string, never>[];
+            error: string | null;
+        };
+        RuleExecutionEntityResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            ruleId: string;
+            /** @enum {string} */
+            mode: "simulation" | "apply";
+            scope: Record<string, never>;
+            matchedCount: number;
+            appliedCount: number;
+            transformationIds: string[];
+            matchesSnapshot: Record<string, never>[];
+            error: string | null;
+            /** Format: uuid */
+            executedById: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ListRuleExecutionsResponse: {
+            executions: components["schemas"]["RuleExecutionEntityResponse"][];
+        };
         UploadDocumentDto: {
             description?: string;
             tags?: string[];
@@ -2669,6 +3712,254 @@ export interface components {
         };
         AttachEntryDto: {
             journalEntryId: string;
+        };
+        DsfValidationReportEnvelope: {
+            /** @description Rapport de validation pré-dépôt DSF */
+            report: Record<string, never>;
+        };
+        TrialBalanceReportEnvelope: {
+            /** @description Balance générale OHADA */
+            report: Record<string, never>;
+        };
+        ComparativeBalanceReportEnvelope: {
+            /** @description Balance comparative N / N-1 */
+            report: Record<string, never>;
+        };
+        MultiYearBalanceReportEnvelope: {
+            /** @description Balance pluri-exercices */
+            report: Record<string, never>;
+        };
+        GeneralLedgerReportEnvelope: {
+            /** @description Grand livre d'un compte */
+            report: Record<string, never>;
+        };
+        ProfitLossReportEnvelope: {
+            /** @description Compte de résultat */
+            report: Record<string, never>;
+        };
+        SigReportEnvelope: {
+            /** @description Soldes Intermédiaires de Gestion */
+            report: Record<string, never>;
+        };
+        BalanceSheetReportEnvelope: {
+            /** @description Bilan OHADA */
+            report: Record<string, never>;
+        };
+        TafireReportEnvelope: {
+            /** @description TAFIRE OHADA */
+            report: Record<string, never>;
+        };
+        ImportDiagnosticReportEnvelope: {
+            /** @description Diagnostic de session d'import */
+            report: Record<string, never>;
+        };
+        TftReportEnvelope: {
+            /** @description Tableau Flux Trésorerie */
+            report: Record<string, never>;
+        };
+        AnnexeReportEnvelope: {
+            /** @description Annexe Notes 1-36 SYSCOHADA */
+            report: Record<string, never>;
+        };
+        AnnexeNoteDetailReportEnvelope: {
+            /** @description Détail d'une note d'annexe */
+            report: Record<string, never>;
+        };
+        MarginByAxisReportEnvelope: {
+            /** @description Marge brute par axe analytique */
+            report: Record<string, never>;
+        };
+        AnalyticAxisSummaryListResponse: {
+            /** @description Axes analytiques utilisés */
+            axes: Record<string, never>[];
+        };
+        AgingBalanceReportEnvelope: {
+            /** @description Balance âgée clients ou fournisseurs */
+            report: Record<string, never>;
+        };
+        CashTrendReportEnvelope: {
+            /** @description Trésorerie nette glissante mois par mois */
+            report: Record<string, never>;
+        };
+        FinancialRatiosReportEnvelope: {
+            /** @description Ratios financiers SYSCOHADA */
+            report: Record<string, never>;
+        };
+        AssetResponse: {
+            /**
+             * Format: uuid
+             * @description UUID de l'immobilisation
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID de l'organisation
+             */
+            organizationId: string;
+            /** @description Code interne de l'immobilisation */
+            code: string;
+            /** @description Libellé */
+            label: string;
+            /** @description Date d'acquisition (YYYY-MM-DD) */
+            acquisitionDate: string;
+            /** @description Date de mise en service (YYYY-MM-DD) */
+            putInServiceDate: string;
+            /** @description Coût d'acquisition. DECIMAL(15,2) en string. */
+            acquisitionCost: string;
+            /** @description Valeur résiduelle. DECIMAL(15,2) en string. */
+            residualValue: string;
+            /**
+             * @description Méthode d'amortissement
+             * @enum {string}
+             */
+            depreciationMethod: "linear" | "declining" | "softy" | "units_of_production";
+            /** @description Durée d'amortissement en mois */
+            durationMonths: number;
+            /** @description Taux dégressif (NUMERIC(6,4) en string, null si méthode linéaire) */
+            decliningRate: string | null;
+            /**
+             * Format: uuid
+             * @description UUID du compte d'immobilisation (21x/22x/23x)
+             */
+            assetAccountId: string;
+            /**
+             * Format: uuid
+             * @description UUID du compte d'amortissement cumulé (28x)
+             */
+            depreciationAccountId: string;
+            /**
+             * Format: uuid
+             * @description UUID du compte de dotation (681x)
+             */
+            expenseAccountId: string;
+            /**
+             * @description Statut de l'immobilisation
+             * @enum {string}
+             */
+            status: "active" | "fully_depreciated" | "disposed";
+            /** @description Date de cession/mise au rebut (YYYY-MM-DD) */
+            disposalDate: string | null;
+            /** @description Valeur de cession. DECIMAL(15,2) en string. */
+            disposalValue: string | null;
+            /** @description W4.3 — Unités totales prévues (méthode UOP) */
+            totalUnits: string | null;
+            /** @description W4.3 — Unités par exercice (méthode UOP) */
+            unitsPerYear: number[] | null;
+            /** @description W4.3 — Amortissement dérogatoire activé */
+            derogatoryEnabled: boolean;
+            /**
+             * @description W4.3 — Méthode fiscale dérogatoire
+             * @enum {string|null}
+             */
+            derogatoryFiscalMethod: "linear" | "declining" | "softy" | "units_of_production" | null;
+            /** @description W4.3 — Durée fiscale dérogatoire (mois) */
+            derogatoryFiscalDuration: number | null;
+            /** @description W4.3 — Taux fiscal dérogatoire */
+            derogatoryFiscalDecliningRate: string | null;
+            /**
+             * Format: uuid
+             * @description UUID du créateur
+             */
+            createdById: string | null;
+            /**
+             * Format: date-time
+             * @description Date de création
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Date de modification
+             */
+            updatedAt: string;
+        };
+        ListAssetsResponse: {
+            /** @description Toutes les immobilisations de l'org */
+            assets: components["schemas"]["AssetResponse"][];
+        };
+        AssetEnvelopeResponse: {
+            /** @description L'immobilisation */
+            asset: components["schemas"]["AssetResponse"];
+        };
+        DepreciationScheduleResponse: {
+            /**
+             * Format: uuid
+             * @description UUID de la ligne d'échéancier
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID de l'organisation
+             */
+            organizationId: string;
+            /**
+             * Format: uuid
+             * @description UUID de l'immobilisation
+             */
+            assetId: string;
+            /** @description Année fiscale (ex 2026) */
+            fiscalYear: number;
+            /** @description Début de période (YYYY-MM-DD) */
+            periodStart: string;
+            /** @description Fin de période (YYYY-MM-DD) */
+            periodEnd: string;
+            /** @description Dotation de la période. DECIMAL(15,2) en string. */
+            depreciationAmount: string;
+            /** @description Cumul des amortissements jusqu'à la fin de période. DECIMAL(15,2) en string. */
+            cumulativeDepreciation: string;
+            /** @description Valeur nette comptable. DECIMAL(15,2) en string. */
+            netBookValue: string;
+            /**
+             * @description Statut de la ligne
+             * @enum {string}
+             */
+            status: "pending" | "posted";
+            /**
+             * Format: uuid
+             * @description UUID de l'écriture comptable (si status=posted)
+             */
+            journalEntryId: string | null;
+            /**
+             * Format: date-time
+             * @description Date du posting comptable
+             */
+            postedAt: string | null;
+            /**
+             * Format: uuid
+             * @description UUID de l'utilisateur ayant posté
+             */
+            postedById: string | null;
+            /**
+             * Format: date-time
+             * @description Date de création
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Date de modification
+             */
+            updatedAt: string;
+        };
+        ListSchedulesResponse: {
+            /** @description Échéancier d'amortissement complet de l'immobilisation */
+            schedule: components["schemas"]["DepreciationScheduleResponse"][];
+        };
+        DerogatoryConfigDto: {
+            /** @description Active le calcul dérogatoire fiscal vs économique */
+            enabled: boolean;
+            /**
+             * @description Méthode fiscale (declining, softy…)
+             * @enum {string}
+             */
+            fiscalMethod?: "linear" | "declining" | "softy" | "units_of_production";
+            /**
+             * @description Méthode économique (référence comptable)
+             * @enum {string}
+             */
+            economicMethod?: "linear" | "declining" | "softy" | "units_of_production";
+            /** @description Durée fiscale en mois si différente */
+            fiscalDuration?: number;
+            /** @description Taux dégressif fiscal (si fiscalMethod=declining) */
+            fiscalDecliningRate?: string;
         };
         CreateAssetDto: {
             /**
@@ -2706,7 +3997,7 @@ export interface components {
              * @description Méthode d'amortissement (linear ou declining)
              * @enum {string}
              */
-            depreciationMethod: "linear" | "declining";
+            depreciationMethod: "linear" | "declining" | "softy" | "units_of_production";
             /**
              * @description Durée d'amortissement en mois
              * @example 60
@@ -2732,6 +4023,29 @@ export interface components {
              * @example 6811
              */
             expenseAccountCode: string;
+            /**
+             * @description Durée d'usage totale en unités (requis si method=units_of_production)
+             * @example 10000
+             */
+            totalUnits?: number;
+            /**
+             * @description Unités produites par exercice
+             * @example [
+             *       3000,
+             *       2500,
+             *       2500,
+             *       2000
+             *     ]
+             */
+            unitsPerYear?: number[];
+            /** @description Configuration dérogatoire fiscale (provisions 151) */
+            derogatory?: components["schemas"]["DerogatoryConfigDto"];
+        };
+        AssetWithScheduleResponse: {
+            /** @description Immobilisation créée ou mise à jour */
+            asset: components["schemas"]["AssetResponse"];
+            /** @description Échéancier d'amortissement recalculé */
+            schedule: components["schemas"]["DepreciationScheduleResponse"][];
         };
         UpdateAssetDto: {
             /**
@@ -2763,7 +4077,7 @@ export interface components {
              * @description Méthode d'amortissement (linear ou declining)
              * @enum {string}
              */
-            depreciationMethod?: "linear" | "declining";
+            depreciationMethod?: "linear" | "declining" | "softy" | "units_of_production";
             /**
              * @description Durée d'amortissement en mois
              * @example 48
@@ -2792,15 +4106,232 @@ export interface components {
         };
         DisposeAssetDto: {
             /**
-             * @description Date de cession ou de mise au rebut (YYYY-MM-DD)
-             * @example 2026-12-31
+             * @description Date effective de cession ou de mise au rebut (YYYY-MM-DD).
+             * @example 2026-09-30
              */
             disposalDate: string;
             /**
-             * @description Valeur de cession (si vente). Null si mise au rebut.
+             * @description Prix de cession HT en monnaie locale (DECIMAL). Utiliser "0.00" pour une mise au rebut.
              * @example 500000.00
              */
-            disposalValue?: string;
+            proceedsAmount: string;
+            /**
+             * @description Régime SYSCOHADA : "recurring" pour cession courante (654/754), "hao" pour cession exceptionnelle (812/822).
+             * @example hao
+             * @enum {string}
+             */
+            disposalKind: "recurring" | "hao";
+            /**
+             * @description Compte de contrepartie pour le prix de cession. Par défaut "5121" (banque, paiement immédiat) en recurring, "485" (créance HAO) en hao. Surcharger par exemple "411xxx" pour facturation client.
+             * @example 5121
+             */
+            proceedsAccountCode?: string;
+            /** @description Note libre archivée dans la piste d'audit. */
+            note?: string;
+        };
+        DisposalJournalEntryLineResponse: {
+            /** @description Code SYSCOHADA du compte */
+            accountCode: string;
+            /** @description Montant débit (number, pas string DECIMAL) */
+            debit: number;
+            /** @description Montant crédit (number, pas string DECIMAL) */
+            credit: number;
+        };
+        DisposalJournalEntryResponse: {
+            /**
+             * Format: uuid
+             * @description UUID de l'écriture journal
+             */
+            id: string;
+            /**
+             * @description Type d'écriture générée par la cession : dotation prorata, sortie de l'actif, produit de cession
+             * @enum {string}
+             */
+            type: "prorata_depreciation" | "asset_writeoff" | "disposal_proceeds";
+            /** @description Lignes débit/crédit de l'écriture (montants en number) */
+            lines: components["schemas"]["DisposalJournalEntryLineResponse"][];
+        };
+        AssetDisposalResponse: {
+            /** @description Immobilisation cédée */
+            asset: components["schemas"]["AssetResponse"];
+            /** @description Écritures comptables générées par la cession (1 à 3) */
+            journalEntries: components["schemas"]["DisposalJournalEntryResponse"][];
+        };
+        ScheduleEnvelopeResponse: {
+            /** @description Une ligne d'échéancier postée en comptabilité */
+            schedule: components["schemas"]["DepreciationScheduleResponse"];
+        };
+        InventoryItemResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            code: string;
+            label: string;
+            unitOfMeasure: string;
+            /** @enum {string} */
+            family: "marchandises" | "matieres" | "fournitures" | "en_cours" | "produits_finis" | "en_route";
+            /** Format: uuid */
+            stockAccountId: string;
+            /** Format: uuid */
+            purchaseAccountId: string;
+            /** Format: uuid */
+            saleAccountId: string | null;
+            /** @description Qté en stock. NUMERIC(15,4) en string. */
+            currentQty: string;
+            /** @description CMP courant. NUMERIC(15,4) en string. */
+            currentCmp: string;
+            /** @enum {string} */
+            status: "active" | "archived";
+            /** @enum {string} */
+            valuationMethod: "cmp" | "fifo";
+            accountCode: string | null;
+            /** Format: uuid */
+            createdById: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListInventoryItemsResponse: {
+            items: components["schemas"]["InventoryItemResponse"][];
+        };
+        InventoryItemEnvelopeResponse: {
+            item: components["schemas"]["InventoryItemResponse"];
+        };
+        CreateInventoryItemDto: {
+            /**
+             * @description SKU interne (lettres maj, chiffres, tirets ; 1-32 chars)
+             * @example SKU-001
+             */
+            code: string;
+            /**
+             * @description Désignation produit
+             * @example Sac de ciment 50kg
+             */
+            label: string;
+            /**
+             * @description Unité de mesure
+             * @default unit
+             * @example kg
+             */
+            unitOfMeasure: string;
+            /**
+             * @description Famille SYSCOHADA
+             * @enum {string}
+             */
+            family: "marchandises" | "matieres" | "fournitures" | "en_cours" | "produits_finis" | "en_route";
+            /** @description ID compte de stock SYSCOHADA (31x-37x) */
+            stockAccountId: string;
+            /** @description ID compte d'achat (60x) */
+            purchaseAccountId: string;
+            /** @description ID compte de vente (70x). NULL si non revendu (stock interne). */
+            saleAccountId?: string;
+        };
+        UpdateInventoryItemDto: {
+            label?: string;
+            unitOfMeasure?: string;
+            stockAccountId?: string;
+            purchaseAccountId?: string;
+            /** @description NULL accepted to clear the sale account. */
+            saleAccountId?: string;
+            /** @enum {string} */
+            status?: "active" | "archived";
+        };
+        InventoryMovementResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            itemId: string;
+            /** @enum {string} */
+            type: "purchase" | "sale" | "adjustment" | "inventory_count" | "production";
+            /** @description YYYY-MM-DD */
+            movementDate: string;
+            /** @description NUMERIC(15,4) en string */
+            qty: string;
+            unitPrice: string | null;
+            /** @description Qté en stock après mvt. NUMERIC(15,4) en string. */
+            qtyAfter: string;
+            /** @description CMP après mvt. NUMERIC(15,4) en string. */
+            cmpAfter: string;
+            /** @description Valeur signée du mvt. DECIMAL(15,2) en string. */
+            movementValue: string;
+            reference: string | null;
+            description: string | null;
+            /** Format: uuid */
+            journalEntryId: string | null;
+            /** Format: uuid */
+            createdById: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ListInventoryMovementsResponse: {
+            movements: components["schemas"]["InventoryMovementResponse"][];
+        };
+        RecordMovementDto: {
+            /** @enum {string} */
+            type: "purchase" | "sale" | "adjustment" | "inventory_count" | "production";
+            /**
+             * @description Date du mouvement (YYYY-MM-DD)
+             * @example 2026-05-25
+             */
+            movementDate: string;
+            /**
+             * @description Quantité (signée pour adjustment, positive sinon)
+             * @example 100
+             */
+            qty: string;
+            /**
+             * @description Prix unitaire d'entrée (requis si purchase ou adjustment positif).
+             * @example 5000.00
+             */
+            unitPrice?: string;
+            /**
+             * @description Référence document source
+             * @example FACT-2026-042
+             */
+            reference?: string;
+            /** @description Description libre */
+            description?: string;
+        };
+        RecordMovementResponse: {
+            movement: components["schemas"]["InventoryMovementResponse"];
+            item: components["schemas"]["InventoryItemResponse"];
+        };
+        BankAccountResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            code: string;
+            label: string;
+            bankName: string;
+            accountNumber: string | null;
+            iban: string | null;
+            /** @description Devise (XOF par défaut) */
+            currency: string;
+            /** Format: uuid */
+            chartAccountId: string;
+            /** @description Solde d'ouverture. DECIMAL(15,2) en string. */
+            openingBalance: string;
+            /** @enum {string} */
+            status: "active" | "closed";
+            /** Format: date-time */
+            lastReconciledAt: string | null;
+            /** Format: uuid */
+            createdById: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListBankAccountsResponse: {
+            accounts: components["schemas"]["BankAccountResponse"][];
+        };
+        BankAccountEnvelopeResponse: {
+            account: components["schemas"]["BankAccountResponse"];
         };
         CreateBankAccountDto: {
             /** @example BNQ-001 */
@@ -2831,6 +4362,68 @@ export interface components {
              */
             status: "active" | "closed";
         };
+        BankStatementResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            bankAccountId: string;
+            /** @description YYYY-MM-DD */
+            periodStart: string;
+            /** @description YYYY-MM-DD */
+            periodEnd: string;
+            /** @description DECIMAL(15,2) en string. */
+            openingBalance: string;
+            /** @description DECIMAL(15,2) en string. */
+            closingBalance: string;
+            currency: string;
+            importedFileName: string;
+            importedFileHash: string;
+            importedLinesCount: number;
+            matchedLinesCount: number;
+            /** @enum {string} */
+            status: "imported" | "matching" | "reconciled";
+            /** Format: uuid */
+            importedById: string | null;
+            /** Format: date-time */
+            importedAt: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListBankStatementsResponse: {
+            statements: components["schemas"]["BankStatementResponse"][];
+        };
+        BankStatementLineResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            bankStatementId: string;
+            /** Format: uuid */
+            bankAccountId: string;
+            lineOrder: number;
+            /** @description YYYY-MM-DD */
+            operationDate: string;
+            valueDate: string | null;
+            label: string;
+            bankReference: string | null;
+            /** @description Montant signé. DECIMAL(15,2) en string. */
+            amount: string;
+            /** @enum {string} */
+            matchStatus: "unmatched" | "matched" | "ignored";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        BankStatementWithLinesResponse: {
+            statement: components["schemas"]["BankStatementResponse"];
+            lines: components["schemas"]["BankStatementLineResponse"][];
+        };
         ImportBankStatementDto: {
             /** @example releve_bicici_2026-03.csv */
             fileName: string;
@@ -2845,14 +4438,52 @@ export interface components {
             /** @example 12500000.00 */
             closingBalance: string;
         };
+        ImportBankStatementResponse: {
+            statement: components["schemas"]["BankStatementResponse"];
+            /** @description Nombre de lignes importées */
+            linesCount: number;
+        };
+        AutoMatchProposalResponse: {
+            /** Format: uuid */
+            statementLineId: string;
+            /** Format: uuid */
+            journalEntryLineId: string;
+            /** @description Score 0-100 */
+            confidenceScore: number;
+        };
+        ListProposalsResponse: {
+            proposals: components["schemas"]["AutoMatchProposalResponse"][];
+        };
         MatchStatementLineDto: {
             /**
-             * @description UUIDs of the journal entry lines to match. Wave 1: 1:1 only — exactly one. Wave 2 will allow N for grouped operations.
+             * @description UUIDs of the journal entry lines to match. Wave 2: 1:1 (one) ou 1:N (plusieurs lignes dont la somme signée ≈ le montant relevé ± tolérance).
              * @example [
              *       "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
              *     ]
              */
             journalEntryLineIds: string[];
+            /**
+             * @description Tolérance absolue (devise du compte) sur la somme des montants. Défaut 0.01.
+             * @example 0.5
+             */
+            amountTolerance?: number;
+            /**
+             * @description Active la génération de propositions multi-lignes (1:N).
+             * @example false
+             */
+            enableMultiLine?: boolean;
+        };
+        MatchResultResponse: {
+            /** @enum {string} */
+            status: "matched";
+            /** Format: uuid */
+            matchGroupId: string | null;
+            /** @description Taux FX appliqué si conversion devise (DECIMAL en string) */
+            fxRateApplied: string | null;
+        };
+        UnmatchResultResponse: {
+            /** @enum {string} */
+            status: "unmatched";
         };
         ScanAnomaliesDto: {
             /**
@@ -2899,70 +4530,98 @@ export interface components {
             /** @description UUID de la période fiscale à utiliser comme contexte par défaut (anomalies, top risque, etc.). */
             periodId?: string;
         };
-        CreateInventoryItemDto: {
-            /**
-             * @description SKU interne (lettres maj, chiffres, tirets ; 1-32 chars)
-             * @example SKU-001
-             */
-            code: string;
-            /**
-             * @description Désignation produit
-             * @example Sac de ciment 50kg
-             */
-            label: string;
-            /**
-             * @description Unité de mesure
-             * @default unit
-             * @example kg
-             */
-            unitOfMeasure: string;
-            /**
-             * @description Famille SYSCOHADA
-             * @enum {string}
-             */
-            family: "marchandises" | "matieres" | "fournitures" | "en_cours" | "produits_finis" | "en_route";
-            /** @description ID compte de stock SYSCOHADA (31x-37x) */
-            stockAccountId: string;
-            /** @description ID compte d'achat (60x) */
-            purchaseAccountId: string;
-            /** @description ID compte de vente (70x). NULL si non revendu (stock interne). */
-            saleAccountId?: string;
+        DashboardSummaryResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            exerciseId: string;
+            periodStart: string;
+            periodEnd: string;
+            currency: string;
+            /** @description Solde net trésorerie (DECIMAL string) */
+            cashBalance: string;
+            /** @description Créances clients nettes (DECIMAL string) */
+            receivables: string;
+            /** @description Dettes fournisseurs nettes (DECIMAL string) */
+            payables: string;
+            /** @description Produits YTD (DECIMAL string) */
+            revenueYtd: string;
+            /** @description Charges YTD (DECIMAL string) */
+            expensesYtd: string;
+            /** @description Résultat net YTD (DECIMAL string) */
+            netResultYtd: string;
+            grossMarginRatio: number | null;
+            liquidityRatio: number | null;
+            /** @description Breakdown par classe OHADA */
+            accountClassBreakdown: Record<string, never>[];
         };
-        UpdateInventoryItemDto: {
-            label?: string;
-            unitOfMeasure?: string;
-            stockAccountId?: string;
-            purchaseAccountId?: string;
-            /** @description NULL accepted to clear the sale account. */
-            saleAccountId?: string;
-            /** @enum {string} */
-            status?: "active" | "archived";
+        SummaryEnvelopeResponse: {
+            summary: components["schemas"]["DashboardSummaryResponse"];
         };
-        RecordMovementDto: {
+        DashboardAgingResponse: {
+            /** Format: uuid */
+            organizationId: string;
             /** @enum {string} */
-            type: "purchase" | "sale" | "adjustment" | "inventory_count" | "production";
-            /**
-             * @description Date du mouvement (YYYY-MM-DD)
-             * @example 2026-05-25
-             */
-            movementDate: string;
-            /**
-             * @description Quantité (signée pour adjustment, positive sinon)
-             * @example 100
-             */
-            qty: string;
-            /**
-             * @description Prix unitaire d'entrée (requis si purchase ou adjustment positif).
-             * @example 5000.00
-             */
-            unitPrice?: string;
-            /**
-             * @description Référence document source
-             * @example FACT-2026-042
-             */
-            reference?: string;
-            /** @description Description libre */
-            description?: string;
+            type: "clients" | "fournisseurs";
+            asOfDate: string;
+            currency: string;
+            /** @description Buckets 0-30, 31-60, 61-90, >90 */
+            buckets: Record<string, never>[];
+            totalOutstanding: string;
+            /** @description Détail par partenaire */
+            partnerBreakdown: Record<string, never>[];
+        };
+        AgingEnvelopeResponse: {
+            aging: components["schemas"]["DashboardAgingResponse"];
+        };
+        DashboardCashflowResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            exerciseId: string;
+            periodStart: string;
+            periodEnd: string;
+            currency: string;
+            /** @description Points mensuels de trésorerie */
+            points: Record<string, never>[];
+            /** @description Totaux inflow/outflow/netFlow */
+            totals: Record<string, never>;
+        };
+        CashflowEnvelopeResponse: {
+            cashflow: components["schemas"]["DashboardCashflowResponse"];
+        };
+        DashboardEvolutionResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            exerciseId: string;
+            periodStart: string;
+            periodEnd: string;
+            currency: string;
+            /** @description Points mensuels P&L */
+            points: Record<string, never>[];
+            /** @description Totaux revenue/expenses/netResult */
+            totals: Record<string, never>;
+        };
+        EvolutionEnvelopeResponse: {
+            evolution: components["schemas"]["DashboardEvolutionResponse"];
+        };
+        DashboardTopAccountsResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            exerciseId: string;
+            /** @enum {string} */
+            category: "expenses" | "revenue";
+            periodStart: string;
+            periodEnd: string;
+            currency: string;
+            totalAmount: string;
+            /** @description Lignes top N comptes */
+            rows: Record<string, never>[];
+        };
+        TopAccountsEnvelopeResponse: {
+            topAccounts: components["schemas"]["DashboardTopAccountsResponse"];
         };
         RecalculateScoreDto: {
             /**
@@ -3053,7 +4712,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListOrganizationsResponse"];
+                };
             };
         };
     };
@@ -3075,7 +4736,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["CreateOrganizationResponse"];
                 };
             };
         };
@@ -3099,7 +4760,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationEnvelopeResponse"];
+                };
             };
         };
     };
@@ -3521,7 +5184,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListReferenceAccountsResponse"];
+                };
             };
         };
     };
@@ -3540,7 +5205,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListAccountsResponse"];
+                };
             };
         };
     };
@@ -3563,7 +5230,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AccountEnvelopeResponse"];
+                };
             };
         };
     };
@@ -3583,7 +5252,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AccountEnvelopeResponse"];
+                };
             };
         };
     };
@@ -3627,7 +5298,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AccountEnvelopeResponse"];
+                };
             };
         };
     };
@@ -3646,7 +5319,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ImportChartResponse"];
+                };
             };
         };
     };
@@ -3825,7 +5500,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListEntriesResponse"];
+                };
             };
         };
     };
@@ -3849,7 +5526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["JournalEntryDetailResponse"];
                 };
             };
         };
@@ -3871,7 +5548,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["JournalEntryDetailResponse"];
                 };
             };
         };
@@ -3913,7 +5590,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["JournalEntryDetailResponse"];
                 };
             };
         };
@@ -3939,7 +5616,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["JournalEntryDetailResponse"];
                 };
             };
         };
@@ -4408,6 +6085,28 @@ export interface operations {
             };
         };
     };
+    TvaDeclarationsController_centralize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                declarationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TvaDeclarationEnvelopeResponse"];
+                };
+            };
+        };
+    };
     TvaDeclarationsController_cancel: {
         parameters: {
             query?: never;
@@ -4451,7 +6150,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListCurrenciesResponse"];
+                };
             };
         };
     };
@@ -4474,7 +6175,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CurrencyEnvelopeResponse"];
+                };
             };
         };
     };
@@ -4498,7 +6201,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CurrencyEnvelopeResponse"];
+                };
             };
         };
     };
@@ -4524,7 +6229,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListExchangeRatesResponse"];
+                };
             };
         };
     };
@@ -4547,7 +6254,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ExchangeRateEnvelopeResponse"];
+                };
             };
         };
     };
@@ -4572,7 +6281,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["FxConversionEnvelopeResponse"];
+                };
             };
         };
     };
@@ -4629,6 +6340,50 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportsController_deleteSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImportsController_updateSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateImportSessionDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -4766,7 +6521,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TransformationEnvelopeResponse"];
+                };
             };
         };
     };
@@ -4789,7 +6546,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TransformationEnvelopeResponse"];
+                };
             };
         };
     };
@@ -4809,7 +6568,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TransformationHistoryResponse"];
+                };
             };
         };
     };
@@ -4829,7 +6590,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RuleEntity"][];
+                    "application/json": components["schemas"]["ListRulesResponse"];
                 };
             };
         };
@@ -4854,7 +6615,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RuleEntity"];
+                    "application/json": components["schemas"]["RuleEnvelopeResponse"];
                 };
             };
         };
@@ -4876,7 +6637,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RuleEntity"];
+                    "application/json": components["schemas"]["RuleEnvelopeResponse"];
                 };
             };
         };
@@ -4902,7 +6663,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RuleEntity"];
+                    "application/json": components["schemas"]["RuleEnvelopeResponse"];
                 };
             };
         };
@@ -4928,7 +6689,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["RuleExecutionResultResponse"];
                 };
             };
         };
@@ -4954,7 +6715,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["RuleExecutionResultResponse"];
                 };
             };
         };
@@ -4976,7 +6737,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RuleExecutionEntity"][];
+                    "application/json": components["schemas"]["ListRuleExecutionsResponse"];
                 };
             };
         };
@@ -5111,6 +6872,77 @@ export interface operations {
             };
         };
     };
+    ReportsController_dsfValidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                exerciseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DsfValidationReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_dsfPackage: {
+        parameters: {
+            query: {
+                exerciseId: string;
+                fromDate: string;
+                toDate: string;
+                /** @description Début exercice fiscal (Bilan). Défaut = fromDate. */
+                fiscalYearStartDate?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_annualPackage: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+                /** @description Début exercice fiscal pour bilan/ratios. Défaut = fromDate. */
+                fiscalYearStartDate?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ReportsController_trialBalance: {
         parameters: {
             query: {
@@ -5126,6 +6958,132 @@ export interface operations {
                 accountCodeTo?: string;
                 /** @description Hide accounts that have no movement and no opening */
                 hideEmpty?: boolean;
+                /** @description Type d'axe analytique (CHANTIER, BU, ACTIVITE, PROJET) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique (ex. AB123) */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrialBalanceReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_comparativeBalance: {
+        parameters: {
+            query: {
+                /** @description Début période N (inclusive) */
+                fromDate: string;
+                /** @description Fin période N (inclusive) */
+                toDate: string;
+                /** @description Début période N-1 (inclusive) */
+                previousFromDate: string;
+                /** @description Fin période N-1 (inclusive) */
+                previousToDate: string;
+                /** @description Filtrer sur une classe OHADA (1-9) */
+                accountClass?: number;
+                /** @description Borne inférieure inclusive sur le code compte */
+                accountCodeFrom?: string;
+                /** @description Borne supérieure inclusive sur le code compte */
+                accountCodeTo?: string;
+                /** @description Masquer les comptes sans mouvement sur N et N-1 et sans solde */
+                hideEmpty?: boolean;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparativeBalanceReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_multiYearBalance: {
+        parameters: {
+            query: {
+                period1FromDate: string;
+                period1ToDate: string;
+                period2FromDate: string;
+                period2ToDate: string;
+                period3FromDate?: string;
+                period3ToDate?: string;
+                period4FromDate?: string;
+                period4ToDate?: string;
+                period5FromDate?: string;
+                period5ToDate?: string;
+                accountClass?: number;
+                accountCodeFrom?: string;
+                accountCodeTo?: string;
+                hideEmpty?: boolean;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MultiYearBalanceReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_multiYearBalanceXlsx: {
+        parameters: {
+            query: {
+                period1FromDate: string;
+                period1ToDate: string;
+                period2FromDate: string;
+                period2ToDate: string;
+                period3FromDate?: string;
+                period3ToDate?: string;
+                period4FromDate?: string;
+                period4ToDate?: string;
+                period5FromDate?: string;
+                period5ToDate?: string;
+                accountClass?: number;
+                accountCodeFrom?: string;
+                accountCodeTo?: string;
+                hideEmpty?: boolean;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
             };
             header?: never;
             path: {
@@ -5164,7 +7122,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GeneralLedgerReportEnvelope"];
+                };
             };
         };
     };
@@ -5179,6 +7139,311 @@ export interface operations {
                 compareFromDate?: string;
                 /** @description Optional prior-period end date — pair with `compareFromDate`. */
                 compareToDate?: string;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfitLossReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_sig: {
+        parameters: {
+            query: {
+                /** @description Début de la période N (inclusive) */
+                fromDate: string;
+                /** @description Fin de la période N (inclusive) */
+                toDate: string;
+                /** @description Début comparaison N-1 */
+                compareFromDate?: string;
+                /** @description Fin comparaison N-1 */
+                compareToDate?: string;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SigReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_balanceSheet: {
+        parameters: {
+            query: {
+                /** @description Cumulative balance as at this date (inclusive) */
+                asAtDate: string;
+                /** @description Optional start date of the fiscal year ending at `asAtDate`. When provided, the net result for the period [fiscalYearStartDate, asAtDate] is auto-incorporated into capitaux propres as a synthetic "Résultat de l'exercice" line — the bilan then balances by construction. */
+                fiscalYearStartDate?: string;
+                /** @description Optional prior-period snapshot date for N vs N-1 comparison. */
+                compareAsAtDate?: string;
+                /** @description Optional prior-year start date for the comparison consolidation. */
+                compareFiscalYearStartDate?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceSheetReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_tafire: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TafireReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_importDiagnostic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDiagnosticReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_importDiagnosticPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_tft: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TftReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_annexe: {
+        parameters: {
+            query: {
+                asAtDate: string;
+                fiscalYearStartDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnexeReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_annexeNoteDetail: {
+        parameters: {
+            query: {
+                /** @description Code de la note (avec espace) */
+                noteCode: string;
+                asAtDate: string;
+                fiscalYearStartDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnexeNoteDetailReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_marginByAxis: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+                /** @description Type d'axe analytique à grouper (CHANTIER, BU, ACTIVITE, PROJET). */
+                axisType: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarginByAxisReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_analyticAxes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticAxisSummaryListResponse"];
+                };
+            };
+        };
+    };
+    ReportsController_agingBalance: {
+        parameters: {
+            query: {
+                side: "CLIENT" | "FOURNISSEUR";
+                asAtDate: string;
+                /** @description Bornes des buckets en jours, séparées par virgule. Défaut '30,60,90,180'. */
+                bucketBoundaries?: number[];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgingBalanceReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_tafireXlsx: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
             };
             header?: never;
             path: {
@@ -5196,17 +7461,157 @@ export interface operations {
             };
         };
     };
-    ReportsController_balanceSheet: {
+    ReportsController_tftXlsx: {
         parameters: {
             query: {
-                /** @description Cumulative balance as at this date (inclusive) */
+                fromDate: string;
+                toDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_annexeXlsx: {
+        parameters: {
+            query: {
                 asAtDate: string;
-                /** @description Optional start date of the fiscal year ending at `asAtDate`. When provided, the net result for the period [fiscalYearStartDate, asAtDate] is auto-incorporated into capitaux propres as a synthetic "Résultat de l'exercice" line — the bilan then balances by construction. */
-                fiscalYearStartDate?: string;
-                /** @description Optional prior-period snapshot date for N vs N-1 comparison. */
-                compareAsAtDate?: string;
-                /** @description Optional prior-year start date for the comparison consolidation. */
-                compareFiscalYearStartDate?: string;
+                fiscalYearStartDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_agingBalanceXlsx: {
+        parameters: {
+            query: {
+                side: "CLIENT" | "FOURNISSEUR";
+                asAtDate: string;
+                /** @description Bornes des buckets en jours, séparées par virgule. Défaut '30,60,90,180'. */
+                bucketBoundaries?: number[];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_cashTrend: {
+        parameters: {
+            query: {
+                /** @description Premier mois (inclusive) */
+                fromMonth: string;
+                /** @description Dernier mois (inclusive) */
+                toMonth: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashTrendReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_cashTrendXlsx: {
+        parameters: {
+            query: {
+                /** @description Premier mois (inclusive) */
+                fromMonth: string;
+                /** @description Dernier mois (inclusive) */
+                toMonth: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_financialRatios: {
+        parameters: {
+            query: {
+                /** @description Date de calcul des ratios */
+                asAtDate: string;
+                /** @description Début de l'exercice fiscal (sert au calcul du SIG) */
+                fiscalYearStartDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialRatiosReportEnvelope"];
+                };
+            };
+        };
+    };
+    ReportsController_financialRatiosXlsx: {
+        parameters: {
+            query: {
+                /** @description Date de calcul des ratios */
+                asAtDate: string;
+                /** @description Début de l'exercice fiscal (sert au calcul du SIG) */
+                fiscalYearStartDate: string;
             };
             header?: never;
             path: {
@@ -5239,6 +7644,10 @@ export interface operations {
                 accountCodeTo?: string;
                 /** @description Hide accounts that have no movement and no opening */
                 hideEmpty?: boolean;
+                /** @description Type d'axe analytique (CHANTIER, BU, ACTIVITE, PROJET) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique (ex. AB123) */
+                analyticAxisCode?: string;
             };
             header?: never;
             path: {
@@ -5292,6 +7701,10 @@ export interface operations {
                 compareFromDate?: string;
                 /** @description Optional prior-period end date — pair with `compareFromDate`. */
                 compareToDate?: string;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
             };
             header?: never;
             path: {
@@ -5337,6 +7750,154 @@ export interface operations {
             };
         };
     };
+    ReportsController_sigPdf: {
+        parameters: {
+            query: {
+                /** @description Début de la période N (inclusive) */
+                fromDate: string;
+                /** @description Fin de la période N (inclusive) */
+                toDate: string;
+                /** @description Début comparaison N-1 */
+                compareFromDate?: string;
+                /** @description Fin comparaison N-1 */
+                compareToDate?: string;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_financialRatiosPdf: {
+        parameters: {
+            query: {
+                /** @description Date de calcul des ratios */
+                asAtDate: string;
+                /** @description Début de l'exercice fiscal (sert au calcul du SIG) */
+                fiscalYearStartDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_agingBalancePdf: {
+        parameters: {
+            query: {
+                side: "CLIENT" | "FOURNISSEUR";
+                asAtDate: string;
+                /** @description Bornes des buckets en jours, séparées par virgule. Défaut '30,60,90,180'. */
+                bucketBoundaries?: number[];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_cashTrendPdf: {
+        parameters: {
+            query: {
+                /** @description Premier mois (inclusive) */
+                fromMonth: string;
+                /** @description Dernier mois (inclusive) */
+                toMonth: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_tafirePdf: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_tftPdf: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ReportsController_trialBalanceXlsx: {
         parameters: {
             query: {
@@ -5352,6 +7913,50 @@ export interface operations {
                 accountCodeTo?: string;
                 /** @description Hide accounts that have no movement and no opening */
                 hideEmpty?: boolean;
+                /** @description Type d'axe analytique (CHANTIER, BU, ACTIVITE, PROJET) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique (ex. AB123) */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_comparativeBalanceXlsx: {
+        parameters: {
+            query: {
+                /** @description Début période N (inclusive) */
+                fromDate: string;
+                /** @description Fin période N (inclusive) */
+                toDate: string;
+                /** @description Début période N-1 (inclusive) */
+                previousFromDate: string;
+                /** @description Fin période N-1 (inclusive) */
+                previousToDate: string;
+                /** @description Filtrer sur une classe OHADA (1-9) */
+                accountClass?: number;
+                /** @description Borne inférieure inclusive sur le code compte */
+                accountCodeFrom?: string;
+                /** @description Borne supérieure inclusive sur le code compte */
+                accountCodeTo?: string;
+                /** @description Masquer les comptes sans mouvement sur N et N-1 et sans solde */
+                hideEmpty?: boolean;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
             };
             header?: never;
             path: {
@@ -5405,6 +8010,102 @@ export interface operations {
                 compareFromDate?: string;
                 /** @description Optional prior-period end date — pair with `compareFromDate`. */
                 compareToDate?: string;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_profitLossOfficialXlsx: {
+        parameters: {
+            query: {
+                /** @description Début de la période N (inclusive) */
+                fromDate: string;
+                /** @description Fin de la période N (inclusive) */
+                toDate: string;
+                /** @description Début comparaison N-1 */
+                compareFromDate?: string;
+                /** @description Fin comparaison N-1 */
+                compareToDate?: string;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_sigXlsx: {
+        parameters: {
+            query: {
+                /** @description Début de la période N (inclusive) */
+                fromDate: string;
+                /** @description Fin de la période N (inclusive) */
+                toDate: string;
+                /** @description Début comparaison N-1 */
+                compareFromDate?: string;
+                /** @description Fin comparaison N-1 */
+                compareToDate?: string;
+                /** @description Type d'axe analytique (CHANTIER, BU, ...) */
+                analyticAxisType?: string;
+                /** @description Code de l'axe analytique */
+                analyticAxisCode?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_balanceSheetOfficialXlsx: {
+        parameters: {
+            query: {
+                /** @description Cumulative balance as at this date (inclusive) */
+                asAtDate: string;
+                /** @description Optional start date of the fiscal year ending at `asAtDate`. When provided, the net result for the period [fiscalYearStartDate, asAtDate] is auto-incorporated into capitaux propres as a synthetic "Résultat de l'exercice" line — the bilan then balances by construction. */
+                fiscalYearStartDate?: string;
+                /** @description Optional prior-period snapshot date for N vs N-1 comparison. */
+                compareAsAtDate?: string;
+                /** @description Optional prior-year start date for the comparison consolidation. */
+                compareFiscalYearStartDate?: string;
             };
             header?: never;
             path: {
@@ -5465,7 +8166,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListAssetsResponse"];
+                };
             };
         };
     };
@@ -5488,7 +8191,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AssetWithScheduleResponse"];
+                };
             };
         };
     };
@@ -5508,7 +8213,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AssetEnvelopeResponse"];
+                };
             };
         };
     };
@@ -5532,7 +8239,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AssetWithScheduleResponse"];
+                };
             };
         };
     };
@@ -5552,7 +8261,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListSchedulesResponse"];
+                };
             };
         };
     };
@@ -5576,7 +8287,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AssetDisposalResponse"];
+                };
             };
         };
     };
@@ -5596,7 +8309,159 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ScheduleEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    InventoryItemsController_list: {
+        parameters: {
+            query: {
+                activeOnly: string;
+                family: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListInventoryItemsResponse"];
+                };
+            };
+        };
+    };
+    InventoryItemsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInventoryItemDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryItemEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    InventoryItemsController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryItemEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    InventoryItemsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInventoryItemDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryItemEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    InventoryMovementsController_list: {
+        parameters: {
+            query?: {
+                itemId?: string;
+                type?: "purchase" | "sale" | "adjustment" | "inventory_count" | "production";
+                fromDate?: string;
+                toDate?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListInventoryMovementsResponse"];
+                };
+            };
+        };
+    };
+    InventoryMovementsController_record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordMovementDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordMovementResponse"];
+                };
             };
         };
     };
@@ -5615,7 +8480,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListBankAccountsResponse"];
+                };
             };
         };
     };
@@ -5638,7 +8505,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BankAccountEnvelopeResponse"];
+                };
             };
         };
     };
@@ -5658,7 +8527,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BankAccountEnvelopeResponse"];
+                };
             };
         };
     };
@@ -5678,7 +8549,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListBankStatementsResponse"];
+                };
             };
         };
     };
@@ -5699,7 +8572,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["BankStatementWithLinesResponse"];
+                };
             };
         };
     };
@@ -5723,7 +8598,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ImportBankStatementResponse"];
+                };
             };
         };
     };
@@ -5743,7 +8620,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ListProposalsResponse"];
+                };
             };
         };
     };
@@ -5767,7 +8646,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MatchResultResponse"];
+                };
             };
         };
     };
@@ -5787,7 +8668,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UnmatchResultResponse"];
+                };
             };
         };
     };
@@ -5937,7 +8820,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SummaryEnvelopeResponse"];
+                };
             };
         };
     };
@@ -5965,7 +8850,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AgingEnvelopeResponse"];
+                };
             };
         };
     };
@@ -5989,7 +8876,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CashflowEnvelopeResponse"];
+                };
             };
         };
     };
@@ -6013,7 +8902,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["EvolutionEnvelopeResponse"];
+                };
             };
         };
     };
@@ -6037,146 +8928,8 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-        };
-    };
-    InventoryItemsController_list: {
-        parameters: {
-            query: {
-                activeOnly: string;
-                family: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    InventoryItemsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateInventoryItemDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    InventoryItemsController_getOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                itemId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    InventoryItemsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                itemId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateInventoryItemDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    InventoryMovementsController_list: {
-        parameters: {
-            query?: {
-                itemId?: string;
-                type?: "purchase" | "sale" | "adjustment" | "inventory_count" | "production";
-                fromDate?: string;
-                toDate?: string;
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    InventoryMovementsController_record: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                itemId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RecordMovementDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["TopAccountsEnvelopeResponse"];
                 };
             };
         };
