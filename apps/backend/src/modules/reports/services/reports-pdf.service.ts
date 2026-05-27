@@ -3,8 +3,9 @@ import PDFDocument from 'pdfkit';
 
 import type {
   AgingBalanceReport,
-  BalanceSheetGroup,
   BalanceSheetReport,
+  BilanMasse,
+  BilanPoste,
   CashTrendReport,
   FinancialRatiosReport,
   GeneralLedgerReport,
@@ -248,7 +249,30 @@ export class ReportsPdfService {
     return this.finalize(doc);
   }
 
-  // ─── Balance Sheet ───────────────────────────────────────────────
+  // ─── Balance Sheet (W5.2 — contexture normalisée DGI) ────────────
+  /**
+   * Bilan PDF — contexture normalisée DGI à 4 colonnes pour l'ACTIF
+   * (Brut N | Amort. & dépréc. N | Net N | Net N-1) et 2 colonnes pour
+   * le PASSIF (Net N | Net N-1).
+   *
+   * Doctrine : SYSCOHADA AUDCIF, Tome 3 « États financiers », p. 32-34
+   * (imprimés normalisés) + p. 18 (« reproduire à l'identique la
+   * contexture des imprimés normalisés »).
+   *
+   * Source de vérité : hiérarchie `actifMasses` / `passifMasses` issue
+   * de `buildBilanHierarchy` (W2.1). Chaque `BilanPoste` expose déjà
+   * `brut` / `deduction` / `net` / `netPrevious`, donc aucune ré-agrégation
+   * côté PDF — le rendu se contente de mapper.
+   *
+   * Présentation : 3 niveaux affichés
+   *   1. Masse        (gras, fond léger — ex. « AZ TOTAL ACTIF IMMOBILISÉ »)
+   *   2. Rubrique     (gras italique — ex. « Actif immobilisé »)
+   *   3. Poste lettré (normal indenté — ex. « AE Frais de développement »)
+   *
+   * Devise : XOF par défaut (affichée dans le sous-titre). Les montants
+   * sont formatés `1 234 567,89` avec espace fine insécable U+202F comme
+   * séparateur de milliers (conforme PRODUCT.md).
+   */
   async balanceSheetPdf(report: BalanceSheetReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
     const hasComparison = report.previous !== undefined;
@@ -256,73 +280,80 @@ export class ReportsPdfService {
     this.header(
       doc,
       orgName,
-      'Bilan OHADA – SYSCOHADA AUDCIF',
+      'Bilan OHADA – SYSCOHADA AUDCIF (contexture normalisée DGI)',
       `Au ${report.asAtDate}` +
-        (hasComparison ? ` (comparaison N-1 : ${report.previous.asAtDate})` : ''),
+        (hasComparison ? ` (comparaison N-1 : ${report.previous.asAtDate})` : '') +
+        ' — Devise : XOF',
     );
 
-    const cols = hasComparison
-      ? [
-          { label: 'Code', width: 50 },
-          { label: 'Intitulé', width: 180 },
-          { label: 'Montant N', width: 80, align: 'right' as const },
-          { label: 'Montant N-1', width: 80, align: 'right' as const },
-          { label: 'Variation', width: 70, align: 'right' as const },
-          { label: '% Évol.', width: 60, align: 'right' as const },
-        ]
-      : [
-          { label: 'Code', width: 60 },
-          { label: 'Intitulé', width: 280 },
-          { label: 'Montant', width: 100, align: 'right' as const },
-        ];
+    // Colonnes ACTIF (4 colonnes montant) — utilisées aussi pour le
+    // PASSIF, où les colonnes Brut / Amort restent vides (sans objet
+    // pour les capitaux propres et les dettes).
+    const cols = [
+      { label: 'Réf.', width: 40 },
+      { label: 'Libellé', width: 240 },
+      { label: 'Brut N', width: 90, align: 'right' as const },
+      { label: 'Amort. & dépréc.', width: 100, align: 'right' as const },
+      { label: 'Net N', width: 90, align: 'right' as const },
+      { label: 'Net N-1', width: 90, align: 'right' as const },
+    ];
 
     let y = this.tableHeader(doc, cols);
 
-    // ACTIF
+    // ── ACTIF — 4 colonnes pleines (Brut / Amort / Net N / Net N-1) ──
     y = this.sectionTitle(doc, 'ACTIF', y);
-    for (const section of report.actif.sections) {
-      y = this.bsSectionRows(doc, cols, section, y, hasComparison);
+    for (const masse of report.actifMasses) {
+      y = this.bsMasseRows(doc, cols, masse, y, 'ACTIF');
     }
-    const actifTotals = hasComparison
-      ? [
-          '',
-          'TOTAL ACTIF',
-          this.fmtAmt(report.actif.total),
-          this.fmtAmt(report.previous.totalActif),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL ACTIF', this.fmtAmt(report.actif.total)];
-    y = this.tableRow(doc, cols, actifTotals, y, true);
 
-    // PASSIF
+    // Total général ACTIF (masse racine BZ déjà rendue ci-dessus, on
+    // ajoute un rappel synthétique pour faciliter la lecture).
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        '',
+        'TOTAL GÉNÉRAL ACTIF',
+        '',
+        '',
+        this.fmtAmt(report.totals.actif),
+        hasComparison ? this.fmtAmt(report.previous.totalActif) : '',
+      ],
+      y,
+      true,
+    );
+
+    // ── PASSIF — 2 colonnes utiles (Brut / Amort vides par doctrine) ──
     if (y > doc.page.height - 120) {
       doc.addPage();
       y = this.tableHeader(doc, cols);
     }
     y = this.sectionTitle(doc, 'PASSIF', y + 10);
-    for (const section of report.passif.sections) {
-      y = this.bsSectionRows(doc, cols, section, y, hasComparison);
+    for (const masse of report.passifMasses) {
+      y = this.bsMasseRows(doc, cols, masse, y, 'PASSIF');
     }
-    const passifTotals = hasComparison
-      ? [
-          '',
-          'TOTAL PASSIF',
-          this.fmtAmt(report.passif.total),
-          this.fmtAmt(report.previous.totalPassif),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL PASSIF', this.fmtAmt(report.passif.total)];
-    y = this.tableRow(doc, cols, passifTotals, y, true);
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        '',
+        'TOTAL GÉNÉRAL PASSIF',
+        '',
+        '',
+        this.fmtAmt(report.totals.passif),
+        hasComparison ? this.fmtAmt(report.previous.totalPassif) : '',
+      ],
+      y,
+      true,
+    );
 
-    // Difference
+    // ── Pied : équilibre + résultat incorporé ──
     y += 8;
     doc
       .font('Helvetica-Bold')
       .fontSize(ReportsPdfService.FONT_SIZE_TABLE)
       .text(
-        `Écart Actif − Passif : ${this.fmtAmt(report.difference)}`,
+        `Écart Actif − Passif : ${this.fmtAmt(report.totals.difference)}`,
         ReportsPdfService.MARGIN,
         y,
       );
@@ -337,6 +368,129 @@ export class ReportsPdfService {
 
     this.footer(doc);
     return this.finalize(doc);
+  }
+
+  /**
+   * Rendu d'une masse (AZ, BJ, BK, BT, BZ, CP, DD, DF, DP, DT, DZ…)
+   * avec ses rubriques et postes. Insère un saut de page si nécessaire
+   * avant chaque ligne.
+   *
+   * Pour le côté ACTIF : affiche Brut + Amort & dépréc. + Net N + Net N-1.
+   * Pour le côté PASSIF : Brut / Amort restent vides (les capitaux
+   * propres et dettes n'ont pas d'amortissements opposants par
+   * doctrine OHADA).
+   */
+  private bsMasseRows(
+    doc: PDFKit.PDFDocument,
+    cols: Array<{ label: string; width: number; align?: 'right' }>,
+    masse: BilanMasse,
+    y: number,
+    side: 'ACTIF' | 'PASSIF',
+  ): number {
+    if (y > doc.page.height - 60) {
+      doc.addPage();
+      y = this.tableHeader(doc, cols);
+    }
+
+    // Header de la masse (gras, sans montant — celui-ci apparaît en
+    // ligne de total après les rubriques).
+    y = this.tableRow(
+      doc,
+      cols,
+      [masse.code, masse.label.toUpperCase(), '', '', '', ''],
+      y,
+      true,
+    );
+
+    for (const rubrique of masse.rubriques) {
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+      // Rubrique — étiquette éditoriale (gras, indentée).
+      y = this.tableRow(
+        doc,
+        cols,
+        ['', `  ${rubrique.label}`, '', '', '', ''],
+        y,
+        true,
+      );
+
+      // Postes lettrés — par doctrine on AFFICHE même les lignes vides
+      // (contexture normalisée DGI inclut tous les postes, A/N/A possible).
+      for (const poste of rubrique.postes) {
+        if (y > doc.page.height - 60) {
+          doc.addPage();
+          y = this.tableHeader(doc, cols);
+        }
+        y = this.tableRow(doc, cols, this.posteValues(poste, side), y);
+      }
+
+      // Sous-total de rubrique.
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+      y = this.tableRow(
+        doc,
+        cols,
+        [
+          '',
+          `  Sous-total ${rubrique.label}`,
+          '',
+          '',
+          this.fmtAmt(rubrique.subtotal),
+          rubrique.subtotalPrevious !== undefined
+            ? this.fmtAmt(rubrique.subtotalPrevious)
+            : '',
+        ],
+        y,
+        true,
+      );
+    }
+
+    // Total de masse (ex. AZ, BJ, BT).
+    if (y > doc.page.height - 60) {
+      doc.addPage();
+      y = this.tableHeader(doc, cols);
+    }
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        masse.code,
+        `TOTAL ${masse.label.toUpperCase()}`,
+        '',
+        '',
+        this.fmtAmt(masse.total),
+        masse.totalPrevious !== undefined ? this.fmtAmt(masse.totalPrevious) : '',
+      ],
+      y,
+      true,
+    );
+
+    return y;
+  }
+
+  /**
+   * Construit les 6 cellules d'une ligne de poste lettré. Côté ACTIF :
+   * 4 colonnes montant (Brut / Amort / Net N / Net N-1). Côté PASSIF :
+   * Brut & Amort restent vides — les capitaux propres et les dettes
+   * n'ont pas de valeur brute distincte du net (Tome 3 p. 32, colonne
+   * unique côté passif).
+   */
+  private posteValues(poste: BilanPoste, side: 'ACTIF' | 'PASSIF'): string[] {
+    const code = poste.code;
+    const label = `  ${poste.label}`;
+    const netN = this.fmtAmt(poste.net);
+    const netN1 =
+      poste.netPrevious !== undefined ? this.fmtAmt(poste.netPrevious) : '';
+    if (side === 'PASSIF') {
+      return [code, label, '', '', netN, netN1];
+    }
+    const brut = poste.brut !== undefined ? this.fmtAmt(poste.brut) : '';
+    const ded = poste.deduction !== undefined ? this.fmtAmt(poste.deduction) : '';
+    return [code, label, brut, ded, netN, netN1];
   }
 
   // ─── Internal helpers ────────────────────────────────────────────
@@ -961,56 +1115,6 @@ export class ReportsPdfService {
     return y;
   }
 
-  private bsSectionRows(
-    doc: PDFKit.PDFDocument,
-    cols: Array<{ label: string; width: number; align?: 'right' }>,
-    section: {
-      key: string;
-      label: string;
-      groups: ReadonlyArray<BalanceSheetGroup>;
-      total: string;
-      previousTotal?: string;
-    },
-    y: number,
-    hasComparison: boolean,
-  ): number {
-    // Section label
-    if (y > doc.page.height - 60) {
-      doc.addPage();
-      y = this.tableHeader(doc, cols);
-    }
-    const sectionValues = hasComparison
-      ? [
-          '',
-          section.label,
-          this.fmtAmt(section.total),
-          this.fmtAmt(section.previousTotal ?? '0.00'),
-          '',
-          '',
-        ]
-      : ['', section.label, this.fmtAmt(section.total)];
-    y = this.tableRow(doc, cols, sectionValues, y, true);
-
-    for (const group of section.groups) {
-      if (y > doc.page.height - 60) {
-        doc.addPage();
-        y = this.tableHeader(doc, cols);
-      }
-      const gValues = hasComparison
-        ? [
-            group.code,
-            `  ${group.label}`,
-            this.fmtAmt(group.amount),
-            this.fmtAmt(group.previousAmount ?? '0.00'),
-            this.fmtAmt(group.variation ?? ''),
-            group.variationPercent ? `${group.variationPercent}%` : '—',
-          ]
-        : [group.code, `  ${group.label}`, this.fmtAmt(group.amount)];
-      y = this.tableRow(doc, cols, gValues, y);
-    }
-    return y;
-  }
-
   private footer(doc: PDFKit.PDFDocument): void {
     const pages = doc.bufferedPageRange();
     for (let i = pages.start; i < pages.start + pages.count; i++) {
@@ -1043,6 +1147,15 @@ export class ReportsPdfService {
     if (value === undefined || value === null || value === '') return '';
     const n = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(n)) return '';
-    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // PRODUCT.md : espace fine insécable U+202F comme séparateur de
+    // milliers (rendu visuel `1 234 567,89`). `toLocaleString('fr-FR')`
+    // renvoie un NARROW NO-BREAK SPACE selon les ICU récents, mais peut
+    // tomber sur un simple espace selon l'environnement Node ; on
+    // normalise pour garantir la cohérence d'affichage et de tests.
+    const formatted = n.toLocaleString('fr-FR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return formatted.replace(/[  ]/g, ' ');
   }
 }
