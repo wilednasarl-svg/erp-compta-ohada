@@ -4,6 +4,8 @@ import { open as fsOpen } from 'node:fs/promises';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { CsvFileParser } from '../parsers/csv-file.parser';
+import { Mt940FileParser } from '../parsers/mt940-file.parser';
+import { OfxFileParser } from '../parsers/ofx-file.parser';
 import { PdfFileParser } from '../parsers/pdf-file.parser';
 import { SageFileParser } from '../parsers/sage-file.parser';
 import { XlsxFileParser } from '../parsers/xlsx-file.parser';
@@ -159,9 +161,10 @@ export function buildDefaultParsers(deps: {
   xlsx: XlsxFileParser;
   sage: SageFileParser;
   pdf: PdfFileParser;
+  ofx: OfxFileParser;
+  mt940: Mt940FileParser;
 }): readonly IFileParser[] {
-  // Order: PDF and XLSX first (extensions sans ambiguïté), puis Sage
-  // (claims .txt avant le fallback générique CSV), puis CSV (catch-all
-  // pour tout texte tabulaire restant).
-  return [deps.pdf, deps.xlsx, deps.sage, deps.csv];
+  // Order: binaires d'abord (PDF, XLSX), puis formats bancaires à extension
+  // explicite (OFX, MT940), puis Sage (.txt spécifique), puis CSV (catch-all).
+  return [deps.pdf, deps.xlsx, deps.ofx, deps.mt940, deps.sage, deps.csv];
 }

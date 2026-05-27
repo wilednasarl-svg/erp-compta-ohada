@@ -12,6 +12,8 @@ import { ImportFileEntity } from './entities/import-file.entity';
 import { ImportSessionEntity } from './entities/import-session.entity';
 import { ImportStagingEntryEntity } from './entities/import-staging-entry.entity';
 import { CsvFileParser } from './parsers/csv-file.parser';
+import { Mt940FileParser } from './parsers/mt940-file.parser';
+import { OfxFileParser } from './parsers/ofx-file.parser';
 import { PdfFileParser } from './parsers/pdf-file.parser';
 import { SageFileParser } from './parsers/sage-file.parser';
 import { XlsxFileParser } from './parsers/xlsx-file.parser';
@@ -73,6 +75,8 @@ import { ValidationService } from './services/validation.service';
     XlsxFileParser,
     SageFileParser,
     PdfFileParser,
+    OfxFileParser,
+    Mt940FileParser,
     {
       provide: FILE_PARSERS,
       useFactory: (
@@ -80,8 +84,10 @@ import { ValidationService } from './services/validation.service';
         xlsx: XlsxFileParser,
         sage: SageFileParser,
         pdf: PdfFileParser,
-      ) => buildDefaultParsers({ csv, xlsx, sage, pdf }),
-      inject: [CsvFileParser, XlsxFileParser, SageFileParser, PdfFileParser],
+        ofx: OfxFileParser,
+        mt940: Mt940FileParser,
+      ) => buildDefaultParsers({ csv, xlsx, sage, pdf, ofx, mt940 }),
+      inject: [CsvFileParser, XlsxFileParser, SageFileParser, PdfFileParser, OfxFileParser, Mt940FileParser],
     },
     FileParserService,
     MappingService,
