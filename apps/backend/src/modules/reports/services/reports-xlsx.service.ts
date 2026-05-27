@@ -9,6 +9,7 @@ import type {
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
+  MarginByAxisReport,
   MultiYearBalanceReport,
   TrialBalanceReport,
   GeneralLedgerReport,
@@ -949,6 +950,73 @@ export class ReportsXlsxService {
       ]);
     }
     return this.buildWorkbook(rows, 'Ratios financiers');
+  }
+
+  // ─── Marge par axe analytique (D3 — aligné Note 34) ──────────────
+  /**
+   * Export Excel du rapport « Marge par activité ». Une feuille avec
+   * les indicateurs Note 34 ventilés par axe : CA, Coût, Marge brute,
+   * Taux MB, VA, Taux VA, EBE, Taux EBE.
+   *
+   * Les pourcentages sont restitués en nombres décimaux (0..1) avec un
+   * format `0,00%` côté tableur, ce qui permet aux comptables de
+   * réutiliser les valeurs dans des calculs.
+   */
+  marginByAxisXlsx(report: MarginByAxisReport, orgName: string): Buffer {
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    rows.push([
+      `Marge par activité — Axe ${report.axisType} — Du ${report.fromDate} au ${report.toDate}`,
+    ]);
+    rows.push([`Devise : ${report.currency}`]);
+    rows.push([]);
+
+    rows.push([
+      'Axe',
+      "Chiffre d'affaires",
+      "Coût d'achat",
+      'Marge brute',
+      'Taux marge brute',
+      'Valeur ajoutée',
+      'Taux VA',
+      'EBE',
+      'Taux EBE',
+    ]);
+
+    const pctOrNull = (v: string | null): number | string => {
+      if (v === null) return '';
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n / 100 : '';
+    };
+
+    for (const r of report.rows) {
+      rows.push([
+        r.axisCode,
+        this.num(r.chiffreAffaires),
+        this.num(r.achatsConsommes),
+        this.num(r.margeBrute),
+        pctOrNull(r.margeBrutePercent),
+        this.num(r.valeurAjoutee),
+        pctOrNull(r.tauxValeurAjoutee),
+        this.num(r.excedentBrutExploit),
+        pctOrNull(r.tauxEbe),
+      ]);
+    }
+
+    const t = report.totals;
+    rows.push([
+      'TOTAL',
+      this.num(t.chiffreAffaires),
+      this.num(t.achatsConsommes),
+      this.num(t.margeBrute),
+      pctOrNull(t.margeBrutePercent),
+      this.num(t.valeurAjoutee),
+      pctOrNull(t.tauxValeurAjoutee),
+      this.num(t.excedentBrutExploit),
+      pctOrNull(t.tauxEbe),
+    ]);
+
+    return this.buildWorkbook(rows, 'Marge par activité');
   }
 
   // ─── Internal helpers ────────────────────────────────────────────

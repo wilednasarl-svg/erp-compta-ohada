@@ -1686,3 +1686,150 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
     expect(result.actif.sections.find((s) => s.key === 'IMMOBILISE')?.total).toBe('60000.00');
   });
 });
+
+// ─── D3 — Marge par axe analytique (aligné Note 34) ─────────────────────
+
+describe('ReportsService.getMarginByAxis (D3 — Note 34 par axe)', () => {
+  interface MbaRawRow {
+    axisCode: string;
+    accountCode: string;
+    accountClass: number;
+    periodDebit: string;
+    periodCredit: string;
+  }
+
+  function buildMbaHarness(rawRows: MbaRawRow[]) {
+    const repo = {
+      marginByAxis: jest.fn().mockResolvedValue(rawRows),
+    };
+    const accounts = {
+      findById: jest.fn(),
+    };
+    const service = new ReportsService(
+      repo as unknown as ReportsRepository,
+      accounts as unknown as OrganizationAccountRepository,
+    );
+    return { service, repo };
+  }
+
+  // Helper : ligne brute repo (l'agrégation P&L par axe).
+  function raw(
+    axisCode: string,
+    accountCode: string,
+    accountClass: number,
+    debit: string,
+    credit: string,
+  ): MbaRawRow {
+    return { axisCode, accountCode, accountClass, periodDebit: debit, periodCredit: credit };
+  }
+
+  it('ventile CA, achats, marge brute et taux par axe sur 3 chantiers', async () => {
+    const rawRows: MbaRawRow[] = [
+      // Chantier A : CA 10 000, achats 6 000 → marge 4 000 (40 %)
+      raw('A', '707100', 7, '0.00', '10000.00'),
+      raw('A', '601000', 6, '6000.00', '0.00'),
+      // Chantier B : CA 5 000, achats 4 500 → marge 500 (10 %)
+      raw('B', '707100', 7, '0.00', '5000.00'),
+      raw('B', '601000', 6, '4500.00', '0.00'),
+      // Chantier C : CA 2 000, achats 0 → marge 2 000 (100 %)
+      raw('C', '707100', 7, '0.00', '2000.00'),
+    ];
+    const h = buildMbaHarness(rawRows);
+
+    const out = await h.service.getMarginByAxis(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      axisType: 'CHANTIER',
+    });
+
+    expect(out.currency).toBe('XOF');
+    expect(out.rows).toHaveLength(3);
+
+    const a = out.rows.find((r) => r.axisCode === 'A');
+    expect(a?.chiffreAffaires).toBe('10000.00');
+    expect(a?.achatsConsommes).toBe('6000.00');
+    expect(a?.margeBrute).toBe('4000.00');
+    expect(a?.margeBrutePercent).toBe('40.00');
+
+    const b = out.rows.find((r) => r.axisCode === 'B');
+    expect(b?.margeBrute).toBe('500.00');
+    expect(b?.margeBrutePercent).toBe('10.00');
+
+    const c = out.rows.find((r) => r.axisCode === 'C');
+    expect(c?.margeBrutePercent).toBe('100.00');
+
+    // Totaux : CA 17 000, achats 10 500, marge 6 500 → 38.24 %
+    expect(out.totals.chiffreAffaires).toBe('17000.00');
+    expect(out.totals.achatsConsommes).toBe('10500.00');
+    expect(out.totals.margeBrute).toBe('6500.00');
+    expect(out.totals.margeBrutePercent).toBe('38.24');
+  });
+
+  it('calcule valeur ajoutée et EBE conformes à Note 34 par axe', async () => {
+    // Chantier X : CA 100 000, achats (60) 30 000, services ext (62) 10 000,
+    //  impôts/taxes (63) 5 000, charges personnel (66) 25 000, autres (64) 2 000.
+    //   Marge brute = 100 000 − 30 000          = 70 000  (70 %)
+    //   Valeur ajoutée = 100 000 − 30 000 − 10 000 = 60 000  (60 %)
+    //   EBE = VA − personnel − impôts = 60 000 − 25 000 − 5 000 = 30 000 (30 %)
+    const rawRows: MbaRawRow[] = [
+      raw('X', '701000', 7, '0.00', '100000.00'),
+      raw('X', '601000', 6, '30000.00', '0.00'),
+      raw('X', '624000', 6, '10000.00', '0.00'), // services extérieurs
+      raw('X', '631000', 6, '5000.00', '0.00'), // impôts taxes
+      raw('X', '641000', 6, '2000.00', '0.00'), // autres charges expl
+      raw('X', '661000', 6, '25000.00', '0.00'), // personnel
+    ];
+    const h = buildMbaHarness(rawRows);
+
+    const out = await h.service.getMarginByAxis(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      axisType: 'CHANTIER',
+    });
+
+    const x = out.rows[0];
+    expect(x.axisCode).toBe('X');
+    expect(x.margeBrute).toBe('70000.00');
+    expect(x.margeBrutePercent).toBe('70.00');
+    expect(x.valeurAjoutee).toBe('60000.00');
+    expect(x.tauxValeurAjoutee).toBe('60.00');
+    expect(x.excedentBrutExploit).toBe('30000.00');
+    expect(x.tauxEbe).toBe('30.00');
+    expect(x.chargesPersonnel).toBe('25000.00');
+    // Résultat net = CA − (achats + personnel + autres compat)
+    //   autres = services ext + impôts + autres expl = 10 000 + 5 000 + 2 000 = 17 000
+    //   RN = 100 000 − 30 000 − 25 000 − 17 000 = 28 000
+    expect(x.resultatNet).toBe('28000.00');
+  });
+
+  it('retourne null pour les taux quand le CA est nul (évite division par zéro)', async () => {
+    const rawRows: MbaRawRow[] = [
+      raw('Z', '601000', 6, '1000.00', '0.00'),
+    ];
+    const h = buildMbaHarness(rawRows);
+
+    const out = await h.service.getMarginByAxis(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      axisType: 'BU',
+    });
+
+    const z = out.rows[0];
+    expect(z.chiffreAffaires).toBe('0.00');
+    expect(z.margeBrute).toBe('-1000.00');
+    expect(z.margeBrutePercent).toBeNull();
+    expect(z.tauxValeurAjoutee).toBeNull();
+    expect(z.tauxEbe).toBeNull();
+  });
+
+  it('rejette un axisType vide', async () => {
+    const h = buildMbaHarness([]);
+    await expect(
+      h.service.getMarginByAxis(ORG_ID, {
+        fromDate: '2026-01-01',
+        toDate: '2026-12-31',
+        axisType: '   ',
+      }),
+    ).rejects.toThrow();
+  });
+});
