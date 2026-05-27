@@ -1,26 +1,45 @@
 'use client';
 
-import { ArrowUpRight, BookText, Banknote, Link2, Percent } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowUpRight, Award, Banknote, BookText, Link2, Loader2, Percent } from 'lucide-react';
 import Link from 'next/link';
 
 import { AppShell } from '@/components/app-shell';
+import { api, ApiError } from '@/lib/api-client';
 import { useCurrentOrg, useCurrentUser } from '@/stores/auth-store';
 
-/**
- * Dashboard — editorial landing surface.
- *
- * No hero-metric template, no identical-card grid. The page is structured
- * as a newspaper front page would be: a single primary attention block
- * ("À traiter aujourd'hui"), a secondary recent activity column, and a
- * third "État du dossier" snapshot — each with its own typographic
- * weight rather than uniform card containers.
- *
- * All numbers are placeholders until the backend KPIs are wired (Module 2+).
- * They demonstrate the visual language; the data plumbing replaces them.
- */
+/* ─── Types ──────────────────────────────────────────────────── */
+
+interface DaySummaryPending {
+  entries: number;
+  bankLines: number;
+  auxLettering: number;
+  tvaDeclarations: number;
+}
+
+interface DaySummaryActivity {
+  module: string;
+  action: string;
+  entityType: string | null;
+  createdAt: string;
+}
+
+interface DaySummary {
+  pending: DaySummaryPending;
+  exercise: { label: string; startDate: string; endDate: string } | null;
+  activePeriod: { label: string; endDate: string } | null;
+  entriesThisMonth: number;
+  pendingThisMonth: number;
+  score: { value: number; grade: string } | null;
+  recentActivity: DaySummaryActivity[];
+}
+
+/* ─── Page ───────────────────────────────────────────────────── */
+
 export default function DashboardPage() {
   const user = useCurrentUser();
   const currentOrg = useCurrentOrg();
+  const orgId = currentOrg?.id ?? '';
 
   const today = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long',
@@ -28,6 +47,15 @@ export default function DashboardPage() {
     month: 'long',
     year: 'numeric',
   });
+
+  const { data, isLoading } = useQuery<{ daySummary: DaySummary }, ApiError>({
+    queryKey: ['day-summary', orgId],
+    queryFn: () => api.get<{ daySummary: DaySummary }>(`/organizations/${orgId}/dashboards/day-summary`),
+    enabled: orgId !== '',
+    staleTime: 60_000,
+  });
+
+  const s = data?.daySummary;
 
   return (
     <AppShell>
@@ -48,7 +76,7 @@ export default function DashboardPage() {
           </p>
         </header>
 
-        {/* ─── À traiter aujourd'hui — primary attention block ──── */}
+        {/* ─── À traiter aujourd'hui ────────────────────────────── */}
         <section aria-labelledby="todo-title" className="border-y border-line py-8">
           <div className="mb-6 flex items-baseline justify-between gap-4">
             <div>
@@ -62,50 +90,54 @@ export default function DashboardPage() {
               className="group inline-flex items-center gap-1 text-xs text-ink-soft transition-colors duration-fast hover:text-ink"
             >
               <span>Tout voir</span>
-              <ArrowUpRight
-                className="h-3 w-3 transition-transform duration-fast group-hover:-translate-y-px group-hover:translate-x-px"
-                strokeWidth={1.5}
-              />
+              <ArrowUpRight className="h-3 w-3 transition-transform duration-fast group-hover:-translate-y-px group-hover:translate-x-px" strokeWidth={1.5} />
             </Link>
           </div>
 
-          <ul className="divide-y divide-line">
-            <TaskRow
-              icon={BookText}
-              label="Écritures en attente de validation"
-              detail="JV, BAN, OD"
-              count={12}
-              href="/entry-workflow"
-              tone="warn"
-            />
-            <TaskRow
-              icon={Banknote}
-              label="Lignes bancaires à rapprocher"
-              detail="SGBCI, NSIA, Ecobank"
-              count={47}
-              href="/bank-reconciliation"
-              tone="info"
-            />
-            <TaskRow
-              icon={Link2}
-              label="Comptes auxiliaires à lettrer"
-              detail="411, 401"
-              count={8}
-              href="/lettering"
-              tone="info"
-            />
-            <TaskRow
-              icon={Percent}
-              label="Déclaration TVA — Avril 2026"
-              detail="échéance 15 mai"
-              count={1}
-              href="/tva"
-              tone="critical"
-            />
-          </ul>
+          {isLoading ? (
+            <div className="flex items-center gap-2 py-6 text-sm text-ink-mute">
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+              Chargement…
+            </div>
+          ) : (
+            <ul className="divide-y divide-line">
+              <TaskRow
+                icon={BookText}
+                label="Écritures en attente de validation"
+                detail="Journaux en statut brouillon"
+                count={s?.pending.entries ?? 0}
+                href="/entry-workflow"
+                tone="warn"
+              />
+              <TaskRow
+                icon={Banknote}
+                label="Lignes bancaires à rapprocher"
+                detail="Relevés non pointés"
+                count={s?.pending.bankLines ?? 0}
+                href="/bank-reconciliation"
+                tone="info"
+              />
+              <TaskRow
+                icon={Link2}
+                label="Lignes auxiliaires à lettrer"
+                detail="Comptes 40x / 41x non lettrés"
+                count={s?.pending.auxLettering ?? 0}
+                href="/lettering"
+                tone="info"
+              />
+              <TaskRow
+                icon={Percent}
+                label="Déclarations TVA en cours"
+                detail="Brouillon ou calculée, non déposée"
+                count={s?.pending.tvaDeclarations ?? 0}
+                href="/tva"
+                tone={s?.pending.tvaDeclarations ? 'critical' : 'info'}
+              />
+            </ul>
+          )}
         </section>
 
-        {/* ─── Two columns : Activité + Snapshot ────────────────── */}
+        {/* ─── Activité + Snapshot ──────────────────────────────── */}
         <section className="grid gap-12 lg:grid-cols-[1.5fr_1fr]">
           {/* Activité récente */}
           <div>
@@ -114,44 +146,19 @@ export default function DashboardPage() {
               Derniers mouvements
             </h2>
 
-            <ol className="space-y-4">
-              <ActivityRow
-                time="il y a 14 min"
-                actor="Awa Koffi"
-                verb="a validé"
-                target="lot d'écritures JV-2026-04-018"
-                hint="34 lignes, 4 250 000 FCFA"
-              />
-              <ActivityRow
-                time="il y a 1 h"
-                actor="Import Sage"
-                verb="a importé"
-                target="balance avril 2026"
-                hint="1 247 lignes, 0 anomalie"
-              />
-              <ActivityRow
-                time="il y a 2 h"
-                actor="Kouamé Yao"
-                verb="a lettré"
-                target="compte 411-AKILA"
-                hint="6 écritures équilibrées"
-              />
-              <ActivityRow
-                time="hier, 17 : 42"
-                actor="IA — Anomalies"
-                verb="a signalé"
-                target="3 doublons potentiels journal BAN"
-                hint="à examiner"
-                tone="warn"
-              />
-              <ActivityRow
-                time="hier, 11 : 03"
-                actor="Système"
-                verb="a clôturé"
-                target="période Mars 2026"
-                hint="verrouillage automatique"
-              />
-            </ol>
+            {isLoading ? (
+              <div className="flex items-center gap-2 py-4 text-sm text-ink-mute">
+                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+              </div>
+            ) : (s?.recentActivity.length ?? 0) === 0 ? (
+              <p className="py-4 text-sm text-ink-mute">Aucune activité enregistrée.</p>
+            ) : (
+              <ol className="space-y-4">
+                {s?.recentActivity.map((item, i) => (
+                  <ActivityRow key={i} item={item} />
+                ))}
+              </ol>
+            )}
 
             <Link
               href="/audit-logs"
@@ -162,25 +169,29 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* Snapshot — état du dossier */}
+          {/* Snapshot */}
           <div className="space-y-8 border-l border-line pl-10 lg:pl-12">
-            <SnapshotBlock label="Exercice en cours" value="2026" sub="ouvert le 01/01/2026" />
+            <SnapshotBlock
+              label="Exercice en cours"
+              value={s?.exercise?.label ?? '—'}
+              sub={s?.exercise ? `ouvert le ${fmtDate(s.exercise.startDate)}` : 'Aucun exercice ouvert'}
+            />
             <SnapshotBlock
               label="Période active"
-              value="Avril 2026"
-              sub="clôture prévue 15 mai"
-              accent
+              value={s?.activePeriod?.label ?? '—'}
+              sub={s?.activePeriod ? `clôture le ${fmtDate(s.activePeriod.endDate)}` : 'Aucune période ouverte'}
+              accent={!!s?.activePeriod}
             />
             <SnapshotBlock
               label="Écritures du mois"
-              value="1 247"
-              sub="dont 12 en attente"
+              value={s ? fmt(s.entriesThisMonth) : '—'}
+              sub={s ? `dont ${fmt(s.pendingThisMonth)} en attente` : ''}
               numeric
             />
             <SnapshotBlock
               label="Score santé"
-              value="A−"
-              sub="cohérence des soldes, lettrage, TVA"
+              value={s?.score ? s.score.grade : '—'}
+              sub={s?.score ? `${s.score.value} / 100` : 'Aucun score calculé'}
               href="/accounting-score"
             />
           </div>
@@ -188,6 +199,45 @@ export default function DashboardPage() {
       </div>
     </AppShell>
   );
+}
+
+/* ─── Helpers ────────────────────────────────────────────────── */
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function fmt(n: number): string {
+  return new Intl.NumberFormat('fr-FR').format(n);
+}
+
+function actionLabel(item: DaySummaryActivity): string {
+  const labels: Record<string, string> = {
+    'journal_entries.create': 'a créé une écriture',
+    'journal_entries.validate': 'a validé une écriture',
+    'journal_entries.cancel': 'a annulé une écriture',
+    'imports.create': 'a démarré un import',
+    'imports.commit': 'a validé un import',
+    'tva.calculate': 'a calculé une déclaration TVA',
+    'tva.cancel': 'a annulé une déclaration TVA',
+    'bank_reconciliation.match': 'a rapproché des lignes',
+    'lettering.apply': 'a lettré des écritures',
+    'accounting_periods.close': 'a clôturé une période',
+    'auth.login': "s'est connecté",
+  };
+  const key = `${item.module}.${item.action}`;
+  return labels[key] ?? `${item.action.replace(/_/g, ' ')} (${item.module})`;
+}
+
+function fmtRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "à l'instant";
+  if (mins < 60) return `il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `il y a ${days} j`;
 }
 
 /* ─── Subcomponents ──────────────────────────────────────────── */
@@ -214,21 +264,16 @@ function TaskRow({ icon: Icon, label, detail, count, href, tone }: TaskRowProps)
         href={href}
         className="group flex items-center gap-4 py-3 transition-colors duration-fast hover:bg-sunk/40"
       >
-        <span
-          className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm ${toneClasses}`}
-        >
+        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm ${toneClasses}`}>
           <Icon className="h-4 w-4" strokeWidth={1.5} />
         </span>
-
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-ink">{label}</div>
           <div className="text-xs text-ink-mute">{detail}</div>
         </div>
-
         <div className="text-right">
           <div className="font-mono text-lg font-medium tabular-nums text-ink">{count}</div>
         </div>
-
         <ArrowUpRight
           className="h-4 w-4 shrink-0 text-ink-mute opacity-0 transition-all duration-fast group-hover:translate-x-0.5 group-hover:opacity-100"
           strokeWidth={1.5}
@@ -238,34 +283,20 @@ function TaskRow({ icon: Icon, label, detail, count, href, tone }: TaskRowProps)
   );
 }
 
-interface ActivityRowProps {
-  time: string;
-  actor: string;
-  verb: string;
-  target: string;
-  hint?: string;
-  tone?: 'default' | 'warn';
-}
-
-function ActivityRow({ time, actor, verb, target, hint, tone = 'default' }: ActivityRowProps) {
+function ActivityRow({ item }: { item: DaySummaryActivity }) {
   return (
     <li className="flex gap-4">
       <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-ink-mute" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="text-sm text-ink">
-          <span className="font-medium">{actor}</span>{' '}
-          <span className="text-ink-soft">{verb}</span>{' '}
-          <span className="font-medium">{target}</span>
-        </p>
-        <p className="mt-0.5 flex items-center gap-2 text-xs text-ink-mute">
-          <span>{time}</span>
-          {hint ? (
-            <>
-              <span aria-hidden>·</span>
-              <span className={tone === 'warn' ? 'text-warn-ink' : ''}>{hint}</span>
-            </>
+          <span className="font-medium text-ink-soft">{item.module}</span>{' '}
+          <span className="text-ink-soft">—</span>{' '}
+          <span>{actionLabel(item)}</span>
+          {item.entityType ? (
+            <span className="text-ink-mute"> ({item.entityType})</span>
           ) : null}
         </p>
+        <p className="mt-0.5 text-xs text-ink-mute">{fmtRelative(item.createdAt)}</p>
       </div>
     </li>
   );
@@ -281,7 +312,7 @@ interface SnapshotBlockProps {
 }
 
 function SnapshotBlock({ label, value, sub, accent, numeric, href }: SnapshotBlockProps) {
-  const content = (
+  const inner = (
     <>
       <p className="eyebrow">{label}</p>
       <p
@@ -297,11 +328,8 @@ function SnapshotBlock({ label, value, sub, accent, numeric, href }: SnapshotBlo
 
   if (href) {
     return (
-      <Link
-        href={href}
-        className="group block transition-colors duration-fast hover:text-ink"
-      >
-        {content}
+      <Link href={href} className="group block transition-colors duration-fast hover:text-ink">
+        {inner}
         <span className="mt-1 inline-flex items-center gap-1 text-2xs uppercase tracking-wider text-ink-mute group-hover:text-ink-soft">
           <span>Détail</span>
           <ArrowUpRight className="h-3 w-3" strokeWidth={1.5} />
@@ -310,5 +338,5 @@ function SnapshotBlock({ label, value, sub, accent, numeric, href }: SnapshotBlo
     );
   }
 
-  return <div>{content}</div>;
+  return <div>{inner}</div>;
 }

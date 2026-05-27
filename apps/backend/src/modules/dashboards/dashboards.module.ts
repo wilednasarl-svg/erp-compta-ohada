@@ -11,6 +11,7 @@ import { DashboardsRepository } from './repositories/dashboards.repository';
 import { DashboardAgingService } from './services/dashboard-aging.service';
 import { DashboardAnalyticsService } from './services/dashboard-analytics.service';
 import { DashboardSummaryService } from './services/dashboard-summary.service';
+import { DayDashboardService } from './services/day-dashboard.service';
 
 /**
  * `DashboardsModule` — Module 19 wave 1 : endpoints d'agrégation
@@ -56,6 +57,7 @@ import { DashboardSummaryService } from './services/dashboard-summary.service';
     DashboardSummaryService,
     DashboardAgingService,
     DashboardAnalyticsService,
+    DayDashboardService,
   ],
 })
 export class DashboardsModule {}

@@ -40,6 +40,7 @@ import { TopAccountsQueryDto } from '../dto/top-accounts-query.dto';
 import { DashboardAgingService } from '../services/dashboard-aging.service';
 import { DashboardAnalyticsService } from '../services/dashboard-analytics.service';
 import { DashboardSummaryService } from '../services/dashboard-summary.service';
+import { DayDashboardService, type DaySummary } from '../services/day-dashboard.service';
 
 /**
  * `DashboardsController` (Module 19 wave 1) — endpoints d'agrégation
@@ -72,6 +73,7 @@ export class DashboardsController {
     private readonly summary: DashboardSummaryService,
     private readonly aging: DashboardAgingService,
     private readonly analytics: DashboardAnalyticsService,
+    private readonly dayDashboard: DayDashboardService,
     private readonly audit: AuditTrailService,
   ) {}
 
@@ -252,6 +254,21 @@ export class DashboardsController {
     });
 
     return { topAccounts: result };
+  }
+
+  @Get('day-summary')
+  @RequirePermission('dashboards.read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Comptages du jour : travail en attente, snapshot exercice, score, activité récente' })
+  async getDaySummary(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+  ): Promise<{ daySummary: DaySummary }> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    const result = await this.dayDashboard.getDaySummary(asTenantId(tokenOrgId));
+    return { daySummary: result };
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────
