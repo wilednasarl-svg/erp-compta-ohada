@@ -27,7 +27,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * Numéro 0104 alloué : 0102 et 0103 déjà pris par
  * `create_subsequent_events` et `extend_journal_entry_source_type_tax`.
  */
-export class CreateInventoryLots1700000000104 implements MigrationInterface {
+export class CreateInventoryLots1700000000105 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // ─── Table inventory_lots ────────────────────────────────────────
     await queryRunner.query(`

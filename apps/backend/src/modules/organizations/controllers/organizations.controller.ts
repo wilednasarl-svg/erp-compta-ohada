@@ -10,7 +10,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -23,35 +28,20 @@ import { RolesGuard } from '../../rbac/guards/roles.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import type { CurrentOrgContext, CurrentUserContext } from '../../../common/types/request-context';
 import { CreateOrganizationDto } from '../dto/create-organization.dto';
+import {
+  CreateOrganizationResponse,
+  ListOrganizationsResponse,
+  OrganizationEnvelopeResponse,
+} from '../dto/responses';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
-import type {
-  CreateOrganizationResult,
-  OrganizationSummary,
-} from '../services/organizations.service';
+import {
+  toCreateOrganization,
+  toListOrganizations,
+  toOrganizationEnvelope,
+} from '../mappers/organization-response.mapper';
 import { OrganizationsService } from '../services/organizations.service';
-import type { OrganizationEntity } from '../entities/organization.entity';
 import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 
-/**
- * `OrganizationsController` (BE-ORG-01..03) — MVP organization surface.
- *
- *   - `POST   /organizations`      — JwtAuthGuard only. Any authenticated
- *                                    user can create an org; the creator
- *                                    is auto-assigned the `admin`
- *                                    membership. No tenant context needed
- *                                    (the new org IS the tenant).
- *   - `GET    /organizations`      — JwtAuthGuard only. Lists every
- *                                    organization where the caller has an
- *                                    active membership.
- *   - `PATCH  /organizations/:id`  — JwtAuthGuard + TenantGuard +
- *                                    RolesGuard('admin'). Rename only;
- *                                    slug is immutable.
- *
- * The PATCH route relies entirely on `currentOrg.id` (populated by
- * `TenantGuard` from the JWT `org_id` claim) to identify the target.
- * The URL `:id` is compared in the service for spec-compliant "no info
- * disclosure" on cross-tenant attempts.
- */
 @ApiTags('Organizations')
 @ApiBearerAuth('bearer')
 @Controller('organizations')
@@ -61,62 +51,63 @@ export class OrganizationsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: CreateOrganizationResponse })
   async create(
     @Body() body: CreateOrganizationDto,
     @CurrentUser('id') userId: CurrentUserContext['id'] | undefined,
     @Req() req: Request,
-  ): Promise<CreateOrganizationResult> {
-    // JwtAuthGuard always binds `currentUser`; the undefined branch only
-    // fires if the route is mis-composed.
+  ): Promise<CreateOrganizationResponse> {
     if (userId === undefined) {
       throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, {
         message: 'Authenticated user is required',
       });
     }
-    return this.orgs.create(
+    const result = await this.orgs.create(
       userId,
       { name: body.name, type: body.type, system: body.system },
       buildAuditRequestContext(req),
     );
+    return toCreateOrganization(result);
   }
 
   @Get()
   @UseGuards(JwtAuthGuard)
+  @ApiOkResponse({ type: ListOrganizationsResponse })
   async list(
     @CurrentUser('id') userId: CurrentUserContext['id'] | undefined,
-  ): Promise<{ organizations: ReadonlyArray<OrganizationSummary> }> {
+  ): Promise<ListOrganizationsResponse> {
     if (userId === undefined) {
       throw new AppException(ERROR_CODES.AUTH_INVALID_TOKEN, {
         message: 'Authenticated user is required',
       });
     }
-    const organizations = await this.orgs.listForUser(userId);
-    return { organizations };
+    const summaries = await this.orgs.listForUser(userId);
+    return toListOrganizations(summaries);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
   @Roles('admin')
+  @ApiOkResponse({ type: OrganizationEnvelopeResponse })
   async update(
     @Param('id') targetOrgId: string,
     @Body() body: UpdateOrganizationDto,
     @CurrentUser('id') userId: CurrentUserContext['id'] | undefined,
     @CurrentOrg('id') currentOrgId: CurrentOrgContext['id'] | undefined,
     @Req() req: Request,
-  ): Promise<{ organization: OrganizationEntity }> {
+  ): Promise<OrganizationEnvelopeResponse> {
     if (userId === undefined || currentOrgId === undefined) {
-      // Defensive — TenantGuard upstream guarantees both. If we land
-      // here, the route composition is broken; fail closed.
       throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
         message: 'Organization not found',
       });
     }
-    return this.orgs.update(
+    const result = await this.orgs.update(
       userId,
       targetOrgId,
       currentOrgId,
       { ...(body.name !== undefined ? { name: body.name } : {}) },
       buildAuditRequestContext(req),
     );
+    return toOrganizationEnvelope(result.organization);
   }
 }
