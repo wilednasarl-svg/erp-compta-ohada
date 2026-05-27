@@ -100,6 +100,17 @@ export class ReportsPdfService {
   }
 
   // ─── General Ledger ──────────────────────────────────────────────
+  /**
+   * Grand Livre PDF — format doctrine OHADA (Acte uniforme art. 19,
+   * Tome 1 chap. 1) : `Date | Journal | Pièce | Libellé | Débit |
+   * Crédit | Solde progressif (D/C)`.
+   *
+   * Présentation :
+   *   - Bandeau compte : code + libellé + solde ouverture (D/C)
+   *   - Ligne « REPORT À NOUVEAU » initiale avec opening
+   *   - Lignes chronologiques avec colonne Solde et indicateur D/C
+   *   - Pied de section : Totaux Débit / Crédit + Solde clôture (D/C)
+   */
   async generalLedgerPdf(report: GeneralLedgerReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
 
@@ -107,22 +118,23 @@ export class ReportsPdfService {
       doc,
       orgName,
       `Grand Livre — ${report.accountCode} ${report.accountLabel}`,
-      `Du ${report.fromDate} au ${report.toDate}`,
+      `Du ${report.fromDate} au ${report.toDate} — Devise : XOF`,
     );
 
     const cols = [
-      { label: 'Date', width: 70 },
+      { label: 'Date', width: 65 },
       { label: 'Journal', width: 50 },
       { label: 'Pièce', width: 50 },
-      { label: 'Libellé', width: 200 },
-      { label: 'Débit', width: 80, align: 'right' as const },
-      { label: 'Crédit', width: 80, align: 'right' as const },
-      { label: 'Solde', width: 80, align: 'right' as const },
+      { label: 'Libellé', width: 180 },
+      { label: 'Débit', width: 75, align: 'right' as const },
+      { label: 'Crédit', width: 75, align: 'right' as const },
+      { label: 'Solde', width: 75, align: 'right' as const },
+      { label: 'D/C', width: 30, align: 'right' as const },
     ];
 
     let y = this.tableHeader(doc, cols);
 
-    // Opening row
+    // Opening row — REPORT À NOUVEAU
     y = this.tableRow(
       doc,
       cols,
@@ -133,7 +145,8 @@ export class ReportsPdfService {
         'REPORT À NOUVEAU',
         this.fmtAmt(report.opening.openingDebit),
         this.fmtAmt(report.opening.openingCredit),
-        '',
+        this.fmtAmt(report.opening.openingBalance),
+        report.opening.openingBalanceSide,
       ],
       y,
       true,
@@ -151,14 +164,37 @@ export class ReportsPdfService {
           line.entryDate,
           line.journalCode,
           String(line.entryNumber),
-          (line.description ?? '').substring(0, 50),
+          (line.description ?? '').substring(0, 45),
           this.fmtAmt(line.debit),
           this.fmtAmt(line.credit),
-          this.fmtAmt(line.runningBalance),
+          this.fmtAmt(line.runningBalanceAbs),
+          line.runningBalanceSide,
         ],
         y,
       );
     }
+
+    // Pied de section : Totaux période + solde clôture.
+    if (y > doc.page.height - 80) {
+      doc.addPage();
+      y = this.tableHeader(doc, cols);
+    }
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        '',
+        '',
+        '',
+        `TOTAL ${report.accountCode}`,
+        this.fmtAmt(report.totals.periodDebit),
+        this.fmtAmt(report.totals.periodCredit),
+        this.fmtAmt(report.totals.closingBalance),
+        report.totals.closingBalanceSide,
+      ],
+      y,
+      true,
+    );
 
     this.footer(doc);
     return this.finalize(doc);

@@ -483,3 +483,75 @@ describe('ReportsPdfService — TFT W5.2 volet 2', () => {
     expect(joined).toMatch(/méthode indirecte/i);
   });
 });
+
+// ─── D2 — Grand Livre PDF (format doctrine OHADA) ───────────────────────
+import type { GeneralLedgerReport } from '../services/reports.service';
+
+const fakeGeneralLedger = (): GeneralLedgerReport => ({
+  accountId: 'a-1',
+  accountCode: '411000',
+  accountLabel: 'CLIENT X',
+  accountClass: 4,
+  fromDate: '2026-01-01',
+  toDate: '2026-12-31',
+  opening: {
+    openingDebit: '500.00',
+    openingCredit: '0.00',
+    openingBalance: '500.00',
+    openingBalanceSide: 'D',
+  },
+  lines: [
+    {
+      lineId: 'l-1',
+      entryId: 'e-1',
+      entryDate: '2026-02-15',
+      journalCode: 'VTE',
+      entryNumber: 1,
+      description: 'Facture FA-001',
+      debit: '200.00',
+      credit: '0.00',
+      letteringCode: null,
+      runningBalance: '700.00',
+      runningBalanceAbs: '700.00',
+      runningBalanceSide: 'D',
+    },
+  ],
+  totals: {
+    periodDebit: '200.00',
+    periodCredit: '0.00',
+    endingDebit: '700.00',
+    endingCredit: '0.00',
+    closingBalance: '700.00',
+    closingBalanceSide: 'D',
+  },
+});
+
+describe('ReportsPdfService — Grand Livre D2 (doctrine OHADA)', () => {
+  let service: ReportsPdfService;
+  beforeEach(() => {
+    service = new ReportsPdfService();
+  });
+
+  it('produit un buffer PDF non vide pour le Grand Livre', async () => {
+    const buf = await service.generalLedgerPdf(fakeGeneralLedger(), 'ACME SARL');
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.slice(0, 5).toString('ascii')).toBe('%PDF-');
+  });
+
+  it('contient les 8 colonnes doctrine (Date, Journal, Pièce, Libellé, Débit, Crédit, Solde, D/C)', async () => {
+    const cap = captureTextCalls();
+    try {
+      await service.generalLedgerPdf(fakeGeneralLedger(), 'ACME SARL');
+    } finally {
+      cap.restore();
+    }
+    const joined = cap.calls.join('||');
+    for (const header of ['Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Solde', 'D/C']) {
+      expect(joined).toContain(header);
+    }
+    expect(joined).toContain('REPORT À NOUVEAU');
+    expect(joined).toContain('TOTAL 411000');
+    expect(joined).toContain('XOF');
+  });
+});

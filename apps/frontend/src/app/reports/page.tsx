@@ -2069,24 +2069,30 @@ function GeneralLedgerTable({ report }: { readonly report: GeneralLedgerReport }
           </p>
         </div>
         <div className="bg-paper px-4 py-3">
-          <p className="text-2xs uppercase tracking-wider text-ink-mute">Solde ouverture</p>
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">
+            Solde ouverture
+          </p>
           <p
             className={cn(
               'mt-0.5 font-mono text-xl font-medium tabular-nums',
               Number(openingNet) < 0 ? 'text-critical-ink' : 'text-ink',
             )}
           >
-            {fmt(openingNet)}
+            {fmt(report.opening.openingBalance)}{' '}
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink-mute">
+              {report.opening.openingBalanceSide}
+            </span>
           </p>
         </div>
         <div className="bg-accent-soft/60 px-4 py-3">
-          <p className="text-2xs uppercase tracking-wider text-accent-ink">Solde clôture</p>
+          <p className="text-2xs uppercase tracking-wider text-accent-ink">
+            Solde clôture
+          </p>
           <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-accent-ink">
-            {fmt(
-              (
-                Number(report.totals.endingDebit) - Number(report.totals.endingCredit)
-              ).toFixed(2),
-            )}
+            {fmt(report.totals.closingBalance)}{' '}
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              {report.totals.closingBalanceSide}
+            </span>
           </p>
         </div>
       </div>
@@ -2114,6 +2120,7 @@ function GeneralLedgerTable({ report }: { readonly report: GeneralLedgerReport }
                 <th className="border-l border-line-strong px-3 py-2 text-right font-medium">
                   Solde
                 </th>
+                <th className="px-2 py-2 text-center font-medium">D/C</th>
               </tr>
             </thead>
             <tbody>
@@ -2160,7 +2167,10 @@ function GeneralLedgerTable({ report }: { readonly report: GeneralLedgerReport }
                         balanceNum < 0 ? 'text-critical-ink' : 'text-ink',
                       )}
                     >
-                      {fmt(line.runningBalance)}
+                      {fmt(line.runningBalanceAbs)}
+                    </td>
+                    <td className="px-2 py-1.5 text-center font-mono text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                      {line.runningBalanceSide}
                     </td>
                   </tr>
                 );
@@ -2168,8 +2178,11 @@ function GeneralLedgerTable({ report }: { readonly report: GeneralLedgerReport }
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
-                <td className="px-3 py-2.5 text-2xs uppercase tracking-wider" colSpan={5}>
-                  Totaux période
+                <td
+                  className="px-3 py-2.5 text-2xs uppercase tracking-wider"
+                  colSpan={5}
+                >
+                  TOTAL {report.accountCode}
                 </td>
                 <td className="border-l border-accent/30 px-3 py-2.5 text-right font-mono tabular-nums">
                   {fmt(report.totals.periodDebit)}
@@ -2178,12 +2191,10 @@ function GeneralLedgerTable({ report }: { readonly report: GeneralLedgerReport }
                   {fmt(report.totals.periodCredit)}
                 </td>
                 <td className="border-l border-accent/30 px-3 py-2.5 text-right font-mono font-semibold tabular-nums">
-                  {fmt(
-                    (
-                      Number(report.totals.endingDebit) -
-                      Number(report.totals.endingCredit)
-                    ).toFixed(2),
-                  )}
+                  {fmt(report.totals.closingBalance)}
+                </td>
+                <td className="px-2 py-2.5 text-center font-mono text-xs font-semibold uppercase tracking-wider">
+                  {report.totals.closingBalanceSide}
                 </td>
               </tr>
             </tfoot>

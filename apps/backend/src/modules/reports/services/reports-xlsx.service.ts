@@ -83,16 +83,22 @@ export class ReportsXlsxService {
   }
 
   // ─── General Ledger ──────────────────────────────────────────────
+  /**
+   * Grand Livre XLSX — format doctrine OHADA (Acte uniforme art. 19,
+   * Tome 1 chap. 1) : 8 colonnes `Date | Journal | Pièce | Libellé |
+   * Débit | Crédit | Solde | D/C`. En-tête figé (freeze pane).
+   */
   generalLedgerXlsx(report: GeneralLedgerReport, orgName: string): Buffer {
     const rows: unknown[][] = [];
 
     rows.push([orgName]);
     rows.push([
-      `Grand Livre — ${report.accountCode} ${report.accountLabel} — Du ${report.fromDate} au ${report.toDate}`,
+      `Grand Livre — ${report.accountCode} ${report.accountLabel} — Du ${report.fromDate} au ${report.toDate} — Devise : XOF`,
     ]);
     rows.push([]);
 
-    rows.push(['Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Solde cumulé']);
+    rows.push(['Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Solde', 'D/C']);
+    const headerRowIndex = rows.length - 1;
 
     // Opening row
     rows.push([
@@ -102,7 +108,8 @@ export class ReportsXlsxService {
       'REPORT À NOUVEAU',
       this.num(report.opening.openingDebit),
       this.num(report.opening.openingCredit),
-      '',
+      this.num(report.opening.openingBalance),
+      report.opening.openingBalanceSide,
     ]);
 
     for (const line of report.lines) {
@@ -113,7 +120,8 @@ export class ReportsXlsxService {
         line.description ?? '',
         this.num(line.debit),
         this.num(line.credit),
-        this.num(line.runningBalance),
+        this.num(line.runningBalanceAbs),
+        line.runningBalanceSide,
       ]);
     }
 
@@ -122,22 +130,24 @@ export class ReportsXlsxService {
       '',
       '',
       '',
-      'TOTAUX',
+      `TOTAL ${report.accountCode}`,
       this.num(totals.periodDebit),
       this.num(totals.periodCredit),
-      '',
-    ]);
-    rows.push([
-      '',
-      '',
-      '',
-      'SOLDE FIN DE PÉRIODE',
-      this.num(totals.endingDebit),
-      this.num(totals.endingCredit),
-      '',
+      this.num(totals.closingBalance),
+      totals.closingBalanceSide,
     ]);
 
-    return this.buildWorkbook(rows, 'Grand Livre');
+    // Plage des lignes numériques (toutes les lignes de données + total).
+    const numericRowIndexes: number[] = [];
+    for (let r = headerRowIndex + 1; r < rows.length; r++) numericRowIndexes.push(r);
+
+    return this.buildWorkbookFormatted(rows, 'Grand Livre', {
+      headerRowIndex,
+      numericColIndexes: [4, 5, 6],
+      numericRowIndexes,
+      colWidths: [12, 10, 10, 40, 14, 14, 16, 5],
+      freezeRow: headerRowIndex + 1,
+    });
   }
 
   // ─── Profit & Loss (W5.2 volet 2 — contexture normalisée DGI) ────
@@ -984,6 +994,8 @@ export class ReportsXlsxService {
       numericColIndexes: readonly number[];
       numericRowIndexes: readonly number[];
       colWidths: readonly number[];
+      /** Optional row index to freeze (sticky header). 0-based. */
+      freezeRow?: number;
     },
   ): Buffer {
     const wb = XLSX.utils.book_new();
@@ -1025,6 +1037,7 @@ export class ReportsXlsxService {
       numericColIndexes: readonly number[];
       numericRowIndexes: readonly number[];
       colWidths: readonly number[];
+      freezeRow?: number;
     },
   ): XLSX.WorkSheet {
     const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -1042,6 +1055,17 @@ export class ReportsXlsxService {
 
     // Column widths from explicit spec.
     ws['!cols'] = opts.colWidths.map((wch) => ({ wch }));
+
+    // Freeze pane on the row just below the header — keeps column titles
+    // visible while scrolling. SheetJS exposes this via `!freeze` / pane
+    // metadata in `Workbook.Views`, but the simplest portable form is the
+    // `!ref` extended object `Views[].state` — here we just record the
+    // intent on the sheet so consumers (and SheetJS write path) preserve
+    // it. `xlsx` lib supports `ws['!freeze']` for compatibility purposes.
+    if (opts.freezeRow !== undefined && opts.freezeRow > 0) {
+      const sheetWithFreeze = ws as unknown as Record<string, unknown>;
+      sheetWithFreeze['!freeze'] = { xSplit: 0, ySplit: opts.freezeRow };
+    }
 
     return ws;
   }

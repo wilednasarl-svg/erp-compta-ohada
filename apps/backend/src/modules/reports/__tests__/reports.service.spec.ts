@@ -164,14 +164,76 @@ describe('ReportsService.getGeneralLedger', () => {
       toDate: '2026-12-31',
     });
 
-    expect(result.opening).toEqual({ openingDebit: '500.00', openingCredit: '0.00' });
+    expect(result.opening).toEqual({
+      openingDebit: '500.00',
+      openingCredit: '0.00',
+      openingBalance: '500.00',
+      openingBalanceSide: 'D',
+    });
     expect(result.lines.map((l) => l.runningBalance)).toEqual(['700.00', '600.00', '650.00']);
+    expect(result.lines.map((l) => l.runningBalanceSide)).toEqual(['D', 'D', 'D']);
+    expect(result.lines.map((l) => l.runningBalanceAbs)).toEqual([
+      '700.00',
+      '600.00',
+      '650.00',
+    ]);
     expect(result.totals).toEqual({
       periodDebit: '250.00',
       periodCredit: '100.00',
       endingDebit: '650.00',
       endingCredit: '0.00',
+      closingBalance: '650.00',
+      closingBalanceSide: 'D',
     });
+  });
+
+  it('flips runningBalanceSide D → C when the cumulative balance crosses zero', async () => {
+    const h = buildHarness();
+    h.repo.generalLedgerOpening.mockResolvedValue({
+      openingDebit: '100.00',
+      openingCredit: '0.00',
+    });
+    h.repo.generalLedger.mockResolvedValue([
+      ledgerRow({ lineId: 'l-1', entryDate: '2026-02-01', debit: '50.00' }), // +150 D
+      ledgerRow({ lineId: 'l-2', entryDate: '2026-03-01', credit: '200.00' }), // -50 C
+      ledgerRow({ lineId: 'l-3', entryDate: '2026-04-01', credit: '100.00' }), // -150 C
+    ]);
+
+    const result = await h.service.getGeneralLedger(ORG_ID, {
+      accountId: ACC_ID,
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    expect(result.opening.openingBalanceSide).toBe('D');
+    expect(result.lines.map((l) => l.runningBalanceSide)).toEqual(['D', 'C', 'C']);
+    expect(result.lines.map((l) => l.runningBalanceAbs)).toEqual([
+      '150.00',
+      '50.00',
+      '150.00',
+    ]);
+    expect(result.totals.closingBalance).toBe('150.00');
+    expect(result.totals.closingBalanceSide).toBe('C');
+  });
+
+  it('exposes opening side C when the account opens in credit', async () => {
+    const h = buildHarness();
+    h.repo.generalLedgerOpening.mockResolvedValue({
+      openingDebit: '0.00',
+      openingCredit: '750.00',
+    });
+    h.repo.generalLedger.mockResolvedValue([]);
+
+    const result = await h.service.getGeneralLedger(ORG_ID, {
+      accountId: ACC_ID,
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    expect(result.opening.openingBalance).toBe('750.00');
+    expect(result.opening.openingBalanceSide).toBe('C');
+    expect(result.totals.closingBalance).toBe('750.00');
+    expect(result.totals.closingBalanceSide).toBe('C');
   });
 
   it('returns endingCredit when the net balance is negative (credit-side account)', async () => {

@@ -66,9 +66,28 @@ export interface GeneralLedgerQuery {
   readonly toDate: string;
 }
 
+/**
+ * Indicateur de côté du solde — Débit ou Crédit, conforme à la doctrine
+ * OHADA (Acte uniforme art. 19, Tome 1 chap. 1).
+ *
+ * Un solde signé positif (D − C > 0) est porté en colonne Débit (`D`),
+ * un solde signé négatif en colonne Crédit (`C`).
+ */
+export type LedgerBalanceSide = 'D' | 'C';
+
 export interface GeneralLedgerEntry extends GeneralLedgerRow {
-  /** Cumulative debit-credit balance up to and including this line. */
+  /**
+   * Solde progressif **signé** (D positif, C négatif). Conservé tel quel
+   * pour rétrocompatibilité — les anciens consommateurs lisent ce champ.
+   */
   readonly runningBalance: string;
+  /**
+   * Valeur absolue du solde progressif. Couplé à `runningBalanceSide`
+   * pour la présentation doctrine `Solde | D/C`. Additif (Tome 1 chap. 1).
+   */
+  readonly runningBalanceAbs: string;
+  /** Côté Débit/Crédit du solde progressif après cette ligne. */
+  readonly runningBalanceSide: LedgerBalanceSide;
 }
 
 export interface ProfitLossAccountLine {
@@ -307,13 +326,27 @@ export interface GeneralLedgerReport {
   readonly accountClass: number;
   readonly fromDate: string;
   readonly toDate: string;
-  readonly opening: { openingDebit: string; openingCredit: string };
+  readonly opening: {
+    readonly openingDebit: string;
+    readonly openingCredit: string;
+    /**
+     * Valeur absolue du solde d'ouverture (= |openingDebit − openingCredit|)
+     * pour affichage doctrine. Additif (Tome 1 chap. 1).
+     */
+    readonly openingBalance: string;
+    /** Côté D/C du solde d'ouverture. */
+    readonly openingBalanceSide: LedgerBalanceSide;
+  };
   readonly lines: readonly GeneralLedgerEntry[];
   readonly totals: {
     readonly periodDebit: string;
     readonly periodCredit: string;
     readonly endingDebit: string;
     readonly endingCredit: string;
+    /** Valeur absolue du solde de clôture. */
+    readonly closingBalance: string;
+    /** Côté D/C du solde de clôture. */
+    readonly closingBalanceSide: LedgerBalanceSide;
   };
 }
 
@@ -2424,10 +2457,20 @@ export class ReportsService {
 
     // Compute running balance starting from opening (debit positive,
     // credit negative). One pass over the chronologically-ordered list.
-    let running = Number(opening.openingDebit) - Number(opening.openingCredit);
+    // Doctrine OHADA (Acte uniforme art. 19, Tome 1 chap. 1) :
+    //   - `runningBalance` reste signé (rétrocompat ancien front)
+    //   - `runningBalanceAbs` + `runningBalanceSide` exposent la forme
+    //     doctrine `Solde | D/C` attendue par le PDF / XLSX.
+    const openingSignedNum = Number(opening.openingDebit) - Number(opening.openingCredit);
+    let running = openingSignedNum;
     const lines: GeneralLedgerEntry[] = rawLines.map((row) => {
       running += Number(row.debit) - Number(row.credit);
-      return { ...row, runningBalance: running.toFixed(2) };
+      return {
+        ...row,
+        runningBalance: running.toFixed(2),
+        runningBalanceAbs: Math.abs(running).toFixed(2),
+        runningBalanceSide: running >= 0 ? 'D' : 'C',
+      };
     });
 
     const periodDebit = rawLines.reduce((s, r) => s + Number(r.debit), 0);
@@ -2436,6 +2479,9 @@ export class ReportsService {
     const totalCredit = Number(opening.openingCredit) + periodCredit;
     const net = totalDebit - totalCredit;
 
+    const openingSide: LedgerBalanceSide = openingSignedNum >= 0 ? 'D' : 'C';
+    const closingSide: LedgerBalanceSide = net >= 0 ? 'D' : 'C';
+
     return {
       accountId: account.id,
       accountCode: account.code,
@@ -2443,13 +2489,19 @@ export class ReportsService {
       accountClass: account.class,
       fromDate: query.fromDate,
       toDate: query.toDate,
-      opening,
+      opening: {
+        ...opening,
+        openingBalance: Math.abs(openingSignedNum).toFixed(2),
+        openingBalanceSide: openingSide,
+      },
       lines,
       totals: {
         periodDebit: periodDebit.toFixed(2),
         periodCredit: periodCredit.toFixed(2),
         endingDebit: (net > 0 ? net : 0).toFixed(2),
         endingCredit: (net < 0 ? -net : 0).toFixed(2),
+        closingBalance: Math.abs(net).toFixed(2),
+        closingBalanceSide: closingSide,
       },
     };
   }

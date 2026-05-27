@@ -444,6 +444,12 @@ export interface ComparativeBalanceReport {
   readonly totals: ComparativeBalanceTotals;
 }
 
+/**
+ * Indicateur Débit/Crédit du solde — convention doctrine OHADA
+ * (Acte uniforme art. 19, Tome 1 chap. 1).
+ */
+export type LedgerBalanceSide = 'D' | 'C';
+
 export interface GeneralLedgerLine {
   readonly lineId: string;
   readonly entryId: string;
@@ -454,7 +460,12 @@ export interface GeneralLedgerLine {
   readonly debit: string;
   readonly credit: string;
   readonly letteringCode: string | null;
+  /** Solde progressif signé (D positif, C négatif) — rétrocompatibilité. */
   readonly runningBalance: string;
+  /** Valeur absolue du solde progressif. */
+  readonly runningBalanceAbs: string;
+  /** Côté D/C du solde après cette ligne. */
+  readonly runningBalanceSide: LedgerBalanceSide;
 }
 
 export interface GeneralLedgerReport {
@@ -467,6 +478,8 @@ export interface GeneralLedgerReport {
   readonly opening: {
     readonly openingDebit: string;
     readonly openingCredit: string;
+    readonly openingBalance: string;
+    readonly openingBalanceSide: LedgerBalanceSide;
   };
   readonly lines: ReadonlyArray<GeneralLedgerLine>;
   readonly totals: {
@@ -474,6 +487,8 @@ export interface GeneralLedgerReport {
     readonly periodCredit: string;
     readonly endingDebit: string;
     readonly endingCredit: string;
+    readonly closingBalance: string;
+    readonly closingBalanceSide: LedgerBalanceSide;
   };
 }
 

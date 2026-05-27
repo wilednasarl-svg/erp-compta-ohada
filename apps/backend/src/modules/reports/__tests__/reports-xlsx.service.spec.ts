@@ -292,3 +292,92 @@ describe('ReportsXlsxService — TFT W5.2 volet 2', () => {
     }
   });
 });
+
+// ─── D2 — Grand Livre format doctrine OHADA ─────────────────────────────
+import type { GeneralLedgerReport } from '../services/reports.service';
+
+const fakeGeneralLedger = (): GeneralLedgerReport => ({
+  accountId: 'a-1',
+  accountCode: '411000',
+  accountLabel: 'CLIENT X',
+  accountClass: 4,
+  fromDate: '2026-01-01',
+  toDate: '2026-12-31',
+  opening: {
+    openingDebit: '500.00',
+    openingCredit: '0.00',
+    openingBalance: '500.00',
+    openingBalanceSide: 'D',
+  },
+  lines: [
+    {
+      lineId: 'l-1',
+      entryId: 'e-1',
+      entryDate: '2026-02-15',
+      journalCode: 'VTE',
+      entryNumber: 1,
+      description: 'Facture FA-001',
+      debit: '200.00',
+      credit: '0.00',
+      letteringCode: null,
+      runningBalance: '700.00',
+      runningBalanceAbs: '700.00',
+      runningBalanceSide: 'D',
+    },
+    {
+      lineId: 'l-2',
+      entryId: 'e-2',
+      entryDate: '2026-03-01',
+      journalCode: 'BQ',
+      entryNumber: 2,
+      description: 'Règlement client',
+      debit: '0.00',
+      credit: '300.00',
+      letteringCode: 'A0001',
+      runningBalance: '400.00',
+      runningBalanceAbs: '400.00',
+      runningBalanceSide: 'D',
+    },
+  ],
+  totals: {
+    periodDebit: '200.00',
+    periodCredit: '300.00',
+    endingDebit: '400.00',
+    endingCredit: '0.00',
+    closingBalance: '400.00',
+    closingBalanceSide: 'D',
+  },
+});
+
+describe('ReportsXlsxService — Grand Livre D2 (doctrine OHADA)', () => {
+  let service: ReportsXlsxService;
+  beforeEach(() => {
+    service = new ReportsXlsxService();
+  });
+
+  it('produit un buffer XLSX ≥ 1 KB pour le Grand Livre', () => {
+    const buf = service.generalLedgerXlsx(fakeGeneralLedger(), 'ACME SARL');
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(1024);
+  });
+
+  it('contient les 8 colonnes doctrine (Date, Journal, Pièce, Libellé, Débit, Crédit, Solde, D/C)', () => {
+    const buf = service.generalLedgerXlsx(fakeGeneralLedger(), 'ACME SARL');
+    const wb = XLSX.read(buf, { type: 'buffer' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const cells = sheetStrings(sheet);
+    for (const header of ['Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Solde', 'D/C']) {
+      expect(cells).toContain(header);
+    }
+  });
+
+  it('matérialise le report à nouveau et le TOTAL compte avec côté D/C', () => {
+    const buf = service.generalLedgerXlsx(fakeGeneralLedger(), 'ACME SARL');
+    const wb = XLSX.read(buf, { type: 'buffer' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const joined = sheetStrings(sheet).join('||');
+    expect(joined).toContain('REPORT À NOUVEAU');
+    expect(joined).toContain('TOTAL 411000');
+    expect(joined).toContain('D');
+  });
+});
