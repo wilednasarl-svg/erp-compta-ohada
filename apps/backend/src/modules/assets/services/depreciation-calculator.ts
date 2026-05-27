@@ -1,4 +1,4 @@
-import type { DepreciationMethod } from '../types/asset.types';
+import type { DepreciationMethod, DerogatoryConfig } from '../types/asset.types';
 
 /**
  * `DepreciationCalculator` — fonctions pures de calcul d'amortissement
@@ -341,9 +341,316 @@ export function computeDecliningSchedule(input: DepreciationInput): Depreciation
   });
 }
 
+// ─── SOFTY (Sum-Of-The-Years' Digits) ───────────────────────────────────
+
+/**
+ * Amortissement SOFTY (Tome 2 chap 4-5, App. 27-32 SYSCOHADA).
+ * Annuité année N = base × (durée − N + 1) / Σ(1..durée).
+ * Exemple : 5 ans / 100k → 33333.33, 26666.67, 20000, 13333.33, 6666.67.
+ * Prorata 1er exercice via fragmentation des paliers (alpha = jours en
+ * service / jours dans l'année). Invariant : Σ = depreciable.
+ */
+export function computeSoftySchedule(input: DepreciationInput): DepreciationLine[] {
+  const cost = toCents(input.acquisitionCost);
+  const residual = toCents(input.residualValue);
+  const depreciable = cost - residual;
+  if (depreciable <= 0) {
+    throw new Error(`residualValue (${input.residualValue}) cannot exceed or equal acquisitionCost (${input.acquisitionCost})`);
+  }
+  if (input.durationMonths <= 0) {
+    throw new Error(`durationMonths must be > 0, got ${input.durationMonths}`);
+  }
+
+  const totalYears = Math.ceil(input.durationMonths / 12);
+  const sumOfDigits = (totalYears * (totalYears + 1)) / 2;
+  const fullAnnuities: number[] = [];
+  for (let i = 0; i < totalYears; i++) {
+    const weight = totalYears - i;
+    fullAnnuities.push(Math.round((depreciable * weight) / sumOfDigits));
+  }
+
+  const start = parseYmd(input.putInServiceDate);
+  const firstStart = input.firstFiscalYearStart ?? calendarYearBounds(start.year).start;
+  const firstEnd = input.firstFiscalYearEnd ?? calendarYearBounds(start.year).end;
+  const fiscalDaysYear1 = daysBetween(input.putInServiceDate, firstEnd);
+  const yearDays = daysInYear(start.year);
+  const alpha = fiscalDaysYear1 / yearDays;
+
+  const lines: Array<Omit<DepreciationLine, 'cumulativeDepreciation' | 'netBookValue'>> = [];
+  let cursor = { start: firstStart, end: firstEnd };
+  const exerciseCount = alpha >= 1 ? totalYears : totalYears + 1;
+  for (let i = 0; i < exerciseCount; i++) {
+    let cents = 0;
+    if (alpha >= 1) {
+      cents = fullAnnuities[i];
+    } else if (i === 0) {
+      cents = Math.round(fullAnnuities[0] * alpha);
+    } else if (i < totalYears) {
+      cents = Math.round(fullAnnuities[i - 1] * (1 - alpha)) + Math.round(fullAnnuities[i] * alpha);
+    } else {
+      cents = Math.round(fullAnnuities[totalYears - 1] * (1 - alpha));
+    }
+    lines.push({
+      fiscalYear: fiscalYearLabel(cursor.start),
+      periodStart: cursor.start,
+      periodEnd: cursor.end,
+      depreciationAmount: fromCents(cents),
+    });
+    cursor = nextFiscalYear(cursor.start, cursor.end);
+  }
+
+  const allocated = lines.reduce((s, l) => s + toCents(l.depreciationAmount), 0);
+  if (allocated !== depreciable && lines.length > 0) {
+    const delta = depreciable - allocated;
+    const last = lines[lines.length - 1];
+    lines[lines.length - 1] = {
+      ...last,
+      depreciationAmount: fromCents(toCents(last.depreciationAmount) + delta),
+    };
+  }
+
+  let cumul = 0;
+  return lines.map((l) => {
+    cumul += toCents(l.depreciationAmount);
+    return {
+      ...l,
+      cumulativeDepreciation: fromCents(cumul),
+      netBookValue: fromCents(cost - cumul),
+    };
+  });
+}
+
+// ─── Units of Production (UOP) ──────────────────────────────────────────
+
+export interface UopScheduleInput extends DepreciationInput {
+  readonly totalUnits: number;
+  readonly unitsPerYear: ReadonlyArray<number>;
+}
+
+export class UopUnitsRequiredError extends Error {
+  readonly code = 'ASSET_UOP_UNITS_REQUIRED';
+  constructor(message = 'totalUnits and non-empty unitsPerYear are required for UOP method') {
+    super(message);
+  }
+}
+export class UopUnitsOverflowError extends Error {
+  readonly code = 'ASSET_UOP_UNITS_OVERFLOW';
+  constructor(message = 'sum(unitsPerYear) must not exceed totalUnits') {
+    super(message);
+  }
+}
+
+/**
+ * Dotation N = base × (unitsPerYear[N] / totalUnits). Si sum < total,
+ * le bien n'est pas totalement amorti (VNC > residual maintenue).
+ */
+export function computeUnitsOfProductionSchedule(input: UopScheduleInput): DepreciationLine[] {
+  if (!input.totalUnits || input.totalUnits <= 0 || !input.unitsPerYear || input.unitsPerYear.length === 0) {
+    throw new UopUnitsRequiredError();
+  }
+  const sumUnits = input.unitsPerYear.reduce((s, u) => s + (Number(u) || 0), 0);
+  if (sumUnits - input.totalUnits > 0.5) {
+    throw new UopUnitsOverflowError(`sum(unitsPerYear)=${sumUnits} exceeds totalUnits=${input.totalUnits}`);
+  }
+
+  const cost = toCents(input.acquisitionCost);
+  const residual = toCents(input.residualValue);
+  const depreciable = cost - residual;
+  if (depreciable <= 0) {
+    throw new Error('residualValue cannot exceed or equal acquisitionCost');
+  }
+
+  const start = parseYmd(input.putInServiceDate);
+  const firstStart = input.firstFiscalYearStart ?? calendarYearBounds(start.year).start;
+  const firstEnd = input.firstFiscalYearEnd ?? calendarYearBounds(start.year).end;
+
+  const lines: Array<Omit<DepreciationLine, 'cumulativeDepreciation' | 'netBookValue'>> = [];
+  let cursor = { start: firstStart, end: firstEnd };
+  for (let i = 0; i < input.unitsPerYear.length; i++) {
+    const units = Math.max(0, Number(input.unitsPerYear[i]) || 0);
+    const cents = Math.round((depreciable * units) / input.totalUnits);
+    lines.push({
+      fiscalYear: fiscalYearLabel(cursor.start),
+      periodStart: cursor.start,
+      periodEnd: cursor.end,
+      depreciationAmount: fromCents(cents),
+    });
+    cursor = nextFiscalYear(cursor.start, cursor.end);
+  }
+
+  const allocated = lines.reduce((s, l) => s + toCents(l.depreciationAmount), 0);
+  const isFullyUsed = Math.abs(sumUnits - input.totalUnits) < 0.5;
+  if (isFullyUsed && allocated !== depreciable && lines.length > 0) {
+    const delta = depreciable - allocated;
+    const last = lines[lines.length - 1];
+    lines[lines.length - 1] = {
+      ...last,
+      depreciationAmount: fromCents(toCents(last.depreciationAmount) + delta),
+    };
+  }
+
+  let cumul = 0;
+  return lines.map((l) => {
+    cumul += toCents(l.depreciationAmount);
+    return {
+      ...l,
+      cumulativeDepreciation: fromCents(cumul),
+      netBookValue: fromCents(cost - cumul),
+    };
+  });
+}
+
+// ─── Amortissements dérogatoires (R34 doctrine SYSCOHADA) ───────────────
+
+export interface DerogatoryScheduleEntry {
+  readonly fiscalYear: number;
+  readonly periodStart: string;
+  readonly periodEnd: string;
+  readonly economicAmount: string;
+  readonly fiscalAmount: string;
+  readonly dotationAmount: string;
+  readonly repriseAmount: string;
+}
+
+export interface DerogatoryInput {
+  readonly acquisitionCost: string | number;
+  readonly residualValue: string | number;
+  readonly putInServiceDate: string;
+  readonly durationMonths: number;
+  readonly derogatory: DerogatoryConfig;
+  readonly decliningRate?: string | number | null;
+  readonly totalUnits?: number;
+  readonly unitsPerYear?: ReadonlyArray<number>;
+  readonly firstFiscalYearStart?: string;
+  readonly firstFiscalYearEnd?: string;
+}
+
+export class DerogatoryConfigInvalidError extends Error {
+  readonly code = 'ASSET_DEROGATORY_CONFIG_INVALID';
+  constructor(message = 'derogatory configuration is invalid') {
+    super(message);
+  }
+}
+
+function buildScheduleForMethod(
+  method: DepreciationMethod,
+  base: Omit<DepreciationInput, 'method'>,
+  decliningRate: string | number | null | undefined,
+  uop?: { totalUnits?: number; unitsPerYear?: ReadonlyArray<number> },
+): DepreciationLine[] {
+  switch (method) {
+    case 'linear':
+      return computeLinearSchedule({ ...base, method: 'linear' });
+    case 'declining':
+      return computeDecliningSchedule({ ...base, method: 'declining', decliningRate });
+    case 'softy':
+      return computeSoftySchedule({ ...base, method: 'softy' });
+    case 'units_of_production':
+      if (!uop || !uop.totalUnits || !uop.unitsPerYear) {
+        throw new UopUnitsRequiredError();
+      }
+      return computeUnitsOfProductionSchedule({
+        ...base,
+        method: 'units_of_production',
+        totalUnits: uop.totalUnits,
+        unitsPerYear: uop.unitsPerYear,
+      });
+  }
+}
+
+/**
+ * Différence fiscal − économique par exercice :
+ *   > 0 → dotation provision réglementée (D 851 / C 151)
+ *   < 0 → reprise (D 151 / C 861)
+ * Σ dotation − Σ reprise = 0 sur la durée totale.
+ */
+export function computeDerogatorySchedule(input: DerogatoryInput): DerogatoryScheduleEntry[] {
+  const cfg = input.derogatory;
+  if (!cfg.enabled) {
+    throw new DerogatoryConfigInvalidError('derogatory.enabled must be true');
+  }
+  if (!cfg.economicMethod || !cfg.fiscalMethod) {
+    throw new DerogatoryConfigInvalidError('derogatory.fiscalMethod and economicMethod are both required');
+  }
+  if (cfg.fiscalMethod === 'declining' && (cfg.fiscalDecliningRate === null || cfg.fiscalDecliningRate === undefined)) {
+    throw new DerogatoryConfigInvalidError('fiscalDecliningRate required when fiscalMethod=declining');
+  }
+
+  const baseEconomic: Omit<DepreciationInput, 'method'> = {
+    acquisitionCost: input.acquisitionCost,
+    residualValue: input.residualValue,
+    putInServiceDate: input.putInServiceDate,
+    durationMonths: input.durationMonths,
+    firstFiscalYearStart: input.firstFiscalYearStart,
+    firstFiscalYearEnd: input.firstFiscalYearEnd,
+  };
+  const baseFiscal: Omit<DepreciationInput, 'method'> = {
+    ...baseEconomic,
+    durationMonths: cfg.fiscalDuration ?? input.durationMonths,
+  };
+
+  const economicLines = buildScheduleForMethod(cfg.economicMethod, baseEconomic, input.decliningRate, {
+    totalUnits: input.totalUnits,
+    unitsPerYear: input.unitsPerYear,
+  });
+  const fiscalLines = buildScheduleForMethod(cfg.fiscalMethod, baseFiscal, cfg.fiscalDecliningRate ?? input.decliningRate, {
+    totalUnits: input.totalUnits,
+    unitsPerYear: input.unitsPerYear,
+  });
+
+  const yearMap = new Map<number, { periodStart: string; periodEnd: string; economic: number; fiscal: number }>();
+  for (const l of economicLines) {
+    yearMap.set(l.fiscalYear, {
+      periodStart: l.periodStart,
+      periodEnd: l.periodEnd,
+      economic: toCents(l.depreciationAmount),
+      fiscal: 0,
+    });
+  }
+  for (const l of fiscalLines) {
+    const existing = yearMap.get(l.fiscalYear);
+    if (existing) {
+      existing.fiscal = toCents(l.depreciationAmount);
+    } else {
+      yearMap.set(l.fiscalYear, {
+        periodStart: l.periodStart,
+        periodEnd: l.periodEnd,
+        economic: 0,
+        fiscal: toCents(l.depreciationAmount),
+      });
+    }
+  }
+
+  const sortedYears = [...yearMap.keys()].sort((a, b) => a - b);
+  return sortedYears.map((year) => {
+    const row = yearMap.get(year)!;
+    const diff = row.fiscal - row.economic;
+    const dotation = diff > 0 ? diff : 0;
+    const reprise = diff < 0 ? -diff : 0;
+    return {
+      fiscalYear: year,
+      periodStart: row.periodStart,
+      periodEnd: row.periodEnd,
+      economicAmount: fromCents(row.economic),
+      fiscalAmount: fromCents(row.fiscal),
+      dotationAmount: fromCents(dotation),
+      repriseAmount: fromCents(reprise),
+    };
+  });
+}
+
 /** Dispatch sur la méthode déclarée. */
 export function computeSchedule(input: DepreciationInput): DepreciationLine[] {
-  return input.method === 'linear' ? computeLinearSchedule(input) : computeDecliningSchedule(input);
+  switch (input.method) {
+    case 'linear':
+      return computeLinearSchedule(input);
+    case 'declining':
+      return computeDecliningSchedule(input);
+    case 'softy':
+      return computeSoftySchedule(input);
+    case 'units_of_production':
+      throw new UopUnitsRequiredError('computeSchedule cannot dispatch UOP — use computeUnitsOfProductionSchedule with totalUnits + unitsPerYear');
+  }
 }
 
 /**
@@ -393,6 +700,14 @@ export function computePartialYearDepreciation(
   const segDays = daysBetween(fromDate, toDate);
   if (segDays <= 0) {
     return { amount: '0.00', daysProrated: 0 };
+  }
+
+  if (input.method === 'softy' || input.method === 'units_of_production') {
+    const yearDays = daysInYear(parseYmd(fromDate).year);
+    const totalYears = Math.ceil(input.durationMonths / 12);
+    const annualEstimate = depreciable / totalYears;
+    const cents = Math.round((annualEstimate * segDays) / yearDays);
+    return { amount: fromCents(Math.min(cents, depreciable)), daysProrated: segDays };
   }
 
   if (input.method === 'linear') {

@@ -17,10 +17,18 @@ import { DISPOSAL_ACCOUNT_CODES, type DisposeAssetDto } from '../dto/dispose-ass
 import {
   computeLinearSchedule,
   computeDecliningSchedule,
+  computeSoftySchedule,
+  computeUnitsOfProductionSchedule,
+  computeDerogatorySchedule,
   computePartialYearDepreciation,
+  DerogatoryConfigInvalidError,
+  UopUnitsOverflowError,
+  UopUnitsRequiredError,
   type DepreciationInput,
   type DepreciationLine,
+  type DerogatoryScheduleEntry,
 } from './depreciation-calculator';
+import type { DerogatoryConfig } from '../types/asset.types';
 
 /**
  * Récapitulatif d'une écriture comptable générée par `dispose()`.
@@ -125,6 +133,10 @@ export class AssetsService {
 
     const putInServiceDate = dto.putInServiceDate ?? dto.acquisitionDate;
 
+    // W4.3 — validation upstream (avant DB).
+    this.validateUopInputs(dto.depreciationMethod, dto.totalUnits, dto.unitsPerYear);
+    const derogatoryCfg = this.normalizeDerogatoryConfig(dto);
+
     return this.dataSource.transaction(async (manager) => {
       const asset = await this.assetsRepo.create(
         {
@@ -142,23 +154,46 @@ export class AssetsService {
           depreciationAccountId: depreciationAccount.id,
           expenseAccountId: expenseAccount.id,
           createdById: actorId,
+          totalUnits: dto.totalUnits != null ? String(dto.totalUnits) : null,
+          unitsPerYear: dto.unitsPerYear ?? null,
+          derogatoryEnabled: derogatoryCfg?.enabled ?? false,
+          derogatoryFiscalMethod: derogatoryCfg?.fiscalMethod ?? null,
+          derogatoryFiscalDuration: derogatoryCfg?.fiscalDuration ?? null,
+          derogatoryFiscalDecliningRate:
+            derogatoryCfg?.fiscalDecliningRate != null
+              ? String(derogatoryCfg.fiscalDecliningRate)
+              : null,
         },
         manager,
       );
 
       const lines = this.computeScheduleLines(asset);
+      const derogatoryEntries = derogatoryCfg
+        ? this.computeDerogatoryLines(asset, derogatoryCfg)
+        : [];
+      const derogatoryByYear = new Map<number, DerogatoryScheduleEntry>(
+        derogatoryEntries.map((e) => [e.fiscalYear, e]),
+      );
+
       const schedule = await this.schedulesRepo.createMany(
-        lines.map((line) => ({
-          organizationId,
-          assetId: asset.id,
-          fiscalYear: line.fiscalYear,
-          periodStart: line.periodStart,
-          periodEnd: line.periodEnd,
-          depreciationAmount: line.depreciationAmount,
-          cumulativeDepreciation: line.cumulativeDepreciation,
-          netBookValue: line.netBookValue,
-          status: 'pending' as const,
-        })),
+        lines.map((line) => {
+          const dero = derogatoryByYear.get(line.fiscalYear);
+          return {
+            organizationId,
+            assetId: asset.id,
+            fiscalYear: line.fiscalYear,
+            periodStart: line.periodStart,
+            periodEnd: line.periodEnd,
+            depreciationAmount: line.depreciationAmount,
+            cumulativeDepreciation: line.cumulativeDepreciation,
+            netBookValue: line.netBookValue,
+            status: 'pending' as const,
+            economicAmount: dero ? dero.economicAmount : null,
+            fiscalAmount: dero ? dero.fiscalAmount : null,
+            derogatoryDotation: dero ? dero.dotationAmount : null,
+            derogatoryReprise: dero ? dero.repriseAmount : null,
+          };
+        }),
         manager,
       );
 
@@ -671,6 +706,47 @@ export class AssetsService {
       },
     ];
 
+    // W4.3 — Amortissements dérogatoires : ajouter D 851 / C 151
+    // ou D 151 / C 861 selon dotation/reprise.
+    const dotation = Number(schedule.derogatoryDotation ?? 0);
+    const reprise = Number(schedule.derogatoryReprise ?? 0);
+    if (dotation > 0) {
+      const [doteAccount, provAccount] = await Promise.all([
+        this.requireAccountByCode('851', organizationId, 'derogatoryDotationAccount'),
+        this.requireAccountByCode('151', organizationId, 'provisionRegulatedAccount'),
+      ]);
+      lines.push({
+        accountCode: doteAccount.code,
+        debit: dotation,
+        credit: 0,
+        description: `Dotation provisions réglementées (amort. dérog.) ${asset.code}`,
+      });
+      lines.push({
+        accountCode: provAccount.code,
+        debit: 0,
+        credit: dotation,
+        description: `Provision réglementée — amort. dérog. ${asset.code}`,
+      });
+    }
+    if (reprise > 0) {
+      const [provAccount, repriseAccount] = await Promise.all([
+        this.requireAccountByCode('151', organizationId, 'provisionRegulatedAccount'),
+        this.requireAccountByCode('861', organizationId, 'derogatoryRepriseAccount'),
+      ]);
+      lines.push({
+        accountCode: provAccount.code,
+        debit: reprise,
+        credit: 0,
+        description: `Reprise provision réglementée — amort. dérog. ${asset.code}`,
+      });
+      lines.push({
+        accountCode: repriseAccount.code,
+        debit: 0,
+        credit: reprise,
+        description: `Reprise sur provisions réglementées (amort. dérog.) ${asset.code}`,
+      });
+    }
+
     // Create + validate entry via EntriesService.
     const entryView = await this.entriesService.createDraft(
       organizationId,
@@ -724,9 +800,115 @@ export class AssetsService {
       method: asset.depreciationMethod,
       decliningRate: asset.decliningRate,
     };
-    return asset.depreciationMethod === 'declining'
-      ? computeDecliningSchedule(input)
-      : computeLinearSchedule(input);
+    switch (asset.depreciationMethod) {
+      case 'linear':
+        return computeLinearSchedule(input);
+      case 'declining':
+        return computeDecliningSchedule(input);
+      case 'softy':
+        return computeSoftySchedule(input);
+      case 'units_of_production':
+        if (!asset.totalUnits || !asset.unitsPerYear) {
+          throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_REQUIRED, {
+            message: `Asset '${asset.code}': totalUnits and unitsPerYear are required for UOP method.`,
+          });
+        }
+        try {
+          return computeUnitsOfProductionSchedule({
+            ...input,
+            totalUnits: Number(asset.totalUnits),
+            unitsPerYear: asset.unitsPerYear,
+          });
+        } catch (err) {
+          if (err instanceof UopUnitsOverflowError) {
+            throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_OVERFLOW, {
+              message: err.message,
+            });
+          }
+          if (err instanceof UopUnitsRequiredError) {
+            throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_REQUIRED, {
+              message: err.message,
+            });
+          }
+          throw err;
+        }
+    }
+  }
+
+  private computeDerogatoryLines(
+    asset: AssetEntity,
+    cfg: DerogatoryConfig,
+  ): DerogatoryScheduleEntry[] {
+    try {
+      return computeDerogatorySchedule({
+        acquisitionCost: asset.acquisitionCost,
+        residualValue: asset.residualValue,
+        putInServiceDate: asset.putInServiceDate,
+        durationMonths: asset.durationMonths,
+        derogatory: cfg,
+        decliningRate: asset.decliningRate,
+        totalUnits: asset.totalUnits ? Number(asset.totalUnits) : undefined,
+        unitsPerYear: asset.unitsPerYear ?? undefined,
+      });
+    } catch (err) {
+      if (err instanceof DerogatoryConfigInvalidError) {
+        throw new AppException(ERROR_CODES.ASSET_DEROGATORY_CONFIG_INVALID, {
+          message: err.message,
+        });
+      }
+      if (err instanceof UopUnitsOverflowError) {
+        throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_OVERFLOW, { message: err.message });
+      }
+      if (err instanceof UopUnitsRequiredError) {
+        throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_REQUIRED, { message: err.message });
+      }
+      throw err;
+    }
+  }
+
+  private validateUopInputs(
+    method: AssetEntity['depreciationMethod'],
+    totalUnits: number | undefined,
+    unitsPerYear: number[] | undefined,
+  ): void {
+    if (method !== 'units_of_production') return;
+    if (!totalUnits || totalUnits <= 0 || !unitsPerYear || unitsPerYear.length === 0) {
+      throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_REQUIRED, {
+        message:
+          'units_of_production requires totalUnits > 0 and a non-empty unitsPerYear array.',
+      });
+    }
+    const sum = unitsPerYear.reduce((s, u) => s + (Number(u) || 0), 0);
+    if (sum - totalUnits > 0.5) {
+      throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_OVERFLOW, {
+        message: `sum(unitsPerYear)=${sum} exceeds totalUnits=${totalUnits}.`,
+      });
+    }
+  }
+
+  private normalizeDerogatoryConfig(
+    dto: CreateAssetDto,
+  ): DerogatoryConfig | null {
+    if (!dto.derogatory || !dto.derogatory.enabled) return null;
+    const d = dto.derogatory;
+    if (!d.fiscalMethod) {
+      throw new AppException(ERROR_CODES.ASSET_DEROGATORY_CONFIG_INVALID, {
+        message: 'derogatory.fiscalMethod is required when derogatory.enabled=true.',
+      });
+    }
+    const economicMethod = d.economicMethod ?? dto.depreciationMethod;
+    if (d.fiscalMethod === 'declining' && !d.fiscalDecliningRate) {
+      throw new AppException(ERROR_CODES.ASSET_DEROGATORY_CONFIG_INVALID, {
+        message: 'derogatory.fiscalDecliningRate is required when fiscalMethod=declining.',
+      });
+    }
+    return {
+      enabled: true,
+      fiscalMethod: d.fiscalMethod,
+      economicMethod,
+      fiscalDuration: d.fiscalDuration,
+      fiscalDecliningRate: d.fiscalDecliningRate ?? null,
+    };
   }
 
   /**

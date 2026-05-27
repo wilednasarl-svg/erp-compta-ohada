@@ -16,6 +16,11 @@ export interface CreateDepreciationScheduleInput {
   readonly cumulativeDepreciation: string;
   readonly netBookValue: string;
   readonly status?: DepreciationStatus;
+  // W4.3 — dérogatoire
+  readonly economicAmount?: string | null;
+  readonly fiscalAmount?: string | null;
+  readonly derogatoryDotation?: string | null;
+  readonly derogatoryReprise?: string | null;
 }
 
 export interface UpdateDepreciationScheduleInput {
@@ -53,6 +58,10 @@ export class DepreciationSchedulesRepository {
         cumulativeDepreciation: input.cumulativeDepreciation,
         netBookValue: input.netBookValue,
         status: input.status ?? 'pending',
+        economicAmount: input.economicAmount ?? null,
+        fiscalAmount: input.fiscalAmount ?? null,
+        derogatoryDotation: input.derogatoryDotation ?? null,
+        derogatoryReprise: input.derogatoryReprise ?? null,
       });
     });
     return repo.save(entities);

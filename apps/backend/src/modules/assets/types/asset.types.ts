@@ -1,28 +1,42 @@
 /**
  * Module 12 — Immobilisations & Amortissements (SYSCOHADA).
  *
- * Vocabulaire métier :
- *   - `linear`    : amortissement constant sur la durée. Dotation =
- *     (coût - valeur résiduelle) / durée. Prorata du nombre de mois en
- *     service la première et la dernière année.
- *   - `declining` : amortissement dégressif. Taux fixe appliqué à la
- *     valeur nette comptable (VNC) en début d'exercice. On bascule sur
- *     linéaire quand la dotation linéaire devient supérieure au
- *     dégressif (règle SYSCOHADA).
+ * `linear` / `declining` : méthodes de base (Wave 1).
+ * `softy` : SOFTY (Sum-Of-The-Years' Digits) — annuité décroissante,
+ *   poids = (durée − N + 1) / Σ(1..durée). Tome 2 chap 4-5, App. 27-32.
+ * `units_of_production` : UOP / unités d'œuvre. Dotation N =
+ *   brut × (unitsPerYear[N] / totalUnits).
  *
- * `active` → bien en cours d'amortissement (status par défaut).
- * `fully_depreciated` → VNC = valeur résiduelle ; plus de dotation à venir.
- * `disposed` → bien cédé ou mis au rebut ; l'échéancier restant est
- *     annulé (les `depreciation_schedules` pending sont supprimés).
+ * Amortissements dérogatoires (R34) : écart entre amort. fiscal autorisé
+ * et amort. économique. Différence positive constatée en provision
+ * réglementée 851/151 ; reprise en 151/861.
  */
 
-export type DepreciationMethod = 'linear' | 'declining';
+export type DepreciationMethod =
+  | 'linear'
+  | 'declining'
+  | 'softy'
+  | 'units_of_production';
 export type AssetStatus = 'active' | 'fully_depreciated' | 'disposed';
 export type DepreciationStatus = 'pending' | 'posted';
 
-export const DEPRECIATION_METHODS: ReadonlyArray<DepreciationMethod> = ['linear', 'declining'];
+export const DEPRECIATION_METHODS: ReadonlyArray<DepreciationMethod> = [
+  'linear',
+  'declining',
+  'softy',
+  'units_of_production',
+];
 export const ASSET_STATUSES: ReadonlyArray<AssetStatus> = [
   'active',
   'fully_depreciated',
   'disposed',
 ];
+
+/** Configuration dérogatoire fiscale vs économique. */
+export interface DerogatoryConfig {
+  readonly enabled: boolean;
+  readonly fiscalMethod: DepreciationMethod;
+  readonly economicMethod: DepreciationMethod;
+  readonly fiscalDuration?: number;
+  readonly fiscalDecliningRate?: string | number | null;
+}

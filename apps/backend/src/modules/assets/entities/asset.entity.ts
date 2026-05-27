@@ -96,6 +96,38 @@ export class AssetEntity {
   })
   disposalValue!: string | null;
 
+  // ─── W4.3 — UOP (units of production) ───────────────────────────
+  @Column({
+    name: 'total_units',
+    type: 'numeric',
+    precision: 15,
+    scale: 4,
+    nullable: true,
+  })
+  totalUnits!: string | null;
+
+  @Column({ name: 'units_per_year', type: 'jsonb', nullable: true })
+  unitsPerYear!: number[] | null;
+
+  // ─── W4.3 — Amortissements dérogatoires ─────────────────────────
+  @Column({ name: 'derogatory_enabled', type: 'boolean', default: false })
+  derogatoryEnabled!: boolean;
+
+  @Column({ name: 'derogatory_fiscal_method', type: 'text', nullable: true })
+  derogatoryFiscalMethod!: DepreciationMethod | null;
+
+  @Column({ name: 'derogatory_fiscal_duration', type: 'integer', nullable: true })
+  derogatoryFiscalDuration!: number | null;
+
+  @Column({
+    name: 'derogatory_fiscal_declining_rate',
+    type: 'numeric',
+    precision: 6,
+    scale: 4,
+    nullable: true,
+  })
+  derogatoryFiscalDecliningRate!: string | null;
+
   @Column({ name: 'created_by_id', type: 'uuid', nullable: true })
   createdById!: string | null;
 

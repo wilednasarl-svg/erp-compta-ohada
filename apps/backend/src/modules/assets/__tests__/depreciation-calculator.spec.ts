@@ -1,7 +1,13 @@
 import {
   computeDecliningSchedule,
+  computeDerogatorySchedule,
   computeLinearSchedule,
   computeSchedule,
+  computeSoftySchedule,
+  computeUnitsOfProductionSchedule,
+  DerogatoryConfigInvalidError,
+  UopUnitsOverflowError,
+  UopUnitsRequiredError,
 } from '../services/depreciation-calculator';
 
 describe('DepreciationCalculator', () => {
@@ -260,6 +266,203 @@ describe('DepreciationCalculator', () => {
         decliningRate: 0.5,
       });
       expect(dispatched).toEqual(direct);
+    });
+  });
+
+  // ─── W4.3 — SOFTY (Sum-Of-The-Years' digits) ────────────────────────
+  describe('SOFTY — Sum-Of-The-Years digits (W4.3)', () => {
+    it('5 ans / 100k → annuités 33333.33, 26666.67, 20000, 13333.33, 6666.67', () => {
+      const lines = computeSoftySchedule({
+        acquisitionCost: 100000,
+        residualValue: 0,
+        putInServiceDate: '2026-01-01',
+        durationMonths: 60,
+        method: 'softy',
+      });
+      expect(lines).toHaveLength(5);
+      expect(Number(lines[0].depreciationAmount)).toBeCloseTo(33333.33, 1);
+      expect(Number(lines[1].depreciationAmount)).toBeCloseTo(26666.67, 1);
+      expect(Number(lines[2].depreciationAmount)).toBeCloseTo(20000, 1);
+      expect(Number(lines[3].depreciationAmount)).toBeCloseTo(13333.33, 1);
+      expect(Number(lines[4].depreciationAmount)).toBeCloseTo(6666.67, 1);
+      const sum = lines.reduce((s, l) => s + Number(l.depreciationAmount), 0);
+      expect(sum).toBeCloseTo(100000, 2);
+    });
+
+    it('respects residual value on SOFTY', () => {
+      const lines = computeSoftySchedule({
+        acquisitionCost: 50000,
+        residualValue: 5000,
+        putInServiceDate: '2026-01-01',
+        durationMonths: 48,
+        method: 'softy',
+      });
+      const sum = lines.reduce((s, l) => s + Number(l.depreciationAmount), 0);
+      expect(sum).toBeCloseTo(45000, 2);
+      expect(Number(lines[lines.length - 1].netBookValue)).toBeCloseTo(5000, 2);
+    });
+
+    it('annuities strictly decreasing (full-year start)', () => {
+      const lines = computeSoftySchedule({
+        acquisitionCost: 60000,
+        residualValue: 0,
+        putInServiceDate: '2026-01-01',
+        durationMonths: 48,
+        method: 'softy',
+      });
+      for (let i = 1; i < lines.length; i++) {
+        expect(Number(lines[i].depreciationAmount)).toBeLessThan(
+          Number(lines[i - 1].depreciationAmount),
+        );
+      }
+    });
+
+    it('SOFTY mid-year start spreads on N+1 fiscal years', () => {
+      const lines = computeSoftySchedule({
+        acquisitionCost: 60000,
+        residualValue: 0,
+        putInServiceDate: '2026-07-01',
+        durationMonths: 60,
+        method: 'softy',
+      });
+      expect(lines).toHaveLength(6);
+      const sum = lines.reduce((s, l) => s + Number(l.depreciationAmount), 0);
+      expect(sum).toBeCloseTo(60000, 2);
+    });
+  });
+
+  // ─── W4.3 — UOP (units of production) ────────────────────────────────
+  describe('UOP — units of production (W4.3)', () => {
+    it('totalUnits=10000, unitsPerYear=[3000,2500,2500,2000], 100k → 30k, 25k, 25k, 20k', () => {
+      const lines = computeUnitsOfProductionSchedule({
+        acquisitionCost: 100000,
+        residualValue: 0,
+        putInServiceDate: '2026-01-01',
+        durationMonths: 48,
+        method: 'units_of_production',
+        totalUnits: 10000,
+        unitsPerYear: [3000, 2500, 2500, 2000],
+      });
+      expect(lines).toHaveLength(4);
+      expect(Number(lines[0].depreciationAmount)).toBeCloseTo(30000, 2);
+      expect(Number(lines[1].depreciationAmount)).toBeCloseTo(25000, 2);
+      expect(Number(lines[2].depreciationAmount)).toBeCloseTo(25000, 2);
+      expect(Number(lines[3].depreciationAmount)).toBeCloseTo(20000, 2);
+      const sum = lines.reduce((s, l) => s + Number(l.depreciationAmount), 0);
+      expect(sum).toBeCloseTo(100000, 2);
+    });
+
+    it('throws ASSET_UOP_UNITS_OVERFLOW when sum(units) > totalUnits', () => {
+      let thrown = null;
+      try {
+        computeUnitsOfProductionSchedule({
+          acquisitionCost: 100000,
+          residualValue: 0,
+          putInServiceDate: '2026-01-01',
+          durationMonths: 48,
+          method: 'units_of_production',
+          totalUnits: 5000,
+          unitsPerYear: [3000, 3000, 2000],
+        });
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(UopUnitsOverflowError);
+      expect((thrown as UopUnitsOverflowError).code).toBe('ASSET_UOP_UNITS_OVERFLOW');
+    });
+
+    it('throws ASSET_UOP_UNITS_REQUIRED when totalUnits/unitsPerYear missing', () => {
+      expect(() =>
+        computeUnitsOfProductionSchedule({
+          acquisitionCost: 100000,
+          residualValue: 0,
+          putInServiceDate: '2026-01-01',
+          durationMonths: 48,
+          method: 'units_of_production',
+          totalUnits: 0,
+          unitsPerYear: [],
+        }),
+      ).toThrow(UopUnitsRequiredError);
+    });
+
+    it('partial usage (sum < total) keeps VNC > residual on last line', () => {
+      const lines = computeUnitsOfProductionSchedule({
+        acquisitionCost: 100000,
+        residualValue: 0,
+        putInServiceDate: '2026-01-01',
+        durationMonths: 48,
+        method: 'units_of_production',
+        totalUnits: 10000,
+        unitsPerYear: [2000, 2000],
+      });
+      const sum = lines.reduce((s, l) => s + Number(l.depreciationAmount), 0);
+      expect(sum).toBeCloseTo(40000, 2);
+      expect(Number(lines[lines.length - 1].netBookValue)).toBeCloseTo(60000, 2);
+    });
+  });
+
+  // ─── W4.3 — Amortissements dérogatoires (R34) ────────────────────────
+  describe('Dérogatoire — linéaire économique vs dégressif fiscal (W4.3)', () => {
+    it('dotation positive en début, reprise en fin (somme nette ≈ 0)', () => {
+      const entries = computeDerogatorySchedule({
+        acquisitionCost: 100000,
+        residualValue: 0,
+        putInServiceDate: '2026-01-01',
+        durationMonths: 60,
+        derogatory: {
+          enabled: true,
+          economicMethod: 'linear',
+          fiscalMethod: 'declining',
+          fiscalDecliningRate: 0.4,
+        },
+      });
+      // 5 fiscal years — la linéaire 5 ans démarrée le 01/01 applique
+      // un prorata jour exact (365/1826 ≈ 19989 €), tolérance large.
+      expect(entries.length).toBe(5);
+      expect(Number(entries[0].economicAmount)).toBeGreaterThan(19000);
+      expect(Number(entries[0].economicAmount)).toBeLessThan(21000);
+      expect(Number(entries[0].fiscalAmount)).toBeGreaterThan(39000);
+      expect(Number(entries[0].fiscalAmount)).toBeLessThan(41000);
+      expect(Number(entries[0].dotationAmount)).toBeGreaterThan(18000);
+      expect(Number(entries[0].repriseAmount)).toBeCloseTo(0, 1);
+      expect(Number(entries[1].dotationAmount)).toBeGreaterThan(3000);
+
+      const totalDot = entries.reduce((s, e) => s + Number(e.dotationAmount), 0);
+      const totalRep = entries.reduce((s, e) => s + Number(e.repriseAmount), 0);
+      expect(totalDot - totalRep).toBeCloseTo(0, 0);
+    });
+
+    it('reprise détectée quand fiscal < économique en fin de vie', () => {
+      const entries = computeDerogatorySchedule({
+        acquisitionCost: 100000,
+        residualValue: 0,
+        putInServiceDate: '2026-01-01',
+        durationMonths: 60,
+        derogatory: {
+          enabled: true,
+          economicMethod: 'linear',
+          fiscalMethod: 'declining',
+          fiscalDecliningRate: 0.4,
+        },
+      });
+      const hasReprise = entries.some((e) => Number(e.repriseAmount) > 0);
+      expect(hasReprise).toBe(true);
+    });
+
+    it('rejette fiscal=declining sans fiscalDecliningRate', () => {
+      expect(() =>
+        computeDerogatorySchedule({
+          acquisitionCost: 100000,
+          residualValue: 0,
+          putInServiceDate: '2026-01-01',
+          durationMonths: 60,
+          derogatory: {
+            enabled: true,
+            economicMethod: 'linear',
+            fiscalMethod: 'declining',
+          },
+        }),
+      ).toThrow(DerogatoryConfigInvalidError);
     });
   });
 

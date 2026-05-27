@@ -1,18 +1,55 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsNumberString,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 
 import { DEPRECIATION_METHODS } from '../types/asset.types';
 import type { DepreciationMethod } from '../types/asset.types';
+
+/**
+ * Configuration dérogatoire fiscale vs économique (R34 doctrine).
+ * Si `enabled=true`, le service calcule en plus du schedule économique
+ * un schedule fiscal et stocke les dotations/reprises sur 851/151/861.
+ */
+export class DerogatoryConfigDto {
+  @ApiProperty({ description: 'Active le calcul dérogatoire fiscal vs économique' })
+  @IsBoolean()
+  enabled!: boolean;
+
+  @ApiPropertyOptional({ description: 'Méthode fiscale (declining, softy…)', enum: DEPRECIATION_METHODS })
+  @IsOptional()
+  @IsIn(DEPRECIATION_METHODS as readonly string[])
+  fiscalMethod?: DepreciationMethod;
+
+  @ApiPropertyOptional({ description: 'Méthode économique (référence comptable)', enum: DEPRECIATION_METHODS })
+  @IsOptional()
+  @IsIn(DEPRECIATION_METHODS as readonly string[])
+  economicMethod?: DepreciationMethod;
+
+  @ApiPropertyOptional({ description: 'Durée fiscale en mois si différente' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  fiscalDuration?: number;
+
+  @ApiPropertyOptional({ description: 'Taux dégressif fiscal (si fiscalMethod=declining)' })
+  @IsOptional()
+  @IsNumberString()
+  fiscalDecliningRate?: string;
+}
 
 /**
  * Contract pour créer une immobilisation.
@@ -131,4 +168,29 @@ export class CreateAssetDto {
   @IsNotEmpty()
   @Matches(/^\d{1,10}$/, { message: 'expenseAccountCode must be a SYSCOHADA code (digits only)' })
   expenseAccountCode!: string;
+
+  // ─── W4.3 — UOP (units of production) ──────────────────────────────
+  @ApiPropertyOptional({
+    description: "Durée d'usage totale en unités (requis si method=units_of_production)",
+    example: 10000,
+  })
+  @IsOptional()
+  @IsNumber()
+  totalUnits?: number;
+
+  @ApiPropertyOptional({
+    description: 'Unités produites par exercice',
+    example: [3000, 2500, 2500, 2000],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  unitsPerYear?: number[];
+
+  // ─── W4.3 — Amortissements dérogatoires ────────────────────────────
+  @ApiPropertyOptional({ description: 'Configuration dérogatoire fiscale (provisions 151)' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DerogatoryConfigDto)
+  derogatory?: DerogatoryConfigDto;
 }

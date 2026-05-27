@@ -22,6 +22,14 @@ export interface CreateAssetInput {
   readonly expenseAccountId: string;
   readonly status?: AssetStatus;
   readonly createdById?: string | null;
+  // W4.3 — UOP
+  readonly totalUnits?: string | null;
+  readonly unitsPerYear?: number[] | null;
+  // W4.3 — Dérogatoire
+  readonly derogatoryEnabled?: boolean;
+  readonly derogatoryFiscalMethod?: DepreciationMethod | null;
+  readonly derogatoryFiscalDuration?: number | null;
+  readonly derogatoryFiscalDecliningRate?: string | null;
 }
 
 export interface UpdateAssetInput {
@@ -67,6 +75,13 @@ export class AssetsRepository {
       expenseAccountId: input.expenseAccountId,
       status: input.status ?? 'active',
       createdById: input.createdById ?? null,
+      // W4.3 — UOP + dérogatoire
+      totalUnits: input.totalUnits ?? null,
+      unitsPerYear: input.unitsPerYear ?? null,
+      derogatoryEnabled: input.derogatoryEnabled ?? false,
+      derogatoryFiscalMethod: input.derogatoryFiscalMethod ?? null,
+      derogatoryFiscalDuration: input.derogatoryFiscalDuration ?? null,
+      derogatoryFiscalDecliningRate: input.derogatoryFiscalDecliningRate ?? null,
     });
     return repo.save(entity);
   }

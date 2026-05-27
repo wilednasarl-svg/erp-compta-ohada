@@ -82,6 +82,43 @@ export class DepreciationScheduleEntity {
   })
   netBookValue!: string;
 
+  // ─── W4.3 — Amortissements dérogatoires (R34) ───────────────────
+  @Column({
+    name: 'economic_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  economicAmount!: string | null;
+
+  @Column({
+    name: 'fiscal_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  fiscalAmount!: string | null;
+
+  @Column({
+    name: 'derogatory_dotation',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  derogatoryDotation!: string | null;
+
+  @Column({
+    name: 'derogatory_reprise',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  derogatoryReprise!: string | null;
+
   @Column({ type: 'text', default: 'pending' })
   status!: DepreciationStatus;
 
