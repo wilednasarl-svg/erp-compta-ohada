@@ -5,6 +5,7 @@ import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.entity';
 import { JournalsModule } from '../journals/journals.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { DashboardsController } from './controllers/dashboards.controller';
 import { DashboardsRepository } from './repositories/dashboards.repository';
@@ -51,6 +52,7 @@ import { DayDashboardService } from './services/day-dashboard.service';
     RbacModule,
     AuditModule,
     JournalsModule,
+    OrganizationsModule,
   ],
   controllers: [DashboardsController],
   providers: [

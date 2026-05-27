@@ -170,7 +170,7 @@ export class ConsolidatedSummaryResponse {
   @ApiProperty({ type: () => ConsolidatedMetricsResponse })
   metrics!: ConsolidatedMetricsResponse;
   @ApiProperty({ type: () => ConsolidatedOrganizationDataResponse, isArray: true })
-  organizationsData!: ConsolidatedOrganizationDataResponse[];
+  organizationsData!: readonly ConsolidatedOrganizationDataResponse[];
 }
 
 export class ConsolidatedEnvelopeResponse {

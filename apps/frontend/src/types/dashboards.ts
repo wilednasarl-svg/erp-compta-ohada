@@ -135,3 +135,33 @@ export interface DashboardTopAccounts {
   readonly totalAmount: string;
   readonly rows: ReadonlyArray<TopAccountRow>;
 }
+
+// ─── Wave 3 — Consolidated Dashboard ────────────────────────────────
+
+export interface ConsolidatedOrganizationData {
+  readonly organizationId: string;
+  readonly organizationName: string;
+  readonly metrics: {
+    readonly cashBalance: string;
+    readonly receivables: string;
+    readonly payables: string;
+    readonly revenue: string;
+    readonly expenses: string;
+    readonly netResult: string;
+  };
+}
+
+export interface DashboardConsolidatedSummary {
+  readonly year: number;
+  readonly organizationsCount: number;
+  readonly currency: string;
+  readonly metrics: {
+    readonly cashBalance: string;
+    readonly receivables: string;
+    readonly payables: string;
+    readonly revenue: string;
+    readonly expenses: string;
+    readonly netResult: string;
+  };
+  readonly organizationsData: ReadonlyArray<ConsolidatedOrganizationData>;
+}

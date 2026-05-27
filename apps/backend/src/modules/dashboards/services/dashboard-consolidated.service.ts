@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
-import { asTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
+import { asTenantId } from '../../../common/persistence/tenant-scope';
 import { MembershipRepository } from '../../rbac/repositories/membership.repository';
 import { PermissionsCacheService } from '../../rbac/services/permissions-cache.service';
 import { AccountingPeriodRepository } from '../../journals/repositories/accounting-period.repository';
@@ -25,9 +25,7 @@ export class DashboardConsolidatedService {
     year: number,
   ): Promise<DashboardConsolidatedSummary> {
     if (orgIds.length === 0) {
-      throw new AppException(ERROR_CODES.INVALID_INPUT, {
-        message: 'At least one organization is required for consolidation',
-      });
+      throw new BadRequestException('At least one organization is required for consolidation');
     }
 
     const summaries: (DashboardSummary & { orgName: string })[] = [];
@@ -47,7 +45,7 @@ export class DashboardConsolidatedService {
         'dashboards.read',
       );
       if (!hasPermission) {
-        throw new AppException(ERROR_CODES.AUTH_FORBIDDEN, {
+        throw new AppException(ERROR_CODES.FORBIDDEN_PERMISSION, {
           message: `User lacks dashboards.read permission in organization ${orgId}`,
         });
       }
