@@ -51,8 +51,10 @@ import type {
   AnnexeReport,
   CashTrendReport,
   ComparativeBalanceReport,
+  FinancialRatio,
   FinancialRatiosReport,
   GeneralLedgerReport,
+  SoldeIntermediaire,
   ImportAnomalyGroup,
   ImportDiagnosticReport,
   ImportSessionSummary,
@@ -945,6 +947,62 @@ function formatShortDate(iso: string): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+/**
+ * Chip de variation N vs N-1 — composant clé de la Balance comparative.
+ *
+ * Affiche un triangle directionnel + le pourcentage d'évolution dans
+ * un encart coloré sémantique :
+ *   - ▲ vert (accent-soft) si la valeur a augmenté
+ *   - ▼ rouge (critical-soft) si elle a baissé
+ *   - · gris (sunk) si stable ou non calculable
+ *
+ * En dessous : la variation absolue en mono tabulaire pour confirmer
+ * l'ordre de grandeur. Un % seul peut tromper sur des petits comptes
+ * (100% sur 50 FCFA n'est pas significatif).
+ *
+ * Note OHADA : le sens « favorable » d'une variation dépend de la
+ * classe de compte (un débit en hausse en classe 6 = charge en hausse
+ * = mauvais). On ne fait PAS cette interprétation ici — montrer la
+ * direction brute laisse au comptable son jugement.
+ */
+function VariationChip({
+  variation,
+  variationPercent,
+}: {
+  readonly variation: string;
+  readonly variationPercent: string | null;
+}) {
+  const v = Number(variation);
+  const isFinite = Number.isFinite(v);
+  const isUp = isFinite && v > 0;
+  const isDown = isFinite && v < 0;
+  return (
+    <div className="inline-flex flex-col items-end gap-0.5">
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 rounded-xs border px-1.5 py-0.5 font-mono text-2xs tabular-nums',
+          isUp
+            ? 'border-accent/30 bg-accent-soft text-accent-ink'
+            : isDown
+              ? 'border-critical/30 bg-critical-soft text-critical-ink'
+              : 'border-line-strong bg-sunk text-ink-mute',
+        )}
+      >
+        <span aria-hidden>{isUp ? '▲' : isDown ? '▼' : '·'}</span>
+        {variationPercent !== null ? `${variationPercent}%` : '—'}
+      </span>
+      <span
+        className={cn(
+          'font-mono text-2xs tabular-nums',
+          isUp ? 'text-accent-ink' : isDown ? 'text-critical' : 'text-ink-mute',
+        )}
+      >
+        {isFinite && v !== 0 ? fmt(variation) : '—'}
+      </span>
+    </div>
+  );
+}
+
 // ─── Grand livre ────────────────────────────────────────────────────────
 
 function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
@@ -1496,95 +1554,166 @@ function ComparativeBalanceTable({
 }) {
   if (report.rows.length === 0) {
     return (
-      <p className="text-sm text-ink-mute">
-        Aucun mouvement sur les périodes avec ces filtres.
-      </p>
+      <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+        <p className="text-sm text-ink-soft">
+          Aucun mouvement sur les périodes avec ces filtres.
+        </p>
+      </div>
     );
   }
   const yearN = report.toDate.slice(0, 4);
   const yearNm1 = report.previousToDate.slice(0, 4);
+
+  // Compteurs de comptes en hausse/baisse/stable — donne le pouls de
+  // l'exercice en un coup d'œil. Stable = variation nette exactement 0.
+  const counts = report.rows.reduce(
+    (acc, row) => {
+      const v = Number(row.netVariation);
+      if (!Number.isFinite(v) || v === 0) acc.stable += 1;
+      else if (v > 0) acc.up += 1;
+      else acc.down += 1;
+      return acc;
+    },
+    { up: 0, down: 0, stable: 0 },
+  );
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="bg-sunk text-left text-2xs uppercase tracking-wider text-ink-mute">
-            <th className="px-2 py-2" rowSpan={2}>
-              Compte
-            </th>
-            <th className="px-2 py-2" rowSpan={2}>
-              Intitulé
-            </th>
-            <th className="px-2 py-2 text-center" colSpan={2}>
-              Mouvement {yearNm1}
-            </th>
-            <th className="px-2 py-2 text-center" colSpan={2}>
-              Mouvement {yearN}
-            </th>
-            <th className="px-2 py-2 text-center" colSpan={2}>
-              Solde
-            </th>
-            <th className="px-2 py-2 text-right" rowSpan={2}>
-              Variation
-            </th>
-            <th className="px-2 py-2 text-right" rowSpan={2}>
-              % Évol.
-            </th>
-          </tr>
-          <tr className="bg-sunk text-right text-2xs uppercase tracking-wider text-ink-mute">
-            <th className="px-2 py-1">Débit</th>
-            <th className="px-2 py-1">Crédit</th>
-            <th className="px-2 py-1">Débit</th>
-            <th className="px-2 py-1">Crédit</th>
-            <th className="px-2 py-1">Débit</th>
-            <th className="px-2 py-1">Crédit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {report.rows.map((row) => (
-            <tr key={row.accountId} className="border-t border-line hover:bg-sunk/40">
-              <td className="px-2 py-1 font-mono text-xs">{row.accountCode}</td>
-              <td className="px-2 py-1">{row.accountLabel}</td>
-              <td className="px-2 py-1 text-right font-mono">
-                {fmt(row.previousPeriodDebit)}
-              </td>
-              <td className="px-2 py-1 text-right font-mono">
-                {fmt(row.previousPeriodCredit)}
-              </td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.periodDebit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.periodCredit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.endingDebit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.endingCredit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.netVariation)}</td>
-              <td className="px-2 py-1 text-right font-mono text-xs text-ink-mute">
-                {row.netVariationPercent !== null ? `${row.netVariationPercent}%` : '—'}
-              </td>
+    <div className="space-y-4">
+      {/* Bandeau récap : périodes comparées + pouls des comptes (hausse,
+          baisse, stable). Donne au comptable une lecture diagonale
+          instantanée avant de plonger dans la table. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période N</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.fromDate)} → {formatShortDate(report.toDate)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période N-1</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink-soft">
+            {formatShortDate(report.previousFromDate)} →{' '}
+            {formatShortDate(report.previousToDate)}
+          </p>
+        </div>
+        <div className="col-span-2 grid grid-cols-3 gap-px bg-line lg:col-span-2">
+          <div className="bg-paper px-4 py-2.5">
+            <p className="text-2xs uppercase tracking-wider text-accent-ink">▲ En hausse</p>
+            <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-accent-ink">
+              {counts.up.toLocaleString('fr-FR')}
+            </p>
+          </div>
+          <div className="bg-paper px-4 py-2.5">
+            <p className="text-2xs uppercase tracking-wider text-critical-ink">▼ En baisse</p>
+            <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-critical-ink">
+              {counts.down.toLocaleString('fr-FR')}
+            </p>
+          </div>
+          <div className="bg-paper px-4 py-2.5">
+            <p className="text-2xs uppercase tracking-wider text-ink-mute">· Stables</p>
+            <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink-soft">
+              {counts.stable.toLocaleString('fr-FR')}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-line">
+        <table className="w-full border-collapse text-sm">
+          <colgroup>
+            <col className="w-[110px]" />
+            <col />
+            <col span={2} className="bg-sunk/40" />
+            <col span={2} className="bg-paper" />
+            <col span={2} className="bg-sunk/40" />
+            <col className="w-[140px]" />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-sunk text-2xs uppercase tracking-wider text-ink-mute shadow-[0_1px_0_0_oklch(var(--line-strong))]">
+            <tr>
+              <th rowSpan={2} className="px-3 py-2 text-left align-bottom font-medium">
+                Compte
+              </th>
+              <th rowSpan={2} className="px-3 py-2 text-left align-bottom font-medium">
+                Intitulé
+              </th>
+              <th
+                colSpan={2}
+                className="border-l border-line-strong px-3 pb-0 pt-2 text-center font-medium"
+              >
+                Mouvement {yearNm1}
+              </th>
+              <th
+                colSpan={2}
+                className="border-l border-line-strong px-3 pb-0 pt-2 text-center font-medium"
+              >
+                Mouvement {yearN}
+              </th>
+              <th
+                colSpan={2}
+                className="border-l border-line-strong px-3 pb-0 pt-2 text-center font-medium"
+              >
+                Solde
+              </th>
+              <th
+                rowSpan={2}
+                className="border-l border-line-strong px-3 py-2 text-right align-bottom font-medium"
+              >
+                Variation N
+              </th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
-            <td className="px-2 py-2" colSpan={2}>
-              Totaux
-            </td>
-            <td className="px-2 py-2 text-right font-mono">
-              {fmt(report.totals.previousPeriodDebit)}
-            </td>
-            <td className="px-2 py-2 text-right font-mono">
-              {fmt(report.totals.previousPeriodCredit)}
-            </td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.periodDebit)}</td>
-            <td className="px-2 py-2 text-right font-mono">
-              {fmt(report.totals.periodCredit)}
-            </td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.endingDebit)}</td>
-            <td className="px-2 py-2 text-right font-mono">
-              {fmt(report.totals.endingCredit)}
-            </td>
-            <td className="px-2 py-2"></td>
-            <td className="px-2 py-2"></td>
-          </tr>
-        </tfoot>
-      </table>
+            <tr>
+              <th className="border-l border-line-strong px-3 pb-2 pt-0.5 text-right font-medium">
+                Débit
+              </th>
+              <th className="px-3 pb-2 pt-0.5 text-right font-medium">Crédit</th>
+              <th className="border-l border-line-strong px-3 pb-2 pt-0.5 text-right font-medium">
+                Débit
+              </th>
+              <th className="px-3 pb-2 pt-0.5 text-right font-medium">Crédit</th>
+              <th className="border-l border-line-strong px-3 pb-2 pt-0.5 text-right font-medium">
+                Débit
+              </th>
+              <th className="px-3 pb-2 pt-0.5 text-right font-medium">Crédit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((row) => (
+              <tr key={row.accountId} className="border-t border-line hover:bg-sunk/40">
+                <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">
+                  {row.accountCode}
+                </td>
+                <td className="px-3 py-1.5 text-ink">{row.accountLabel}</td>
+                <Amount value={row.previousPeriodDebit} bordered />
+                <Amount value={row.previousPeriodCredit} />
+                <Amount value={row.periodDebit} bordered emphasis />
+                <Amount value={row.periodCredit} emphasis />
+                <Amount value={row.endingDebit} bordered />
+                <Amount value={row.endingCredit} />
+                <td className="border-l border-line px-3 py-1.5 text-right">
+                  <VariationChip
+                    variation={row.netVariation}
+                    variationPercent={row.netVariationPercent}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
+              <td className="px-3 py-2.5 text-2xs uppercase tracking-wider" colSpan={2}>
+                Totaux
+              </td>
+              <Amount value={report.totals.previousPeriodDebit} bordered total />
+              <Amount value={report.totals.previousPeriodCredit} total />
+              <Amount value={report.totals.periodDebit} bordered total />
+              <Amount value={report.totals.periodCredit} total />
+              <Amount value={report.totals.endingDebit} bordered total />
+              <Amount value={report.totals.endingCredit} total />
+              <td className="border-l border-accent/30 px-3 py-2.5"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1740,67 +1869,237 @@ function SigPanel({ orgId }: { readonly orgId: string }) {
 
 function SigTable({ report }: { readonly report: SigReport }) {
   const hasComp = report.previous !== undefined;
+
+  // 3 SIGs phares — VA (XC), EBE (XD), RN (XI) — extraits par code.
+  // Si un code manque (exercice non clos, calcul partiel), cellule
+  // avec tiret. Ordre = ordre du compte de résultat (haut → bas).
+  const va = report.soldes.find((s) => s.code === 'XC');
+  const ebe = report.soldes.find((s) => s.code === 'XD');
+  const rn = report.soldes.find((s) => s.code === 'XI');
+
   return (
-    <div className="space-y-6">
-      <div className="rounded-md border border-line bg-sunk/40 p-4">
-        <h3 className="mb-3 text-2xs uppercase tracking-wider text-ink-soft">
-          Cascade des soldes (XA → XI)
-        </h3>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-2xs uppercase tracking-wider text-ink-mute">
-              <th className="px-2 py-1">Réf.</th>
-              <th className="px-2 py-1">Libellé</th>
-              <th className="px-2 py-1 text-right">Montant N</th>
-              {hasComp ? (
-                <>
-                  <th className="px-2 py-1 text-right">Montant N-1</th>
-                  <th className="px-2 py-1 text-right">Variation</th>
-                  <th className="px-2 py-1 text-right">% Évol.</th>
-                </>
-              ) : null}
-            </tr>
-          </thead>
-          <tbody>
-            {report.soldes.map((s) => (
-              <tr key={s.code} className="border-b">
-                <td className="px-2 py-1 font-mono text-xs font-semibold">{s.code}</td>
-                <td className="px-2 py-1">
-                  <div className="font-medium">{s.label}</div>
-                  <div className="text-xs text-ink-mute">{s.formula}</div>
-                </td>
-                <td className="px-2 py-1 text-right font-mono font-semibold">{fmt(s.amount)}</td>
-                {hasComp ? (
-                  <>
-                    <td className="px-2 py-1 text-right font-mono">{fmt(s.previousAmount ?? '0')}</td>
-                    <td className="px-2 py-1 text-right font-mono">{fmt(s.variation ?? '0')}</td>
-                    <td className="px-2 py-1 text-right font-mono text-xs text-ink-mute">
-                      {s.variationPercent !== undefined && s.variationPercent !== null
-                        ? `${s.variationPercent}%`
-                        : '—'}
-                    </td>
-                  </>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="space-y-8">
+      {/* Bandeau récap : période + 3 SIGs phares. Le dirigeant ou
+          comptable senior cherche ces 3 chiffres en premier. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.fromDate)} → {formatShortDate(report.toDate)}
+          </p>
+          {hasComp && report.previous && (
+            <p className="mt-0.5 font-mono text-2xs tabular-nums text-ink-mute">
+              vs {formatShortDate(report.previous.fromDate)} →{' '}
+              {formatShortDate(report.previous.toDate)}
+            </p>
+          )}
+        </div>
+        <SoldeHighlight label="Valeur ajoutée" code="XC" solde={va} hasComp={hasComp} />
+        <SoldeHighlight label="EBE" code="XD" solde={ebe} hasComp={hasComp} />
+        <SoldeHighlight label="Résultat net" code="XI" solde={rn} hasComp={hasComp} emphasis />
       </div>
 
+      {/* Cascade des soldes — empilement vertical avec ligne de liaison
+          subtile à gauche, matérialise la chaîne de dérivation XA → XI.
+          Le solde final (XI = RN) reçoit un encart accent-soft. */}
+      <section>
+        <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
+          <h3 className="font-display text-lg font-medium tracking-tight text-ink">
+            Cascade des soldes
+          </h3>
+          <span className="font-mono text-xs tabular-nums text-ink-mute">
+            {report.soldes.length} étapes · XA → XI
+          </span>
+        </header>
+        <ol className="relative space-y-2 pl-8">
+          <span
+            aria-hidden
+            className="absolute bottom-3 left-3 top-3 w-px bg-line-strong"
+          />
+          {report.soldes.map((s, idx) => {
+            const isFinal = s.code === 'XI';
+            const variationNum = s.variation === undefined ? null : Number(s.variation);
+            const variationPct = s.variationPercent ?? null;
+            const isPositiveVar = variationNum !== null && variationNum > 0;
+            const isNegativeVar = variationNum !== null && variationNum < 0;
+            return (
+              <li key={s.code} className="relative">
+                <span
+                  aria-hidden
+                  className={cn(
+                    'absolute -left-8 top-3 flex h-6 w-6 items-center justify-center rounded-full border font-mono text-2xs font-medium tabular-nums',
+                    isFinal
+                      ? 'border-accent bg-accent text-paper'
+                      : 'border-line-strong bg-paper text-ink-soft',
+                  )}
+                >
+                  {idx + 1}
+                </span>
+                <article
+                  className={cn(
+                    'flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-md border bg-paper px-4 py-3',
+                    isFinal ? 'border-accent/40 bg-accent-soft/40' : 'border-line',
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={cn(
+                          'font-mono text-xs font-semibold tabular-nums',
+                          isFinal ? 'text-accent-ink' : 'text-ink-soft',
+                        )}
+                      >
+                        {s.code}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-sm font-medium',
+                          isFinal ? 'text-accent-ink' : 'text-ink',
+                        )}
+                      >
+                        {s.label}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 font-mono text-2xs leading-snug text-ink-mute">
+                      = {s.formula}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span
+                      className={cn(
+                        'font-mono text-xl font-medium tabular-nums tracking-tight',
+                        isFinal ? 'text-accent-ink' : 'text-ink',
+                      )}
+                    >
+                      {fmt(s.amount)}
+                    </span>
+                    {hasComp && (
+                      <div className="flex items-baseline gap-2 text-xs">
+                        <span className="font-mono tabular-nums text-ink-mute">
+                          N-1 {fmt(s.previousAmount ?? '0')}
+                        </span>
+                        {variationPct !== null && (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-0.5 rounded-xs border px-1.5 py-0.5 font-mono text-2xs tabular-nums',
+                              isPositiveVar
+                                ? 'border-accent/30 bg-accent-soft text-accent-ink'
+                                : isNegativeVar
+                                  ? 'border-critical/30 bg-critical-soft text-critical-ink'
+                                  : 'border-line-strong bg-sunk text-ink-soft',
+                            )}
+                          >
+                            {isPositiveVar ? '▲' : isNegativeVar ? '▼' : '·'} {variationPct}%
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <SigPosteTable title="Produits (TA → TO)" postes={report.produits} hasComp={hasComp} />
-        <SigPosteTable title="Charges (RA → RS)" postes={report.charges} hasComp={hasComp} />
+        <SigPosteTable
+          title="Produits"
+          subtitle="TA → TO"
+          postes={report.produits}
+          hasComp={hasComp}
+        />
+        <SigPosteTable
+          title="Charges"
+          subtitle="RA → RS"
+          postes={report.charges}
+          hasComp={hasComp}
+        />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Cellule du bandeau récap : 1 solde phare avec montant N, montant N-1
+ * et variation % chip. Variant `emphasis` pour le Résultat Net (chiffre
+ * regardé en premier) — fond accent-soft pour le distinguer.
+ */
+function SoldeHighlight({
+  label,
+  code,
+  solde,
+  hasComp,
+  emphasis = false,
+}: {
+  readonly label: string;
+  readonly code: string;
+  readonly solde: SoldeIntermediaire | undefined;
+  readonly hasComp: boolean;
+  readonly emphasis?: boolean;
+}) {
+  const amount = solde?.amount;
+  const num = amount === undefined ? null : Number(amount);
+  const variationNum = solde?.variation === undefined ? null : Number(solde.variation);
+  const isNegativeAmount = num !== null && num < 0;
+  return (
+    <div className={cn('px-4 py-3', emphasis ? 'bg-accent-soft/60' : 'bg-paper')}>
+      <p
+        className={cn(
+          'flex items-baseline gap-1.5 text-2xs uppercase tracking-wider',
+          emphasis ? 'text-accent-ink' : 'text-ink-mute',
+        )}
+      >
+        {label}
+        <span className="font-mono normal-case tracking-normal text-ink-mute/80">
+          ({code})
+        </span>
+      </p>
+      <p
+        className={cn(
+          'mt-0.5 font-mono text-xl font-medium tabular-nums',
+          amount === undefined
+            ? 'text-ink-mute'
+            : isNegativeAmount
+              ? 'text-critical-ink'
+              : emphasis
+                ? 'text-accent-ink'
+                : 'text-ink',
+        )}
+      >
+        {amount === undefined ? '—' : fmt(amount)}
+      </p>
+      {hasComp && solde?.variationPercent && (
+        <p
+          className={cn(
+            'mt-0.5 font-mono text-2xs tabular-nums',
+            variationNum !== null && variationNum > 0
+              ? 'text-accent-ink'
+              : variationNum !== null && variationNum < 0
+                ? 'text-critical'
+                : 'text-ink-mute',
+          )}
+        >
+          {variationNum !== null && variationNum > 0
+            ? '▲'
+            : variationNum !== null && variationNum < 0
+              ? '▼'
+              : '·'}{' '}
+          {solde.variationPercent}% vs N-1
+        </p>
+      )}
     </div>
   );
 }
 
 function SigPosteTable({
   title,
+  subtitle,
   postes,
   hasComp,
 }: {
   readonly title: string;
+  readonly subtitle: string;
   readonly postes: ReadonlyArray<{
     readonly code: string;
     readonly label: string;
@@ -1810,33 +2109,47 @@ function SigPosteTable({
   readonly hasComp: boolean;
 }) {
   return (
-    <div>
-      <h4 className="mb-2 text-sm font-semibold text-ink">{title}</h4>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-2xs uppercase tracking-wider text-ink-mute">
-            <th className="px-2 py-1">Réf.</th>
-            <th className="px-2 py-1">Libellé</th>
-            <th className="px-2 py-1 text-right">N</th>
-            {hasComp ? <th className="px-2 py-1 text-right">N-1</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {postes.map((p) => (
-            <tr key={p.code} className="border-t border-line hover:bg-sunk/40">
-              <td className="px-2 py-1 font-mono text-xs">{p.code}</td>
-              <td className="px-2 py-1 text-xs">{p.label}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(p.amount)}</td>
+    <section>
+      <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
+        <h4 className="font-display text-base font-medium tracking-tight text-ink">
+          {title}
+        </h4>
+        <span className="font-mono text-xs tabular-nums text-ink-mute">{subtitle}</span>
+        <span className="ml-auto font-mono text-xs tabular-nums text-ink-mute">
+          {postes.length}
+        </span>
+      </header>
+      <div className="overflow-hidden rounded-md border border-line">
+        <table className="w-full text-sm">
+          <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Réf.</th>
+              <th className="px-3 py-2 text-left font-medium">Libellé</th>
+              <th className="px-3 py-2 text-right font-medium">N</th>
               {hasComp ? (
-                <td className="px-2 py-1 text-right font-mono tabular-nums text-ink-mute">
-                  {fmt(p.previousAmount ?? '0')}
-                </td>
+                <th className="px-3 py-2 text-right font-medium">N-1</th>
               ) : null}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {postes.map((p) => (
+              <tr key={p.code} className="border-t border-line hover:bg-sunk/40">
+                <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">{p.code}</td>
+                <td className="px-3 py-1.5 text-xs text-ink">{p.label}</td>
+                <td className="px-3 py-1.5 text-right font-mono tabular-nums text-ink">
+                  {fmt(p.amount)}
+                </td>
+                {hasComp ? (
+                  <td className="px-3 py-1.5 text-right font-mono tabular-nums text-ink-mute">
+                    {fmt(p.previousAmount ?? '0')}
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -2455,53 +2768,152 @@ function FinancialRatiosTable({ report }: { readonly report: FinancialRatiosRepo
     RENTABILITE: 'Rentabilité',
     ACTIVITE: 'Activité',
   };
+  // Subtitle métier par famille — donne le sens de la catégorie en une ligne.
+  // Pas un dictionnaire OHADA officiel, juste l'aide de scan pour le comptable.
+  const subtitleByCategory: Record<(typeof groups)[number], string> = {
+    STRUCTURE: 'Composition du financement long terme (capitaux propres / dettes).',
+    LIQUIDITE: 'Capacité à honorer les engagements à court terme.',
+    SOLVABILITE: 'Couverture des dettes par le patrimoine — vue créancier.',
+    RENTABILITE: 'Marges et retour sur les capitaux investis.',
+    ACTIVITE: 'Vitesse de rotation des stocks, clients, fournisseurs.',
+  };
+  const iconByCategory: Record<(typeof groups)[number], React.ReactNode> = {
+    STRUCTURE: <Landmark className="h-4 w-4" strokeWidth={1.5} />,
+    LIQUIDITE: <Wallet className="h-4 w-4" strokeWidth={1.5} />,
+    SOLVABILITE: <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />,
+    RENTABILITE: <TrendingUp className="h-4 w-4" strokeWidth={1.5} />,
+    ACTIVITE: <Calculator className="h-4 w-4" strokeWidth={1.5} />,
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Bandeau récapitulatif — rappel de la période + total des ratios
+          calculés. Sans cela, après scroll, le comptable perd le contexte
+          de la date d'arrêté. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-3">
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Arrêté au</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.asAtDate)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Début exercice</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.fiscalYearStartDate)}
+          </p>
+        </div>
+        <div className="col-span-2 bg-paper px-4 py-2.5 sm:col-span-1">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Indicateurs calculés</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+            {report.ratios.length.toLocaleString('fr-FR')}{' '}
+            <span className="text-xs font-normal text-ink-mute">
+              sur {groups.length} familles
+            </span>
+          </p>
+        </div>
+      </div>
+
       {groups.map((cat) => {
         const items = report.ratios.filter((r) => r.category === cat);
         if (items.length === 0) return null;
         return (
-          <div key={cat}>
-            <h4 className="mb-2 text-2xs uppercase tracking-wider text-ink-soft">
-              {labelByCategory[cat]}
-            </h4>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-2xs uppercase tracking-wider text-ink-mute">
-                  <th className="px-2 py-1">Code</th>
-                  <th className="px-2 py-1">Ratio</th>
-                  <th className="px-2 py-1">Formule</th>
-                  <th className="px-2 py-1 text-right">Valeur</th>
-                  <th className="px-2 py-1">Interprétation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((r) => (
-                  <tr key={r.code} className="border-t border-line hover:bg-sunk/40">
-                    <td className="px-2 py-1 font-mono text-xs">{r.code}</td>
-                    <td className="px-2 py-1 font-medium">{r.label}</td>
-                    <td className="px-2 py-1 text-xs text-ink-mute">{r.formula}</td>
-                    <td className="px-2 py-1 text-right font-mono font-semibold">
-                      {r.value === null
-                        ? '—'
-                        : r.unit === 'PERCENT'
-                          ? `${r.value} %`
-                          : r.unit === 'DAYS'
-                            ? `${r.value} j`
-                            : r.value}
-                    </td>
-                    <td className="px-2 py-1 text-xs text-ink-soft">
-                      {r.interpretation ?? ''}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <section key={cat}>
+            <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
+              <span className="text-ink-mute">{iconByCategory[cat]}</span>
+              <h3 className="font-display text-lg font-medium leading-tight tracking-tight text-ink">
+                {labelByCategory[cat]}
+              </h3>
+              <span className="font-mono text-xs tabular-nums text-ink-mute">
+                {items.length}
+              </span>
+              <p className="ml-auto hidden text-xs text-ink-soft sm:block">
+                {subtitleByCategory[cat]}
+              </p>
+            </header>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((r) => (
+                <RatioCard key={r.code} ratio={r} />
+              ))}
+            </div>
+          </section>
         );
       })}
     </div>
   );
+}
+
+/**
+ * Carte d'un ratio unique — la valeur est l'élément central, mise en
+ * monospace tabulaire taille display pour scan rapide. La formule
+ * reste en bas en muted (consultative, pas dominante). L'interprétation
+ * apparaît comme footer séparé par une ligne fine quand elle existe.
+ *
+ * Pas de coloration par seuil (bon/mauvais) — la donnée brute parle au
+ * comptable, et un rouge automatique sur « endettement > 70% » serait
+ * trompeur sans contexte sectoriel. L'interpretation textuelle suffit.
+ */
+function RatioCard({ ratio }: { readonly ratio: FinancialRatio }) {
+  const { value, unit } = formatRatioValue(ratio);
+  const hasValue = ratio.value !== null;
+  return (
+    <article className="flex flex-col gap-3 rounded-md border border-line bg-paper p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-mono text-2xs uppercase tracking-wider text-ink-mute">
+            {ratio.code}
+          </p>
+          <p className="mt-0.5 text-sm font-medium leading-tight text-ink">{ratio.label}</p>
+        </div>
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span
+          className={cn(
+            'font-mono tabular-nums tracking-tight',
+            hasValue ? 'text-3xl font-medium text-ink' : 'text-2xl font-medium text-ink-mute',
+          )}
+        >
+          {value}
+        </span>
+        {unit && hasValue && (
+          <span className="text-sm font-normal text-ink-mute">{unit}</span>
+        )}
+      </div>
+      <p className="font-mono text-2xs leading-snug text-ink-mute">
+        <span className="text-ink-soft">= </span>
+        {ratio.formula}
+      </p>
+      {ratio.interpretation && (
+        <p className="border-t border-line pt-2 text-xs leading-snug text-ink-soft">
+          {ratio.interpretation}
+        </p>
+      )}
+    </article>
+  );
+}
+
+/**
+ * Formate la valeur d'un ratio en (string affichée, unité séparée).
+ *   - PERCENT : 12,34 puis « % » à part (laisse respirer le chiffre)
+ *   - DAYS    : 45 puis « j »
+ *   - RATIO   : 1,23 sans suffixe (les ratios purs n'ont pas d'unité)
+ *   - null    : tiret cadratin
+ */
+function formatRatioValue(ratio: FinancialRatio): { value: string; unit: string | null } {
+  if (ratio.value === null) {
+    return { value: '—', unit: null };
+  }
+  const n = Number(ratio.value);
+  if (!Number.isFinite(n)) {
+    return { value: ratio.value, unit: null };
+  }
+  const formatted = n.toLocaleString('fr-FR', {
+    minimumFractionDigits: ratio.unit === 'DAYS' ? 0 : 2,
+    maximumFractionDigits: ratio.unit === 'DAYS' ? 0 : 2,
+  });
+  if (ratio.unit === 'PERCENT') return { value: formatted, unit: '%' };
+  if (ratio.unit === 'DAYS') return { value: formatted, unit: 'j' };
+  return { value: formatted, unit: null };
 }
 
 // ─── TAFIRE ────────────────────────────────────────────────────────────
