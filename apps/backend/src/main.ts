@@ -106,9 +106,9 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   const port = Number(process.env.PORT ?? 3001);
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  app.get(Logger).log(`Backend listening on http://localhost:${port}`, 'Bootstrap');
+  app.get(Logger).log(`Backend listening on http://0.0.0.0:${port}`, 'Bootstrap');
 }
 
 void bootstrap();
