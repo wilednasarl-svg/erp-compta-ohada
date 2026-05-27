@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
 import { OrganizationAccountRepository } from '../accounting-plan/repositories/organization-account.repository';
+import { ActuarialCommitmentsModule } from '../actuarial-commitments/actuarial-commitments.module';
+import { ActuarialCommitmentsService } from '../actuarial-commitments/services/actuarial-commitments.service';
 import { AssetsModule } from '../assets/assets.module';
 import { AssetsRepository } from '../assets/repositories/assets.repository';
 import { DepreciationSchedulesRepository } from '../assets/repositories/depreciation-schedules.repository';
@@ -32,6 +34,7 @@ import { CashFlowService } from './services/cash-flow.service';
 import { NotesAnnexesService } from './services/notes-annexes/notes-annexes.service';
 import type {
   NoteAccountsDeps,
+  NoteActuarialCommitmentsDeps,
   NoteAssetRecord,
   NoteAssetsDeps,
   NoteCashFlowDeps,
@@ -82,6 +85,7 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
     RbacModule,
     AuditModule,
     AccountingPlanModule,
+    ActuarialCommitmentsModule,
     AssetsModule,
     InventoryModule,
     JournalsModule,
@@ -131,6 +135,7 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
         cashFlowService: CashFlowService,
         dsfProfilesRepo: OrganizationDsfProfilesRepository,
         reportsService: ReportsService,
+        actuarialCommitmentsService: ActuarialCommitmentsService,
       ): NotesAnnexesService => {
         const reports: NoteReportsDeps = {
           accountBalancesAsAt: (orgId, asAtDate) =>
@@ -284,6 +289,19 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
           },
         };
 
+        // E2 — actuarialCommitments dep : expose les snapshots stables
+        // des évaluations actuarielles actives à la Note 16B. Le service
+        // applicatif convertit ses entités TypeORM via `toSnapshot` pour
+        // garder un contrat de lecture découplé.
+        const actuarialCommitments: NoteActuarialCommitmentsDeps = {
+          listActiveByOrg: async (orgId) => {
+            const rows = await actuarialCommitmentsService.listByOrg(orgId as never, {
+              status: 'active',
+            });
+            return rows.map((row) => actuarialCommitmentsService.toSnapshot(row));
+          },
+        };
+
         return new NotesAnnexesService(
           commentsRepo,
           reports,
@@ -293,6 +311,7 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
           cashFlow,
           dsfProfile,
           synthesisIndicators,
+          actuarialCommitments,
         );
       },
       inject: [
@@ -305,6 +324,7 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
         CashFlowService,
         OrganizationDsfProfilesRepository,
         ReportsService,
+        ActuarialCommitmentsService,
       ],
     },
   ],

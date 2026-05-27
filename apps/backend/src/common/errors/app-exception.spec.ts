@@ -256,6 +256,14 @@ describe('HTTP status mapping', () => {
       DSF_PROFILE_INVALID: 422,
       // W5.3 — Bundle ZIP DSF complet.
       DSF_PACKAGE_PROFILE_INCOMPLETE: 422,
+      // E1 — Sûretés réelles données (Notes N1 + N16Bbis).
+      PLEDGED_ASSET_NOT_FOUND: 404,
+      PLEDGED_ASSET_NOT_ACTIVE: 409,
+      PLEDGED_ASSET_INVALID_DATE_RANGE: 422,
+      // E2 — engagements actuariels (Tome 3 N16B).
+      ACTUARIAL_COMMITMENT_NOT_FOUND: 404,
+      ACTUARIAL_COMMITMENT_NOT_ACTIVE: 409,
+      ACTUARIAL_COMMITMENT_PROVISION_OVERFLOW: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

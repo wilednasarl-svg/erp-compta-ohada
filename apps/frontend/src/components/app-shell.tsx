@@ -167,7 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           className={cn(
                             'group relative flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
                             active
-                              ? 'bg-accent-soft font-medium text-accent-ink'
+                              ? "bg-accent-soft font-medium text-accent-ink before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-0.5 before:rounded-full before:bg-accent before:content-['']"
                               : 'text-ink-soft hover:bg-sunk hover:text-ink',
                           )}
                         >

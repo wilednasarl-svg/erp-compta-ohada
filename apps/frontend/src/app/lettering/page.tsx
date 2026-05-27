@@ -7,19 +7,13 @@ import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
+
+/* ─── Types ──────────────────────────────────────────────────── */
 
 type LetteringStatus = 'open' | 'completed' | 'broken';
 
@@ -43,11 +37,14 @@ const STATUS_LABEL: Record<LetteringStatus, string> = {
   broken: 'Dénoué',
 };
 
-const STATUS_COLOR: Record<LetteringStatus, string> = {
-  open: 'bg-blue-100 text-blue-900',
-  completed: 'bg-emerald-100 text-emerald-900',
-  broken: 'bg-slate-200 text-slate-700',
+/* Token-aligned status classes (no hardcoded Tailwind colors) */
+const STATUS_CLASS: Record<LetteringStatus, string> = {
+  open: 'bg-info-soft text-info-ink',
+  completed: 'bg-accent-soft text-accent-ink',
+  broken: 'bg-sunk text-ink-mute',
 };
+
+/* ─── Page ───────────────────────────────────────────────────── */
 
 export default function LetteringPage() {
   const currentOrg = useCurrentOrg();
@@ -104,117 +101,153 @@ export default function LetteringPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Lettrage</h1>
-          <p className="text-sm text-muted-foreground">
-            Réconciliation des comptes de tiers — créez un lettrage en sélectionnant des lignes
-            d'écriture validées sur un même compte partenaire, débit = crédit.
+      <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
+        {/* ─── Header ─────────────────────────────────────── */}
+        <header>
+          <p className="eyebrow mb-2">Tiers</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Lettrage
+          </h1>
+          <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
+            Réconciliation des comptes de tiers — créez un lettrage en sélectionnant des
+            lignes d'écriture validées sur un même compte partenaire, débit = crédit.
           </p>
-        </div>
+        </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Nouveau lettrage</CardTitle>
-            <CardDescription>
-              IDs des lignes d'écriture (au moins 2, séparés par espace/virgule/retour).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="line-ids">IDs des journal_entry_lines</Label>
-                <textarea
-                  id="line-ids"
-                  className="w-full min-h-[80px] rounded-md border bg-background px-3 py-2 text-sm font-mono"
-                  value={lineIdsText}
-                  onChange={(e) => setLineIdsText(e.target.value)}
-                  placeholder="11111111-1111-...&#10;22222222-2222-..."
-                />
-              </div>
-              {createMut.isError && <FormError error={createMut.error} />}
-              <Button
-                type="submit"
-                disabled={createMut.isPending || parseIds(lineIdsText).length < 2}
-              >
-                {createMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
-                Créer le lettrage
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        {/* ─── New lettering form ──────────────────────────── */}
+        <section aria-labelledby="new-lettering-title" className="space-y-5">
+          <div className="border-b border-line pb-3">
+            <h2 id="new-lettering-title" className="font-display text-xl font-medium text-ink">
+              Nouveau lettrage
+            </h2>
+            <p className="mt-1 text-xs text-ink-mute">
+              IDs des lignes d'écriture (minimum 2, séparés par espace, virgule ou retour
+              à la ligne).
+            </p>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base">Lettrages</CardTitle>
-                <CardDescription>{query.data?.length ?? 0} entrées</CardDescription>
-              </div>
-              <select
-                className="rounded-md border bg-background px-3 py-1.5 text-sm"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as LetteringStatus | '')}
-              >
-                <option value="">Tous statuts</option>
-                <option value="open">Ouverts</option>
-                <option value="completed">Soldés</option>
-                <option value="broken">Dénoués</option>
-              </select>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="line-ids">IDs des journal_entry_lines</Label>
+              <textarea
+                id="line-ids"
+                className="w-full min-h-[80px] rounded-sm border border-line-strong bg-paper px-3 py-2 font-mono text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+                value={lineIdsText}
+                onChange={(e) => setLineIdsText(e.target.value)}
+                placeholder={"11111111-1111-...\n22222222-2222-..."}
+              />
             </div>
-          </CardHeader>
-          <CardContent>
-            {query.isLoading ? (
-              <div className="py-8 text-center"><Loader2 className="inline h-4 w-4 animate-spin" /></div>
-            ) : query.data?.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground text-sm">Aucun lettrage.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b text-muted-foreground">
-                    <tr>
-                      <th className="text-left py-2 px-2">Code</th>
-                      <th className="text-left py-2 px-2">Compte</th>
-                      <th className="text-left py-2 px-2">Tiers</th>
-                      <th className="text-right py-2 px-2">Montant</th>
-                      <th className="text-center py-2 px-2">Lignes</th>
-                      <th className="text-center py-2 px-2">Statut</th>
-                      <th className="text-right py-2 px-2">Actions</th>
+            {createMut.isError && <FormError error={createMut.error} />}
+            <Button
+              type="submit"
+              className="press"
+              disabled={createMut.isPending || parseIds(lineIdsText).length < 2}
+            >
+              {createMut.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Link2 className="mr-2 h-4 w-4" />
+              )}
+              Créer le lettrage
+            </Button>
+          </form>
+        </section>
+
+        {/* ─── Lettering list ──────────────────────────────── */}
+        <section aria-labelledby="list-title" className="space-y-5">
+          <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
+            <div>
+              <h2 id="list-title" className="font-display text-xl font-medium text-ink">
+                Lettrages
+              </h2>
+              {query.data !== undefined && (
+                <p className="mt-0.5 text-xs text-ink-mute">
+                  {query.data.length} entrée{query.data.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+            <select
+              className="rounded-sm border border-line-strong bg-paper px-3 py-1.5 text-sm text-ink focus:border-accent focus:outline-none"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as LetteringStatus | '')}
+              aria-label="Filtrer par statut"
+            >
+              <option value="">Tous statuts</option>
+              <option value="open">Ouverts</option>
+              <option value="completed">Soldés</option>
+              <option value="broken">Dénoués</option>
+            </select>
+          </div>
+
+          {query.isLoading ? (
+            <div className="flex items-center gap-2 py-8 text-sm text-ink-mute">
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+              Chargement…
+            </div>
+          ) : (query.data?.length ?? 0) === 0 ? (
+            <p className="py-8 text-center text-sm text-ink-mute">Aucun lettrage.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-sm border border-line">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line bg-sunk">
+                    <th className="px-3 py-2.5 text-left"><span className="eyebrow">Code</span></th>
+                    <th className="px-3 py-2.5 text-left"><span className="eyebrow">Compte</span></th>
+                    <th className="px-3 py-2.5 text-left"><span className="eyebrow">Tiers</span></th>
+                    <th className="px-3 py-2.5 text-right"><span className="eyebrow">Montant</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="eyebrow">Lignes</span></th>
+                    <th className="px-3 py-2.5 text-center"><span className="eyebrow">Statut</span></th>
+                    <th className="px-3 py-2.5 text-right"><span className="eyebrow">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {query.data?.map((l, i) => (
+                    <tr
+                      key={l.id}
+                      className={`border-b border-line last:border-0 ${
+                        i % 2 === 1 ? 'bg-sunk/25' : 'bg-paper'
+                      }`}
+                    >
+                      <td className="px-3 py-2.5 font-mono text-xs text-ink">
+                        {l.letteringCode}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-xs text-ink">
+                        {l.partnerAccountCode}
+                      </td>
+                      <td className="px-3 py-2.5 text-ink-soft">{l.partnerLabel}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-xs tabular-nums text-ink">
+                        {new Intl.NumberFormat('fr-FR').format(Number(l.totalAmount))}
+                      </td>
+                      <td className="px-3 py-2.5 text-center font-mono text-xs text-ink">
+                        {l.lineIds.length}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span
+                          className={`inline-block rounded-xs px-2 py-0.5 text-[11px] font-medium ${STATUS_CLASS[l.status]}`}
+                        >
+                          {STATUS_LABEL[l.status]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        {l.status !== 'broken' && (
+                          <button
+                            type="button"
+                            onClick={() => void handleBreak(l.id)}
+                            disabled={breakMut.isPending}
+                            className="press inline-flex h-7 w-7 items-center justify-center rounded-xs border border-line text-ink-mute transition-colors duration-fast hover:border-critical hover:text-critical-ink disabled:opacity-40"
+                            title="Dénouer"
+                          >
+                            <Link2Off className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          </button>
+                        )}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {query.data?.map((l) => (
-                      <tr key={l.id} className="border-b last:border-0">
-                        <td className="py-2 px-2 font-mono">{l.letteringCode}</td>
-                        <td className="py-2 px-2 font-mono">{l.partnerAccountCode}</td>
-                        <td className="py-2 px-2">{l.partnerLabel}</td>
-                        <td className="py-2 px-2 text-right font-mono">
-                          {new Intl.NumberFormat('fr-FR').format(Number(l.totalAmount))}
-                        </td>
-                        <td className="py-2 px-2 text-center">{l.lineIds.length}</td>
-                        <td className="py-2 px-2 text-center">
-                          <Badge className={STATUS_COLOR[l.status]}>{STATUS_LABEL[l.status]}</Badge>
-                        </td>
-                        <td className="py-2 px-2 text-right">
-                          {l.status !== 'broken' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => void handleBreak(l.id)}
-                              disabled={breakMut.isPending}
-                            >
-                              <Link2Off className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
     </AppShell>
   );

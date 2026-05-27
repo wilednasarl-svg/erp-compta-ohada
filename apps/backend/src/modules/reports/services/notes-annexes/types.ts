@@ -16,6 +16,7 @@
  */
 
 import type { TenantId } from '../../../../common/persistence/tenant-scope';
+import type { ActuarialCommitmentSnapshot } from '../../../actuarial-commitments/types/actuarial-commitment.types';
 import type { CashFlowReport } from '../cash-flow.service';
 
 /**
@@ -140,6 +141,15 @@ export interface NoteHandlerDependencies {
    * pas câblée (cas notamment du registry spec qui mock un dataset vide).
    */
   readonly synthesisIndicators?: NoteSynthesisIndicatorsDeps;
+  /**
+   * Dépendance E2 — données issues du module
+   * `actuarial-commitments` (Tome 3 N16B + Tome 2 chap. 21). Alimente
+   * la Note 16B (engagements de retraite & avantages au personnel).
+   * Optionnelle pour rester rétro-compatible avec les tests historiques :
+   * si absente, le handler N16B retombe sur la balance compte 196 seule
+   * + freeComment.
+   */
+  readonly actuarialCommitments?: NoteActuarialCommitmentsDeps;
 }
 
 /** Sous-interfaces — minimales, écrites côté consommateur. */
@@ -251,6 +261,21 @@ export interface NoteSynthesisIndicatorsDeps {
     periodStart: string,
     periodEnd: string,
   ) => Promise<NoteSynthesisSnapshot>;
+}
+
+/**
+ * Sous-dépendance E2 — lit les évaluations actuarielles actives du
+ * tenant. Consommée par le handler Note 16B pour combiner la partie
+ * provisionnée (compte 196) avec la partie hors-bilan.
+ *
+ * Contrat minimal : on n'expose que la lecture des snapshots stables —
+ * le module `actuarial-commitments` est responsable de la conversion
+ * entité → snapshot.
+ */
+export interface NoteActuarialCommitmentsDeps {
+  readonly listActiveByOrg: (
+    organizationId: TenantId | string,
+  ) => Promise<ReadonlyArray<ActuarialCommitmentSnapshot>>;
 }
 
 /**

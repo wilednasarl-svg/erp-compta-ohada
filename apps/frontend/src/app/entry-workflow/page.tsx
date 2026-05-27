@@ -7,19 +7,14 @@ import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { EntryView } from '@/types/journals';
+
+/* ─── Types ──────────────────────────────────────────────────── */
 
 type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'locked';
 type SignerRole = 'chef_mission' | 'expert_comptable';
@@ -57,6 +52,8 @@ interface HistoryView {
   readonly signatures: ReadonlyArray<SignatureView>;
 }
 
+/* ─── Constants ──────────────────────────────────────────────── */
+
 const STATUS_LABEL: Record<WorkflowStatus, string> = {
   draft: 'Brouillon',
   in_review: 'En revue',
@@ -64,12 +61,15 @@ const STATUS_LABEL: Record<WorkflowStatus, string> = {
   locked: 'Verrouillée',
 };
 
-const STATUS_COLOR: Record<WorkflowStatus, string> = {
-  draft: 'bg-slate-200 text-slate-700',
-  in_review: 'bg-blue-100 text-blue-900',
-  approved: 'bg-amber-100 text-amber-900',
-  locked: 'bg-emerald-100 text-emerald-900',
+/* Token-aligned status classes (no hardcoded Tailwind colors) */
+const STATUS_CLASS: Record<WorkflowStatus, string> = {
+  draft: 'bg-sunk text-ink-mute',
+  in_review: 'bg-info-soft text-info-ink',
+  approved: 'bg-warn-soft text-warn-ink',
+  locked: 'bg-accent-soft text-accent-ink',
 };
+
+/* ─── Page ───────────────────────────────────────────────────── */
 
 export default function EntryWorkflowPage() {
   const currentOrg = useCurrentOrg();
@@ -89,65 +89,90 @@ export default function EntryWorkflowPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Workflow d'approbation & signatures</h1>
-          <p className="text-sm text-muted-foreground">
-            Cycle d'approbation des écritures comptables : brouillon → revue → approbation chef
-            de mission → signature finale expert-comptable (verrouillage + validation).
+      <div className="mx-auto max-w-[1200px] animate-page-in space-y-10">
+        {/* ─── Header ─────────────────────────────────────── */}
+        <header>
+          <p className="eyebrow mb-2">Validation</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Workflow d'approbation
+          </h1>
+          <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
+            Cycle d'approbation des écritures : brouillon → revue → approbation chef de
+            mission → signature expert-comptable (verrouillage définitif).
           </p>
-        </div>
+        </header>
 
-        <div className="grid gap-4 md:grid-cols-[2fr_3fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Écritures brouillon</CardTitle>
-              <CardDescription>
-                {entriesQuery.data?.length ?? 0} écritures à traiter
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
+        {/* ─── Two-panel layout ────────────────────────────── */}
+        <div className="grid gap-6 md:grid-cols-[2fr_3fr]">
+          {/* Left — Draft entry list */}
+          <div className="rounded-sm border border-line bg-paper">
+            <div className="border-b border-line px-4 py-3">
+              <p className="eyebrow mb-0.5">Écritures brouillon</p>
+              <p className="text-xs text-ink-mute">
+                {entriesQuery.data?.length ?? 0} écriture
+                {(entriesQuery.data?.length ?? 0) !== 1 ? 's' : ''} à traiter
+              </p>
+            </div>
+            <div className="max-h-[560px] overflow-y-auto divide-y divide-line">
               {entriesQuery.isLoading ? (
-                <Loader2 className="inline h-4 w-4 animate-spin" />
-              ) : entriesQuery.data?.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground text-sm">Aucune écriture en brouillon.</div>
+                <div className="flex items-center gap-2 px-4 py-6 text-sm text-ink-mute">
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+                  Chargement…
+                </div>
+              ) : (entriesQuery.data?.length ?? 0) === 0 ? (
+                <div className="px-4 py-10 text-center text-sm text-ink-mute">
+                  Aucune écriture en brouillon.
+                </div>
               ) : (
                 entriesQuery.data?.map((e) => (
                   <button
                     key={e.id}
+                    type="button"
                     onClick={() => setActiveEntryId(e.id)}
-                    className={`w-full text-left p-3 rounded-md border transition-colors hover:bg-accent ${activeEntryId === e.id ? 'border-primary bg-accent' : ''}`}
+                    className={`press w-full px-4 py-3 text-left transition-colors duration-fast hover:bg-sunk/50 ${
+                      activeEntryId === e.id ? 'bg-accent-soft' : ''
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="font-medium text-sm">
-                          <Badge variant="outline" className="mr-1">{e.journalCode}/{e.entryNumber}</Badge>
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-ink">
+                          <span className="font-mono text-xs text-ink-soft">
+                            {e.journalCode}/{e.entryNumber}
+                          </span>
                           <span className="truncate">{e.description}</span>
                         </div>
-                        <div className="text-xs text-muted-foreground">{e.entryDate}</div>
+                        <div className="mt-0.5 font-mono text-xs text-ink-mute">
+                          {e.entryDate}
+                        </div>
                       </div>
                     </div>
                   </button>
                 ))
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
+          {/* Right — Workflow detail */}
           {activeEntryId ? (
             <EntryWorkflowDetail orgId={orgId} entryId={activeEntryId} />
           ) : (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <History className="mx-auto h-8 w-8 opacity-50 mb-2" />
-                <div className="text-sm">Sélectionnez une écriture pour voir son workflow.</div>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col items-center justify-center rounded-sm border border-line bg-paper py-16 text-center">
+              <History
+                className="h-10 w-10 text-ink-mute opacity-20"
+                strokeWidth={1}
+              />
+              <p className="mt-3 text-sm text-ink-mute">
+                Sélectionnez une écriture pour voir son workflow.
+              </p>
+            </div>
           )}
         </div>
       </div>
     </AppShell>
   );
 }
+
+/* ─── Workflow detail panel ──────────────────────────────────── */
 
 function EntryWorkflowDetail({ orgId, entryId }: { orgId: string; entryId: string }) {
   const qc = useQueryClient();
@@ -182,48 +207,102 @@ function EntryWorkflowDetail({ orgId, entryId }: { orgId: string; entryId: strin
     void qc.invalidateQueries({ queryKey: ['entries-draft'] });
   }
 
-  if (histQuery.isLoading) return <Card><CardContent className="py-8 text-center"><Loader2 className="inline h-4 w-4 animate-spin" /></CardContent></Card>;
+  if (histQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center rounded-sm border border-line bg-paper py-16">
+        <Loader2 className="h-5 w-5 animate-spin text-ink-mute" strokeWidth={1.5} />
+      </div>
+    );
+  }
   if (!histQuery.data) return null;
 
   const { workflow, events, signatures, entryStatus } = histQuery.data;
   const wfStatus = workflow?.currentStatus;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">Détail du workflow</CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">Entry: {entryStatus}</Badge>
-            {wfStatus && <Badge className={STATUS_COLOR[wfStatus]}>WF: {STATUS_LABEL[wfStatus]}</Badge>}
-          </div>
+    <div className="space-y-6 rounded-sm border border-line bg-paper p-5">
+      {/* Detail header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+        <p className="eyebrow">Détail du workflow</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">
+            Écriture : {entryStatus}
+          </Badge>
+          {wfStatus && (
+            <span
+              className={`inline-block rounded-xs px-2 py-0.5 text-[11px] font-medium ${STATUS_CLASS[wfStatus]}`}
+            >
+              WF : {STATUS_LABEL[wfStatus]}
+            </span>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      </div>
+
+      {/* Action boxes */}
+      <div className="space-y-3">
         {wfStatus === undefined && (
-          <ActionBox icon={<Send className="h-4 w-4" />} title="Soumettre pour revue (chef de mission)">
-            <Input placeholder="Commentaire (optionnel)" value={comment} onChange={(e) => setComment(e.target.value)} />
+          <ActionBox
+            icon={<Send className="h-4 w-4" strokeWidth={1.5} />}
+            title="Soumettre pour revue (chef de mission)"
+          >
+            <Input
+              placeholder="Commentaire (optionnel)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
             {submitMut.isError && <FormError error={submitMut.error} />}
-            <Button onClick={() => submitMut.mutateAsync(undefined).then(invalidate)} disabled={submitMut.isPending}>
-              {submitMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Soumettre
+            <Button
+              className="press"
+              onClick={() => void submitMut.mutateAsync(undefined).then(invalidate)}
+              disabled={submitMut.isPending}
+            >
+              {submitMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Soumettre
             </Button>
           </ActionBox>
         )}
 
         {wfStatus === 'in_review' && (
           <>
-            <ActionBox icon={<CheckCircle2 className="h-4 w-4" />} title="Approuver + signer (chef de mission)">
-              <Input placeholder="Commentaire (optionnel)" value={comment} onChange={(e) => setComment(e.target.value)} />
+            <ActionBox
+              icon={<CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />}
+              title="Approuver (chef de mission)"
+              tone="accent"
+            >
+              <Input
+                placeholder="Commentaire (optionnel)"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
               {approveMut.isError && <FormError error={approveMut.error} />}
-              <Button onClick={() => approveMut.mutateAsync(undefined).then(invalidate)} disabled={approveMut.isPending}>
-                {approveMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Approuver
+              <Button
+                className="press"
+                onClick={() => void approveMut.mutateAsync(undefined).then(invalidate)}
+                disabled={approveMut.isPending}
+              >
+                {approveMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Approuver
               </Button>
             </ActionBox>
-            <ActionBox icon={<X className="h-4 w-4" />} title="Rejeter (retour en brouillon)">
-              <Input placeholder="Motif obligatoire" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <ActionBox
+              icon={<X className="h-4 w-4" strokeWidth={1.5} />}
+              title="Rejeter — retour en brouillon"
+              tone="critical"
+            >
+              <Input
+                placeholder="Motif obligatoire"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
               {rejectMut.isError && <FormError error={rejectMut.error} />}
-              <Button variant="outline" onClick={() => rejectMut.mutateAsync(undefined).then(invalidate)} disabled={rejectMut.isPending || reason.trim().length < 3}>
-                {rejectMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Rejeter
+              <Button
+                variant="outline"
+                className="press"
+                onClick={() => void rejectMut.mutateAsync(undefined).then(invalidate)}
+                disabled={rejectMut.isPending || reason.trim().length < 3}
+              >
+                {rejectMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Rejeter
               </Button>
             </ActionBox>
           </>
@@ -231,71 +310,162 @@ function EntryWorkflowDetail({ orgId, entryId }: { orgId: string; entryId: strin
 
         {wfStatus === 'approved' && (
           <>
-            <ActionBox icon={<ShieldCheck className="h-4 w-4" />} title="Signature finale (expert-comptable) + verrouillage">
-              <Input placeholder="Commentaire (optionnel)" value={comment} onChange={(e) => setComment(e.target.value)} />
+            <ActionBox
+              icon={<ShieldCheck className="h-4 w-4" strokeWidth={1.5} />}
+              title="Signature finale (expert-comptable) + verrouillage"
+              tone="accent"
+            >
+              <Input
+                placeholder="Commentaire (optionnel)"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
               {signMut.isError && <FormError error={signMut.error} />}
-              <Button onClick={() => signMut.mutateAsync(undefined).then(invalidate)} disabled={signMut.isPending}>
-                {signMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Signer & verrouiller
+              <Button
+                className="press"
+                onClick={() => void signMut.mutateAsync(undefined).then(invalidate)}
+                disabled={signMut.isPending}
+              >
+                {signMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Signer & verrouiller
               </Button>
             </ActionBox>
-            <ActionBox icon={<X className="h-4 w-4" />} title="Retour pour rework (expert-comptable)">
-              <Input placeholder="Motif obligatoire" value={reason} onChange={(e) => setReason(e.target.value)} />
-              <Button variant="outline" onClick={() => rejectMut.mutateAsync(undefined).then(invalidate)} disabled={rejectMut.isPending || reason.trim().length < 3}>
-                {rejectMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Renvoyer
+            <ActionBox
+              icon={<X className="h-4 w-4" strokeWidth={1.5} />}
+              title="Retour pour rework (expert-comptable)"
+              tone="critical"
+            >
+              <Input
+                placeholder="Motif obligatoire"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                className="press"
+                onClick={() => void rejectMut.mutateAsync(undefined).then(invalidate)}
+                disabled={rejectMut.isPending || reason.trim().length < 3}
+              >
+                {rejectMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Renvoyer
               </Button>
             </ActionBox>
           </>
         )}
 
         {wfStatus === 'locked' && (
-          <div className="text-sm bg-emerald-50 text-emerald-900 rounded-md px-3 py-2">
-            <ShieldCheck className="inline h-4 w-4 mr-1" />
-            Écriture définitivement verrouillée et validée. Toute modification passe désormais par contre-passation.
+          <div className="flex items-start gap-3 rounded-sm bg-accent-soft px-4 py-3 text-sm text-accent-ink">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} />
+            <span>
+              Écriture définitivement verrouillée et validée. Toute modification passe
+              désormais par contre-passation.
+            </span>
           </div>
         )}
+      </div>
 
-        <div className="space-y-2">
-          <div className="text-sm font-medium">Signatures ({signatures.length})</div>
-          {signatures.length === 0 ? (
-            <div className="text-xs text-muted-foreground">Aucune signature.</div>
-          ) : (
-            signatures.map((s) => (
-              <div key={s.id} className="text-xs bg-muted/40 rounded p-2 font-mono">
-                <div><PenLine className="inline h-3 w-3 mr-1" />{s.signerRole} — {new Date(s.signedAt).toLocaleString('fr-FR')}</div>
-                <div className="text-muted-foreground truncate">SHA-256: {s.signatureHash.slice(0, 32)}...</div>
-                {s.comment && <div className="not-italic">"{s.comment}"</div>}
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <div className="text-sm font-medium">Historique ({events.length})</div>
-          <ol className="space-y-1 text-xs">
-            {events.map((e) => (
-              <li key={e.id} className="flex items-center gap-2 bg-muted/40 rounded px-2 py-1.5">
-                <span className="text-muted-foreground">{new Date(e.occurredAt).toLocaleString('fr-FR')}</span>
-                {e.fromStatus && (
-                  <>
-                    <Badge className={STATUS_COLOR[e.fromStatus]}>{STATUS_LABEL[e.fromStatus]}</Badge>
-                    <ArrowRight className="h-3 w-3" />
-                  </>
+      {/* Signatures */}
+      <div className="space-y-3 border-t border-line pt-5">
+        <p className="eyebrow">Signatures ({signatures.length})</p>
+        {signatures.length === 0 ? (
+          <p className="text-xs text-ink-mute">Aucune signature.</p>
+        ) : (
+          <ul className="space-y-2">
+            {signatures.map((s) => (
+              <li
+                key={s.id}
+                className="rounded-xs bg-sunk/50 px-3 py-2 font-mono text-xs"
+              >
+                <div className="flex items-center gap-2 text-ink">
+                  <PenLine className="h-3 w-3 shrink-0 text-ink-mute" strokeWidth={1.5} />
+                  <span className="font-medium">{s.signerRole}</span>
+                  <span className="text-ink-mute">
+                    — {new Date(s.signedAt).toLocaleString('fr-FR')}
+                  </span>
+                </div>
+                <div className="mt-1 truncate text-ink-mute">
+                  SHA-256 : {s.signatureHash.slice(0, 32)}…
+                </div>
+                {s.comment && (
+                  <div className="mt-1 not-italic text-ink-soft">"{s.comment}"</div>
                 )}
-                <Badge className={STATUS_COLOR[e.toStatus]}>{STATUS_LABEL[e.toStatus]}</Badge>
-                {e.comment && <span className="text-muted-foreground italic truncate">"{e.comment}"</span>}
               </li>
             ))}
-          </ol>
-        </div>
-      </CardContent>
-    </Card>
+          </ul>
+        )}
+      </div>
+
+      {/* Event timeline */}
+      <div className="space-y-3 border-t border-line pt-5">
+        <p className="eyebrow">Historique ({events.length})</p>
+        <ol className="relative space-y-2">
+          {events.length > 0 && (
+            <span
+              aria-hidden
+              className="absolute bottom-[8px] left-[5px] top-[8px] w-px bg-line"
+            />
+          )}
+          {events.map((e) => (
+            <li key={e.id} className="relative flex items-center gap-3 pl-5 text-xs">
+              <span
+                aria-hidden
+                className="absolute left-0 top-[7px] h-[11px] w-[11px] rounded-full border-2 border-[oklch(var(--canvas))] bg-line-strong"
+              />
+              <span className="shrink-0 text-ink-mute">
+                {new Date(e.occurredAt).toLocaleString('fr-FR')}
+              </span>
+              {e.fromStatus && (
+                <>
+                  <span
+                    className={`shrink-0 rounded-xs px-1.5 py-0.5 font-medium ${STATUS_CLASS[e.fromStatus]}`}
+                  >
+                    {STATUS_LABEL[e.fromStatus]}
+                  </span>
+                  <ArrowRight className="h-3 w-3 shrink-0 text-ink-mute" strokeWidth={1.5} />
+                </>
+              )}
+              <span
+                className={`shrink-0 rounded-xs px-1.5 py-0.5 font-medium ${STATUS_CLASS[e.toStatus]}`}
+              >
+                {STATUS_LABEL[e.toStatus]}
+              </span>
+              {e.comment && (
+                <span className="min-w-0 truncate italic text-ink-mute">"{e.comment}"</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
   );
 }
 
-function ActionBox({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+/* ─── Action box ─────────────────────────────────────────────── */
+
+function ActionBox({
+  icon,
+  title,
+  tone,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  tone?: 'accent' | 'critical';
+  children: React.ReactNode;
+}) {
+  const borderClass =
+    tone === 'accent'
+      ? 'border-accent/30 bg-accent-soft/30'
+      : tone === 'critical'
+        ? 'border-critical/30 bg-critical-soft/30'
+        : 'border-line bg-paper';
+
   return (
-    <div className="border rounded-md p-3 space-y-2">
-      <div className="text-sm font-medium flex items-center gap-2">{icon}{title}</div>
+    <div className={`space-y-2.5 rounded-sm border p-4 ${borderClass}`}>
+      <div className="flex items-center gap-2 text-sm font-medium text-ink">
+        <span className="text-ink-mute">{icon}</span>
+        {title}
+      </div>
       {children}
     </div>
   );

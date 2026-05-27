@@ -610,8 +610,24 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
           en miroir comme une liasse fiscale imprimée. Sur mobile, stack
           vertical (lg:grid-cols-2). */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <BilanColumn title="Actif" subtitle="Patrimoine — emplois durables et circulants" masses={report.actifMasses} hasComp={hasComp} tone="info" />
-        <BilanColumn title="Passif" subtitle="Financement — capitaux propres et dettes" masses={report.passifMasses} hasComp={hasComp} tone="accent" />
+        <BilanColumn 
+          title="Actif" 
+          subtitle="Patrimoine — emplois durables et circulants" 
+          masses={report.actifMasses} 
+          hasComp={hasComp} 
+          tone="info" 
+          totalGeneral={report.totals.actif}
+          totalGeneralPrevious={report.previous?.totalActif}
+        />
+        <BilanColumn 
+          title="Passif" 
+          subtitle="Financement — capitaux propres et dettes" 
+          masses={report.passifMasses} 
+          hasComp={hasComp} 
+          tone="accent" 
+          totalGeneral={report.totals.passif}
+          totalGeneralPrevious={report.previous?.totalPassif}
+        />
       </div>
 
       {report.unclassified.length > 0 && (
@@ -662,18 +678,27 @@ function BilanColumn({
   masses,
   hasComp,
   tone,
+  totalGeneral,
+  totalGeneralPrevious,
 }: {
   readonly title: string;
   readonly subtitle: string;
   readonly masses: ReadonlyArray<BilanMasse>;
   readonly hasComp: boolean;
   readonly tone: 'info' | 'accent';
+  readonly totalGeneral: string | number;
+  readonly totalGeneralPrevious?: string | number;
 }) {
   const toneClasses = {
     info: { dot: 'bg-info', headerText: 'text-info-ink' },
     accent: { dot: 'bg-accent', headerText: 'text-accent-ink' },
   };
   const t = toneClasses[tone];
+  const isActif = title.toUpperCase() === 'ACTIF';
+
+  const grandBrut = masses.flatMap(m => m.rubriques).flatMap(r => r.postes).reduce((s, p) => s + Number(p.brut ?? 0), 0);
+  const grandDeduc = masses.flatMap(m => m.rubriques).flatMap(r => r.postes).reduce((s, p) => s + Number(p.deduction ?? 0), 0);
+
   return (
     <section>
       <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
@@ -683,87 +708,171 @@ function BilanColumn({
         </h3>
         <p className="ml-2 text-xs text-ink-soft">{subtitle}</p>
       </header>
-      <div className="space-y-4">
-        {masses.map((m) => (
-          <BilanMasseBlock key={m.code} masse={m} hasComp={hasComp} />
-        ))}
+      <div className="overflow-hidden rounded-md border border-line">
+        <table className="w-full text-sm">
+          <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
+            {isActif ? (
+              <>
+                <tr>
+                  <th rowSpan={2} className="px-3 py-2 text-left font-medium border-b border-line align-bottom">REF</th>
+                  <th rowSpan={2} className="px-3 py-2 text-left font-medium border-b border-line align-bottom">{title}</th>
+                  <th rowSpan={2} className="px-3 py-2 text-center font-medium border-b border-line align-bottom">Note</th>
+                  <th colSpan={3} className="px-3 py-2 text-center font-medium border-b border-line border-l border-line/50">EXERCICE N</th>
+                  {hasComp ? (
+                    <th className="px-3 py-2 text-right font-medium border-b border-line border-l border-line/50">EXERCICE N-1</th>
+                  ) : null}
+                </tr>
+                <tr>
+                  <th className="px-3 py-2 text-right font-medium border-b border-line border-l border-line/50">Brut</th>
+                  <th className="px-3 py-2 text-right font-medium border-b border-line">Amortissements et dépréciations</th>
+                  <th className="px-3 py-2 text-right font-medium border-b border-line">Net</th>
+                  {hasComp ? (
+                    <th className="px-3 py-2 text-right font-medium border-b border-line border-l border-line/50">Net</th>
+                  ) : null}
+                </tr>
+              </>
+            ) : (
+              <tr>
+                <th className="px-3 py-2 text-left font-medium border-b border-line align-bottom">REF</th>
+                <th className="px-3 py-2 text-left font-medium border-b border-line align-bottom">{title}</th>
+                <th className="px-3 py-2 text-center font-medium border-b border-line align-bottom">Note</th>
+                <th className="px-3 py-2 text-right font-medium border-b border-line border-l border-line/50">EXERCICE N</th>
+                {hasComp ? (
+                  <th className="px-3 py-2 text-right font-medium border-b border-line border-l border-line/50">EXERCICE N-1</th>
+                ) : null}
+              </tr>
+            )}
+          </thead>
+          {masses.map((m) => (
+            <BilanMasseTbody key={m.code} masse={m} hasComp={hasComp} isActif={isActif} />
+          ))}
+          <tfoot>
+            <tr className="border-t-4 border-line-strong bg-sunk/60">
+              <td className="px-3 py-3 font-mono text-sm font-bold tabular-nums text-ink">{isActif ? 'BZ' : 'DZ'}</td>
+              <td className="px-3 py-3 text-sm font-bold uppercase text-ink">TOTAL GENERAL</td>
+              <td className="px-3 py-3"></td>
+              {isActif ? (
+                <>
+                  <td className="px-3 py-3 text-right font-mono text-sm font-bold tabular-nums text-ink">{fmt(String(grandBrut))}</td>
+                  <td className="px-3 py-3 text-right font-mono text-sm font-bold tabular-nums text-ink">{fmt(String(grandDeduc))}</td>
+                </>
+              ) : null}
+              <td className="px-3 py-3 text-right font-mono text-base font-bold tabular-nums text-ink">{fmt(String(totalGeneral))}</td>
+              {hasComp ? (
+                <td className="px-3 py-3 text-right font-mono text-sm font-bold tabular-nums text-ink-soft">
+                  {totalGeneralPrevious !== undefined ? fmt(String(totalGeneralPrevious)) : '—'}
+                </td>
+              ) : null}
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </section>
   );
 }
 
-function BilanMasseBlock({
+function BilanMasseTbody({
   masse,
   hasComp,
+  isActif,
 }: {
   readonly masse: BilanMasse;
   readonly hasComp: boolean;
+  readonly isActif: boolean;
 }) {
   const variationPct =
     hasComp && masse.totalPrevious !== undefined && Number(masse.totalPrevious) !== 0
       ? (((Number(masse.total) - Number(masse.totalPrevious)) / Math.abs(Number(masse.totalPrevious))) * 100).toFixed(1)
       : null;
+
+  const brutTotal = masse.rubriques.flatMap(r => r.postes).reduce((s, p) => s + Number(p.brut ?? 0), 0);
+  const deducTotal = masse.rubriques.flatMap(r => r.postes).reduce((s, p) => s + Number(p.deduction ?? 0), 0);
+
   return (
-    <article className="overflow-hidden rounded-md border border-line">
-      {/* Header de masse : code + label + total. C'est le sous-total
-          lettré (AZ, CP, DZ...) qui apparaît dans la DSF. */}
-      <header className="flex items-baseline gap-3 border-b border-line bg-sunk/60 px-4 py-2.5">
-        <span className="font-mono text-xs font-semibold tabular-nums text-ink">
-          {masse.code}
-        </span>
-        <span className="flex-1 truncate text-sm font-medium text-ink">{masse.label}</span>
-        <span className="font-mono text-base font-medium tabular-nums text-ink">
-          {fmt(masse.total)}
-        </span>
-        {variationPct !== null && (
-          <VariationMicroChip percent={variationPct} />
+    <tbody className="group">
+      {/* En-tête de Masse (Conforme Tome 3 : Libellé seul, sans montants) */}
+      <tr className="bg-paper border-t border-line/30">
+        <td className="px-3 py-2 font-mono text-xs font-bold text-ink"></td>
+        <td className="px-3 py-2 text-sm font-bold uppercase text-ink">
+          {masse.label}
+        </td>
+        <td className="px-3 py-2"></td>
+        {isActif ? (
+          <>
+            <td className="px-3 py-2"></td>
+            <td className="px-3 py-2"></td>
+            <td className="px-3 py-2"></td>
+          </>
+        ) : (
+          <td className="px-3 py-2"></td>
         )}
-      </header>
+        {hasComp ? (
+          <td className="px-3 py-2"></td>
+        ) : null}
+      </tr>
+
+      {/* Postes avec En-tête de Rubrique */}
       {masse.rubriques.map((r) => (
-        <div key={r.label} className="border-t border-line">
-          <div className="flex items-baseline gap-3 bg-paper px-4 py-1.5">
-            <span className="flex-1 truncate text-xs font-medium uppercase tracking-wider text-ink-soft">
-              {r.label}
-            </span>
-            <span className="font-mono text-xs font-medium tabular-nums text-ink-soft">
-              {fmt(r.subtotal)}
-            </span>
-          </div>
-          <table className="w-full text-sm">
-            <tbody>
-              {r.postes.map((p) => {
-                const net = Number(p.net);
-                const isZero = !Number.isFinite(net) || net === 0;
-                return (
-                  <tr key={p.code} className="border-t border-line">
-                    <td className="px-4 py-1 font-mono text-xs text-ink-mute">{p.code}</td>
-                    <td className="px-2 py-1 text-xs text-ink-soft">{p.label}</td>
-                    <td
-                      className="px-2 py-1 text-center font-mono text-2xs tabular-nums text-ink-mute"
-                      title={
-                        p.note !== undefined
-                          ? `Voir Note ${p.note} en annexe`
-                          : undefined
-                      }
-                    >
-                      {p.note ?? ''}
-                    </td>
-                    <td
-                      className={cn(
-                        'px-4 py-1 text-right font-mono tabular-nums',
-                        isZero ? 'text-ink-mute' : 'text-ink',
-                      )}
-                    >
-                      {isZero ? '—' : fmt(p.net)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Fragment key={r.label}>
+          {r.postes.map((p) => {
+            const net = Number(p.net);
+            const isZeroNet = !Number.isFinite(net) || net === 0;
+            const brut = Number(p.brut ?? 0);
+            const isZeroBrut = !Number.isFinite(brut) || brut === 0;
+            const deduction = Number(p.deduction ?? 0);
+            const isZeroDed = !Number.isFinite(deduction) || deduction === 0;
+            const netPrev = Number(p.netPrevious ?? 0);
+            const isZeroPrev = !Number.isFinite(netPrev) || netPrev === 0;
+
+            return (
+              <tr key={p.code} className="border-t border-line/30 bg-paper hover:bg-sunk/30">
+                <td className="px-3 py-1 font-mono text-xs text-ink-mute">{p.code}</td>
+                <td className="px-3 py-1 text-xs text-ink-soft pl-6">{p.label}</td>
+                <td className="px-3 py-1 text-center font-mono text-2xs tabular-nums text-ink-mute" title={p.note !== undefined ? `Voir Note ${p.note} en annexe` : undefined}>
+                  {p.note ?? ''}
+                </td>
+                {isActif ? (
+                  <>
+                    <td className={cn('px-3 py-1 text-right font-mono tabular-nums border-l border-line/50', isZeroBrut ? 'text-ink-mute' : 'text-ink')}>{isZeroBrut ? '—' : fmt(p.brut!)}</td>
+                    <td className={cn('px-3 py-1 text-right font-mono tabular-nums', isZeroDed ? 'text-ink-mute' : 'text-ink')}>{isZeroDed ? '—' : fmt(p.deduction!)}</td>
+                    <td className={cn('px-3 py-1 text-right font-mono tabular-nums', isZeroNet ? 'text-ink-mute' : 'text-ink')}>{isZeroNet ? '—' : fmt(p.net)}</td>
+                  </>
+                ) : (
+                  <td className={cn('px-3 py-1 text-right font-mono tabular-nums border-l border-line/50', isZeroNet ? 'text-ink-mute' : 'text-ink')}>{isZeroNet ? '—' : fmt(p.net)}</td>
+                )}
+                {hasComp ? (
+                  <td className={cn('px-3 py-1 text-right font-mono tabular-nums border-l border-line/50', isZeroPrev ? 'text-ink-mute' : 'text-ink-soft')}>{isZeroPrev ? '—' : fmt(p.netPrevious!)}</td>
+                ) : null}
+              </tr>
+            );
+          })}
+        </Fragment>
       ))}
-    </article>
+
+      {/* Total de la Masse (Conforme Tome 3 : en bas de la section) */}
+      <tr className="border-y border-line-strong bg-sunk/40">
+        <td className="px-3 py-2 font-mono text-xs font-bold tabular-nums text-ink">{masse.code}</td>
+        <td className="px-3 py-2 text-sm font-bold text-ink uppercase">
+          TOTAL {masse.label}
+          {variationPct !== null && (
+            <span className="ml-2 inline-block"><VariationMicroChip percent={variationPct} /></span>
+          )}
+        </td>
+        <td className="px-3 py-2"></td>
+        {isActif ? (
+          <>
+            <td className="px-3 py-2 text-right font-mono text-sm font-bold tabular-nums text-ink">{fmt(String(brutTotal))}</td>
+            <td className="px-3 py-2 text-right font-mono text-sm font-bold tabular-nums text-ink">{fmt(String(deducTotal))}</td>
+          </>
+        ) : null}
+        <td className="px-3 py-2 text-right font-mono text-base font-bold tabular-nums text-ink">{fmt(masse.total)}</td>
+        {hasComp ? (
+          <td className="px-3 py-2 text-right font-mono text-sm font-bold tabular-nums text-ink-soft">
+            {masse.totalPrevious !== undefined ? fmt(masse.totalPrevious) : '—'}
+          </td>
+        ) : null}
+      </tr>
+    </tbody>
   );
 }
 
@@ -990,13 +1099,12 @@ function ProfitLossDoctrinalTable({
         <table className="w-full text-sm">
           <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">Réf.</th>
-              <th className="px-3 py-2 text-left font-medium">Libellé</th>
-              <th className="px-3 py-2 text-right font-medium">Note</th>
-              <th className="px-3 py-2 text-center font-medium">+/-</th>
-              <th className="px-3 py-2 text-right font-medium">Montant N</th>
+              <th className="px-3 py-2 text-left font-medium">REF</th>
+              <th className="px-3 py-2 text-left font-medium">LIBELLES</th>
+              <th className="px-3 py-2 text-center font-medium">Note</th>
+              <th className="px-3 py-2 text-right font-medium">EXERCICE N</th>
               {hasComp ? (
-                <th className="px-3 py-2 text-right font-medium">Montant N-1</th>
+                <th className="px-3 py-2 text-right font-medium">EXERCICE N-1</th>
               ) : null}
             </tr>
           </thead>
@@ -1024,11 +1132,8 @@ function ProfitLossDoctrinalTable({
                   >
                     {line.label}
                   </td>
-                  <td className="px-3 py-1.5 text-right font-mono text-2xs text-ink-mute">
+                  <td className="px-3 py-1.5 text-center font-mono text-2xs text-ink-mute">
                     {line.note ?? ''}
-                  </td>
-                  <td className="px-3 py-1.5 text-center font-mono text-xs text-ink-soft">
-                    {line.sign ?? ''}
                   </td>
                   <td
                     className={cn(
@@ -3039,11 +3144,12 @@ function SigPosteTable({
         <table className="w-full text-sm">
           <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">Réf.</th>
-              <th className="px-3 py-2 text-left font-medium">Libellé</th>
-              <th className="px-3 py-2 text-right font-medium">N</th>
+              <th className="px-3 py-2 text-left font-medium">REF</th>
+              <th className="px-3 py-2 text-left font-medium">LIBELLES</th>
+              <th className="px-3 py-2 text-center font-medium">Note</th>
+              <th className="px-3 py-2 text-right font-medium">EXERCICE N</th>
               {hasComp ? (
-                <th className="px-3 py-2 text-right font-medium">N-1</th>
+                <th className="px-3 py-2 text-right font-medium">EXERCICE N-1</th>
               ) : null}
             </tr>
           </thead>
@@ -3052,6 +3158,7 @@ function SigPosteTable({
               <tr key={p.code} className="border-t border-line hover:bg-sunk/40">
                 <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">{p.code}</td>
                 <td className="px-3 py-1.5 text-xs text-ink">{p.label}</td>
+                <td className="px-3 py-1.5 text-center font-mono text-2xs text-ink-mute"></td>
                 <td className="px-3 py-1.5 text-right font-mono tabular-nums text-ink">
                   {fmt(p.amount)}
                 </td>
@@ -4216,14 +4323,15 @@ function CashFlowView({ report }: { readonly report: CashFlowReport }) {
         <table className="w-full text-sm">
           <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
             <tr>
-              <th className="w-16 px-3 py-2 text-left font-medium">Réf.</th>
-              <th className="px-3 py-2 text-left font-medium">Libellé</th>
+              <th className="w-16 px-3 py-2 text-left font-medium">REF</th>
+              <th className="px-3 py-2 text-left font-medium">LIBELLES</th>
+              <th className="px-3 py-2 text-center font-medium">Note</th>
               <th className="w-40 px-3 py-2 text-right font-medium">
-                Montant N
+                EXERCICE N
                 <span className="ml-1 font-mono text-2xs text-ink-mute">(XOF)</span>
               </th>
               <th className="w-40 px-3 py-2 text-right font-medium">
-                Montant N-1
+                EXERCICE N-1
                 <span className="ml-1 font-mono text-2xs text-ink-mute">(XOF)</span>
               </th>
             </tr>

@@ -32,6 +32,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { AccountingScoreModule } from './modules/accounting-score/accounting-score.module';
 import { CollaborationModule } from './modules/collaboration/collaboration.module';
 import { EmailModule } from './modules/email/email.module';
+import { ActuarialCommitmentsModule } from './modules/actuarial-commitments/actuarial-commitments.module';
 // Module 14 (signatures électroniques) est embarqué dans JournalsModule
 // via EntryWorkflowService — pas de module séparé.
 
@@ -157,6 +158,12 @@ import { EmailModule } from './modules/email/email.module';
     CollaborationModule,
     // Email — outbound mail + rappels TVA cron J-7/J-1.
     EmailModule,
+    // E2 — Engagements actuariels retraite & avantages au personnel
+    // (Tome 3 N16B + Tome 2 chap. 21). Module read-only en wave 1 —
+    // consommé par le handler N16B via injection directe du service
+    // (cf. `ReportsModule` factory). Pas de controller en wave 1 —
+    // saisie via REST E2-bis en suivi.
+    ActuarialCommitmentsModule,
   ],
   controllers: [],
   providers: [

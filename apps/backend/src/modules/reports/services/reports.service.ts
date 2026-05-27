@@ -3155,11 +3155,16 @@ export class ReportsService {
     for (const p of BILAN_POSTES) posteByCode.set(p.code, p);
 
     // Construction des postes-feuilles (avec leur net signé).
+    // On itère sur TOUS les postes du référentiel (hors sous-totaux)
+    // pour garantir la présence de toutes les lignes exigées par le modèle
+    // (doctrine SYSCOHADA), même si leur solde est nul.
     const builtPostes = new Map<string, BilanPoste>();
-    for (const [code, acc] of posteAccs) {
-      const ref = posteByCode.get(code);
-      if (!ref) continue; // référentiel changé entre temps — safeguard
+    for (const ref of BILAN_POSTES) {
+      if (ref.section === '_TOTAL_') continue;
+      
+      const acc = posteAccs.get(ref.code) ?? { brut: 0, deduction: 0 };
       const net = (acc.brut - acc.deduction) * ref.sign;
+      
       const poste: BilanPoste = {
         code: ref.code,
         label: ref.label,
@@ -3169,7 +3174,7 @@ export class ReportsService {
         brut: acc.brut > 0 ? acc.brut.toFixed(2) : undefined,
         deduction: acc.deduction > 0 ? acc.deduction.toFixed(2) : undefined,
       };
-      builtPostes.set(code, poste);
+      builtPostes.set(ref.code, poste);
     }
 
     // Calcul des sous-totaux pour chaque masse `_TOTAL_` via parentGroup.

@@ -5,6 +5,7 @@ import type { NoteAnnexeCommentsRepository } from '../../repositories/note-annex
 import { ALL_NOTE_IDS, NOTE_REGISTRY } from './note-registry';
 import {
   type NoteAccountsDeps,
+  type NoteActuarialCommitmentsDeps,
   type NoteAssetsDeps,
   type NoteCashFlowDeps,
   type NoteComputationContext,
@@ -60,6 +61,11 @@ export class NotesAnnexesService {
      */
     private readonly dsfProfileDeps?: NoteDsfProfileDeps,
     private readonly synthesisDeps?: NoteSynthesisIndicatorsDeps,
+    /**
+     * Sous-dep optionnelle E2 — engagements actuariels (Note 16B).
+     * Wire positionnel : factory `reports.module.ts`.
+     */
+    private readonly actuarialDeps?: NoteActuarialCommitmentsDeps,
   ) {}
 
   /** Tous les NoteIds (36 IDs). */
@@ -105,6 +111,7 @@ export class NotesAnnexesService {
       cashFlow: this.cashFlowDeps,
       dsfProfile: this.dsfProfileDeps,
       synthesisIndicators: this.synthesisDeps,
+      actuarialCommitments: this.actuarialDeps,
     };
 
     const handlerResult = await entry.handler(ctx, deps);
