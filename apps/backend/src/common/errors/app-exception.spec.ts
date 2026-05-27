@@ -251,6 +251,9 @@ describe('HTTP status mapping', () => {
       // W4.2 — Méthode FIFO sur stocks.
       INVENTORY_FIFO_INSUFFICIENT_STOCK: 422,
       INVENTORY_LOT_NOT_FOUND: 404,
+      // W5.1 — Identification DSF.
+      DSF_PROFILE_NOT_FOUND: 404,
+      DSF_PROFILE_INVALID: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
