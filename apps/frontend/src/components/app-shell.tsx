@@ -165,7 +165,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <Link
                           href={item.href}
                           className={cn(
-                            'group relative flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
+                            'group relative flex items-start gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
                             active
                               ? "bg-accent-soft font-medium text-accent-ink before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-0.5 before:rounded-full before:bg-accent before:content-['']"
                               : 'text-ink-soft hover:bg-sunk hover:text-ink',
@@ -173,12 +173,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         >
                           <Icon
                             className={cn(
-                              'h-4 w-4 shrink-0 transition-colors',
+                              'mt-0.5 h-4 w-4 shrink-0 transition-colors',
                               active ? 'text-accent-ink' : 'text-ink-mute group-hover:text-ink-soft',
                             )}
                             strokeWidth={1.5}
                           />
-                          <span className="truncate">{item.label}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate leading-tight">{item.label}</span>
+                            {item.hint && (
+                              <span
+                                className={cn(
+                                  'mt-0.5 block truncate text-[10px] leading-tight',
+                                  active ? 'text-accent-ink/60' : 'text-ink-mute',
+                                )}
+                              >
+                                {item.hint}
+                              </span>
+                            )}
+                          </span>
                         </Link>
                       </li>
                     );

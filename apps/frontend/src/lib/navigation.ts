@@ -33,13 +33,13 @@ import {
  * `command-palette` (⌘K) so they never drift. Grouped by domain in the
  * exact order an accountant moves through a typical day:
  *
- *   1. Pilotage      — orientation, health, dashboards
- *   2. Référentiel   — static data (chart of accounts, periods, FX)
- *   3. Saisie        — recording activity (journals, imports, workflow)
- *   4. Retraitement  — reconciliation work
- *   5. États         — statutory outputs (financials, VAT, inventory)
- *   6. IA            — automation surfaces
- *   7. Organisation  — admin & traceability
+ *   1. Pilotage      — orientation, tableau de bord, dashboards
+ *   2. Référentiel   — données statiques (plan comptable, périodes, FX)
+ *   3. Saisie        — enregistrement (journaux, imports, workflow)
+ *   4. Retraitement  — travaux de retraitement
+ *   5. États         — sorties statutaires (financiers, TVA, inventaire)
+ *   6. Analyse & IA  — score santé, anomalies, automatisations
+ *   7. Organisation  — administration et traçabilité
  */
 export interface NavItem {
   readonly href: string;
@@ -58,61 +58,62 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'Pilotage',
     items: [
       { href: '/welcome', label: 'Guide', icon: Compass, hint: 'Documentation interactive' },
-      { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, hint: 'Vue du jour' },
-      { href: '/dashboards', label: 'Dashboards', icon: Gauge, hint: 'KPIs détaillés' },
-      { href: '/accounting-score', label: 'Score santé', icon: Award, hint: 'Indice OHADA' },
+      { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, hint: 'Vue du jour et priorités' },
+      { href: '/dashboards', label: 'Dashboards', icon: Gauge, hint: 'KPIs détaillés par exercice' },
+      { href: '/dashboards/consolidated', label: 'Vue consolidée', icon: BarChart3, hint: 'Multi-dossiers' },
     ],
   },
   {
     title: 'Référentiel',
     items: [
-      { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen, hint: 'SYSCOHADA' },
-      { href: '/accounting-periods', label: 'Périodes', icon: Calendar, hint: 'Exercices, clôtures' },
-      { href: '/currencies', label: 'Devises', icon: Coins, hint: 'XOF, EUR, USD' },
+      { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen, hint: 'SYSCOHADA — comptes et classes' },
+      { href: '/accounting-periods', label: 'Périodes', icon: Calendar, hint: 'Exercices, mois, clôtures' },
+      { href: '/currencies', label: 'Devises', icon: Coins, hint: 'XOF, EUR, USD et taux' },
     ],
   },
   {
     title: 'Saisie',
     items: [
       { href: '/journals', label: 'Journaux', icon: BookText, hint: 'Écritures comptables' },
-      { href: '/entry-workflow', label: 'Workflow écritures', icon: PenLine, hint: 'Validation' },
-      { href: '/imports', label: 'Imports', icon: FileUp, hint: 'Sage, CSV, PDF' },
+      { href: '/entry-workflow', label: 'Workflow écritures', icon: PenLine, hint: 'Validation préparateur / valideur' },
+      { href: '/imports', label: 'Imports', icon: FileUp, hint: 'Sage Saari, CSV, PDF' },
     ],
   },
   {
     title: 'Retraitement',
     items: [
-      { href: '/lettering', label: 'Lettrage', icon: Link2 },
-      { href: '/bank-reconciliation', label: 'Rapprochement', icon: Banknote },
-      { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft },
-      { href: '/rules', label: 'Règles', icon: Sparkles, hint: 'Automatisations' },
+      { href: '/lettering', label: 'Lettrage', icon: Link2, hint: 'Comptes 40x · 41x, clients/fournisseurs' },
+      { href: '/bank-reconciliation', label: 'Rapprochement', icon: Banknote, hint: 'Pointer relevés bancaires' },
+      { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft, hint: 'Retraitements et recalculs' },
+      { href: '/rules', label: 'Règles', icon: Sparkles, hint: 'Automatisations comptables' },
     ],
   },
   {
     title: 'États',
     items: [
-      { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat' },
-      { href: '/tva', label: 'TVA', icon: Percent, hint: 'Déclarations UEMOA' },
-      { href: '/inventory', label: 'Inventaire', icon: Warehouse },
-      { href: '/assets', label: 'Immobilisations', icon: Package },
+      { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat, TAFIRE' },
+      { href: '/tva', label: 'TVA', icon: Percent, hint: 'Déclarations UEMOA / DGI' },
+      { href: '/inventory', label: 'Inventaire', icon: Warehouse, hint: 'Stocks et inventaire physique' },
+      { href: '/assets', label: 'Immobilisations', icon: Package, hint: 'Amortissements et dotations' },
     ],
   },
   {
-    title: 'IA & Automation',
+    title: 'Analyse & IA',
     items: [
-      { href: '/ai', label: 'IA — Anomalies', icon: Brain, hint: 'Détection, mapping' },
-      { href: '/workflows', label: 'Workflows', icon: GitBranch },
+      { href: '/accounting-score', label: 'Score santé', icon: Award, hint: 'Indice qualité OHADA' },
+      { href: '/ai', label: 'IA — Anomalies', icon: Brain, hint: 'Détection et mapping intelligent' },
+      { href: '/workflows', label: 'Workflows', icon: GitBranch, hint: 'Séquences automatisées' },
     ],
   },
   {
     title: 'Organisation',
     items: [
-      { href: '/collaboration', label: 'Collaboration', icon: Handshake },
-      { href: '/documents', label: 'Documents', icon: Paperclip },
-      { href: '/audit-logs', label: 'Audit', icon: History, hint: 'Traçabilité' },
-      { href: '/members', label: 'Membres', icon: Users },
-      { href: '/invitations', label: 'Invitations', icon: Mail },
-      { href: '/settings/mfa', label: 'MFA', icon: ShieldCheck, hint: 'Sécurité' },
+      { href: '/collaboration', label: 'Collaboration', icon: Handshake, hint: 'Commentaires et tâches partagées' },
+      { href: '/documents', label: 'Documents', icon: Paperclip, hint: 'GED — pièces justificatives' },
+      { href: '/audit-logs', label: 'Audit', icon: History, hint: 'Traçabilité et journal des actions' },
+      { href: '/members', label: 'Membres', icon: Users, hint: 'Équipe du cabinet' },
+      { href: '/invitations', label: 'Invitations', icon: Mail, hint: 'Inviter un collaborateur' },
+      { href: '/settings/mfa', label: 'MFA', icon: ShieldCheck, hint: 'Double authentification' },
     ],
   },
 ];

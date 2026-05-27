@@ -73,6 +73,11 @@
     /* Easing curves */
     --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
     --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+
+    /* Motion durations — referenced by tailwind config as duration-fast/base/slow */
+    --duration-fast: 120ms;
+    --duration-base: 180ms;
+    --duration-slow: 280ms;
   }
 }
 
