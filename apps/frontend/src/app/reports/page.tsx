@@ -3182,18 +3182,13 @@ function MultiYearBalanceTable({ report }: { readonly report: MultiYearBalanceRe
 function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
   const [side, setSide] = useState<'CLIENT' | 'FOURNISSEUR'>('CLIENT');
   const [asAtDate, setAsAtDate] = useState<string>(todayIso());
-  const [bucketBoundaries, setBucketBoundaries] = useState<string>('30,60,90,180');
   const [submitted, setSubmitted] = useState<{
     side: 'CLIENT' | 'FOURNISSEUR';
     asAtDate: string;
-    bucketBoundaries: string;
   } | null>(null);
 
-  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams => {
-    const p = new URLSearchParams({ side: s.side, asAtDate: s.asAtDate });
-    if (s.bucketBoundaries.trim() !== '') p.set('bucketBoundaries', s.bucketBoundaries);
-    return p;
-  };
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({ side: s.side, asAtDate: s.asAtDate });
 
   const query = useQuery<AgingBalanceReport, ApiError>({
     queryKey: ['reports', 'aging-balance', orgId, submitted],
@@ -3220,17 +3215,20 @@ function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
       <CardHeader className="border-b border-line">
         <CardTitle className="font-display text-2xl font-medium tracking-tight">Balance âgée</CardTitle>
         <CardDescription>
-          Vieillissement des créances clients (411xxx) ou des dettes fournisseurs (401xxx) par
-          buckets d&apos;âge. Imputation FIFO automatique des règlements sur les factures les
-          plus anciennes (sans nécessiter de lettrage explicite). Buckets configurables.
+          Vieillissement des créances clients (411/412/416/418) ou des dettes fournisseurs
+          (401/402/403/408) par tranches d&apos;âge standardisées <strong>SYSCOHADA Tome 3</strong>{' '}
+          (Notes 7 &amp; 17) : <span className="font-mono">0-30j</span> /{' '}
+          <span className="font-mono">31-60j</span> / <span className="font-mono">61-90j</span> /{' '}
+          <span className="font-mono">&gt;90j</span>. Imputation FIFO automatique des règlements
+          sur les factures les plus anciennes (sans nécessiter de lettrage explicite).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <form
-          className="grid gap-3 sm:grid-cols-4"
+          className="grid gap-3 sm:grid-cols-3"
           onSubmit={(e) => {
             e.preventDefault();
-            setSubmitted({ side, asAtDate, bucketBoundaries });
+            setSubmitted({ side, asAtDate });
           }}
         >
           <div className="space-y-1">
@@ -3241,8 +3239,8 @@ function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
               onChange={(e) => setSide(e.target.value as 'CLIENT' | 'FOURNISSEUR')}
               className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
             >
-              <option value="CLIENT">Clients (411)</option>
-              <option value="FOURNISSEUR">Fournisseurs (401)</option>
+              <option value="CLIENT">Clients (411/412/416/418)</option>
+              <option value="FOURNISSEUR">Fournisseurs (401/402/403/408)</option>
             </select>
           </div>
           <div className="space-y-1">
@@ -3253,16 +3251,6 @@ function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
               value={asAtDate}
               onChange={(e) => setAsAtDate(e.target.value)}
               required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="ag-buckets">Buckets (jours)</Label>
-            <Input
-              id="ag-buckets"
-              type="text"
-              placeholder="30,60,90,180"
-              value={bucketBoundaries}
-              onChange={(e) => setBucketBoundaries(e.target.value)}
             />
           </div>
           <div className="flex items-end gap-2">

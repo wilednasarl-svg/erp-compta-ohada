@@ -539,9 +539,41 @@ export interface CashTrendReport {
 
 export type AgingSide = 'CLIENT' | 'FOURNISSEUR';
 
+/**
+ * Buckets standardisés SYSCOHADA Tome 3 (Notes 7 & 17) :
+ *   - `0-30j`   : à jour / nouveau (âge ≤ 30 jours)
+ *   - `31-60j`  : surveillance (31 ≤ âge ≤ 60)
+ *   - `61-90j`  : retard (61 ≤ âge ≤ 90)
+ *   - `>90j`    : impayé long / contentieux (âge > 90)
+ *
+ * Doctrine : Note 7 « Clients et comptes rattachés » (411/412/416/418)
+ * et Note 17 « Fournisseurs et comptes rattachés » (401/402/403/408)
+ * attendent une ventilation par âge des soldes pour piloter le
+ * recouvrement et la trésorerie.
+ */
+export type AgingBucketLabel = '0-30j' | '31-60j' | '61-90j' | '>90j';
+
+/** Frontières (inclusives haut) des buckets standardisés Tome 3. */
+export const AGING_BUCKET_BOUNDARIES = [30, 60, 90] as const;
+
+/** Labels affichés (ordre = ordre buckets). */
+export const AGING_BUCKET_LABELS: readonly AgingBucketLabel[] = [
+  '0-30j',
+  '31-60j',
+  '61-90j',
+  '>90j',
+];
+
+/** Préfixes comptes SYSCOHADA reconnus par côté (élargi Tome 3). */
+const AGING_PREFIXES: Readonly<Record<AgingSide, readonly string[]>> = {
+  CLIENT: ['411', '412', '416', '418'],
+  FOURNISSEUR: ['401', '402', '403', '408'],
+};
+
 export interface AgingBucket {
+  /** Borne haute en jours (`null` pour le bucket `>90j` ouvert). */
   readonly upperDays: number | null;
-  readonly label: string;
+  readonly label: AgingBucketLabel;
   readonly amount: string;
 }
 
@@ -556,12 +588,18 @@ export interface AgingAccountRow {
 export interface AgingBalanceQuery {
   readonly side: AgingSide;
   readonly asAtDate: string;
+  /**
+   * @deprecated D1 — les buckets sont désormais figés sur la
+   * nomenclature Tome 3 (0-30 / 31-60 / 61-90 / >90). Ce champ est
+   * accepté pour rétro-compat mais ignoré.
+   */
   readonly bucketBoundaries?: readonly number[];
 }
 
 export interface AgingBalanceReport {
   readonly side: AgingSide;
   readonly asAtDate: string;
+  /** Frontières effectives (toujours `[30, 60, 90]`, Tome 3). */
   readonly bucketBoundaries: readonly number[];
   readonly rows: readonly AgingAccountRow[];
   readonly bucketTotals: readonly string[];
@@ -2037,6 +2075,23 @@ export class ReportsService {
     return d.toISOString().slice(0, 10);
   }
 
+  /**
+   * Balance âgée standardisée Tome 3 (Notes 7 & 17).
+   *
+   * Buckets figés : `0-30j` / `31-60j` / `61-90j` / `>90j` (cf.
+   * `AGING_BUCKET_BOUNDARIES`). Le paramètre `bucketBoundaries` de la
+   * requête est accepté pour rétro-compat mais ignoré : la doctrine
+   * SYSCOHADA fixe ces tranches pour les Notes annexes.
+   *
+   * Périmètre comptes (élargi vs V0) :
+   *   - CLIENT      : 411 (clients), 412 (effets à recevoir),
+   *                   416 (créances douteuses), 418 (clients fact. à émettre)
+   *   - FOURNISSEUR : 401 (fournisseurs), 402 (effets à payer),
+   *                   403 (fournisseurs effets à payer), 408 (fact. non parv.)
+   *
+   * Imputation FIFO : sans lettrage explicite, chaque règlement éteint
+   * les factures les plus anciennes (algorithme conservé de la V0).
+   */
   async getAgingBalance(
     organizationId: TenantId,
     query: AgingBalanceQuery,
@@ -2047,19 +2102,16 @@ export class ReportsService {
         message: 'asAtDate must be YYYY-MM-DD.',
       });
     }
-    const boundaries = query.bucketBoundaries ?? [30, 60, 90, 180];
-    if (boundaries.length === 0 || boundaries.some((b) => !Number.isInteger(b) || b <= 0)) {
-      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
-        message: 'bucketBoundaries must be positive integers.',
-      });
-    }
-    const sortedBoundaries = [...boundaries].sort((a, b) => a - b);
-    const prefix = query.side === 'CLIENT' ? '411' : '401';
+
+    // Buckets figés Tome 3 — `bucketBoundaries` (query) ignoré.
+    const sortedBoundaries = [...AGING_BUCKET_BOUNDARIES];
+    const bucketCount = AGING_BUCKET_LABELS.length;
+    const prefixes = AGING_PREFIXES[query.side];
 
     const balances = await this.repo.accountBalancesAsAt(organizationId, query.asAtDate);
     const partners = balances.filter(
       (b) =>
-        b.accountCode.startsWith(prefix) &&
+        prefixes.some((p) => b.accountCode.startsWith(p)) &&
         (Number(b.totalDebit) !== 0 || Number(b.totalCredit) !== 0),
     );
     const asAt = new Date(`${query.asAtDate}T00:00:00Z`).getTime();
@@ -2095,7 +2147,12 @@ export class ReportsService {
             }
           }
         }
-        const bucketAmounts = new Array(sortedBoundaries.length + 1).fill(0);
+        // Placement âge → bucket Tome 3 :
+        //   ageDays ≤ 30   → 0-30j
+        //   31..60         → 31-60j
+        //   61..90         → 61-90j
+        //   ageDays > 90   → >90j
+        const bucketAmounts = new Array(bucketCount).fill(0);
         for (const o of opens) {
           const ageDays = Math.max(0, Math.floor((asAt - o.date) / (1000 * 60 * 60 * 24)));
           let placed = false;
@@ -2106,19 +2163,14 @@ export class ReportsService {
               break;
             }
           }
-          if (!placed) bucketAmounts[bucketAmounts.length - 1] += o.amount;
+          if (!placed) bucketAmounts[bucketCount - 1] += o.amount;
         }
-        const bucketLabels = sortedBoundaries.map((b, i) => {
-          const lower = i === 0 ? 0 : sortedBoundaries[i - 1] + 1;
-          return `${lower}-${b}j`;
-        });
-        bucketLabels.push(`> ${sortedBoundaries[sortedBoundaries.length - 1]}j`);
-        const buckets: AgingBucket[] = bucketAmounts.map((amt, i) => ({
+        const buckets: AgingBucket[] = AGING_BUCKET_LABELS.map((label, i) => ({
           upperDays: i < sortedBoundaries.length ? sortedBoundaries[i] : null,
-          label: bucketLabels[i],
-          amount: amt.toFixed(2),
+          label,
+          amount: bucketAmounts[i].toFixed(2),
         }));
-        const total = bucketAmounts.reduce((s, x) => s + x, 0);
+        const total = bucketAmounts.reduce((s: number, x: number) => s + x, 0);
         return {
           accountId: p.accountId,
           accountCode: p.accountCode,
@@ -2130,19 +2182,19 @@ export class ReportsService {
     );
     const filtered = rows.filter((r) => Number(r.total) > 0.005);
     filtered.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
-    const bucketTotals = new Array(sortedBoundaries.length + 1).fill(0);
+    const bucketTotals = new Array(bucketCount).fill(0);
     for (const r of filtered) {
       r.buckets.forEach((b, i) => {
         bucketTotals[i] += Number(b.amount);
       });
     }
-    const grandTotal = bucketTotals.reduce((s, x) => s + x, 0);
+    const grandTotal = bucketTotals.reduce((s: number, x: number) => s + x, 0);
     return {
       side: query.side,
       asAtDate: query.asAtDate,
       bucketBoundaries: sortedBoundaries,
       rows: filtered,
-      bucketTotals: bucketTotals.map((n) => n.toFixed(2)),
+      bucketTotals: bucketTotals.map((n: number) => n.toFixed(2)),
       grandTotal: grandTotal.toFixed(2),
     };
   }

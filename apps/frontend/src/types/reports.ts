@@ -289,9 +289,15 @@ export interface MarginByAxisReport {
 
 export type AgingSide = 'CLIENT' | 'FOURNISSEUR';
 
+/**
+ * Labels standardisés Tome 3 Notes 7 & 17 (D1) — 4 buckets figés :
+ * `0-30j` (à jour) | `31-60j` (surveillance) | `61-90j` (retard) | `>90j` (impayé long).
+ */
+export type AgingBucketLabel = '0-30j' | '31-60j' | '61-90j' | '>90j';
+
 export interface AgingBucket {
   readonly upperDays: number | null;
-  readonly label: string;
+  readonly label: AgingBucketLabel;
   readonly amount: string;
 }
 

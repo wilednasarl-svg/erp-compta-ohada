@@ -1686,3 +1686,206 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
     expect(result.actif.sections.find((s) => s.key === 'IMMOBILISE')?.total).toBe('60000.00');
   });
 });
+
+// ─── D1 — Balance âgée Tome 3 Notes 7 & 17 ──────────────────────────
+describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => {
+  type BalanceRow = {
+    accountId: string;
+    accountCode: string;
+    accountLabel: string;
+    accountClass: number;
+    isOpposing: boolean;
+    totalDebit: string;
+    totalCredit: string;
+  };
+
+  function balanceRow(over: Partial<BalanceRow> = {}): BalanceRow {
+    return {
+      accountId: 'a-1',
+      accountCode: '411000',
+      accountLabel: 'CLIENT X',
+      accountClass: 4,
+      isOpposing: false,
+      totalDebit: '0.00',
+      totalCredit: '0.00',
+      ...over,
+    };
+  }
+
+  function ledger(over: Partial<GeneralLedgerRow> = {}): GeneralLedgerRow {
+    return {
+      lineId: 'l-1',
+      entryId: 'e-1',
+      entryDate: '2026-12-31',
+      journalCode: 'VTE',
+      entryNumber: 1,
+      description: null,
+      debit: '0.00',
+      credit: '0.00',
+      letteringCode: null,
+      ...over,
+    };
+  }
+
+  it('ventile 4 factures clients d ages varies dans les 4 buckets Tome 3', async () => {
+    // Arrange — arrete 2026-12-31. 4 factures non lettrees :
+    //   age 10j  → 0-30j   (2026-12-21, 1000)
+    //   age 45j  → 31-60j  (2026-11-16,  500)
+    //   age 75j  → 61-90j  (2026-10-17,  300)
+    //   age 200j → >90j    (2026-06-14,  700)
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      balanceRow({ accountCode: '411000', totalDebit: '2500.00' }),
+    ]);
+    h.repo.generalLedger.mockResolvedValue([
+      ledger({ lineId: 'l-4', entryDate: '2026-06-14', debit: '700.00' }),
+      ledger({ lineId: 'l-3', entryDate: '2026-10-17', debit: '300.00' }),
+      ledger({ lineId: 'l-2', entryDate: '2026-11-16', debit: '500.00' }),
+      ledger({ lineId: 'l-1', entryDate: '2026-12-21', debit: '1000.00' }),
+    ]);
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'CLIENT',
+      asAtDate: '2026-12-31',
+    });
+
+    expect(report.bucketBoundaries).toEqual([30, 60, 90]);
+    expect(report.rows).toHaveLength(1);
+    const row = report.rows[0];
+    expect(row.buckets).toHaveLength(4);
+    expect(row.buckets.map((b) => b.label)).toEqual(['0-30j', '31-60j', '61-90j', '>90j']);
+    expect(row.buckets[0].amount).toBe('1000.00');
+    expect(row.buckets[1].amount).toBe('500.00');
+    expect(row.buckets[2].amount).toBe('300.00');
+    expect(row.buckets[3].amount).toBe('700.00');
+    expect(row.total).toBe('2500.00');
+  });
+
+  it('agrege bucketTotals + grandTotal sur plusieurs comptes', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      balanceRow({ accountId: 'a-1', accountCode: '411001', totalDebit: '1000.00' }),
+      balanceRow({ accountId: 'a-2', accountCode: '411002', totalDebit: '2000.00' }),
+    ]);
+    h.repo.generalLedger.mockImplementation(async (_o: unknown, f: { accountId: string }) => {
+      if (f.accountId === 'a-1') {
+        return [ledger({ entryDate: '2026-12-21', debit: '1000.00' })];
+      }
+      return [ledger({ entryDate: '2026-06-14', debit: '2000.00' })];
+    });
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'CLIENT',
+      asAtDate: '2026-12-31',
+    });
+
+    expect(report.rows).toHaveLength(2);
+    expect(report.bucketTotals).toEqual(['1000.00', '0.00', '0.00', '2000.00']);
+    expect(report.grandTotal).toBe('3000.00');
+  });
+
+  it('filtre par prefixes CLIENT elargi : 411/412/416/418', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      balanceRow({ accountId: 'a-1', accountCode: '411000', totalDebit: '100' }),
+      balanceRow({ accountId: 'a-2', accountCode: '412000', totalDebit: '200' }),
+      balanceRow({ accountId: 'a-3', accountCode: '416000', totalDebit: '300' }),
+      balanceRow({ accountId: 'a-4', accountCode: '418000', totalDebit: '400' }),
+      balanceRow({ accountId: 'a-5', accountCode: '401000', totalCredit: '999' }),
+      balanceRow({ accountId: 'a-6', accountCode: '707000', totalCredit: '999' }),
+    ]);
+    h.repo.generalLedger.mockResolvedValue([
+      ledger({ entryDate: '2026-12-21', debit: '100.00' }),
+    ]);
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'CLIENT',
+      asAtDate: '2026-12-31',
+    });
+
+    expect(report.rows.map((r) => r.accountCode)).toEqual([
+      '411000',
+      '412000',
+      '416000',
+      '418000',
+    ]);
+  });
+
+  it('cote FOURNISSEUR : filtre 401/402/403/408 et credits = dettes ouvertes', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      balanceRow({ accountId: 'a-1', accountCode: '401000', totalCredit: '5000.00' }),
+      balanceRow({ accountId: 'a-2', accountCode: '411000', totalDebit: '999' }),
+    ]);
+    h.repo.generalLedger.mockResolvedValue([
+      ledger({ entryDate: '2026-06-14', credit: '5000.00' }),
+    ]);
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'FOURNISSEUR',
+      asAtDate: '2026-12-31',
+    });
+
+    expect(report.side).toBe('FOURNISSEUR');
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].accountCode).toBe('401000');
+    expect(report.rows[0].buckets[3].amount).toBe('5000.00');
+    expect(report.grandTotal).toBe('5000.00');
+  });
+
+  it('ignore bucketBoundaries (deprecated) — toujours [30,60,90]', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([balanceRow({ accountCode: '411000', totalDebit: '100' })]);
+    h.repo.generalLedger.mockResolvedValue([
+      ledger({ entryDate: '2026-12-21', debit: '100.00' }),
+    ]);
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'CLIENT',
+      asAtDate: '2026-12-31',
+      bucketBoundaries: [7, 14, 28, 56, 112],
+    });
+
+    expect(report.bucketBoundaries).toEqual([30, 60, 90]);
+    expect(report.rows[0].buckets).toHaveLength(4);
+    expect(report.rows[0].buckets.map((b) => b.label)).toEqual([
+      '0-30j',
+      '31-60j',
+      '61-90j',
+      '>90j',
+    ]);
+  });
+
+  it('imputation FIFO : un reglement eteint la facture la plus ancienne', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([balanceRow({ accountCode: '411000', totalDebit: '500' })]);
+    h.repo.generalLedger.mockResolvedValue([
+      ledger({ lineId: 'l-1', entryDate: '2026-06-14', debit: '700.00' }),
+      ledger({ lineId: 'l-2', entryDate: '2026-12-21', debit: '1000.00' }),
+      ledger({ lineId: 'l-3', entryDate: '2026-12-28', credit: '700.00' }),
+    ]);
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'CLIENT',
+      asAtDate: '2026-12-31',
+    });
+
+    expect(report.rows[0].buckets[0].amount).toBe('1000.00');
+    expect(report.rows[0].buckets[3].amount).toBe('0.00');
+    expect(report.rows[0].total).toBe('1000.00');
+  });
+
+  it('rejette asAtDate malforme avec REPORT_INVALID_DATE_RANGE', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getAgingBalance(ORG_ID, {
+        side: 'CLIENT',
+        asAtDate: '2026-1-1',
+      }),
+    ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
+  });
+});

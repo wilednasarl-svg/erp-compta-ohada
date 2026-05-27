@@ -15,8 +15,10 @@ export class AgingBalanceQueryDto {
 
   @ApiProperty({
     required: false,
-    description: "Bornes des buckets en jours, séparées par virgule. Défaut '30,60,90,180'.",
-    example: '30,60,90,180',
+    deprecated: true,
+    description:
+      "DEPRECATED (D1) — les buckets sont désormais figés sur la nomenclature SYSCOHADA Tome 3 Notes 7/17 (0-30 / 31-60 / 61-90 / >90). Paramètre accepté pour rétro-compat mais ignoré.",
+    example: '30,60,90',
   })
   @IsOptional()
   @Transform(({ value }: { value: unknown }) => {
