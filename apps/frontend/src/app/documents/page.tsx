@@ -493,19 +493,23 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
   const [downloading, setDownloading] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [preview, setPreview] = useState<{ url: string; mime: string } | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const openPreview = async () => {
     setLoadingPreview(true);
+    setPreviewError(null);
     try {
       const token = getAuthToken();
       const res = await fetch(`${API_BASE}/documents/${doc.id}/content`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
       const blob = await res.blob();
       const mime = blob.type || doc.mimeType;
       const url = URL.createObjectURL(blob);
       setPreview({ url, mime });
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : 'Impossible de charger le document');
     } finally {
       setLoadingPreview(false);
     }
@@ -641,6 +645,21 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
           </button>
         </div>
       </li>
+
+      {previewError && (
+        <li className="flex items-center gap-2 border-t border-critical-soft bg-critical-soft px-4 py-2 text-xs text-critical-ink">
+          <span className="font-medium">Aperçu indisponible :</span>
+          <span>{previewError}</span>
+          <button
+            type="button"
+            onClick={() => setPreviewError(null)}
+            className="ml-auto shrink-0 text-critical-ink/60 hover:text-critical-ink"
+            aria-label="Fermer l'erreur"
+          >
+            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+        </li>
+      )}
 
       {preview && (
         <DocumentPreviewModal
