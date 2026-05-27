@@ -508,6 +508,10 @@ export class ReportsRepository {
         document_type: string | null;
       }>
     >(
+      // `document_type` n'existe pas comme colonne — il est stocké dans
+      // `import_sessions.mapping_override` JSONB sous la clé sentinelle
+      // `__documentType` (cf. import-session.service.ts). On l'extrait
+      // via ->> qui renvoie TEXT ou NULL si la clé est absente.
       `SELECT s.id,
               s.label,
               s.status,
@@ -515,11 +519,7 @@ export class ReportsRepository {
               s.total_lines,
               s.error_lines,
               s.created_at,
-              (SELECT f.document_type
-                 FROM import_files f
-                WHERE f.session_id = s.id
-                ORDER BY f.created_at ASC
-                LIMIT 1) AS document_type
+              (s.mapping_override ->> '__documentType') AS document_type
          FROM import_sessions s
         WHERE s.id = $1
           AND s.organization_id = $2
