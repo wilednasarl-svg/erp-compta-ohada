@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -24,7 +24,15 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateInventoryItemDto } from '../dto/create-item.dto';
+import {
+  InventoryItemEnvelopeResponse,
+  ListInventoryItemsResponse,
+} from '../dto/responses';
 import { UpdateInventoryItemDto } from '../dto/update-item.dto';
+import {
+  toInventoryItemEnvelope,
+  toListInventoryItems,
+} from '../mappers/inventory-response.mapper';
 import { InventoryItemsService } from '../services/inventory-items.service';
 import type { StockFamily } from '../types/inventory.types';
 
@@ -38,60 +46,68 @@ export class InventoryItemsController {
   @Get()
   @RequirePermission('inventory.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'List inventory items' })
+  @ApiOkResponse({ type: ListInventoryItemsResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Query('activeOnly') activeOnly?: string,
     @Query('family') family?: StockFamily,
-  ) {
+  ): Promise<ListInventoryItemsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const list = await this.items.listForOrg(asTenantId(tokenOrgId), {
       activeOnly: activeOnly === 'true',
       family,
     });
-    return { items: list };
+    return toListInventoryItems(list);
   }
 
   @Get(':itemId')
   @RequirePermission('inventory.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get a single inventory item' })
+  @ApiOkResponse({ type: InventoryItemEnvelopeResponse })
   async getOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('itemId', new ParseUUIDPipe({ version: '4' })) itemId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ) {
+  ): Promise<InventoryItemEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const item = await this.items.findById(itemId, asTenantId(tokenOrgId));
-    return { item };
+    return toInventoryItemEnvelope(item);
   }
 
   @Post()
   @RequirePermission('inventory.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create an inventory item' })
+  @ApiCreatedResponse({ type: InventoryItemEnvelopeResponse })
   async create(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: CreateInventoryItemDto,
-  ) {
+  ): Promise<InventoryItemEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const item = await this.items.create(asTenantId(tokenOrgId), body, actorUserId);
-    return { item };
+    return toInventoryItemEnvelope(item);
   }
 
   @Patch(':itemId')
   @RequirePermission('inventory.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update an inventory item' })
+  @ApiOkResponse({ type: InventoryItemEnvelopeResponse })
   async update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('itemId', new ParseUUIDPipe({ version: '4' })) itemId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Body() body: UpdateInventoryItemDto,
-  ) {
+  ): Promise<InventoryItemEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const item = await this.items.update(itemId, asTenantId(tokenOrgId), body);
-    return { item };
+    return toInventoryItemEnvelope(item);
   }
 
   private assertOrgMatch(

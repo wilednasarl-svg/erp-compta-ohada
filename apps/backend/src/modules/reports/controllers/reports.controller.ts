@@ -9,7 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
 import { asTenantId } from '../../../common/persistence/tenant-scope';
@@ -61,6 +61,26 @@ import {
 import { ReportsPackageService } from '../services/reports-package.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
 import { ReportsXlsxService } from '../services/reports-xlsx.service';
+import {
+  AgingBalanceReportEnvelope,
+  AnalyticAxisSummaryListResponse,
+  AnnexeNoteDetailReportEnvelope,
+  AnnexeReportEnvelope,
+  BalanceSheetReportEnvelope,
+  CashTrendReportEnvelope,
+  ComparativeBalanceReportEnvelope,
+  DsfValidationReportEnvelope,
+  FinancialRatiosReportEnvelope,
+  GeneralLedgerReportEnvelope,
+  ImportDiagnosticReportEnvelope,
+  MarginByAxisReportEnvelope,
+  MultiYearBalanceReportEnvelope,
+  ProfitLossReportEnvelope,
+  SigReportEnvelope,
+  TafireReportEnvelope,
+  TftReportEnvelope,
+  TrialBalanceReportEnvelope,
+} from '../dto/responses';
 
 /**
  * `ReportsController` — Module 9 financial reports.
@@ -104,6 +124,7 @@ export class ReportsController {
     summary:
       "Validation pré-dépôt DSF (W5.4) — checks d'équilibre Bilan + balance, clôture périodes, complétude notes annexes, comptes non classés. Verdict PASS/WARN/BLOCK.",
   })
+  @ApiOkResponse({ type: DsfValidationReportEnvelope })
   async dsfValidate(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Param('exerciseId', new ParseUUIDPipe({ version: '4' })) exerciseId: string,
@@ -145,6 +166,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Balance générale (par compte, sur la période)' })
+  @ApiOkResponse({ type: TrialBalanceReportEnvelope })
   async trialBalance(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: TrialBalanceQueryDto,
@@ -169,6 +191,7 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Balance comparative N / N-1 (mouvements deux exercices + solde cumulé)',
   })
+  @ApiOkResponse({ type: ComparativeBalanceReportEnvelope })
   async comparativeBalance(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: ComparativeBalanceQueryDto,
@@ -193,6 +216,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Balance pluri-exercices (2 à 5 périodes côte à côte)' })
+  @ApiOkResponse({ type: MultiYearBalanceReportEnvelope })
   async multiYearBalance(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: MultiYearBalanceQueryDto,
@@ -269,6 +293,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Grand livre d un compte (chronologique + cumul)' })
+  @ApiOkResponse({ type: GeneralLedgerReportEnvelope })
   async generalLedger(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Param('accountId', new ParseUUIDPipe({ version: '4' })) accountId: string,
@@ -289,6 +314,7 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Compte de résultat (classes 6 charges + 7 produits) sur la période',
   })
+  @ApiOkResponse({ type: ProfitLossReportEnvelope })
   async profitLoss(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: ProfitLossQueryDto,
@@ -314,6 +340,7 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Soldes Intermédiaires de Gestion (SIG) — cascade SYSCOHADA XA → XI',
   })
+  @ApiOkResponse({ type: SigReportEnvelope })
   async sig(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: SigQueryDto,
@@ -339,6 +366,7 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Bilan OHADA (actif/passif ventilés selon SYSCOHADA AUDCIF) à une date',
   })
+  @ApiOkResponse({ type: BalanceSheetReportEnvelope })
   async balanceSheet(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: BalanceSheetQueryDto,
@@ -363,6 +391,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'TAFIRE (Tableau Financier Ressources/Emplois) — OHADA Vol. 3' })
+  @ApiOkResponse({ type: TafireReportEnvelope })
   async tafire(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: PeriodQueryDto,
@@ -382,6 +411,7 @@ export class ReportsController {
     summary:
       "Diagnostic d'import — balance des comptes + anomalies + plan de normalisation pour une session d'import (lit le staging, PAS les journaux validés)",
   })
+  @ApiOkResponse({ type: ImportDiagnosticReportEnvelope })
   async importDiagnostic(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
@@ -418,6 +448,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3' })
+  @ApiOkResponse({ type: TftReportEnvelope })
   async tft(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: PeriodQueryDto,
@@ -434,6 +465,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Annexe (Notes 1-36 SYSCOHADA AUDCIF) — squelette + statut' })
+  @ApiOkResponse({ type: AnnexeReportEnvelope })
   async annexe(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: AnnexeQueryDto,
@@ -450,6 +482,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Détail d'une note d'annexe (3A, 5, 15, 20 implémentés)" })
+  @ApiOkResponse({ type: AnnexeNoteDetailReportEnvelope })
   async annexeNoteDetail(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: AnnexeNoteDetailQueryDto,
@@ -467,6 +500,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Marge brute par axe analytique (chantier / BU / activité)" })
+  @ApiOkResponse({ type: MarginByAxisReportEnvelope })
   async marginByAxis(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: MarginByAxisQueryDto,
@@ -486,6 +520,7 @@ export class ReportsController {
   @ApiOperation({
     summary: "Liste les axes analytiques utilisés dans l'organisation (avec compteurs)",
   })
+  @ApiOkResponse({ type: AnalyticAxisSummaryListResponse })
   async analyticAxes(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query('fromDate') fromDate: string | undefined,
@@ -500,6 +535,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Balance âgée clients ou fournisseurs (FIFO sur lignes)' })
+  @ApiOkResponse({ type: AgingBalanceReportEnvelope })
   async agingBalance(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: AgingBalanceQueryDto,
@@ -616,6 +652,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Trésorerie nette glissante mois par mois (classe 5)' })
+  @ApiOkResponse({ type: CashTrendReportEnvelope })
   async cashTrend(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: CashTrendQueryDto,
@@ -655,6 +692,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Ratios financiers (structure, liquidité, solvabilité, rentabilité)' })
+  @ApiOkResponse({ type: FinancialRatiosReportEnvelope })
   async financialRatios(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: FinancialRatiosQueryDto,

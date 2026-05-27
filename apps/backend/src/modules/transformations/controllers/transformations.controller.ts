@@ -10,7 +10,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
@@ -25,9 +31,14 @@ import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { AdjustEntryDto } from '../dto/adjust-entry.dto';
 import { ReclassifyEntryDto } from '../dto/reclassify-entry.dto';
 import {
-  TransformationService,
-  type TransformationSummary,
-} from '../services/transformation.service';
+  TransformationEnvelopeResponse,
+  TransformationHistoryResponse,
+} from '../dto/responses';
+import {
+  toTransformationEnvelope,
+  toTransformationHistory,
+} from '../mappers/transformation-response.mapper';
+import { TransformationService } from '../services/transformation.service';
 import type { AuditContext } from '../../audit/services/audit-trail.service';
 
 /**
@@ -65,13 +76,15 @@ export class TransformationsController {
   @Post('reclassify')
   @RequirePermission('transformations.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Reclasser une écriture (changer compte, journal, analytique)" })
+  @ApiCreatedResponse({ type: TransformationEnvelopeResponse })
   async reclassify(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() dto: ReclassifyEntryDto,
     @Req() req: Request,
-  ): Promise<{ transformation: TransformationSummary }> {
+  ): Promise<TransformationEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const ctx = this.buildCtx(req, actorUserId, tokenOrgId);
@@ -83,7 +96,7 @@ export class TransformationsController {
       ctx,
     );
 
-    return { transformation };
+    return toTransformationEnvelope(transformation);
   }
 
   /**
@@ -96,13 +109,15 @@ export class TransformationsController {
   @Post('adjust')
   @RequirePermission('transformations.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Créer une écriture d'ajustement liée à une écriture source" })
+  @ApiCreatedResponse({ type: TransformationEnvelopeResponse })
   async adjust(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() dto: AdjustEntryDto,
     @Req() req: Request,
-  ): Promise<{ transformation: TransformationSummary }> {
+  ): Promise<TransformationEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const ctx = this.buildCtx(req, actorUserId, tokenOrgId);
@@ -114,7 +129,7 @@ export class TransformationsController {
       ctx,
     );
 
-    return { transformation };
+    return toTransformationEnvelope(transformation);
   }
 
   /**
@@ -126,16 +141,18 @@ export class TransformationsController {
    */
   @Get('entries/:entryId/history')
   @RequirePermission('transformations.read')
+  @ApiOperation({ summary: "Historique complet des transformations d'une écriture" })
+  @ApiOkResponse({ type: TransformationHistoryResponse })
   async getHistory(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Param('entryId', new ParseUUIDPipe({ version: '4' })) entryId: string,
-  ): Promise<{ history: TransformationSummary[] }> {
+  ): Promise<TransformationHistoryResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
 
-    const history = await this.transformations.getEntryHistory(asTenantId(tokenOrgId), entryId);
+    const summaries = await this.transformations.getEntryHistory(asTenantId(tokenOrgId), entryId);
 
-    return { history };
+    return toTransformationHistory(summaries);
   }
 
   // ---------------------------------------------------------------------------

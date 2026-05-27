@@ -9,7 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -28,18 +28,18 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { AgingQueryDto } from '../dto/aging-query.dto';
+import {
+  AgingEnvelopeResponse,
+  CashflowEnvelopeResponse,
+  EvolutionEnvelopeResponse,
+  SummaryEnvelopeResponse,
+  TopAccountsEnvelopeResponse,
+} from '../dto/responses';
 import { SummaryQueryDto } from '../dto/summary-query.dto';
 import { TopAccountsQueryDto } from '../dto/top-accounts-query.dto';
 import { DashboardAgingService } from '../services/dashboard-aging.service';
 import { DashboardAnalyticsService } from '../services/dashboard-analytics.service';
 import { DashboardSummaryService } from '../services/dashboard-summary.service';
-import type {
-  DashboardAging,
-  DashboardCashflow,
-  DashboardEvolution,
-  DashboardSummary,
-  DashboardTopAccounts,
-} from '../types/dashboard-types';
 
 /**
  * `DashboardsController` (Module 19 wave 1) — endpoints d'agrégation
@@ -79,13 +79,14 @@ export class DashboardsController {
   @RequirePermission('dashboards.read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Vue overview KPIs comptables pour un exercice' })
+  @ApiOkResponse({ type: SummaryEnvelopeResponse })
   async getSummary(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Query() query: SummaryQueryDto,
     @Req() req: Request,
-  ): Promise<{ summary: DashboardSummary }> {
+  ): Promise<SummaryEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.summary.getSummary(asTenantId(tokenOrgId), query.exerciseId);
@@ -115,13 +116,14 @@ export class DashboardsController {
   @RequirePermission('dashboards.read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Aging clients ou fournisseurs avec buckets et partenaires' })
+  @ApiOkResponse({ type: AgingEnvelopeResponse })
   async getAging(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Query() query: AgingQueryDto,
     @Req() req: Request,
-  ): Promise<{ aging: DashboardAging }> {
+  ): Promise<AgingEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.aging.getAging(asTenantId(tokenOrgId), {
@@ -156,13 +158,14 @@ export class DashboardsController {
   @RequirePermission('dashboards.read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Évolution mensuelle des flux de trésorerie' })
+  @ApiOkResponse({ type: CashflowEnvelopeResponse })
   async getCashflow(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Query() query: SummaryQueryDto,
     @Req() req: Request,
-  ): Promise<{ cashflow: DashboardCashflow }> {
+  ): Promise<CashflowEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.analytics.getCashflow(asTenantId(tokenOrgId), query.exerciseId);
@@ -187,13 +190,14 @@ export class DashboardsController {
   @RequirePermission('dashboards.read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Évolution mensuelle produits / charges / résultat' })
+  @ApiOkResponse({ type: EvolutionEnvelopeResponse })
   async getEvolution(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Query() query: SummaryQueryDto,
     @Req() req: Request,
-  ): Promise<{ evolution: DashboardEvolution }> {
+  ): Promise<EvolutionEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.analytics.getEvolution(asTenantId(tokenOrgId), query.exerciseId);
@@ -218,13 +222,14 @@ export class DashboardsController {
   @RequirePermission('dashboards.read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Top N comptes par flux dans une catégorie' })
+  @ApiOkResponse({ type: TopAccountsEnvelopeResponse })
   async getTopAccounts(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Query() query: TopAccountsQueryDto,
     @Req() req: Request,
-  ): Promise<{ topAccounts: DashboardTopAccounts }> {
+  ): Promise<TopAccountsEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.analytics.getTopAccounts(asTenantId(tokenOrgId), {

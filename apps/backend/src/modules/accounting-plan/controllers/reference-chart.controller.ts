@@ -1,12 +1,11 @@
 import { Controller, Get, HttpCode, HttpStatus, Query } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
 import { Public } from '../../auth/decorators/public.decorator';
 import { ListReferenceChartQueryDto } from '../dto/list-reference-chart-query.dto';
-import {
-  ReferenceChartService,
-  type ReferenceAccountView,
-} from '../services/reference-chart.service';
+import { ListReferenceAccountsResponse } from '../dto/responses';
+import { toListReferenceAccounts } from '../mappers/accounting-plan-response.mapper';
+import { ReferenceChartService } from '../services/reference-chart.service';
 
 /**
  * `ReferenceChartController` (BE-PC-07.1) — public read-only access to
@@ -28,10 +27,11 @@ export class ReferenceChartController {
   @Get()
   @Public()
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListReferenceAccountsResponse })
   async list(
     @Query() query: ListReferenceChartQueryDto,
-  ): Promise<{ accounts: ReadonlyArray<ReferenceAccountView> }> {
+  ): Promise<ListReferenceAccountsResponse> {
     const accounts = await this.references.listBySystem(query.system);
-    return { accounts };
+    return toListReferenceAccounts(accounts);
   }
 }

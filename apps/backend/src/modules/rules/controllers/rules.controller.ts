@@ -11,7 +11,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
@@ -26,6 +32,18 @@ import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateRuleDto } from '../dto/create-rule.dto';
 import { ExecuteRuleDto } from '../dto/execute-rule.dto';
 import { UpdateRuleDto } from '../dto/update-rule.dto';
+import {
+  ListRuleExecutionsResponse,
+  ListRulesResponse,
+  RuleEnvelopeResponse,
+  RuleExecutionResultResponse,
+} from '../dto/responses';
+import {
+  toListRuleExecutions,
+  toListRules,
+  toRuleEnvelope,
+  toRuleExecutionResult,
+} from '../mappers/rule-response.mapper';
 import { RuleEngineService } from '../services/rule-engine.service';
 import { RulesService } from '../services/rules.service';
 import type { RuleScope } from '../types/rule.types';
@@ -62,41 +80,48 @@ export class RulesController {
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission('rules.write')
   @ApiOperation({ summary: "Créer une règle d'automatisation" })
+  @ApiCreatedResponse({ type: RuleEnvelopeResponse })
   async createRule(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @CurrentOrg() org: CurrentOrgContext,
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: CreateRuleDto,
     @Req() req: Request,
-  ) {
+  ): Promise<RuleEnvelopeResponse> {
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
-    return this.rulesService.createRule(asTenantId(org.id), user.id, dto, ctx);
+    const entity = await this.rulesService.createRule(asTenantId(org.id), user.id, dto, ctx);
+    return toRuleEnvelope(entity);
   }
 
   @Get()
   @RequirePermission('rules.read')
   @ApiOperation({ summary: "Lister les règles de l'organisation" })
+  @ApiOkResponse({ type: ListRulesResponse })
   async listRules(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @CurrentOrg() org: CurrentOrgContext,
-  ) {
-    return this.rulesService.listRules(asTenantId(org.id));
+  ): Promise<ListRulesResponse> {
+    const entities = await this.rulesService.listRules(asTenantId(org.id));
+    return toListRules(entities);
   }
 
   @Get(':ruleId')
   @RequirePermission('rules.read')
   @ApiOperation({ summary: "Détail d'une règle" })
+  @ApiOkResponse({ type: RuleEnvelopeResponse })
   async getRule(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
     @CurrentOrg() org: CurrentOrgContext,
-  ) {
-    return this.rulesService.getRule(asTenantId(org.id), ruleId);
+  ): Promise<RuleEnvelopeResponse> {
+    const entity = await this.rulesService.getRule(asTenantId(org.id), ruleId);
+    return toRuleEnvelope(entity);
   }
 
   @Patch(':ruleId')
   @RequirePermission('rules.write')
   @ApiOperation({ summary: 'Mettre à jour une règle (nom, conditions, actions, statut, priorité)' })
+  @ApiOkResponse({ type: RuleEnvelopeResponse })
   async updateRule(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
@@ -104,9 +129,10 @@ export class RulesController {
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: UpdateRuleDto,
     @Req() req: Request,
-  ) {
+  ): Promise<RuleEnvelopeResponse> {
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
-    return this.rulesService.updateRule(asTenantId(org.id), user.id, ruleId, dto, ctx);
+    const entity = await this.rulesService.updateRule(asTenantId(org.id), user.id, ruleId, dto, ctx);
+    return toRuleEnvelope(entity);
   }
 
   // ---------------------------------------------------------------------------
@@ -119,6 +145,7 @@ export class RulesController {
   @ApiOperation({
     summary: 'Simuler une règle sur un périmètre — aucune transformation créée',
   })
+  @ApiOkResponse({ type: RuleExecutionResultResponse })
   async simulate(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
@@ -126,7 +153,7 @@ export class RulesController {
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: ExecuteRuleDto,
     @Req() req: Request,
-  ) {
+  ): Promise<RuleExecutionResultResponse> {
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const scope: RuleScope = {
       journal: dto.journal,
@@ -134,7 +161,8 @@ export class RulesController {
       dateTo: dto.dateTo,
       importSessionId: dto.importSessionId,
     };
-    return this.ruleEngine.simulateRules(asTenantId(org.id), ruleId, scope, user.id, ctx);
+    const result = await this.ruleEngine.simulateRules(asTenantId(org.id), ruleId, scope, user.id, ctx);
+    return toRuleExecutionResult(result);
   }
 
   @Post(':ruleId/apply')
@@ -143,6 +171,7 @@ export class RulesController {
   @ApiOperation({
     summary: 'Appliquer une règle — crée des transformations via TransformationService',
   })
+  @ApiOkResponse({ type: RuleExecutionResultResponse })
   async apply(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
@@ -150,7 +179,7 @@ export class RulesController {
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: ExecuteRuleDto,
     @Req() req: Request,
-  ) {
+  ): Promise<RuleExecutionResultResponse> {
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const scope: RuleScope = {
       journal: dto.journal,
@@ -158,7 +187,8 @@ export class RulesController {
       dateTo: dto.dateTo,
       importSessionId: dto.importSessionId,
     };
-    return this.ruleEngine.applyRules(asTenantId(org.id), ruleId, scope, user.id, ctx);
+    const result = await this.ruleEngine.applyRules(asTenantId(org.id), ruleId, scope, user.id, ctx);
+    return toRuleExecutionResult(result);
   }
 
   // ---------------------------------------------------------------------------
@@ -168,11 +198,13 @@ export class RulesController {
   @Get(':ruleId/executions')
   @RequirePermission('rules.read')
   @ApiOperation({ summary: "Historique des exécutions d'une règle" })
+  @ApiOkResponse({ type: ListRuleExecutionsResponse })
   async executionHistory(
     @Param('id', ParseUUIDPipe) _orgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
     @CurrentOrg() org: CurrentOrgContext,
-  ) {
-    return this.rulesService.getExecutionHistory(asTenantId(org.id), ruleId);
+  ): Promise<ListRuleExecutionsResponse> {
+    const entities = await this.rulesService.getExecutionHistory(asTenantId(org.id), ruleId);
+    return toListRuleExecutions(entities);
   }
 }

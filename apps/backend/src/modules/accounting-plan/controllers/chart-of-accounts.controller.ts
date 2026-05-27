@@ -12,7 +12,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -26,9 +32,19 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { OrganizationAccountingConfigRepository } from '../repositories/organization-accounting-config.repository';
-import { ChartOfAccountsService, type AccountView } from '../services/chart-of-accounts.service';
+import { ChartOfAccountsService } from '../services/chart-of-accounts.service';
 import { CreateAccountDto } from '../dto/create-account.dto';
 import { UpdateAccountDto } from '../dto/update-account.dto';
+import {
+  AccountEnvelopeResponse,
+  ImportChartResponse,
+  ListAccountsResponse,
+} from '../dto/responses';
+import {
+  toAccountEnvelope,
+  toImportChart,
+  toListAccounts,
+} from '../mappers/accounting-plan-response.mapper';
 
 /**
  * `ChartOfAccountsController` (BE-PC-07.2) — tenant-scoped CRUD on the
@@ -61,38 +77,41 @@ export class ChartOfAccountsController {
   @Get()
   @RequirePermission('chart_of_accounts.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListAccountsResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ): Promise<{ accounts: ReadonlyArray<AccountView> }> {
+  ): Promise<ListAccountsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const accounts = await this.chart.listForOrganization(tokenOrgId);
-    return { accounts };
+    return toListAccounts(accounts);
   }
 
   @Get(':accountId')
   @RequirePermission('chart_of_accounts.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AccountEnvelopeResponse })
   async getOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('accountId', new ParseUUIDPipe({ version: '4' })) accountId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ): Promise<{ account: AccountView }> {
+  ): Promise<AccountEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const account = await this.chart.getAccount(tokenOrgId, accountId);
-    return { account };
+    return toAccountEnvelope(account);
   }
 
   @Post()
   @RequirePermission('chart_of_accounts.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: AccountEnvelopeResponse })
   async create(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: CreateAccountDto,
     @Req() req: Request,
-  ): Promise<{ account: AccountView }> {
+  ): Promise<AccountEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const account = await this.chart.createCustomAccount(
@@ -101,12 +120,13 @@ export class ChartOfAccountsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { account };
+    return toAccountEnvelope(account);
   }
 
   @Patch(':accountId')
   @RequirePermission('chart_of_accounts.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AccountEnvelopeResponse })
   async update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('accountId', new ParseUUIDPipe({ version: '4' })) accountId: string,
@@ -114,7 +134,7 @@ export class ChartOfAccountsController {
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: UpdateAccountDto,
     @Req() req: Request,
-  ): Promise<{ account: AccountView }> {
+  ): Promise<AccountEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const account = await this.chart.updateAccount(
@@ -127,12 +147,13 @@ export class ChartOfAccountsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { account };
+    return toAccountEnvelope(account);
   }
 
   @Delete(':accountId')
   @RequirePermission('chart_of_accounts.write')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
   async remove(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('accountId', new ParseUUIDPipe({ version: '4' })) accountId: string,
@@ -164,10 +185,11 @@ export class ChartOfAccountsController {
   @Post('import')
   @RequirePermission('chart_of_accounts.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ImportChartResponse })
   async import(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ): Promise<{ added: number; skipped: number }> {
+  ): Promise<ImportChartResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const config = await this.configs.findByOrganizationId(tokenOrgId);
     if (config === null) {
@@ -180,7 +202,7 @@ export class ChartOfAccountsController {
         message: 'Organization has no accounting configuration',
       });
     }
-    return this.chart.cloneReferenceIntoOrganization(tokenOrgId, config.system);
+    return toImportChart(await this.chart.cloneReferenceIntoOrganization(tokenOrgId, config.system));
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────

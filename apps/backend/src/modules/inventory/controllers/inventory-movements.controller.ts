@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -24,6 +24,14 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { ListMovementsQueryDto } from '../dto/list-movements-query.dto';
 import { RecordMovementDto } from '../dto/record-movement.dto';
+import {
+  ListInventoryMovementsResponse,
+  RecordMovementResponse,
+} from '../dto/responses';
+import {
+  toListInventoryMovements,
+  toRecordMovement,
+} from '../mappers/inventory-response.mapper';
 import { InventoryMovementsService } from '../services/inventory-movements.service';
 
 @ApiTags('Inventory — Movements')
@@ -36,26 +44,30 @@ export class InventoryMovementsController {
   @Get('movements')
   @RequirePermission('inventory.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'List inventory movements' })
+  @ApiOkResponse({ type: ListInventoryMovementsResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Query() query: ListMovementsQueryDto,
-  ) {
+  ): Promise<ListInventoryMovementsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const list = await this.movements.list(asTenantId(tokenOrgId), query);
-    return { movements: list };
+    return toListInventoryMovements(list);
   }
 
   @Post('items/:itemId/movements')
   @RequirePermission('inventory.move')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Record an inventory movement' })
+  @ApiCreatedResponse({ type: RecordMovementResponse })
   async record(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('itemId', new ParseUUIDPipe({ version: '4' })) itemId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: RecordMovementDto,
-  ) {
+  ): Promise<RecordMovementResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.movements.recordMovement(
@@ -71,7 +83,7 @@ export class InventoryMovementsController {
       },
       actorUserId,
     );
-    return result;
+    return toRecordMovement(result);
   }
 
   private assertOrgMatch(
