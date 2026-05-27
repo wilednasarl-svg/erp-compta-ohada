@@ -20,6 +20,7 @@ import {
   Stethoscope,
   TrendingUp,
   Wallet,
+  X,
   XCircle,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
@@ -38,8 +39,11 @@ import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError, api } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
+
+import { ReportNav, getReportHint, getReportLabel, type ReportMode } from './_components/report-nav';
 import type {
   AgingBalanceReport,
   AnalyticAxisSummary,
@@ -109,21 +113,6 @@ interface ImportSessionsEnvelope {
   readonly sessions: ReadonlyArray<ImportSessionSummary>;
 }
 
-type ReportMode =
-  | 'trial-balance'
-  | 'comparative-balance'
-  | 'multi-year-balance'
-  | 'sig'
-  | 'ratios'
-  | 'cash-trend'
-  | 'aging-balance'
-  | 'tafire'
-  | 'tft'
-  | 'annexe'
-  | 'margin-by-axis'
-  | 'general-ledger'
-  | 'import-diagnostic';
-
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
 const previousYearEndIso = (): string => `${new Date().getFullYear() - 1}-12-31`;
 
@@ -146,174 +135,49 @@ export default function ReportsPage() {
 
   const [mode, setMode] = useState<ReportMode>('trial-balance');
 
+  const activeLabel = getReportLabel(mode);
+  const activeHint = getReportHint(mode);
+
   return (
     <AppShell>
       <div className="space-y-6">
-        <header className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">États financiers</h1>
-          <Badge variant="outline">Module 9 — wave 3</Badge>
-          <div className="ml-auto">
+        <header className="flex flex-col gap-4 border-b border-line pb-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-2xs uppercase tracking-wider text-ink-mute">
+              États · Reporting OHADA
+            </p>
+            <h1 className="mt-1 font-display text-3xl font-medium tracking-tight text-ink">
+              États financiers
+            </h1>
+            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-ink-soft">
+              Treize lectures du même grand livre. Les balances pour la matière première, les
+              états SYSCOHADA pour le réglementaire, les analyses pour la lecture managériale.
+              Toutes les valeurs s&apos;agrègent à partir des écritures committées sur la période
+              choisie.
+            </p>
+          </div>
+          <div className="shrink-0">
             <AnnualPackageButton orgId={orgId} />
           </div>
         </header>
 
-        <div className="flex flex-wrap gap-1 rounded-md border bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setMode('trial-balance')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'trial-balance'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <BarChart3 className="h-4 w-4" />
-            Balance générale
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('comparative-balance')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'comparative-balance'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Balance comparative N/N-1
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('multi-year-balance')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'multi-year-balance'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <History className="h-4 w-4" />
-            Balance pluri-exercices
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('sig')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'sig'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <TrendingUp className="h-4 w-4" />
-            SIG (SYSCOHADA)
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('ratios')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'ratios'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <Calculator className="h-4 w-4" />
-            Ratios financiers
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('cash-trend')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'cash-trend'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <Wallet className="h-4 w-4" />
-            Trésorerie glissante
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('aging-balance')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'aging-balance'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <Clock className="h-4 w-4" />
-            Balance âgée
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('tafire')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'tafire'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <Landmark className="h-4 w-4" />
-            TAFIRE
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('tft')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'tft'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <GitBranch className="h-4 w-4" />
-            TFT
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('annexe')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'annexe'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-            Annexe
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('margin-by-axis')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'margin-by-axis'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <Layers className="h-4 w-4" />
-            Marge par activité
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('general-ledger')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'general-ledger'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <BookText className="h-4 w-4" />
-            Grand livre
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('import-diagnostic')}
-            className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'import-diagnostic'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <Stethoscope className="h-4 w-4" />
-            Diagnostic d&apos;import
-          </button>
+        <ReportNav active={mode} onChange={setMode} />
+
+        {/* Légende du rapport actif — donne un repère explicite avant que
+            les filtres + tableau ne se déploient en dessous. */}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line pb-2">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Vous consultez</p>
+          <p className="font-display text-xl font-medium tracking-tight text-ink">
+            {activeLabel}
+          </p>
+          {activeHint && (
+            <p className="text-sm text-ink-soft">
+              <span className="text-line-strong" aria-hidden>
+                ·
+              </span>{' '}
+              {activeHint}
+            </p>
+          )}
         </div>
 
         {mode === 'trial-balance' ? (
@@ -373,18 +237,22 @@ function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
   if (!open) {
     return (
       <Button
+        type="button"
         onClick={() => setOpen(true)}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        className="border border-accent/30 bg-accent-soft text-accent-ink hover:bg-accent-soft/80"
       >
-        <Package className="mr-2 h-4 w-4" />
-        Télécharger le dossier annuel
+        <Package className="mr-2 h-4 w-4" strokeWidth={1.5} />
+        Dossier annuel · ZIP
       </Button>
     );
   }
   return (
-    <div className="flex flex-wrap items-end gap-2 rounded-md border bg-white p-3 shadow-sm">
+    <div className="flex flex-wrap items-end gap-3 rounded-md border border-line bg-paper p-3 shadow-pop">
       <div className="space-y-1">
-        <Label htmlFor="pkg-from" className="text-xs">
+        <Label
+          htmlFor="pkg-from"
+          className="text-2xs uppercase tracking-wider text-ink-soft"
+        >
           Du
         </Label>
         <Input
@@ -392,11 +260,14 @@ function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
           type="date"
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
-          className="h-8"
+          className="h-9 w-40 font-mono tabular-nums"
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="pkg-to" className="text-xs">
+        <Label
+          htmlFor="pkg-to"
+          className="text-2xs uppercase tracking-wider text-ink-soft"
+        >
           Au
         </Label>
         <Input
@@ -404,22 +275,19 @@ function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
           type="date"
           value={toDate}
           onChange={(e) => setToDate(e.target.value)}
-          className="h-8"
+          className="h-9 w-40 font-mono tabular-nums"
         />
       </div>
-      <Button
-        onClick={triggerDownload}
-        disabled={downloading}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white"
-      >
+      <Button type="button" onClick={triggerDownload} disabled={downloading}>
         {downloading ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (
-          <Package className="mr-2 h-4 w-4" />
+          <Package className="mr-2 h-4 w-4" strokeWidth={1.5} />
         )}
-        Générer ZIP
+        Générer le ZIP
       </Button>
-      <Button variant="outline" onClick={() => setOpen(false)}>
+      <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+        <X className="mr-1.5 h-3.5 w-3.5" />
         Annuler
       </Button>
     </div>
