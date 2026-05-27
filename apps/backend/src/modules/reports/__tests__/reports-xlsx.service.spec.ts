@@ -126,6 +126,21 @@ const fakeProfitLoss = (): ProfitLossReport => ({
       accounts: [{ code: '701000', label: 'Ventes de marchandises', amount: '8000000.00' }],
     },
   ],
+  // Séquence doctrinale Tome 3 p. 33 — fake minimal incluant les 9 SIG.
+  lines: [
+    { ref: 'TA', label: 'Ventes de marchandises', note: '21', sign: '+', kind: 'PRODUIT', amountN: '8000000.00' },
+    { ref: 'RA', label: 'Achats de marchandises', note: '22', sign: '-', kind: 'CHARGE', amountN: '-4500000.00' },
+    { ref: 'RB', label: 'Variation de stocks de marchandises', note: '6', sign: '-/+', kind: 'CHARGE', amountN: '0.00' },
+    { ref: 'XA', label: 'MARGE COMMERCIALE', kind: 'SIG', amountN: '3500000.00' },
+    { ref: 'XB', label: "CHIFFRE D'AFFAIRES", kind: 'SIG', amountN: '8000000.00' },
+    { ref: 'XC', label: 'VALEUR AJOUTÉE', kind: 'SIG', amountN: '3500000.00' },
+    { ref: 'XD', label: "EXCÉDENT BRUT D'EXPLOITATION", kind: 'SIG', amountN: '3500000.00' },
+    { ref: 'XE', label: "RÉSULTAT D'EXPLOITATION", kind: 'SIG', amountN: '3500000.00' },
+    { ref: 'XF', label: 'RÉSULTAT FINANCIER', kind: 'SIG', amountN: '0.00' },
+    { ref: 'XG', label: 'RÉSULTAT DES ACTIVITÉS ORDINAIRES', kind: 'SIG', amountN: '3500000.00' },
+    { ref: 'XH', label: 'RÉSULTAT HORS ACTIVITÉS ORDINAIRES', kind: 'SIG', amountN: '0.00' },
+    { ref: 'XI', label: 'RÉSULTAT NET', kind: 'SIG', amountN: '3500000.00' },
+  ],
   totalCharges: '4500000.00',
   totalProduits: '8000000.00',
   resultat: '3500000.00',
@@ -212,31 +227,33 @@ describe('ReportsXlsxService — Bilan W5.2 volet 2', () => {
   });
 });
 
-describe('ReportsXlsxService — CR W5.2 volet 2 (2 feuilles)', () => {
+describe('ReportsXlsxService — CR feuille unique Tome 3 p. 33', () => {
   let service: ReportsXlsxService;
   beforeEach(() => {
     service = new ReportsXlsxService();
   });
 
-  it('produit un classeur à 2 feuilles : Compte de résultat + SIG', () => {
+  it('produit un classeur à 1 feuille unique « Compte de résultat »', () => {
     const buf = service.profitLossXlsx(fakeProfitLoss(), 'ACME SARL');
     expect(buf.length).toBeGreaterThan(1024);
     const wb = XLSX.read(buf, { type: 'buffer' });
-    expect(wb.SheetNames).toHaveLength(2);
+    expect(wb.SheetNames).toHaveLength(1);
     expect(wb.SheetNames).toContain('Compte de résultat');
-    expect(wb.SheetNames).toContain('SIG');
   });
 
-  it('feuille SIG contient les 9 codes XA → XI avec leurs formules', () => {
+  it('feuille unique contient les 9 codes SIG XA → XI intercalés dans la cascade', () => {
     const buf = service.profitLossXlsx(fakeProfitLoss(), 'ACME SARL');
     const wb = XLSX.read(buf, { type: 'buffer' });
-    const sig = wb.Sheets['SIG'];
-    const joined = sheetStrings(sig).join('||');
+    const sheet = wb.Sheets['Compte de résultat'];
+    const joined = sheetStrings(sheet).join('||');
     for (const code of ['XA', 'XB', 'XC', 'XD', 'XE', 'XF', 'XG', 'XH', 'XI']) {
       expect(joined).toContain(code);
     }
-    // Au moins une formule doctrinale (XA = TA + RA + RB).
-    expect(joined).toMatch(/XA\s*=\s*TA/);
+    // Et les colonnes doctrinales Tome 3 p. 33 (Note + +/-).
+    expect(joined).toContain('Note');
+    expect(joined).toContain('+/-');
+    // Devise XOF en pied de tableau.
+    expect(joined).toContain('XOF');
   });
 });
 

@@ -21,6 +21,13 @@ import {
 } from './ohada-classifier';
 import { BILAN_POSTES, type BilanPosteRef } from './postes/bilan-postes';
 import {
+  PL_POSTES,
+  getPlNoteRef,
+  getPlSignSymbol,
+  type PlPosteKind,
+  type PlPosteSignSymbol,
+} from './postes/pl-postes';
+import {
   CHARGE_POSTES,
   PRODUIT_POSTES,
   SOLDES_INTERMEDIAIRES,
@@ -94,11 +101,57 @@ export interface ProfitLossPreviousSummary {
   readonly resultat: string;
 }
 
+/**
+ * Ligne doctrinale du Compte de résultat conforme Tome 3 p. 33 — chaque
+ * entrée correspond à un poste lettré (TA, RA, RB, …, RS) ou à un Solde
+ * Intermédiaire de Gestion (XA, XB, …, XI) intercalé dans la cascade.
+ *
+ * L'ordre exact des lignes suit la doctrine :
+ *   TA, RA, RB, **XA**, TB, TC, TD, **XB**, TE..RJ, **XC**, RK, **XD**,
+ *   TJ, RL, **XE**, TK..RN, **XF**, **XG**, TN, TO, RO, RP, **XH**,
+ *   RQ, RS, **XI**.
+ *
+ * Convention de signe :
+ *   - `amountN` / `amountPrevious` portent le solde signé du poste
+ *     (positif pour les produits/SIG, négatif pour les charges après
+ *     application du `signMultiplier`). Les variations de stock (`-/+`)
+ *     conservent leur signe naturel.
+ *   - `signSymbol` est purement éditorial (colonne « +/- » Tome 3 p. 33).
+ */
+export interface ProfitLossDoctrinalLine {
+  /** Code lettré officiel (TA, RA, …, RS, XA, …, XI). */
+  readonly ref: string;
+  /** Libellé officiel exact (doctrine OHADA Tome 3, page 33). */
+  readonly label: string;
+  /** Renvoi de Note annexe (« 21 », « 3C&28 »…) — vide pour les SIG. */
+  readonly note?: string;
+  /** Symbole « +/- » affiché en colonne — vide pour les SIG. */
+  readonly sign?: PlPosteSignSymbol;
+  /** Nature du poste : CHARGE, PRODUIT, SIG ou RESULTAT. */
+  readonly kind: PlPosteKind;
+  /** Montant signé période N (positif produit, négatif charge). */
+  readonly amountN: string;
+  /** Montant signé période N-1 (présent uniquement si `previous` set). */
+  readonly amountPrevious?: string;
+}
+
 export interface ProfitLossReport {
   readonly fromDate: string;
   readonly toDate: string;
+  /**
+   * Présentation héritée (classes 60-68 / 70-79) — conservée pour les
+   * consommateurs historiques (cash-flow.service, snapshots,
+   * reports-package). Les nouveaux rendus (PDF, XLSX, FE) doivent
+   * utiliser `lines` qui suit la contexture doctrinale Tome 3 p. 33.
+   */
   readonly charges: ReadonlyArray<ProfitLossLine>;
   readonly produits: ReadonlyArray<ProfitLossLine>;
+  /**
+   * Séquence ordonnée Tome 3 p. 33 avec SIG intercalés dans la cascade.
+   * Toujours présente — alimentée par `PL_POSTES` (44 entrées : 35
+   * postes flux + 9 SIG).
+   */
+  readonly lines: ReadonlyArray<ProfitLossDoctrinalLine>;
   readonly totalCharges: string;
   readonly totalProduits: string;
   /** produits − charges. Positive = bénéfice, negative = perte. */
@@ -2419,15 +2472,113 @@ export class ReportsService {
     const totalProduits = produits.reduce((s, sect) => s + Number(sect.amount), 0);
     const resultat = totalProduits - totalCharges;
 
+    // Lignes doctrinales Tome 3 p. 33 (postes lettrés + SIG intercalés).
+    const lines = ReportsService.buildProfitLossDoctrinalLines(rows);
+
     return {
       fromDate,
       toDate,
       charges,
       produits,
+      lines,
       totalCharges: totalCharges.toFixed(2),
       totalProduits: totalProduits.toFixed(2),
       resultat: resultat.toFixed(2),
     };
+  }
+
+  /**
+   * Construit la séquence ordonnée Tome 3 p. 33 — chaque entrée du
+   * référentiel `PL_POSTES` devient une ligne avec son montant signé.
+   *
+   * Algorithme :
+   *   1. Agrège chaque ligne de balance sur son poste lettré via
+   *      `matchPoste` (préfixe le plus long gagne, ex. 6031 → RB).
+   *   2. Pour chaque poste de flux, le montant signé est :
+   *        - PRODUIT  : `+ (periodCredit − periodDebit)`
+   *        - CHARGE   : `− (periodDebit − periodCredit)`
+   *      Cette convention garantit que la somme algébrique des lignes
+   *      d'une section donne le SIG associé.
+   *   3. Les SIG XA..XI sont calculés en cascade à partir des montants
+   *      déjà signés — pas de gestion de signe ad hoc.
+   *
+   * Les variations de stock (RB, RD, RF) suivent la convention OHADA :
+   * un solde débiteur = déstockage (charge positive en valeur absolue,
+   * donc négative en signé), un solde créditeur = stockage (contribue
+   * positivement à la marge).
+   */
+  static buildProfitLossDoctrinalLines(
+    rows: readonly TrialBalanceRow[],
+  ): ReadonlyArray<ProfitLossDoctrinalLine> {
+    // ── Étape 1 : agrégation par poste lettré (sans valeur absolue). ──
+    const fluxByCode = new Map<string, number>();
+    for (const row of rows) {
+      const poste = matchPoste(row.accountCode);
+      if (poste === null) continue;
+      const periodD = Number(row.periodDebit);
+      const periodC = Number(row.periodCredit);
+      const signed =
+        poste.side === 'PRODUIT'
+          ? periodC - periodD // produits portent un signe positif
+          : -(periodD - periodC); // charges signées négativement
+      fluxByCode.set(poste.code, (fluxByCode.get(poste.code) ?? 0) + signed);
+    }
+
+    const get = (code: string): number => fluxByCode.get(code) ?? 0;
+
+    // ── Étape 2 : cascade SIG (Tome 3 p. 33). ──
+    // Les montants flux étant déjà signés (produits +, charges −), la
+    // somme algébrique reproduit fidèlement la formule doctrinale.
+    const XA = get('TA') + get('RA') + get('RB');
+    const XB = get('TA') + get('TB') + get('TC') + get('TD');
+    const XC =
+      XB +
+      get('RA') +
+      get('RB') +
+      get('TE') +
+      get('TF') +
+      get('TG') +
+      get('TH') +
+      get('TI') +
+      get('RC') +
+      get('RD') +
+      get('RE') +
+      get('RF') +
+      get('RG') +
+      get('RH') +
+      get('RI') +
+      get('RJ');
+    const XD = XC + get('RK');
+    const XE = XD + get('TJ') + get('RL');
+    const XF = get('TK') + get('TL') + get('TM') + get('RM') + get('RN');
+    const XG = XE + XF;
+    const XH = get('TN') + get('TO') + get('RO') + get('RP');
+    const XI = XG + XH + get('RQ') + get('RS');
+
+    const sigValues: Readonly<Record<string, number>> = {
+      XA,
+      XB,
+      XC,
+      XD,
+      XE,
+      XF,
+      XG,
+      XH,
+      XI,
+    };
+
+    // ── Étape 3 : projection sur la séquence éditoriale PL_POSTES. ──
+    return PL_POSTES.map((poste): ProfitLossDoctrinalLine => {
+      const amount = poste.kind === 'SIG' ? (sigValues[poste.code] ?? 0) : get(poste.code);
+      return {
+        ref: poste.code,
+        label: poste.label,
+        note: getPlNoteRef(poste.code),
+        sign: getPlSignSymbol(poste.code),
+        kind: poste.kind,
+        amountN: amount.toFixed(2),
+      };
+    });
   }
 
   private enrichProfitLossWithComparison(
@@ -2469,10 +2620,21 @@ export class ReportsService {
       };
     };
 
+    // Enrichissement des lignes doctrinales (séquence Tome 3 p. 33).
+    const prevLinesIdx = new Map(previous.lines.map((l) => [l.ref, l]));
+    const enrichedLines = current.lines.map((line): ProfitLossDoctrinalLine => {
+      const prev = prevLinesIdx.get(line.ref);
+      return {
+        ...line,
+        amountPrevious: prev?.amountN ?? '0.00',
+      };
+    });
+
     return {
       ...current,
       charges: current.charges.map((s) => enrichSection(s, prevChargesIdx)),
       produits: current.produits.map((s) => enrichSection(s, prevProduitsIdx)),
+      lines: enrichedLines,
       previous: {
         fromDate: previous.fromDate,
         toDate: previous.toDate,

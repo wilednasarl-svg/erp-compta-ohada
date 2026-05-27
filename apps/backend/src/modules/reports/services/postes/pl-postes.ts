@@ -43,6 +43,16 @@ export type PlPosteKind = 'CHARGE' | 'PRODUIT' | 'SIG' | 'RESULTAT';
 /** Section éditoriale du Compte de résultat. */
 export type PlSection = 'Activités ordinaires' | 'HAO' | 'Soldes intermédiaires' | 'Résultats';
 
+/**
+ * Symbole de signe doctrinal affiché dans la colonne « +/- » du Compte
+ * de résultat Tome 3 p. 33.
+ *  - `+`   : produit (somme positive).
+ *  - `-`   : charge (somme négative).
+ *  - `-/+` : variation de stock (signe dépend du solde — RB, RD, RF).
+ *  - `=`   : SIG ou résultat (ligne de cascade, pas de signe explicite).
+ */
+export type PlPosteSignSymbol = '+' | '-' | '-/+' | '=';
+
 /** Définition d'un poste lettré du Compte de résultat. */
 export interface PlPosteRef {
   /** Code lettré officiel (2 lettres : RA..TO côté flux, XA..XI côté SIG). */
@@ -744,4 +754,125 @@ export const PL_POSTES: readonly PlPosteRef[] = [
 /** Accès direct par code (utilitaire, pas de logique métier). */
 export function getPlPoste(code: string): PlPosteRef | undefined {
   return PL_POSTES.find((p) => p.code === code);
+}
+
+/* ========================================================================== */
+/* Métadonnées d'affichage Tome 3 p. 33 — colonne « Note » et colonne « +/- » */
+/* ========================================================================== */
+
+/**
+ * Renvoi de Note annexe associé à chaque poste lettré, transcrit
+ * mot pour mot de la doctrine Tome 3 p. 33 (colonne « Note »).
+ *
+ * Format : texte libre car certaines lignes citent plusieurs notes
+ * (ex. RL → « 3C&28 »). Pour les SIG (XA..XI) et les postes sans
+ * note explicite (RS), la valeur est `undefined`.
+ */
+const NOTE_REF_BY_CODE: Readonly<Record<string, string>> = {
+  // Marge commerciale
+  TA: '21',
+  RA: '22',
+  RB: '6',
+  // Chiffre d'affaires
+  TB: '21',
+  TC: '21',
+  TD: '21',
+  // Valeur ajoutée
+  TE: '6',
+  TF: '21',
+  TG: '21',
+  TH: '21',
+  TI: '12',
+  RC: '22',
+  RD: '6',
+  RE: '22',
+  RF: '6',
+  RG: '23',
+  RH: '24',
+  RI: '25',
+  RJ: '26',
+  // EBE
+  RK: '27',
+  // Résultat d'exploitation
+  TJ: '28',
+  RL: '3C&28',
+  // Résultat financier / RAO
+  TK: '29',
+  TL: '29',
+  TM: '29',
+  RM: '29',
+  RN: '29',
+  // HAO
+  TN: '3D',
+  TO: '30',
+  RO: '3D',
+  RP: '30',
+  // Participation & impôt
+  RQ: '30',
+  // RS — impôt sur le résultat (pas de note dédiée Tome 3 p. 33)
+};
+
+/**
+ * Symbole de signe doctrinal affiché dans la colonne « +/- » du
+ * Compte de résultat Tome 3 p. 33.
+ *
+ * Convention :
+ *   - `+` pour les produits (TA, TB, ..., TO).
+ *   - `-` pour les charges courantes (RA, RC, RE, RG..RJ, RK, RL, RM, RN, RO, RP, RQ, RS).
+ *   - `-/+` pour les variations de stock (RB, RD, RF) — le signe
+ *     dépend du sens du solde (stockage vs déstockage).
+ *   - Les SIG (XA..XI) n'affichent PAS de signe en colonne (cellule
+ *     vide) car ce sont des lignes de cascade — `undefined`.
+ */
+const SIGN_SYMBOL_BY_CODE: Readonly<Record<string, PlPosteSignSymbol>> = {
+  // Produits courants
+  TA: '+',
+  TB: '+',
+  TC: '+',
+  TD: '+',
+  TE: '+',
+  TF: '+',
+  TG: '+',
+  TH: '+',
+  TI: '+',
+  TJ: '+',
+  TK: '+',
+  TL: '+',
+  TM: '+',
+  // Produits HAO
+  TN: '+',
+  TO: '+',
+  // Charges courantes
+  RA: '-',
+  RC: '-',
+  RE: '-',
+  RG: '-',
+  RH: '-',
+  RI: '-',
+  RJ: '-',
+  RK: '-',
+  RL: '-',
+  RM: '-',
+  RN: '-',
+  // Charges HAO
+  RO: '-',
+  RP: '-',
+  // Participation & impôt
+  RQ: '-',
+  RS: '-',
+  // Variations de stocks
+  RB: '-/+',
+  RD: '-/+',
+  RF: '-/+',
+  // SIG XA..XI : pas de signe (lignes de cascade)
+};
+
+/** Renvoi de note Tome 3 p. 33 pour un poste, `undefined` si non applicable. */
+export function getPlNoteRef(code: string): string | undefined {
+  return NOTE_REF_BY_CODE[code];
+}
+
+/** Symbole « +/- » Tome 3 p. 33 pour un poste, `undefined` pour les SIG. */
+export function getPlSignSymbol(code: string): PlPosteSignSymbol | undefined {
+  return SIGN_SYMBOL_BY_CODE[code];
 }

@@ -352,6 +352,80 @@ describe('ReportsService.getProfitLoss', () => {
     expect(result.totalCharges).toBe('300.00');
     expect(result.totalProduits).toBe('0.00');
   });
+
+  // ── Séquence doctrinale Tome 3 p. 33 — SIG intercalés ────────────
+  it('expose `lines` avec les 44 entrées Tome 3 p. 33 et SIG intercalés en cascade', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '110000000.00' }),
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '75000000.00' }),
+      tbRow({ accountCode: '603100', accountClass: 6, periodDebit: '5000000.00' }),
+      tbRow({ accountCode: '661000', accountClass: 6, periodDebit: '20000000.00' }),
+      tbRow({ accountCode: '891000', accountClass: 8, periodDebit: '3000000.00' }),
+    ]);
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    // 33 postes flux + 9 SIG = 42 lignes doctrinales (PL_POSTES).
+    expect(result.lines).toHaveLength(42);
+
+    // SIG calculés via la cascade Tome 3 p. 33 (montants signés).
+    const byRef = (ref: string): string =>
+      result.lines.find((l) => l.ref === ref)?.amountN ?? 'missing';
+    // XA = TA(+110) + RA(-75) + RB(-5) = 30M
+    expect(byRef('XA')).toBe('30000000.00');
+    // XB = TA + TB + TC + TD = 110M
+    expect(byRef('XB')).toBe('110000000.00');
+    // XD = XC + RK (RK = -20M) — XC vaut 30M ici (mêmes 30M qu'XA en absence d'autres charges)
+    expect(byRef('XD')).toBe('10000000.00');
+    // XI = résultat net = 10M - 3M (RS=-3M) = 7M
+    expect(byRef('XI')).toBe('7000000.00');
+
+    // Ordre éditorial : TA < RA < RB < XA < TB < TC < TD < XB.
+    const idx = (ref: string): number => result.lines.findIndex((l) => l.ref === ref);
+    expect(idx('TA')).toBeLessThan(idx('RA'));
+    expect(idx('RA')).toBeLessThan(idx('RB'));
+    expect(idx('RB')).toBeLessThan(idx('XA'));
+    expect(idx('XA')).toBeLessThan(idx('TB'));
+    expect(idx('XH')).toBeLessThan(idx('RS'));
+    expect(idx('RS')).toBeLessThan(idx('XI'));
+
+    // Colonne « Note » : TA → 21, RA → 22, RB → 6.
+    const noteOf = (ref: string): string | undefined =>
+      result.lines.find((l) => l.ref === ref)?.note;
+    expect(noteOf('TA')).toBe('21');
+    expect(noteOf('RA')).toBe('22');
+    expect(noteOf('RB')).toBe('6');
+    expect(noteOf('RL')).toBe('3C&28');
+    // Les SIG n'ont pas de Note (cellule vide).
+    expect(noteOf('XA')).toBeUndefined();
+    expect(noteOf('XI')).toBeUndefined();
+
+    // Colonne « +/- » : produits = +, charges = -, variations = -/+, SIG = vide.
+    const signOf = (ref: string): string | undefined =>
+      result.lines.find((l) => l.ref === ref)?.sign;
+    expect(signOf('TA')).toBe('+');
+    expect(signOf('RA')).toBe('-');
+    expect(signOf('RB')).toBe('-/+');
+    expect(signOf('XA')).toBeUndefined();
+    expect(signOf('XI')).toBeUndefined();
+  });
+
+  it('`lines` est présent même quand le CR est vide (référentiel complet)', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([]);
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    expect(result.lines).toHaveLength(42);
+    expect(result.lines.every((l) => l.amountN === '0.00')).toBe(true);
+
+    // SIG XA..XI sont bien présents (intercalés en cascade).
+    const sigCodes = result.lines.filter((l) => l.kind === 'SIG').map((l) => l.ref);
+    expect(sigCodes).toEqual(['XA', 'XB', 'XC', 'XD', 'XE', 'XF', 'XG', 'XH', 'XI']);
+  });
 });
 
 describe('ReportsService.getBalanceSheet', () => {
@@ -640,6 +714,30 @@ describe('ReportsService.getProfitLoss — comparative N vs N-1', () => {
     });
     expect(result.previous).toBeUndefined();
     expect(result.charges[0].previousAmount).toBeUndefined();
+    // `lines` est toujours présent, mais sans `amountPrevious`.
+    expect(result.lines.every((l) => l.amountPrevious === undefined)).toBe(true);
+  });
+
+  it('enrichit `lines` avec `amountPrevious` quand compareWith est fourni', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockImplementation((_org: unknown, filters: { fromDate: string }) => {
+      if (filters.fromDate === '2026-01-01') {
+        return Promise.resolve([
+          tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '200.00' }),
+        ]);
+      }
+      return Promise.resolve([
+        tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '100.00' }),
+      ]);
+    });
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      compareWith: { fromDate: '2025-01-01', toDate: '2025-12-31' },
+    });
+    const ta = result.lines.find((l) => l.ref === 'TA');
+    expect(ta?.amountN).toBe('200.00');
+    expect(ta?.amountPrevious).toBe('100.00');
   });
 });
 

@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 
 import type { CashFlowReport, CashFlowSection } from './cash-flow.service';
-import { PL_POSTES } from './postes';
 import { getTftLabel } from './postes/tft-postes';
 import type {
   AgingBalanceReport,
@@ -19,21 +18,6 @@ import type {
   BilanPoste,
   SigReport,
 } from './reports.service';
-
-/**
- * Référentiel local des 9 SIG (XA → XI) extrait de `PL_POSTES`.
- * Reproduit dans ce module pour éviter le couplage avec
- * `reports-pdf.service` — chaque service exporte ses propres helpers.
- */
-const SIG_REFS_XLSX: ReadonlyArray<{
-  readonly code: string;
-  readonly label: string;
-  readonly formula: string;
-}> = PL_POSTES.filter((p) => p.kind === 'SIG').map((p) => ({
-  code: p.code,
-  label: p.label,
-  formula: p.computationFormula ?? '',
-}));
 
 /** Format Excel comptable francophone avec négatifs entre parenthèses. */
 const FMT_AMOUNT_FR = '# ##0,00;(# ##0,00);"";@';
@@ -158,163 +142,71 @@ export class ReportsXlsxService {
 
   // ─── Profit & Loss (W5.2 volet 2 — contexture normalisée DGI) ────
   /**
-   * Compte de Résultat XLSX — classeur à deux feuilles :
-   *   - Feuille « Compte de résultat » : 5 colonnes DGI
-   *     `Réf | Libellé | Note | Montant N | Montant N-1`
-   *     avec sections charges / produits hiérarchiques et sous-totaux.
-   *   - Feuille « SIG » : 5 colonnes
-   *     `Réf | Solde intermédiaire | Formule | Montant N | Montant N-1`
-   *     reproduisant la cascade XA → XI (PL_POSTES).
+   * Compte de Résultat XLSX — classeur à feuille unique conforme
+   * Tome 3 p. 33 : 6 colonnes `Réf | Libellé | Note | +/- | Montant N
+   * | Montant N-1`. La séquence éditoriale suit la cascade officielle
+   * (TA, RA, RB, **XA**, TB, …, **XI**) avec SIG intercalés en gras.
    *
-   * Doctrine : Tome 3 p. 33 (cascade SIG) + p. 35 (CR en liste).
+   * Doctrine : Tome 3 p. 32-33 (imprimé normalisé du CR en liste).
    *
-   * Format numérique : `# ##0,00;(# ##0,00);"";@` (parens négatives,
-   * cellule vide pour 0). `ProfitLossReport` ne porte pas la cascade
-   * détaillée — seul XI = `resultat` est rempli ; les autres SIG sont
-   * marqués `n.c.` (cf. endpoint /sig dédié).
+   * Format numérique : `# ##0,00;(# ##0,00);"";@` (parenthèses pour
+   * les négatifs, cellule vide pour 0 — convention DGI). Les lignes
+   * SIG (XA..XI) portent un fond léger ; la ligne XI est encadrée.
    */
   profitLossXlsx(report: ProfitLossReport, orgName: string): Buffer {
     const hasComp = report.previous !== undefined;
 
-    // ── Feuille 1 : Compte de résultat ──
-    const crRows: unknown[][] = [];
-    crRows.push([orgName]);
-    crRows.push([
-      `Compte de Résultat — SYSCOHADA AUDCIF (contexture normalisée DGI) — Du ${report.fromDate} au ${report.toDate}` +
+    const rows: unknown[][] = [];
+    rows.push([orgName]);
+    rows.push([
+      `Compte de Résultat — SYSCOHADA AUDCIF (Tome 3 p. 33) — Du ${report.fromDate} au ${report.toDate}` +
         (hasComp ? ` (N-1 : ${report.previous.fromDate} → ${report.previous.toDate})` : '') +
         ' — Devise : XOF',
     ]);
-    crRows.push([]);
-    const crHeader: unknown[] = ['Réf.', 'Libellé', 'Note', 'Montant N', 'Montant N-1'];
-    const crHeaderRowIndex = crRows.length;
-    crRows.push(crHeader);
-    const crNumericRows: number[] = [];
+    rows.push([]);
 
-    crRows.push(['', 'ACTIVITÉS ORDINAIRES — Charges (classes 60-68)', '', '', '']);
-    for (const section of report.charges) {
-      crNumericRows.push(crRows.length);
-      crRows.push([
-        section.code,
-        section.label,
-        '',
-        this.num(section.amount),
-        hasComp ? this.num(section.previousAmount ?? '0') : '',
+    const header: unknown[] = ['Réf.', 'Libellé', 'Note', '+/-', 'Montant N', 'Montant N-1'];
+    const headerRowIndex = rows.length;
+    rows.push(header);
+
+    const numericRowIndexes: number[] = [];
+
+    rows.push(['', 'ACTIVITÉS ORDINAIRES', '', '', '', '']);
+
+    for (const line of report.lines) {
+      numericRowIndexes.push(rows.length);
+      rows.push([
+        line.ref,
+        line.kind === 'SIG' ? line.label.toUpperCase() : line.label,
+        line.note ?? '',
+        line.sign ?? '',
+        this.num(line.amountN),
+        hasComp ? this.num(line.amountPrevious ?? '0') : '',
       ]);
-      for (const acc of section.accounts) {
-        crNumericRows.push(crRows.length);
-        crRows.push([
-          acc.code,
-          `  ${acc.label}`,
-          '',
-          this.num(acc.amount),
-          hasComp ? this.num(acc.previousAmount ?? '0') : '',
-        ]);
-      }
     }
-    crNumericRows.push(crRows.length);
-    crRows.push([
-      '',
-      'Total charges',
-      '',
-      this.num(report.totalCharges),
-      hasComp ? this.num(report.previous.totalCharges) : '',
-    ]);
 
-    crRows.push([]);
-    crRows.push(['', 'ACTIVITÉS ORDINAIRES — Produits (classes 70-79)', '', '', '']);
-    for (const section of report.produits) {
-      crNumericRows.push(crRows.length);
-      crRows.push([
-        section.code,
-        section.label,
-        '',
-        this.num(section.amount),
-        hasComp ? this.num(section.previousAmount ?? '0') : '',
-      ]);
-      for (const acc of section.accounts) {
-        crNumericRows.push(crRows.length);
-        crRows.push([
-          acc.code,
-          `  ${acc.label}`,
-          '',
-          this.num(acc.amount),
-          hasComp ? this.num(acc.previousAmount ?? '0') : '',
-        ]);
-      }
-    }
-    crNumericRows.push(crRows.length);
-    crRows.push([
+    // Pied de tableau récap (Devise + totaux + écart de bouclage).
+    rows.push([]);
+    const ecart =
+      Number(report.totalProduits) - Number(report.totalCharges) - Number(report.resultat);
+    rows.push([
       '',
-      'Total produits',
+      `Devise : XOF — Total charges ${report.totalCharges} — Total produits ${report.totalProduits} — Écart : ${ecart.toFixed(2)}`,
       '',
-      this.num(report.totalProduits),
-      hasComp ? this.num(report.previous.totalProduits) : '',
-    ]);
-
-    crRows.push([]);
-    crNumericRows.push(crRows.length);
-    crRows.push([
-      'XI',
-      "RÉSULTAT NET DE L'EXERCICE",
-      '',
-      this.num(report.resultat),
-      hasComp ? this.num(report.previous.resultat) : '',
-    ]);
-
-    // ── Feuille 2 : SIG ──
-    const sigRows: unknown[][] = [];
-    sigRows.push([orgName]);
-    sigRows.push([
-      `Soldes Intermédiaires de Gestion (cascade XA → XI) — Du ${report.fromDate} au ${report.toDate} — Devise : XOF`,
-    ]);
-    sigRows.push([]);
-    const sigHeader: unknown[] = [
-      'Réf.',
-      'Solde intermédiaire',
-      'Formule (Tome 3 p. 33)',
-      'Montant N',
-      'Montant N-1',
-    ];
-    const sigHeaderRowIndex = sigRows.length;
-    sigRows.push(sigHeader);
-    const sigNumericRows: number[] = [];
-
-    for (const sig of SIG_REFS_XLSX) {
-      const isXi = sig.code === 'XI';
-      const valueN = isXi ? this.num(report.resultat) : 'n.c.';
-      const valueN1 = isXi && hasComp ? this.num(report.previous.resultat) : isXi ? '' : 'n.c.';
-      if (isXi) sigNumericRows.push(sigRows.length);
-      sigRows.push([sig.code, sig.label, sig.formula, valueN, valueN1]);
-    }
-    sigRows.push([]);
-    sigRows.push([
-      '',
-      'Note : seul XI (résultat net) est calculable depuis ProfitLossReport. Les autres SIG sont disponibles via l\'endpoint /sig.',
       '',
       '',
       '',
     ]);
 
-    // Build workbook with 2 sheets
     return this.buildWorkbookMultiSheet([
       {
-        rows: crRows,
+        rows,
         sheetName: 'Compte de résultat',
         opts: {
-          headerRowIndex: crHeaderRowIndex,
-          numericColIndexes: [3, 4],
-          numericRowIndexes: crNumericRows,
-          colWidths: [8, 50, 8, 16, 16],
-        },
-      },
-      {
-        rows: sigRows,
-        sheetName: 'SIG',
-        opts: {
-          headerRowIndex: sigHeaderRowIndex,
-          numericColIndexes: [3, 4],
-          numericRowIndexes: sigNumericRows,
-          colWidths: [8, 38, 42, 16, 16],
+          headerRowIndex,
+          numericColIndexes: [4, 5],
+          numericRowIndexes,
+          colWidths: [8, 50, 10, 6, 16, 16],
         },
       },
     ]);

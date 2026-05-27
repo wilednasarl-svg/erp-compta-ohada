@@ -49,6 +49,7 @@ function buildProfitLoss(): ProfitLossReport {
     toDate: '2026-12-31',
     charges: [],
     produits: [],
+    lines: [],
     totalCharges: '0',
     totalProduits: '0',
     resultat: '0',

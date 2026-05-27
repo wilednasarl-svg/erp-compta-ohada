@@ -545,6 +545,27 @@ export interface ProfitLossLine {
   readonly accounts: ReadonlyArray<ProfitLossAccountLine>;
 }
 
+/**
+ * Ligne doctrinale du CR conforme Tome 3 p. 33 — chaque entrée est un
+ * poste lettré (TA, RA, …, RS) OU un Solde Intermédiaire de Gestion
+ * (XA, XB, …, XI) intercalé dans la cascade.
+ */
+export type ProfitLossSignSymbol = '+' | '-' | '-/+' | '=';
+export type ProfitLossLineKind = 'CHARGE' | 'PRODUIT' | 'SIG' | 'RESULTAT';
+
+export interface ProfitLossDoctrinalLine {
+  /** Code lettré officiel (TA, RA, …, RS, XA, …, XI). */
+  readonly ref: string;
+  readonly label: string;
+  /** Renvoi de Note annexe — vide pour les SIG. */
+  readonly note?: string;
+  /** Symbole « +/- » affiché en colonne — vide pour les SIG. */
+  readonly sign?: ProfitLossSignSymbol;
+  readonly kind: ProfitLossLineKind;
+  readonly amountN: string;
+  readonly amountPrevious?: string;
+}
+
 export interface ProfitLossPreviousSummary {
   readonly fromDate: string;
   readonly toDate: string;
@@ -556,8 +577,11 @@ export interface ProfitLossPreviousSummary {
 export interface ProfitLossReport {
   readonly fromDate: string;
   readonly toDate: string;
+  /** Présentation héritée par classe (60-68 / 70-79) — back-compat. */
   readonly charges: ReadonlyArray<ProfitLossLine>;
   readonly produits: ReadonlyArray<ProfitLossLine>;
+  /** Séquence ordonnée Tome 3 p. 33 avec SIG intercalés. */
+  readonly lines: ReadonlyArray<ProfitLossDoctrinalLine>;
   readonly totalCharges: string;
   readonly totalProduits: string;
   /** produits − charges. Positive = bénéfice, negative = perte. */

@@ -66,7 +66,7 @@ import type {
   ImportSessionSummary,
   MarginByAxisReport,
   MultiYearBalanceReport,
-  ProfitLossLine,
+  ProfitLossDoctrinalLine,
   ProfitLossReport,
   SigReport,
   TrialBalanceReport,
@@ -951,52 +951,30 @@ function ProfitLossView({ report }: { readonly report: ProfitLossReport }) {
         </div>
       </div>
 
-      {/* Layout classique : Charges à gauche, Produits à droite. En
-          comptabilité OHADA c'est l'inverse de la convention française
-          (produits à droite), mais on garde la disposition canonique :
-          charges = ce qui sort, produits = ce qui entre. */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ProfitLossColumn title="Charges" subtitle="Consommations et coûts de l'exercice" lines={report.charges} total={report.totalCharges} tone="critical" />
-        <ProfitLossColumn title="Produits" subtitle="Ventes, prestations et autres recettes" lines={report.produits} total={report.totalProduits} tone="accent" />
-      </div>
+      {/* Présentation doctrinale Tome 3 p. 33 : tableau unique à 6
+          colonnes avec SIG intercalés en gras dans la cascade. La ligne
+          XI (résultat net) est encadrée (ring) pour finalité visuelle. */}
+      <ProfitLossDoctrinalTable lines={report.lines} hasComp={report.previous !== undefined} />
     </div>
   );
 }
 
-function ProfitLossColumn({
-  title,
-  subtitle,
+function ProfitLossDoctrinalTable({
   lines,
-  total,
-  tone,
+  hasComp,
 }: {
-  readonly title: string;
-  readonly subtitle: string;
-  readonly lines: ReadonlyArray<ProfitLossLine>;
-  readonly total: string;
-  readonly tone: 'critical' | 'accent';
+  readonly lines: ReadonlyArray<ProfitLossDoctrinalLine>;
+  readonly hasComp: boolean;
 }) {
-  const toneClasses = {
-    critical: {
-      dot: 'bg-critical',
-      headerText: 'text-critical-ink',
-      totalRow: 'border-l-2 border-critical/40 bg-critical-soft/40 text-critical-ink',
-    },
-    accent: {
-      dot: 'bg-accent',
-      headerText: 'text-accent-ink',
-      totalRow: 'border-l-2 border-accent/40 bg-accent-soft/40 text-accent-ink',
-    },
-  };
-  const t = toneClasses[tone];
   return (
     <section>
       <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
-        <span aria-hidden className={cn('h-2 w-2 self-center rounded-full', t.dot)} />
-        <h4 className={cn('font-display text-base font-medium tracking-tight', t.headerText)}>
-          {title}
+        <h4 className="font-display text-base font-medium tracking-tight text-ink">
+          Compte de résultat — contexture Tome 3 p. 33
         </h4>
-        <p className="ml-2 text-xs text-ink-soft">{subtitle}</p>
+        <p className="ml-2 text-xs text-ink-soft">
+          Postes lettrés + SIG (XA→XI) intercalés dans la cascade
+        </p>
       </header>
       <div className="overflow-hidden rounded-md border border-line">
         <table className="w-full text-sm">
@@ -1004,40 +982,63 @@ function ProfitLossColumn({
             <tr>
               <th className="px-3 py-2 text-left font-medium">Réf.</th>
               <th className="px-3 py-2 text-left font-medium">Libellé</th>
-              <th className="px-3 py-2 text-right font-medium">Montant</th>
+              <th className="px-3 py-2 text-right font-medium">Note</th>
+              <th className="px-3 py-2 text-center font-medium">+/-</th>
+              <th className="px-3 py-2 text-right font-medium">Montant N</th>
+              {hasComp ? (
+                <th className="px-3 py-2 text-right font-medium">Montant N-1</th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {lines.map((line) => {
-              const num = Number(line.amount);
+              const isSig = line.kind === 'SIG';
+              const isXi = line.ref === 'XI';
+              const num = Number(line.amountN);
               const isZero = !Number.isFinite(num) || num === 0;
               return (
-                <tr key={line.code} className="border-t border-line">
-                  <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">{line.code}</td>
-                  <td className="px-3 py-1.5 text-xs text-ink">{line.label}</td>
+                <tr
+                  key={line.ref}
+                  className={cn(
+                    'border-t border-line',
+                    isSig ? 'bg-paper font-medium' : '',
+                    isXi ? 'ring-2 ring-accent/40 ring-inset' : '',
+                  )}
+                >
+                  <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">{line.ref}</td>
+                  <td
+                    className={cn(
+                      'px-3 py-1.5 text-xs',
+                      isSig ? 'uppercase tracking-wide text-ink' : 'text-ink',
+                    )}
+                  >
+                    {line.label}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono text-2xs text-ink-mute">
+                    {line.note ?? ''}
+                  </td>
+                  <td className="px-3 py-1.5 text-center font-mono text-xs text-ink-soft">
+                    {line.sign ?? ''}
+                  </td>
                   <td
                     className={cn(
                       'px-3 py-1.5 text-right font-mono tabular-nums',
-                      isZero ? 'text-ink-mute' : 'text-ink',
+                      isZero ? 'text-ink-mute' : isSig ? 'font-semibold text-ink' : 'text-ink',
                     )}
                   >
-                    {isZero ? '—' : fmt(line.amount)}
+                    {isZero ? '—' : fmt(line.amountN)}
                   </td>
+                  {hasComp ? (
+                    <td className="px-3 py-1.5 text-right font-mono tabular-nums text-ink-soft">
+                      {line.amountPrevious !== undefined && Number(line.amountPrevious) !== 0
+                        ? fmt(line.amountPrevious)
+                        : '—'}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
           </tbody>
-          <tfoot>
-            <tr className={cn('border-t-2 font-medium', t.totalRow)}>
-              <td className="px-3 py-2.5"></td>
-              <td className="px-3 py-2.5 text-right text-2xs uppercase tracking-wider">
-                Total {title.toLowerCase()}
-              </td>
-              <td className="px-3 py-2.5 text-right font-mono text-base tabular-nums">
-                {fmt(total)}
-              </td>
-            </tr>
-          </tfoot>
         </table>
       </div>
     </section>

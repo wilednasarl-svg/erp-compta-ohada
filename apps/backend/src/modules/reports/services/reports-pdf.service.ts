@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 
 import type { CashFlowReport, CashFlowSection } from './cash-flow.service';
-import { PL_POSTES } from './postes';
 import { getTftLabel } from './postes/tft-postes';
 import type {
   AgingBalanceReport,
@@ -13,26 +12,10 @@ import type {
   FinancialRatiosReport,
   GeneralLedgerReport,
   ImportDiagnosticReport,
-  ProfitLossAccountLine,
   ProfitLossReport,
   SigReport,
   TrialBalanceReport,
 } from './reports.service';
-
-/**
- * Référentiel local des 9 SIG (XA → XI) extrait de `PL_POSTES`. Utilisé
- * pour le rendu de la cascade dans `profitLossPdf` — on conserve le code,
- * le libellé exact (doctrine Tome 3 p. 33) et la formule officielle.
- */
-const SIG_REFS: ReadonlyArray<{
-  readonly code: string;
-  readonly label: string;
-  readonly formula: string;
-}> = PL_POSTES.filter((p) => p.kind === 'SIG').map((p) => ({
-  code: p.code,
-  label: p.label,
-  formula: p.computationFormula ?? '',
-}));
 
 /**
  * `ReportsPdfService` — Module 9 wave 3 PDF rendering.
@@ -223,115 +206,38 @@ export class ReportsPdfService {
         ' — Devise : XOF',
     );
 
-    // Colonnes DGI normalisées : Réf. | Libellé | Note | Montant N | Montant N-1.
+    // Colonnes Tome 3 p. 33 : Réf. | Libellé | Note | +/- | Montant N | Montant N-1.
     const cols = [
-      { label: 'Réf.', width: 40 },
-      { label: 'Libellé', width: 260 },
-      { label: 'Note', width: 40, align: 'right' as const },
-      { label: 'Montant N', width: 110, align: 'right' as const },
-      { label: 'Montant N-1', width: 110, align: 'right' as const },
+      { label: 'Réf.', width: 36 },
+      { label: 'Libellé', width: 240 },
+      { label: 'Note', width: 44, align: 'right' as const },
+      { label: '+/-', width: 30, align: 'center' as const },
+      { label: 'Montant N', width: 100, align: 'right' as const },
+      { label: 'Montant N-1', width: 100, align: 'right' as const },
     ];
 
     let y = this.tableHeader(doc, cols);
 
-    // ── Activités ordinaires ──
+    // ── ACTIVITÉS ORDINAIRES (SIG XA..XG intercalés en cascade) ──
     y = this.sectionTitle(doc, 'ACTIVITÉS ORDINAIRES', y);
-    y = this.crSubsectionTitle(doc, 'Charges (classes 60-68)', y);
-    for (const section of report.charges) {
-      y = this.plSectionRowsDgi(doc, cols, section, y, hasComparison);
-    }
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        '',
-        'Total charges',
-        '',
-        this.fmtPar(report.totalCharges),
-        hasComparison ? this.fmtPar(report.previous.totalCharges) : '',
-      ],
-      y,
-      true,
-    );
-
-    if (y > doc.page.height - 120) {
-      doc.addPage();
-      y = this.tableHeader(doc, cols);
-    }
-
-    y = this.crSubsectionTitle(doc, 'Produits (classes 70-79)', y + 6);
-    for (const section of report.produits) {
-      y = this.plSectionRowsDgi(doc, cols, section, y, hasComparison);
-    }
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        '',
-        'Total produits',
-        '',
-        this.fmtPar(report.totalProduits),
-        hasComparison ? this.fmtPar(report.previous.totalProduits) : '',
-      ],
-      y,
-      true,
-    );
-
-    // ── Résultat net ──
-    y += 8;
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        'XI',
-        'RÉSULTAT NET DE L\'EXERCICE',
-        '',
-        this.fmtPar(report.resultat),
-        hasComparison ? this.fmtPar(report.previous.resultat) : '',
-      ],
-      y,
-      true,
-    );
-
-    // ── Cascade SIG (encadré séparé) ──
-    if (y > doc.page.height - 200) {
-      doc.addPage();
-      y = doc.y;
-    }
-    y += 14;
-    y = this.sectionTitle(doc, 'SOLDES INTERMÉDIAIRES DE GESTION (cascade XA → XI)', y);
-    const sigCols = [
-      { label: 'Réf.', width: 40 },
-      { label: 'Solde intermédiaire', width: 200 },
-      { label: 'Formule (doctrine Tome 3 p. 33)', width: 200 },
-      { label: 'Montant N', width: 110, align: 'right' as const },
-      { label: 'Montant N-1', width: 110, align: 'right' as const },
-    ];
-    y = this.tableHeaderAt(doc, sigCols, y);
-    for (const sig of SIG_REFS) {
+    for (const line of report.lines) {
       if (y > doc.page.height - 60) {
         doc.addPage();
-        y = this.tableHeaderAt(doc, sigCols, ReportsPdfService.MARGIN + 20);
+        y = this.tableHeader(doc, cols);
       }
-      const isXi = sig.code === 'XI';
-      const valueN = isXi ? this.fmtPar(report.resultat) : 'n.c.';
-      const valueN1 =
-        isXi && hasComparison ? this.fmtPar(report.previous.resultat) : isXi ? '' : 'n.c.';
-      y = this.tableRow(
-        doc,
-        sigCols,
-        [sig.code, sig.label, sig.formula, valueN, valueN1],
-        y,
-        isXi,
-      );
+      y = this.crDoctrinalRow(doc, cols, line, y, hasComparison);
     }
-    y += 6;
+
+    // ── Pied : devise + récap totaux + écart de bouclage ──
+    y += 10;
+    const ecart =
+      Number(report.totalProduits) - Number(report.totalCharges) - Number(report.resultat);
     doc
-      .font('Helvetica-Oblique')
+      .font('Helvetica')
       .fontSize(7)
       .fillColor('#555555')
       .text(
-        '« n.c. » : non communiqué dans cet export. La cascade SIG détaillée est disponible via le rapport « Soldes Intermédiaires de Gestion » dédié.',
+        `Devise : XOF — Total charges : ${this.fmtPar(report.totalCharges)} — Total produits : ${this.fmtPar(report.totalProduits)} — Écart Produits − Charges − Résultat : ${this.fmtPar(ecart.toFixed(2))}`,
         ReportsPdfService.MARGIN,
         y,
       );
@@ -339,6 +245,53 @@ export class ReportsPdfService {
 
     this.footer(doc);
     return this.finalize(doc);
+  }
+
+  /**
+   * Rendu d'une ligne doctrinale (poste lettré ou SIG intercalé) au
+   * format Tome 3 p. 33. Les SIG (XA..XI) sont mis en gras avec une
+   * légère bordure haute pour matérialiser la ligne de cascade ; la
+   * ligne XI (résultat net) est en outre encadrée (border-around).
+   */
+  private crDoctrinalRow(
+    doc: PDFKit.PDFDocument,
+    cols: Array<{ label: string; width: number; align?: 'right' | 'center' }>,
+    line: { ref: string; label: string; note?: string; sign?: string; kind: string; amountN: string; amountPrevious?: string },
+    y: number,
+    hasComparison: boolean,
+  ): number {
+    const isSig = line.kind === 'SIG';
+    const isXi = line.ref === 'XI';
+    const rowH = ReportsPdfService.LINE_HEIGHT;
+    const m = ReportsPdfService.MARGIN;
+    const totalWidth = cols.reduce((s, c) => s + c.width + ReportsPdfService.COL_GAP, 0);
+
+    // Fond gris léger pour les SIG (cellule entière, rendu doux).
+    if (isSig) {
+      doc.save();
+      doc.rect(m - 2, y - 2, totalWidth, rowH + 2).fill('#F3F3F3');
+      doc.restore();
+    }
+
+    const values = [
+      line.ref,
+      isSig ? line.label.toUpperCase() : line.label,
+      line.note ?? '',
+      line.sign ?? '',
+      this.fmtPar(line.amountN),
+      hasComparison ? this.fmtPar(line.amountPrevious ?? '0') : '',
+    ];
+    const yAfter = this.tableRow(doc, cols, values, y, isSig);
+
+    // Encadrement de la ligne XI (résultat net).
+    if (isXi) {
+      doc
+        .lineWidth(0.8)
+        .strokeColor('#000000')
+        .rect(m - 2, y - 2, totalWidth, rowH + 2)
+        .stroke();
+    }
+    return yAfter;
   }
 
   // ─── Balance Sheet (W5.2 — contexture normalisée DGI) ────────────
@@ -1210,7 +1163,7 @@ export class ReportsPdfService {
 
   private tableHeader(
     doc: PDFKit.PDFDocument,
-    cols: Array<{ label: string; width: number; align?: 'right' }>,
+    cols: Array<{ label: string; width: number; align?: 'right' | 'center' }>,
   ): number {
     const m = ReportsPdfService.MARGIN;
     const y = doc.y;
@@ -1237,7 +1190,7 @@ export class ReportsPdfService {
 
   private tableRow(
     doc: PDFKit.PDFDocument,
-    cols: Array<{ label: string; width: number; align?: 'right' }>,
+    cols: Array<{ label: string; width: number; align?: 'right' | 'center' }>,
     values: string[],
     y: number,
     bold = false,
@@ -1289,107 +1242,6 @@ export class ReportsPdfService {
       doc.on('error', reject);
       doc.end();
     });
-  }
-
-  /**
-   * Sous-titre de section (sous-niveau de `sectionTitle`) utilisé pour
-   * différencier « Charges » / « Produits » à l'intérieur d'« Activités
-   * ordinaires ». Indentation et police légèrement réduite.
-   */
-  private crSubsectionTitle(doc: PDFKit.PDFDocument, title: string, y: number): number {
-    doc.font('Helvetica-BoldOblique').fontSize(8).fillColor('#333333');
-    doc.text(title, ReportsPdfService.MARGIN + 6, y);
-    doc.fillColor('#000000');
-    return y + ReportsPdfService.LINE_HEIGHT;
-  }
-
-  /**
-   * Rendu d'une section PL pour la contexture DGI à 5 colonnes
-   * (`Réf | Libellé | Note | Montant N | Montant N-1`). Reprend
-   * `plSectionRows` mais sans variation/% (la contexture normalisée
-   * DGI ne porte pas ces colonnes) et avec négatifs entre parenthèses.
-   */
-  private plSectionRowsDgi(
-    doc: PDFKit.PDFDocument,
-    cols: Array<{ label: string; width: number; align?: 'right' }>,
-    section: {
-      code: string;
-      label: string;
-      amount: string;
-      previousAmount?: string;
-      accounts: ReadonlyArray<ProfitLossAccountLine>;
-    },
-    y: number,
-    hasComparison: boolean,
-  ): number {
-    if (y > doc.page.height - 60) {
-      doc.addPage();
-      y = this.tableHeader(doc, cols);
-    }
-    // En-tête de section (gras).
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        section.code,
-        section.label,
-        '',
-        this.fmtPar(section.amount),
-        hasComparison ? this.fmtPar(section.previousAmount ?? '0') : '',
-      ],
-      y,
-      true,
-    );
-
-    // Détail comptes.
-    for (const acc of section.accounts) {
-      if (y > doc.page.height - 60) {
-        doc.addPage();
-        y = this.tableHeader(doc, cols);
-      }
-      y = this.tableRow(
-        doc,
-        cols,
-        [
-          acc.code,
-          `  ${acc.label}`,
-          '',
-          this.fmtPar(acc.amount),
-          hasComparison ? this.fmtPar(acc.previousAmount ?? '0') : '',
-        ],
-        y,
-      );
-    }
-    return y;
-  }
-
-  /**
-   * Variante de `tableHeader` qui ne consomme pas `doc.y` mais part
-   * d'un `y` explicite (utile pour rendre un second tableau — la
-   * cascade SIG — sous le CR principal).
-   */
-  private tableHeaderAt(
-    doc: PDFKit.PDFDocument,
-    cols: Array<{ label: string; width: number; align?: 'right' }>,
-    y: number,
-  ): number {
-    const m = ReportsPdfService.MARGIN;
-    doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE);
-    let x = m;
-    for (const col of cols) {
-      doc.text(col.label, x, y, {
-        width: col.width,
-        align: col.align ?? 'left',
-      });
-      x += col.width + ReportsPdfService.COL_GAP;
-    }
-    const lineY = y + ReportsPdfService.LINE_HEIGHT;
-    doc
-      .moveTo(m, lineY)
-      .lineTo(x - ReportsPdfService.COL_GAP, lineY)
-      .lineWidth(0.5)
-      .stroke();
-    return lineY + 4;
   }
 
   /**
