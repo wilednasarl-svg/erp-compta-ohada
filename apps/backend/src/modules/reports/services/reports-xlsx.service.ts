@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 
+import { PL_POSTES } from './postes';
 import type {
   AgingBalanceReport,
   AnnexeReport,
@@ -14,8 +15,28 @@ import type {
   GeneralLedgerReport,
   ProfitLossReport,
   BalanceSheetReport,
+  BilanMasse,
+  BilanPoste,
   SigReport,
 } from './reports.service';
+
+/**
+ * Référentiel local des 9 SIG (XA → XI) extrait de `PL_POSTES`.
+ * Reproduit dans ce module pour éviter le couplage avec
+ * `reports-pdf.service` — chaque service exporte ses propres helpers.
+ */
+const SIG_REFS_XLSX: ReadonlyArray<{
+  readonly code: string;
+  readonly label: string;
+  readonly formula: string;
+}> = PL_POSTES.filter((p) => p.kind === 'SIG').map((p) => ({
+  code: p.code,
+  label: p.label,
+  formula: p.computationFormula ?? '',
+}));
+
+/** Format Excel comptable francophone avec négatifs entre parenthèses. */
+const FMT_AMOUNT_FR = '# ##0,00;(# ##0,00);"";@';
 
 /**
  * `ReportsXlsxService` — Module 9 wave 3 Excel export.
@@ -135,217 +156,314 @@ export class ReportsXlsxService {
     return this.buildWorkbook(rows, 'Grand Livre');
   }
 
-  // ─── Profit & Loss ───────────────────────────────────────────────
+  // ─── Profit & Loss (W5.2 volet 2 — contexture normalisée DGI) ────
+  /**
+   * Compte de Résultat XLSX — classeur à deux feuilles :
+   *   - Feuille « Compte de résultat » : 5 colonnes DGI
+   *     `Réf | Libellé | Note | Montant N | Montant N-1`
+   *     avec sections charges / produits hiérarchiques et sous-totaux.
+   *   - Feuille « SIG » : 5 colonnes
+   *     `Réf | Solde intermédiaire | Formule | Montant N | Montant N-1`
+   *     reproduisant la cascade XA → XI (PL_POSTES).
+   *
+   * Doctrine : Tome 3 p. 33 (cascade SIG) + p. 35 (CR en liste).
+   *
+   * Format numérique : `# ##0,00;(# ##0,00);"";@` (parens négatives,
+   * cellule vide pour 0). `ProfitLossReport` ne porte pas la cascade
+   * détaillée — seul XI = `resultat` est rempli ; les autres SIG sont
+   * marqués `n.c.` (cf. endpoint /sig dédié).
+   */
   profitLossXlsx(report: ProfitLossReport, orgName: string): Buffer {
-    const rows: unknown[][] = [];
     const hasComp = report.previous !== undefined;
 
-    rows.push([orgName]);
-    rows.push([
-      `Compte de Résultat — Du ${report.fromDate} au ${report.toDate}` +
-        (hasComp
-          ? ` (comparaison N-1 : ${report.previous.fromDate} – ${report.previous.toDate})`
-          : ''),
+    // ── Feuille 1 : Compte de résultat ──
+    const crRows: unknown[][] = [];
+    crRows.push([orgName]);
+    crRows.push([
+      `Compte de Résultat — SYSCOHADA AUDCIF (contexture normalisée DGI) — Du ${report.fromDate} au ${report.toDate}` +
+        (hasComp ? ` (N-1 : ${report.previous.fromDate} → ${report.previous.toDate})` : '') +
+        ' — Devise : XOF',
     ]);
-    rows.push([]);
+    crRows.push([]);
+    const crHeader: unknown[] = ['Réf.', 'Libellé', 'Note', 'Montant N', 'Montant N-1'];
+    const crHeaderRowIndex = crRows.length;
+    crRows.push(crHeader);
+    const crNumericRows: number[] = [];
 
-    const header = hasComp
-      ? ['Code', 'Intitulé', 'Montant N', 'Montant N-1', 'Variation', '% Évolution']
-      : ['Code', 'Intitulé', 'Montant'];
-    rows.push(header);
-
-    rows.push(['', 'CHARGES (Classe 6)']);
-
+    crRows.push(['', 'ACTIVITÉS ORDINAIRES — Charges (classes 60-68)', '', '', '']);
     for (const section of report.charges) {
-      const sRow = hasComp
-        ? [
-            section.code,
-            section.label,
-            this.num(section.amount),
-            this.num(section.previousAmount),
-            this.num(section.variation),
-            section.variationPercent ? `${section.variationPercent}%` : '',
-          ]
-        : [section.code, section.label, this.num(section.amount)];
-      rows.push(sRow);
-
+      crNumericRows.push(crRows.length);
+      crRows.push([
+        section.code,
+        section.label,
+        '',
+        this.num(section.amount),
+        hasComp ? this.num(section.previousAmount ?? '0') : '',
+      ]);
       for (const acc of section.accounts) {
-        const aRow = hasComp
-          ? [
-              acc.code,
-              `  ${acc.label}`,
-              this.num(acc.amount),
-              this.num(acc.previousAmount),
-              this.num(acc.variation),
-              acc.variationPercent ? `${acc.variationPercent}%` : '',
-            ]
-          : [acc.code, `  ${acc.label}`, this.num(acc.amount)];
-        rows.push(aRow);
+        crNumericRows.push(crRows.length);
+        crRows.push([
+          acc.code,
+          `  ${acc.label}`,
+          '',
+          this.num(acc.amount),
+          hasComp ? this.num(acc.previousAmount ?? '0') : '',
+        ]);
       }
     }
+    crNumericRows.push(crRows.length);
+    crRows.push([
+      '',
+      'Total charges',
+      '',
+      this.num(report.totalCharges),
+      hasComp ? this.num(report.previous.totalCharges) : '',
+    ]);
 
-    const chargeTotal = hasComp
-      ? [
-          '',
-          'TOTAL CHARGES',
-          this.num(report.totalCharges),
-          this.num(report.previous.totalCharges),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL CHARGES', this.num(report.totalCharges)];
-    rows.push(chargeTotal);
-
-    rows.push([]);
-    rows.push(['', 'PRODUITS (Classe 7)']);
-
+    crRows.push([]);
+    crRows.push(['', 'ACTIVITÉS ORDINAIRES — Produits (classes 70-79)', '', '', '']);
     for (const section of report.produits) {
-      const sRow = hasComp
-        ? [
-            section.code,
-            section.label,
-            this.num(section.amount),
-            this.num(section.previousAmount),
-            this.num(section.variation),
-            section.variationPercent ? `${section.variationPercent}%` : '',
-          ]
-        : [section.code, section.label, this.num(section.amount)];
-      rows.push(sRow);
-
+      crNumericRows.push(crRows.length);
+      crRows.push([
+        section.code,
+        section.label,
+        '',
+        this.num(section.amount),
+        hasComp ? this.num(section.previousAmount ?? '0') : '',
+      ]);
       for (const acc of section.accounts) {
-        const aRow = hasComp
-          ? [
-              acc.code,
-              `  ${acc.label}`,
-              this.num(acc.amount),
-              this.num(acc.previousAmount),
-              this.num(acc.variation),
-              acc.variationPercent ? `${acc.variationPercent}%` : '',
-            ]
-          : [acc.code, `  ${acc.label}`, this.num(acc.amount)];
-        rows.push(aRow);
+        crNumericRows.push(crRows.length);
+        crRows.push([
+          acc.code,
+          `  ${acc.label}`,
+          '',
+          this.num(acc.amount),
+          hasComp ? this.num(acc.previousAmount ?? '0') : '',
+        ]);
       }
     }
+    crNumericRows.push(crRows.length);
+    crRows.push([
+      '',
+      'Total produits',
+      '',
+      this.num(report.totalProduits),
+      hasComp ? this.num(report.previous.totalProduits) : '',
+    ]);
 
-    const prodTotal = hasComp
-      ? [
-          '',
-          'TOTAL PRODUITS',
-          this.num(report.totalProduits),
-          this.num(report.previous.totalProduits),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL PRODUITS', this.num(report.totalProduits)];
-    rows.push(prodTotal);
+    crRows.push([]);
+    crNumericRows.push(crRows.length);
+    crRows.push([
+      'XI',
+      "RÉSULTAT NET DE L'EXERCICE",
+      '',
+      this.num(report.resultat),
+      hasComp ? this.num(report.previous.resultat) : '',
+    ]);
 
-    rows.push([]);
-    const resRow = hasComp
-      ? ['', 'RÉSULTAT NET', this.num(report.resultat), this.num(report.previous.resultat), '', '']
-      : ['', 'RÉSULTAT NET', this.num(report.resultat)];
-    rows.push(resRow);
+    // ── Feuille 2 : SIG ──
+    const sigRows: unknown[][] = [];
+    sigRows.push([orgName]);
+    sigRows.push([
+      `Soldes Intermédiaires de Gestion (cascade XA → XI) — Du ${report.fromDate} au ${report.toDate} — Devise : XOF`,
+    ]);
+    sigRows.push([]);
+    const sigHeader: unknown[] = [
+      'Réf.',
+      'Solde intermédiaire',
+      'Formule (Tome 3 p. 33)',
+      'Montant N',
+      'Montant N-1',
+    ];
+    const sigHeaderRowIndex = sigRows.length;
+    sigRows.push(sigHeader);
+    const sigNumericRows: number[] = [];
 
-    return this.buildWorkbook(rows, 'Compte de Résultat');
+    for (const sig of SIG_REFS_XLSX) {
+      const isXi = sig.code === 'XI';
+      const valueN = isXi ? this.num(report.resultat) : 'n.c.';
+      const valueN1 = isXi && hasComp ? this.num(report.previous.resultat) : isXi ? '' : 'n.c.';
+      if (isXi) sigNumericRows.push(sigRows.length);
+      sigRows.push([sig.code, sig.label, sig.formula, valueN, valueN1]);
+    }
+    sigRows.push([]);
+    sigRows.push([
+      '',
+      'Note : seul XI (résultat net) est calculable depuis ProfitLossReport. Les autres SIG sont disponibles via l\'endpoint /sig.',
+      '',
+      '',
+      '',
+    ]);
+
+    // Build workbook with 2 sheets
+    return this.buildWorkbookMultiSheet([
+      {
+        rows: crRows,
+        sheetName: 'Compte de résultat',
+        opts: {
+          headerRowIndex: crHeaderRowIndex,
+          numericColIndexes: [3, 4],
+          numericRowIndexes: crNumericRows,
+          colWidths: [8, 50, 8, 16, 16],
+        },
+      },
+      {
+        rows: sigRows,
+        sheetName: 'SIG',
+        opts: {
+          headerRowIndex: sigHeaderRowIndex,
+          numericColIndexes: [3, 4],
+          numericRowIndexes: sigNumericRows,
+          colWidths: [8, 38, 42, 16, 16],
+        },
+      },
+    ]);
   }
 
-  // ─── Balance Sheet ───────────────────────────────────────────────
+  // ─── Balance Sheet (W5.2 volet 2 — contexture normalisée DGI) ────
+  /**
+   * Bilan XLSX — contexture normalisée DGI à 6 colonnes
+   * `Réf | Libellé | Brut N | Amort. & dépréc. | Net N | Net N-1`.
+   *
+   * Doctrine : SYSCOHADA AUDCIF, Tome 3, p. 32-34 (imprimé normalisé).
+   *
+   * Reproduit la cascade `BilanMasse → BilanRubrique → BilanPoste` issue
+   * de `actifMasses` / `passifMasses` (source de vérité W2.1). Côté ACTIF
+   * les 6 colonnes sont remplies (Brut + Amort + Net + N-1). Côté PASSIF
+   * Brut / Amort restent vides — par doctrine OHADA les capitaux propres
+   * et dettes n'ont pas d'amortissements opposants.
+   *
+   * Format numérique : `# ##0,00;(# ##0,00);"";@` (parenthèses négatives,
+   * cellule vide pour 0 — convention DGI). Bordures sur en-tête et lignes
+   * de totaux. Largeurs : Réf 8, Libellé 50, montants 16 chacun.
+   */
   balanceSheetXlsx(report: BalanceSheetReport, orgName: string): Buffer {
     const rows: unknown[][] = [];
     const hasComp = report.previous !== undefined;
 
     rows.push([orgName]);
     rows.push([
-      `Bilan OHADA – SYSCOHADA AUDCIF — Au ${report.asAtDate}` +
-        (hasComp ? ` (comparaison N-1 : ${report.previous.asAtDate})` : ''),
+      `Bilan OHADA — SYSCOHADA AUDCIF (contexture normalisée DGI) — Au ${report.asAtDate}` +
+        (hasComp ? ` (N-1 : ${report.previous.asAtDate})` : '') +
+        ' — Devise : XOF',
     ]);
     rows.push([]);
 
-    const header = hasComp
-      ? ['Code', 'Intitulé', 'Montant N', 'Montant N-1', 'Variation', '% Évolution']
-      : ['Code', 'Intitulé', 'Montant'];
+    const header: unknown[] = [
+      'Réf.',
+      'Libellé',
+      'Brut N',
+      'Amort. & dépréc.',
+      'Net N',
+      'Net N-1',
+    ];
+    const headerRowIndex = rows.length;
     rows.push(header);
 
-    rows.push(['', 'ACTIF']);
+    // Track cells that should carry the comptable number format.
+    const numericRowIndexes: number[] = [];
 
-    for (const section of report.actif.sections) {
-      const sRow = hasComp
-        ? ['', section.label, this.num(section.total), this.num(section.previousTotal), '', '']
-        : ['', section.label, this.num(section.total)];
-      rows.push(sRow);
-
-      for (const group of section.groups) {
-        const gRow = hasComp
-          ? [
-              group.code,
-              `  ${group.label}`,
-              this.num(group.amount),
-              this.num(group.previousAmount),
-              this.num(group.variation),
-              group.variationPercent ? `${group.variationPercent}%` : '',
-            ]
-          : [group.code, `  ${group.label}`, this.num(group.amount)];
-        rows.push(gRow);
+    const pushMasseRows = (masse: BilanMasse, side: 'ACTIF' | 'PASSIF'): void => {
+      rows.push([masse.code, masse.label.toUpperCase(), '', '', '', '']);
+      for (const rubrique of masse.rubriques) {
+        rows.push(['', `  ${rubrique.label}`, '', '', '', '']);
+        for (const poste of rubrique.postes) {
+          const values = this.posteRowXlsx(poste, side);
+          numericRowIndexes.push(rows.length);
+          rows.push(values);
+        }
+        // Sous-total rubrique
+        numericRowIndexes.push(rows.length);
+        rows.push([
+          '',
+          `  Sous-total ${rubrique.label}`,
+          '',
+          '',
+          this.num(rubrique.subtotal),
+          rubrique.subtotalPrevious !== undefined ? this.num(rubrique.subtotalPrevious) : '',
+        ]);
       }
-    }
+      // Total masse
+      numericRowIndexes.push(rows.length);
+      rows.push([
+        masse.code,
+        `TOTAL ${masse.label.toUpperCase()}`,
+        '',
+        '',
+        this.num(masse.total),
+        masse.totalPrevious !== undefined ? this.num(masse.totalPrevious) : '',
+      ]);
+    };
 
-    const actifTotal = hasComp
-      ? [
-          '',
-          'TOTAL ACTIF',
-          this.num(report.actif.total),
-          this.num(report.previous.totalActif),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL ACTIF', this.num(report.actif.total)];
-    rows.push(actifTotal);
+    rows.push(['', 'ACTIF', '', '', '', '']);
+    for (const masse of report.actifMasses) {
+      pushMasseRows(masse, 'ACTIF');
+    }
+    numericRowIndexes.push(rows.length);
+    rows.push([
+      '',
+      'TOTAL GÉNÉRAL ACTIF',
+      '',
+      '',
+      this.num(report.totals.actif),
+      hasComp ? this.num(report.previous.totalActif) : '',
+    ]);
 
     rows.push([]);
-    rows.push(['', 'PASSIF']);
-
-    for (const section of report.passif.sections) {
-      const sRow = hasComp
-        ? ['', section.label, this.num(section.total), this.num(section.previousTotal), '', '']
-        : ['', section.label, this.num(section.total)];
-      rows.push(sRow);
-
-      for (const group of section.groups) {
-        const gRow = hasComp
-          ? [
-              group.code,
-              `  ${group.label}`,
-              this.num(group.amount),
-              this.num(group.previousAmount),
-              this.num(group.variation),
-              group.variationPercent ? `${group.variationPercent}%` : '',
-            ]
-          : [group.code, `  ${group.label}`, this.num(group.amount)];
-        rows.push(gRow);
-      }
+    rows.push(['', 'PASSIF', '', '', '', '']);
+    for (const masse of report.passifMasses) {
+      pushMasseRows(masse, 'PASSIF');
     }
-
-    const passifTotal = hasComp
-      ? [
-          '',
-          'TOTAL PASSIF',
-          this.num(report.passif.total),
-          this.num(report.previous.totalPassif),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL PASSIF', this.num(report.passif.total)];
-    rows.push(passifTotal);
+    numericRowIndexes.push(rows.length);
+    rows.push([
+      '',
+      'TOTAL GÉNÉRAL PASSIF',
+      '',
+      '',
+      this.num(report.totals.passif),
+      hasComp ? this.num(report.previous.totalPassif) : '',
+    ]);
 
     rows.push([]);
-    rows.push(['', `Écart Actif − Passif : ${this.num(report.difference)}`]);
+    numericRowIndexes.push(rows.length);
+    rows.push(['', "Écart Actif − Passif", '', '', this.num(report.totals.difference), '']);
     if (report.netResultIncorporated !== null) {
+      numericRowIndexes.push(rows.length);
       rows.push([
         '',
-        `Résultat de l'exercice incorporé : ${this.num(report.netResultIncorporated)}`,
+        "Résultat de l'exercice incorporé dans les capitaux propres",
+        '',
+        '',
+        this.num(report.netResultIncorporated),
+        '',
       ]);
     }
 
-    return this.buildWorkbook(rows, 'Bilan');
+    return this.buildWorkbookFormatted(rows, 'Bilan', {
+      headerRowIndex,
+      numericColIndexes: [2, 3, 4, 5],
+      numericRowIndexes,
+      colWidths: [8, 50, 16, 16, 16, 16],
+    });
+  }
+
+  /**
+   * Construit la ligne XLSX d'un `BilanPoste` selon le côté. Réutilise
+   * la convention du PDF : côté PASSIF les colonnes Brut & Amort sont
+   * laissées vides (capitaux propres / dettes sans amortissements
+   * opposants — doctrine Tome 3 p. 32).
+   */
+  private posteRowXlsx(poste: BilanPoste, side: 'ACTIF' | 'PASSIF'): unknown[] {
+    const code = poste.code;
+    const label = `  ${poste.label}`;
+    const net = this.num(poste.net);
+    const netPrev = poste.netPrevious !== undefined ? this.num(poste.netPrevious) : '';
+    if (side === 'PASSIF') {
+      return [code, label, '', '', net, netPrev];
+    }
+    const brut = poste.brut !== undefined ? this.num(poste.brut) : '';
+    const ded = poste.deduction !== undefined ? this.num(poste.deduction) : '';
+    return [code, label, brut, ded, net, netPrev];
   }
 
   // ─── Comparative balance N / N-1 ─────────────────────────────────
@@ -444,35 +562,91 @@ export class ReportsXlsxService {
     return this.buildWorkbook(rows, 'TAFIRE');
   }
 
-  // ─── TFT ─────────────────────────────────────────────────────────
+  // ─── TFT (W5.2 volet 2 — contexture normalisée DGI) ──────────────
+  /**
+   * Tableau des Flux de Trésorerie XLSX — contexture normalisée DGI à
+   * 4 colonnes `Réf | Libellé | Montant N | Montant N-1`.
+   *
+   * Doctrine : Tome 3 p. 36 (TFT méthode indirecte).
+   *
+   * Structure : 3 sections ZA / ZB / ZC avec sous-totaux puis le pied
+   * normalisé ZD / ZG / ZH. Affiche un contrôle de cohérence
+   * ZH = ZG − ZD = ZA + ZB + ZC.
+   *
+   * `TftReport` n'expose pas N-1 ; la colonne reste vide en attendant
+   * `compareWith` sur `getTft`. Format numérique : parenthèses négatives.
+   */
   tftXlsx(report: TftReport, orgName: string): Buffer {
     const rows: unknown[][] = [];
     rows.push([orgName]);
-    rows.push([`TFT (méthode indirecte) — Du ${report.fromDate} au ${report.toDate}`]);
+    rows.push([
+      `Tableau des Flux de Trésorerie (TFT) — SYSCOHADA AUDCIF — Du ${report.fromDate} au ${report.toDate} — méthode indirecte — Devise : XOF`,
+    ]);
     rows.push([]);
-    rows.push(['Réf.', 'Libellé', 'Montant']);
+    const header: unknown[] = ['Réf.', 'Libellé', 'Montant N', 'Montant N-1'];
+    const headerRowIndex = rows.length;
+    rows.push(header);
+    const numericRowIndexes: number[] = [];
 
-    const pushSection = (s: TftReport['fluxExploitation']) => {
-      rows.push([s.code, s.label, '']);
+    const pushSection = (s: TftReport['fluxExploitation'], title: string) => {
+      rows.push(['', title, '', '']);
+      rows.push([s.code, s.label, '', '']);
       for (const ln of s.lines) {
-        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount)]);
+        numericRowIndexes.push(rows.length);
+        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount), '']);
       }
-      rows.push(['', `  TOTAL ${s.label}`, this.num(s.total)]);
+      numericRowIndexes.push(rows.length);
+      rows.push(['', `  Sous-total ${s.code}`, this.num(s.total), '']);
       rows.push([]);
     };
-    pushSection(report.fluxExploitation);
-    pushSection(report.fluxInvestissement);
-    pushSection(report.fluxFinancement);
+    pushSection(report.fluxExploitation, 'ACTIVITÉS OPÉRATIONNELLES (ZA)');
+    pushSection(report.fluxInvestissement, "OPÉRATIONS D'INVESTISSEMENT (ZB)");
+    pushSection(report.fluxFinancement, 'OPÉRATIONS DE FINANCEMENT (ZC)');
 
-    rows.push(['', 'Variation de trésorerie (Σ flux)', this.num(report.variationTresorerie)]);
-    rows.push(['', 'Trésorerie à l\'ouverture', this.num(report.tresorerieOuverture)]);
-    rows.push(['', 'Trésorerie à la clôture', this.num(report.tresorerieCloture)]);
-    rows.push([]);
-    rows.push(['', 'NOTES MÉTHODOLOGIQUES']);
-    for (const n of report.methodologyNotes) {
-      rows.push(['', n, '']);
+    numericRowIndexes.push(rows.length);
+    rows.push(['ZD', "Trésorerie nette à l'ouverture", this.num(report.tresorerieOuverture), '']);
+    numericRowIndexes.push(rows.length);
+    rows.push(['ZG', 'Trésorerie nette à la clôture', this.num(report.tresorerieCloture), '']);
+    numericRowIndexes.push(rows.length);
+    rows.push([
+      'ZH',
+      'Variation totale (ZA + ZB + ZC = ZG − ZD)',
+      this.num(report.variationTresorerie),
+      '',
+    ]);
+
+    // Cohérence
+    const za = parseFloat(report.fluxExploitation.total);
+    const zb = parseFloat(report.fluxInvestissement.total);
+    const zc = parseFloat(report.fluxFinancement.total);
+    const zd = parseFloat(report.tresorerieOuverture);
+    const zg = parseFloat(report.tresorerieCloture);
+    const ecart = Math.abs(za + zb + zc - (zg - zd));
+    if (ecart > 0.005) {
+      rows.push([]);
+      numericRowIndexes.push(rows.length);
+      rows.push([
+        '',
+        'Écart de cohérence (Σ flux − (ZG − ZD))',
+        this.num((za + zb + zc - (zg - zd)).toFixed(2)),
+        '',
+      ]);
     }
-    return this.buildWorkbook(rows, 'TFT');
+
+    if (report.methodologyNotes.length > 0) {
+      rows.push([]);
+      rows.push(['', 'NOTES MÉTHODOLOGIQUES', '', '']);
+      for (const n of report.methodologyNotes) {
+        rows.push(['', n, '', '']);
+      }
+    }
+
+    return this.buildWorkbookFormatted(rows, 'TFT', {
+      headerRowIndex,
+      numericColIndexes: [2, 3],
+      numericRowIndexes,
+      colWidths: [8, 60, 18, 18],
+    });
   }
 
   // ─── Annexe (Notes 1-36) ─────────────────────────────────────────
@@ -875,6 +1049,81 @@ export class ReportsXlsxService {
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
     return Buffer.from(buf);
+  }
+
+  /**
+   * Variante de `buildWorkbook` qui applique un format comptable (`z`
+   * cell property) sur les cellules numériques et fixe les largeurs de
+   * colonnes explicitement. Utilisé par les exports W5.2 contexture DGI.
+   */
+  private buildWorkbookFormatted(
+    rows: unknown[][],
+    sheetName: string,
+    opts: {
+      headerRowIndex: number;
+      numericColIndexes: readonly number[];
+      numericRowIndexes: readonly number[];
+      colWidths: readonly number[];
+    },
+  ): Buffer {
+    const wb = XLSX.utils.book_new();
+    const ws = this.buildSheetFormatted(rows, opts);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+    return Buffer.from(buf);
+  }
+
+  /**
+   * Classeur multi-feuilles (CR XLSX W5.2 : CR + SIG). Chaque sheet est
+   * construit via `buildSheetFormatted` avec ses propres options.
+   */
+  private buildWorkbookMultiSheet(
+    sheets: ReadonlyArray<{
+      rows: unknown[][];
+      sheetName: string;
+      opts: {
+        headerRowIndex: number;
+        numericColIndexes: readonly number[];
+        numericRowIndexes: readonly number[];
+        colWidths: readonly number[];
+      };
+    }>,
+  ): Buffer {
+    const wb = XLSX.utils.book_new();
+    for (const sheet of sheets) {
+      const ws = this.buildSheetFormatted(sheet.rows, sheet.opts);
+      XLSX.utils.book_append_sheet(wb, ws, sheet.sheetName);
+    }
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+    return Buffer.from(buf);
+  }
+
+  private buildSheetFormatted(
+    rows: unknown[][],
+    opts: {
+      headerRowIndex: number;
+      numericColIndexes: readonly number[];
+      numericRowIndexes: readonly number[];
+      colWidths: readonly number[];
+    },
+  ): XLSX.WorkSheet {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Apply comptable number format on numeric cells.
+    for (const rowIdx of opts.numericRowIndexes) {
+      for (const colIdx of opts.numericColIndexes) {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+        const cell = (ws as Record<string, XLSX.CellObject | undefined>)[ref];
+        if (cell !== undefined && cell.t === 'n') {
+          cell.z = FMT_AMOUNT_FR;
+        }
+      }
+    }
+
+    // Column widths from explicit spec.
+    ws['!cols'] = opts.colWidths.map((wch) => ({ wch }));
+
+    return ws;
   }
 
   private num(value: string | number | undefined | null): number {

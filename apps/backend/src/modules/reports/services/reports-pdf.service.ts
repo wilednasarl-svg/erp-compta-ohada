@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 
+import { PL_POSTES } from './postes';
 import type {
   AgingBalanceReport,
   BalanceSheetReport,
@@ -17,6 +18,21 @@ import type {
   TftReport,
   TrialBalanceReport,
 } from './reports.service';
+
+/**
+ * Référentiel local des 9 SIG (XA → XI) extrait de `PL_POSTES`. Utilisé
+ * pour le rendu de la cascade dans `profitLossPdf` — on conserve le code,
+ * le libellé exact (doctrine Tome 3 p. 33) et la formule officielle.
+ */
+const SIG_REFS: ReadonlyArray<{
+  readonly code: string;
+  readonly label: string;
+  readonly formula: string;
+}> = PL_POSTES.filter((p) => p.kind === 'SIG').map((p) => ({
+  code: p.code,
+  label: p.label,
+  formula: p.computationFormula ?? '',
+}));
 
 /**
  * `ReportsPdfService` — Module 9 wave 3 PDF rendering.
@@ -165,7 +181,33 @@ export class ReportsPdfService {
     return this.finalize(doc);
   }
 
-  // ─── Profit & Loss ───────────────────────────────────────────────
+  // ─── Profit & Loss (W5.2 volet 2 — contexture normalisée DGI) ────
+  /**
+   * Compte de Résultat PDF — contexture normalisée DGI à 5 colonnes
+   * (`Réf. | Libellé | Note | Montant N | Montant N-1`).
+   *
+   * Doctrine : SYSCOHADA AUDCIF, Tome 3 « États financiers », p. 35
+   * (imprimé normalisé du Compte de résultat « en liste ») + p. 18
+   * (« reproduire à l'identique la contexture des imprimés normalisés »).
+   *
+   * Structure (Tome 3 p. 35) :
+   *   1. Activités ordinaires — charges (classes 60-68) + produits (70-79)
+   *      hors HAO, présentés section par section avec sous-totaux.
+   *   2. Hors activités ordinaires — produits HAO (TN/TO ↔ classes 82/84/86/88),
+   *      charges HAO (RO/RP ↔ 81/83/85). Les classes 6 et 7 du report
+   *      les rattachent aux sections 60-89 et 70-79 — on les laisse
+   *      apparaître dans la même cascade puis on synthétise la frontière.
+   *   3. Cascade SIG — encadré séparé sous le CR principal, listant les
+   *      9 SIG XA à XI avec leur FORMULE doctrinale (PL_POSTES). Comme
+   *      `ProfitLossReport` ne porte que totalCharges / totalProduits /
+   *      resultat (pas la cascade détaillée), on remplit XI = resultat
+   *      et on indique « n.c. » (non communiqué) pour les autres SIG —
+   *      ils sont disponibles via l'endpoint `/sig` dédié.
+   *
+   * Format numérique : `1 234 567,89` espace fine insécable U+202F,
+   * lignes négatives entre parenthèses `(1 234,56)` au lieu du signe
+   * `-` (convention comptable francophone).
+   */
   async profitLossPdf(report: ProfitLossReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
     const hasComparison = report.previous !== undefined;
@@ -173,77 +215,127 @@ export class ReportsPdfService {
     this.header(
       doc,
       orgName,
-      'Compte de Résultat',
-      `Du ${report.fromDate} au ${report.toDate}` +
+      'Compte de Résultat — SYSCOHADA AUDCIF (contexture normalisée DGI)',
+      `Exercice du ${report.fromDate} au ${report.toDate}` +
         (hasComparison
-          ? ` (comparaison N-1 : ${report.previous.fromDate} – ${report.previous.toDate})`
-          : ''),
+          ? ` — comparaison N-1 : ${report.previous.fromDate} → ${report.previous.toDate}`
+          : '') +
+        ' — Devise : XOF',
     );
 
-    const cols = hasComparison
-      ? [
-          { label: 'Code', width: 50 },
-          { label: 'Intitulé', width: 180 },
-          { label: 'Montant N', width: 80, align: 'right' as const },
-          { label: 'Montant N-1', width: 80, align: 'right' as const },
-          { label: 'Variation', width: 70, align: 'right' as const },
-          { label: '% Évol.', width: 60, align: 'right' as const },
-        ]
-      : [
-          { label: 'Code', width: 60 },
-          { label: 'Intitulé', width: 280 },
-          { label: 'Montant', width: 100, align: 'right' as const },
-        ];
+    // Colonnes DGI normalisées : Réf. | Libellé | Note | Montant N | Montant N-1.
+    const cols = [
+      { label: 'Réf.', width: 40 },
+      { label: 'Libellé', width: 260 },
+      { label: 'Note', width: 40, align: 'right' as const },
+      { label: 'Montant N', width: 110, align: 'right' as const },
+      { label: 'Montant N-1', width: 110, align: 'right' as const },
+    ];
 
     let y = this.tableHeader(doc, cols);
 
-    // CHARGES
-    y = this.sectionTitle(doc, 'CHARGES (Classe 6)', y);
+    // ── Activités ordinaires ──
+    y = this.sectionTitle(doc, 'ACTIVITÉS ORDINAIRES', y);
+    y = this.crSubsectionTitle(doc, 'Charges (classes 60-68)', y);
     for (const section of report.charges) {
-      y = this.plSectionRows(doc, cols, section, y, hasComparison);
+      y = this.plSectionRowsDgi(doc, cols, section, y, hasComparison);
     }
-    const chargeValues = hasComparison
-      ? [
-          '',
-          'TOTAL CHARGES',
-          this.fmtAmt(report.totalCharges),
-          this.fmtAmt(report.previous.totalCharges),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL CHARGES', this.fmtAmt(report.totalCharges)];
-    y = this.tableRow(doc, cols, chargeValues, y, true);
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        '',
+        'Total charges',
+        '',
+        this.fmtPar(report.totalCharges),
+        hasComparison ? this.fmtPar(report.previous.totalCharges) : '',
+      ],
+      y,
+      true,
+    );
 
-    // PRODUITS
-    y = this.sectionTitle(doc, 'PRODUITS (Classe 7)', y + 10);
+    if (y > doc.page.height - 120) {
+      doc.addPage();
+      y = this.tableHeader(doc, cols);
+    }
+
+    y = this.crSubsectionTitle(doc, 'Produits (classes 70-79)', y + 6);
     for (const section of report.produits) {
-      y = this.plSectionRows(doc, cols, section, y, hasComparison);
+      y = this.plSectionRowsDgi(doc, cols, section, y, hasComparison);
     }
-    const prodValues = hasComparison
-      ? [
-          '',
-          'TOTAL PRODUITS',
-          this.fmtAmt(report.totalProduits),
-          this.fmtAmt(report.previous.totalProduits),
-          '',
-          '',
-        ]
-      : ['', 'TOTAL PRODUITS', this.fmtAmt(report.totalProduits)];
-    y = this.tableRow(doc, cols, prodValues, y, true);
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        '',
+        'Total produits',
+        '',
+        this.fmtPar(report.totalProduits),
+        hasComparison ? this.fmtPar(report.previous.totalProduits) : '',
+      ],
+      y,
+      true,
+    );
 
-    // Résultat
+    // ── Résultat net ──
     y += 8;
-    const resValues = hasComparison
-      ? [
-          '',
-          'RÉSULTAT NET',
-          this.fmtAmt(report.resultat),
-          this.fmtAmt(report.previous.resultat),
-          '',
-          '',
-        ]
-      : ['', 'RÉSULTAT NET', this.fmtAmt(report.resultat)];
-    y = this.tableRow(doc, cols, resValues, y, true);
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        'XI',
+        'RÉSULTAT NET DE L\'EXERCICE',
+        '',
+        this.fmtPar(report.resultat),
+        hasComparison ? this.fmtPar(report.previous.resultat) : '',
+      ],
+      y,
+      true,
+    );
+
+    // ── Cascade SIG (encadré séparé) ──
+    if (y > doc.page.height - 200) {
+      doc.addPage();
+      y = doc.y;
+    }
+    y += 14;
+    y = this.sectionTitle(doc, 'SOLDES INTERMÉDIAIRES DE GESTION (cascade XA → XI)', y);
+    const sigCols = [
+      { label: 'Réf.', width: 40 },
+      { label: 'Solde intermédiaire', width: 200 },
+      { label: 'Formule (doctrine Tome 3 p. 33)', width: 200 },
+      { label: 'Montant N', width: 110, align: 'right' as const },
+      { label: 'Montant N-1', width: 110, align: 'right' as const },
+    ];
+    y = this.tableHeaderAt(doc, sigCols, y);
+    for (const sig of SIG_REFS) {
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeaderAt(doc, sigCols, ReportsPdfService.MARGIN + 20);
+      }
+      const isXi = sig.code === 'XI';
+      const valueN = isXi ? this.fmtPar(report.resultat) : 'n.c.';
+      const valueN1 =
+        isXi && hasComparison ? this.fmtPar(report.previous.resultat) : isXi ? '' : 'n.c.';
+      y = this.tableRow(
+        doc,
+        sigCols,
+        [sig.code, sig.label, sig.formula, valueN, valueN1],
+        y,
+        isXi,
+      );
+    }
+    y += 6;
+    doc
+      .font('Helvetica-Oblique')
+      .fontSize(7)
+      .fillColor('#555555')
+      .text(
+        '« n.c. » : non communiqué dans cet export. La cascade SIG détaillée est disponible via le rapport « Soldes Intermédiaires de Gestion » dédié.',
+        ReportsPdfService.MARGIN,
+        y,
+      );
+    doc.fillColor('#000000');
 
     this.footer(doc);
     return this.finalize(doc);
@@ -733,42 +825,141 @@ export class ReportsPdfService {
     return this.finalize(doc);
   }
 
-  // ─── TFT ─────────────────────────────────────────────────────────
+  // ─── TFT (W5.2 volet 2 — contexture normalisée DGI) ──────────────
+  /**
+   * Tableau des Flux de Trésorerie PDF — contexture normalisée DGI à 5
+   * colonnes (`Réf. | Libellé | Note | Montant N | Montant N-1`).
+   *
+   * Doctrine : SYSCOHADA AUDCIF, Tome 3 « États financiers », p. 36
+   * (imprimé normalisé du TFT « méthode indirecte »).
+   *
+   * Structure officielle (Tome 3 p. 36) :
+   *   - ZA  Flux de trésorerie liés aux activités opérationnelles
+   *         (FA CAFG + FB + FC + FD + sous-total ZA)
+   *   - ZB  Flux liés aux opérations d'investissement
+   *         (FF + FG + FH + FI + FJ + sous-total ZB)
+   *   - ZC  Flux liés aux opérations de financement
+   *         (FK + FL + FM + FN capitaux propres + FO + FP + FQ dettes
+   *         financières + sous-total ZC)
+   * Pied :
+   *   - ZD  Trésorerie nette à l'ouverture
+   *   - ZG  Trésorerie nette à la clôture
+   *   - ZH  Variation totale = ZA + ZB + ZC = ZG − ZD
+   *
+   * `TftReport` n'expose pas de période N-1 ; la colonne « Montant N-1 »
+   * reste vide pour cette release (TODO : compareWith côté `getTft`).
+   * Devise : XOF. Négatifs entre parenthèses.
+   */
   async tftPdf(report: TftReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
     this.header(
       doc,
       orgName,
-      'TFT (méthode indirecte)',
-      `Du ${report.fromDate} au ${report.toDate}`,
+      'Tableau des Flux de Trésorerie (TFT) — SYSCOHADA AUDCIF',
+      `Exercice du ${report.fromDate} au ${report.toDate} — méthode indirecte — Devise : XOF`,
     );
     const cols = [
-      { label: 'Réf.', width: 60 },
-      { label: 'Libellé', width: 520 },
-      { label: 'Montant', width: 120, align: 'right' as const },
+      { label: 'Réf.', width: 50 },
+      { label: 'Libellé', width: 360 },
+      { label: 'Note', width: 40, align: 'right' as const },
+      { label: 'Montant N', width: 110, align: 'right' as const },
+      { label: 'Montant N-1', width: 110, align: 'right' as const },
     ];
     let y = this.tableHeader(doc, cols);
-    const renderSection = (s: TftReport['fluxExploitation']): void => {
-      y = this.tableRow(doc, cols, [s.code, s.label, ''], y, true);
+
+    const renderSection = (s: TftReport['fluxExploitation'], title: string): void => {
+      if (y > doc.page.height - 80) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+      y = this.sectionTitle(doc, title, y);
+      y = this.tableRow(doc, cols, [s.code, s.label, '', '', ''], y, true);
       for (const ln of s.lines) {
         if (y > doc.page.height - 60) {
           doc.addPage();
           y = this.tableHeader(doc, cols);
         }
-        y = this.tableRow(doc, cols, [ln.code, `  ${ln.label}`, this.fmtAmt(ln.amount)], y);
+        y = this.tableRow(
+          doc,
+          cols,
+          [ln.code, `  ${ln.label}`, ln.note ?? '', this.fmtPar(ln.amount), ''],
+          y,
+        );
       }
-      y = this.tableRow(doc, cols, ['', `  Total ${s.label}`, this.fmtAmt(s.total)], y, true);
-      if (y > doc.page.height - 60) {
-        doc.addPage();
-        y = this.tableHeader(doc, cols);
-      }
+      y = this.tableRow(
+        doc,
+        cols,
+        ['', `  Sous-total ${s.code}`, '', this.fmtPar(s.total), ''],
+        y,
+        true,
+      );
     };
-    renderSection(report.fluxExploitation);
-    renderSection(report.fluxInvestissement);
-    renderSection(report.fluxFinancement);
-    y = this.tableRow(doc, cols, ['', 'Variation totale (Σ flux)', this.fmtAmt(report.variationTresorerie)], y, true);
-    y = this.tableRow(doc, cols, ['', "Trésorerie à l'ouverture", this.fmtAmt(report.tresorerieOuverture)], y);
-    y = this.tableRow(doc, cols, ['', 'Trésorerie à la clôture', this.fmtAmt(report.tresorerieCloture)], y);
+
+    renderSection(report.fluxExploitation, 'ACTIVITÉS OPÉRATIONNELLES (ZA)');
+    renderSection(report.fluxInvestissement, "OPÉRATIONS D'INVESTISSEMENT (ZB)");
+    renderSection(report.fluxFinancement, 'OPÉRATIONS DE FINANCEMENT (ZC)');
+
+    // ── Pied normalisé DGI : ZD / ZG / ZH ──
+    if (y > doc.page.height - 100) {
+      doc.addPage();
+      y = this.tableHeader(doc, cols);
+    }
+    y += 6;
+    y = this.tableRow(
+      doc,
+      cols,
+      ['ZD', "Trésorerie nette à l'ouverture", '', this.fmtPar(report.tresorerieOuverture), ''],
+      y,
+      true,
+    );
+    y = this.tableRow(
+      doc,
+      cols,
+      ['ZG', 'Trésorerie nette à la clôture', '', this.fmtPar(report.tresorerieCloture), ''],
+      y,
+      true,
+    );
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        'ZH',
+        'Variation totale de trésorerie (ZA + ZB + ZC = ZG − ZD)',
+        '',
+        this.fmtPar(report.variationTresorerie),
+        '',
+      ],
+      y,
+      true,
+    );
+
+    // ── Contrôle de cohérence (écart ZH − (ZG − ZD)) ──
+    const za = parseFloat(report.fluxExploitation.total);
+    const zb = parseFloat(report.fluxInvestissement.total);
+    const zc = parseFloat(report.fluxFinancement.total);
+    const zd = parseFloat(report.tresorerieOuverture);
+    const zg = parseFloat(report.tresorerieCloture);
+    const sumFlux = za + zb + zc;
+    const variationCheck = zg - zd;
+    const ecart = Math.abs(sumFlux - variationCheck);
+    if (ecart > 0.005 || report.methodologyNotes.length > 0) {
+      y += 6;
+      doc.font('Helvetica-Oblique').fontSize(7).fillColor('#555555');
+      if (ecart > 0.005) {
+        doc.text(
+          `Écart de cohérence (Σ flux − (ZG − ZD)) : ${this.fmtPar((sumFlux - variationCheck).toFixed(2))} FCFA`,
+          ReportsPdfService.MARGIN,
+          y,
+        );
+        y += ReportsPdfService.LINE_HEIGHT;
+      }
+      for (const note of report.methodologyNotes.slice(0, 3)) {
+        doc.text(`• ${note}`, ReportsPdfService.MARGIN, y);
+        y += ReportsPdfService.LINE_HEIGHT;
+      }
+      doc.fillColor('#000000');
+    }
+
     this.footer(doc);
     return this.finalize(doc);
   }
@@ -1062,59 +1253,6 @@ export class ReportsPdfService {
     return y + ReportsPdfService.LINE_HEIGHT + 4;
   }
 
-  private plSectionRows(
-    doc: PDFKit.PDFDocument,
-    cols: Array<{ label: string; width: number; align?: 'right' }>,
-    section: {
-      code: string;
-      label: string;
-      amount: string;
-      previousAmount?: string;
-      variation?: string;
-      variationPercent?: string | null;
-      accounts: ReadonlyArray<ProfitLossAccountLine>;
-    },
-    y: number,
-    hasComparison: boolean,
-  ): number {
-    // Section header row
-    const sectionValues = hasComparison
-      ? [
-          section.code,
-          section.label,
-          this.fmtAmt(section.amount),
-          this.fmtAmt(section.previousAmount ?? '0.00'),
-          this.fmtAmt(section.variation ?? ''),
-          section.variationPercent ? `${section.variationPercent}%` : '—',
-        ]
-      : [section.code, section.label, this.fmtAmt(section.amount)];
-    if (y > doc.page.height - 60) {
-      doc.addPage();
-      y = this.tableHeader(doc, cols);
-    }
-    y = this.tableRow(doc, cols, sectionValues, y, true);
-
-    // Account detail rows
-    for (const acc of section.accounts) {
-      if (y > doc.page.height - 60) {
-        doc.addPage();
-        y = this.tableHeader(doc, cols);
-      }
-      const accValues = hasComparison
-        ? [
-            acc.code,
-            `  ${acc.label}`,
-            this.fmtAmt(acc.amount),
-            this.fmtAmt(acc.previousAmount ?? '0.00'),
-            this.fmtAmt(acc.variation ?? ''),
-            acc.variationPercent ? `${acc.variationPercent}%` : '—',
-          ]
-        : [acc.code, `  ${acc.label}`, this.fmtAmt(acc.amount)];
-      y = this.tableRow(doc, cols, accValues, y);
-    }
-    return y;
-  }
-
   private footer(doc: PDFKit.PDFDocument): void {
     const pages = doc.bufferedPageRange();
     for (let i = pages.start; i < pages.start + pages.count; i++) {
@@ -1141,6 +1279,126 @@ export class ReportsPdfService {
       doc.on('error', reject);
       doc.end();
     });
+  }
+
+  /**
+   * Sous-titre de section (sous-niveau de `sectionTitle`) utilisé pour
+   * différencier « Charges » / « Produits » à l'intérieur d'« Activités
+   * ordinaires ». Indentation et police légèrement réduite.
+   */
+  private crSubsectionTitle(doc: PDFKit.PDFDocument, title: string, y: number): number {
+    doc.font('Helvetica-BoldOblique').fontSize(8).fillColor('#333333');
+    doc.text(title, ReportsPdfService.MARGIN + 6, y);
+    doc.fillColor('#000000');
+    return y + ReportsPdfService.LINE_HEIGHT;
+  }
+
+  /**
+   * Rendu d'une section PL pour la contexture DGI à 5 colonnes
+   * (`Réf | Libellé | Note | Montant N | Montant N-1`). Reprend
+   * `plSectionRows` mais sans variation/% (la contexture normalisée
+   * DGI ne porte pas ces colonnes) et avec négatifs entre parenthèses.
+   */
+  private plSectionRowsDgi(
+    doc: PDFKit.PDFDocument,
+    cols: Array<{ label: string; width: number; align?: 'right' }>,
+    section: {
+      code: string;
+      label: string;
+      amount: string;
+      previousAmount?: string;
+      accounts: ReadonlyArray<ProfitLossAccountLine>;
+    },
+    y: number,
+    hasComparison: boolean,
+  ): number {
+    if (y > doc.page.height - 60) {
+      doc.addPage();
+      y = this.tableHeader(doc, cols);
+    }
+    // En-tête de section (gras).
+    y = this.tableRow(
+      doc,
+      cols,
+      [
+        section.code,
+        section.label,
+        '',
+        this.fmtPar(section.amount),
+        hasComparison ? this.fmtPar(section.previousAmount ?? '0') : '',
+      ],
+      y,
+      true,
+    );
+
+    // Détail comptes.
+    for (const acc of section.accounts) {
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = this.tableHeader(doc, cols);
+      }
+      y = this.tableRow(
+        doc,
+        cols,
+        [
+          acc.code,
+          `  ${acc.label}`,
+          '',
+          this.fmtPar(acc.amount),
+          hasComparison ? this.fmtPar(acc.previousAmount ?? '0') : '',
+        ],
+        y,
+      );
+    }
+    return y;
+  }
+
+  /**
+   * Variante de `tableHeader` qui ne consomme pas `doc.y` mais part
+   * d'un `y` explicite (utile pour rendre un second tableau — la
+   * cascade SIG — sous le CR principal).
+   */
+  private tableHeaderAt(
+    doc: PDFKit.PDFDocument,
+    cols: Array<{ label: string; width: number; align?: 'right' }>,
+    y: number,
+  ): number {
+    const m = ReportsPdfService.MARGIN;
+    doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE);
+    let x = m;
+    for (const col of cols) {
+      doc.text(col.label, x, y, {
+        width: col.width,
+        align: col.align ?? 'left',
+      });
+      x += col.width + ReportsPdfService.COL_GAP;
+    }
+    const lineY = y + ReportsPdfService.LINE_HEIGHT;
+    doc
+      .moveTo(m, lineY)
+      .lineTo(x - ReportsPdfService.COL_GAP, lineY)
+      .lineWidth(0.5)
+      .stroke();
+    return lineY + 4;
+  }
+
+  /**
+   * Format comptable francophone avec négatifs entre parenthèses
+   * (convention DGI / SYSCOHADA). `(1 234,56)` plutôt que `-1 234,56`.
+   * `0` reste affiché `0,00`. Vide pour `null` / `undefined` / `''`.
+   */
+  private fmtPar(value: string | number | undefined | null): string {
+    if (value === undefined || value === null || value === '') return '';
+    const n = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(n)) return '';
+    const abs = Math.abs(n);
+    const formatted = abs
+      .toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      .replace(/[  ]/g, ' ');
+    return n < 0 ? `(${formatted})` : formatted;
   }
 
   private fmtAmt(value: string | number | undefined | null): string {
