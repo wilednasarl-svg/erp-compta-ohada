@@ -2,26 +2,10 @@
 
 import { Loader2, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-/**
- * Confirmation inline pour la suppression d'une session d'import.
- *
- * Remplace `window.confirm()` — la boîte native du navigateur casse
- * complètement la cohérence visuelle (typo système, contrastes
- * différents, position arbitraire) et n'est pas accessible aux lecteurs
- * d'écran de la même façon que nos composants ARIA.
- *
- * Interaction :
- *   - Premier clic sur la poubelle → ouvre un popover avec
- *     l'avertissement détaillé et deux boutons (Annuler / Supprimer).
- *   - Click outside ou Échap → ferme sans action.
- *   - Click "Supprimer" → exécute `onConfirm()`, le parent affiche
- *     le spinner via `isPending` et ferme via `isPending` qui repasse
- *     à `false`.
- */
 
 interface DeleteSessionConfirmProps {
   readonly label: string;
@@ -31,6 +15,11 @@ interface DeleteSessionConfirmProps {
   readonly onConfirm: () => void;
 }
 
+/**
+ * Popover de confirmation de suppression rendu via createPortal.
+ * Le portal évite que le popover soit clippé par overflow:hidden des
+ * conteneurs parents (liste, section, carte).
+ */
 export function DeleteSessionConfirm({
   label,
   disabled,
@@ -39,14 +28,27 @@ export function DeleteSessionConfirm({
   onConfirm,
 }: DeleteSessionConfirmProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
+  const openPopover = () => {
+    if (disabled) return;
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setIsOpen((v) => !v);
+  };
+
+  /* Close on outside pointer down */
   useEffect(() => {
     if (!isOpen) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
+      if (triggerRef.current && triggerRef.current.contains(e.target as Node)) return;
+      setIsOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsOpen(false);
@@ -59,27 +61,31 @@ export function DeleteSessionConfirm({
     };
   }, [isOpen]);
 
-  // Quand la mutation se termine, on referme proprement.
+  /* Reposition on scroll/resize while open */
   useEffect(() => {
-    if (!isPending && isOpen) {
-      // Ne pas refermer pendant que la mutation tourne — l'utilisateur
-      // verrait le popover disparaître sans feedback. On laisse le
-      // parent gérer la fermeture en passant isPending=false ET en
-      // invalidant le state qui rerendrait le composant.
-    }
-  }, [isPending, isOpen]);
+    if (!isOpen) return;
+    const update = () => {
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+      }
+    };
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen]);
 
   return (
-    <div ref={containerRef} className="relative">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled || (isPending && !isOpen)}
         title={disabled ? disabledReason : 'Supprimer la session'}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (disabled) return;
-          setIsOpen((v) => !v);
-        }}
+        onClick={openPopover}
         className={cn(
           'inline-flex items-center justify-center rounded-md border border-line-strong bg-paper p-1.5 text-ink-mute transition-colors',
           'hover:border-critical hover:bg-critical-soft hover:text-critical',
@@ -97,11 +103,12 @@ export function DeleteSessionConfirm({
         )}
       </button>
 
-      {isOpen && !disabled && (
+      {isOpen && pos && createPortal(
         <div
           role="dialog"
           aria-label="Confirmer la suppression de la session"
-          className="absolute right-0 top-[calc(100%+6px)] z-20 w-80 rounded-md border border-line-strong bg-paper p-4 text-left shadow-pop"
+          style={{ top: pos.top, right: pos.right, position: 'fixed', zIndex: 200 }}
+          className="w-80 rounded-md border border-line-strong bg-paper p-4 text-left shadow-xl"
         >
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold text-ink">Supprimer cette session ?</p>
@@ -115,7 +122,7 @@ export function DeleteSessionConfirm({
             </button>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-            La session «&nbsp;<span className="font-medium text-ink">{label}</span>&nbsp;»
+            La session&nbsp;«&nbsp;<span className="font-medium text-ink">{label}</span>&nbsp;»
             sera supprimée définitivement. Le fichier source, les lignes en staging et les
             erreurs associées seront perdus. Cette action est irréversible.
           </p>
@@ -144,8 +151,9 @@ export function DeleteSessionConfirm({
               Supprimer
             </Button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }

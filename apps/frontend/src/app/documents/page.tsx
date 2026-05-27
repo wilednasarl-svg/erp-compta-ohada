@@ -509,7 +509,13 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
       const url = URL.createObjectURL(blob);
       setPreview({ url, mime });
     } catch (err) {
-      setPreviewError(err instanceof Error ? err.message : 'Impossible de charger le document');
+      const msg = err instanceof Error ? err.message : 'Impossible de charger le document';
+      const friendly = msg.includes('404')
+        ? 'Fichier introuvable sur le serveur (Erreur 404). Le fichier a peut-être été perdu lors d\'un redémarrage du serveur.'
+        : msg.includes('401') || msg.includes('403')
+          ? 'Accès refusé — vérifiez votre session (Erreur ' + msg.replace(/\D/g, '') + ').'
+          : msg;
+      setPreviewError(friendly);
     } finally {
       setLoadingPreview(false);
     }
