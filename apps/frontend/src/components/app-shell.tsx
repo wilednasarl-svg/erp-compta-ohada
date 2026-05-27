@@ -1,6 +1,14 @@
 'use client';
 
-import { Building2, ChevronRight, ChevronsUpDown, LogOut, Search } from 'lucide-react';
+import {
+  Building2,
+  ChevronRight,
+  ChevronsUpDown,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -12,21 +20,27 @@ import { NAV_GROUPS } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { useAuthStore, useCurrentOrg, useCurrentUser } from '@/stores/auth-store';
 
-/**
- * `AppShell` — authenticated layout.
- *
- *   ┌── topbar ────────────────────────────────────────────────┐
- *   │ wordmark · org switcher · period chip · ⌘K · user menu   │
- *   ├── sidebar ──────┬── main ─────────────────────────────────┤
- *   │ grouped by      │                                         │
- *   │ domain          │  page content (full width)              │
- *   │ 240px fixed     │                                         │
- *   └─────────────────┴─────────────────────────────────────────┘
- *
- * Visual direction follows DESIGN.md: paper-ivory tones, editorial
- * serif reserved for page H1s (handled by individual pages), tabular
- * figures via globals.css, accent green only on active/CTA states.
- */
+type GroupColorScheme = {
+  readonly dot: string;
+  readonly text: string;
+  readonly bg: string;
+  readonly border: string;
+};
+
+const GROUP_COLORS: Record<string, GroupColorScheme> = {
+  'Pilotage':     { dot: 'bg-accent',   text: 'text-accent-ink',   bg: 'bg-accent-soft',   border: 'border-accent/30' },
+  'Référentiel':  { dot: 'bg-info',     text: 'text-info-ink',     bg: 'bg-info-soft',     border: 'border-info/30' },
+  'Saisie':       { dot: 'bg-warn',     text: 'text-warn-ink',     bg: 'bg-warn-soft',     border: 'border-warn/30' },
+  'Retraitement': { dot: 'bg-critical', text: 'text-critical-ink', bg: 'bg-critical-soft', border: 'border-critical/30' },
+  'États':        { dot: 'bg-accent',   text: 'text-accent-ink',   bg: 'bg-accent-soft',   border: 'border-accent/30' },
+  'Analyse & IA': { dot: 'bg-info',     text: 'text-info-ink',     bg: 'bg-info-soft',     border: 'border-info/30' },
+  'Organisation': { dot: 'bg-ink-mute', text: 'text-ink-soft',     bg: 'bg-sunk',          border: 'border-line-strong' },
+};
+
+const DEFAULT_COLORS: GroupColorScheme = {
+  dot: 'bg-ink-mute', text: 'text-ink-soft', bg: 'bg-sunk', border: 'border-line-strong',
+};
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -45,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () => new Set(activeGroupTitle ? [activeGroupTitle] : NAV_GROUPS.map((g) => g.title)),
   );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => {
@@ -75,6 +90,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     .map((s) => s[0]?.toUpperCase() ?? '')
     .join('');
 
+  const isItemActive = (href: string) =>
+    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
+
   return (
     <div className="min-h-screen bg-canvas">
       {/* ─── Topbar ────────────────────────────────────────── */}
@@ -96,7 +114,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <Separator />
 
-          {/* Org switcher (placeholder UI — full switcher lands with Module 1 polish) */}
           <button
             type="button"
             className="group flex items-center gap-2 rounded-sm border border-line-strong/60 bg-canvas px-2.5 py-1.5 text-sm text-ink transition-colors duration-fast hover:border-line-strong hover:bg-sunk"
@@ -111,7 +128,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ChevronsUpDown className="h-3 w-3 text-ink-mute" strokeWidth={1.5} />
           </button>
 
-          {/* Active period chip (placeholder until period selector ships) */}
           <span className="hidden items-center gap-1.5 rounded-xs bg-sunk px-2 py-1 text-2xs uppercase tracking-wider text-ink-soft md:inline-flex">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
             Exercice 2026
@@ -119,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex-1" />
 
-          {/* Search trigger — opens ⌘K palette */}
+          {/* Search */}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -164,122 +180,207 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ─── Body ──────────────────────────────────────────── */}
       <div className="flex">
-        {/* Sidebar */}
+        {/* ─── Sidebar ───────────────────────────────────────── */}
         <aside
           aria-label="Navigation principale"
-          className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-paper md:block"
+          className={cn(
+            'sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 overflow-y-auto border-r border-line bg-paper md:flex md:flex-col',
+            'transition-[width] duration-300 ease-out-quint',
+            sidebarCollapsed ? 'w-14' : 'w-60',
+          )}
         >
-          <nav className="py-3">
+          {/* Toggle button row */}
+          <div className={cn(
+            'flex items-center border-b border-line py-2 shrink-0',
+            sidebarCollapsed ? 'justify-center px-1' : 'justify-between px-3',
+          )}>
+            {!sidebarCollapsed && (
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-mute">
+                Navigation
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-xs text-ink-mute transition-colors duration-fast hover:bg-sunk hover:text-ink"
+              title={sidebarCollapsed ? 'Déployer le menu' : 'Réduire le menu'}
+              aria-label={sidebarCollapsed ? 'Déployer le menu' : 'Réduire le menu'}
+            >
+              {sidebarCollapsed
+                ? <PanelLeftOpen className="h-3.5 w-3.5" strokeWidth={1.5} />
+                : <PanelLeftClose className="h-3.5 w-3.5" strokeWidth={1.5} />
+              }
+            </button>
+          </div>
+
+          <nav className="flex-1 overflow-y-auto py-2">
             {NAV_GROUPS.map((group) => {
               const isOpen = openGroups.has(group.title);
-              const groupHasActive = group.items.some((item) =>
-                item.href === '/dashboard'
-                  ? pathname === '/dashboard'
-                  : pathname.startsWith(item.href),
-              );
-              return (
-                <div key={group.title} className="mb-0.5 px-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.title)}
-                    className={cn(
-                      'flex w-full items-center justify-between rounded-xs px-2 py-1.5 transition-colors duration-fast',
-                      'hover:bg-sunk',
-                      groupHasActive ? 'text-accent-ink' : 'text-ink-mute hover:text-ink-soft',
-                    )}
-                    aria-expanded={isOpen}
-                  >
-                    <span
-                      className={cn(
-                        'text-[10px] font-semibold uppercase tracking-wider',
-                        groupHasActive ? 'text-accent-ink' : 'text-ink-mute',
-                      )}
-                    >
-                      {group.title}
-                    </span>
-                    <ChevronRight
-                      className={cn(
-                        'h-3 w-3 shrink-0 transition-transform duration-fast',
-                        isOpen ? 'rotate-90' : '',
-                        groupHasActive ? 'text-accent-ink/70' : 'text-ink-mute',
-                      )}
-                      strokeWidth={2}
-                    />
-                  </button>
+              const groupHasActive = group.items.some((item) => isItemActive(item.href));
+              const colors = GROUP_COLORS[group.title] ?? DEFAULT_COLORS;
 
-                  {isOpen && (
-                    <ul className="mt-0.5 mb-2 space-y-0.5">
-                      {group.items.map((item) => {
-                        const active =
-                          item.href === '/dashboard'
-                            ? pathname === '/dashboard'
-                            : pathname.startsWith(item.href);
-                        const Icon = item.icon;
-                        return (
-                          <li key={item.href}>
-                            <Link
-                              href={item.href}
-                              className={cn(
-                                'group relative flex items-start gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
-                                active
-                                  ? "bg-accent-soft font-medium text-accent-ink before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-0.5 before:rounded-full before:bg-accent before:content-['']"
-                                  : 'text-ink-soft hover:bg-sunk hover:text-ink',
-                              )}
-                            >
-                              <Icon
+              return (
+                <div key={group.title} className={cn('mb-0.5', sidebarCollapsed ? 'px-1' : 'px-2')}>
+                  {sidebarCollapsed ? (
+                    /* Collapsed — dot separator + icon rail */
+                    <>
+                      <div className="flex items-center justify-center py-1">
+                        <span
+                          className={cn(
+                            'h-1.5 w-1.5 rounded-full transition-opacity duration-fast',
+                            colors.dot,
+                            groupHasActive ? 'opacity-100' : 'opacity-25',
+                          )}
+                        />
+                      </div>
+                      <ul className="space-y-0.5">
+                        {group.items.map((item) => {
+                          const active = isItemActive(item.href);
+                          const Icon = item.icon;
+                          return (
+                            <li key={item.href}>
+                              <Link
+                                href={item.href}
+                                title={item.label}
                                 className={cn(
-                                  'mt-0.5 h-4 w-4 shrink-0 transition-colors',
+                                  'flex h-8 w-full items-center justify-center rounded-sm transition-colors duration-fast',
                                   active
-                                    ? 'text-accent-ink'
-                                    : 'text-ink-mute group-hover:text-ink-soft',
+                                    ? cn(colors.bg, colors.text)
+                                    : 'text-ink-mute hover:bg-sunk hover:text-ink',
                                 )}
-                                strokeWidth={1.5}
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate leading-tight">{item.label}</span>
-                                {item.hint && (
-                                  <span
+                              >
+                                <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  ) : (
+                    /* Expanded — colored group header + animated items */
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.title)}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-xs px-2 py-1.5 transition-colors duration-fast hover:bg-sunk',
+                        )}
+                        aria-expanded={isOpen}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              'h-1.5 w-1.5 shrink-0 rounded-full transition-opacity duration-fast',
+                              colors.dot,
+                              groupHasActive ? 'opacity-100' : 'opacity-35',
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              'text-[10px] font-semibold uppercase tracking-wider transition-colors duration-fast',
+                              groupHasActive ? colors.text : 'text-ink-mute',
+                            )}
+                          >
+                            {group.title}
+                          </span>
+                        </div>
+                        <ChevronRight
+                          className={cn(
+                            'h-3 w-3 shrink-0 transition-transform duration-200',
+                            isOpen ? 'rotate-90' : '',
+                            groupHasActive ? colors.text : 'text-ink-mute',
+                          )}
+                          strokeWidth={2}
+                        />
+                      </button>
+
+                      {/* Animated group items via CSS grid rows */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateRows: isOpen ? '1fr' : '0fr',
+                          transition: 'grid-template-rows 240ms cubic-bezier(0.23, 1, 0.32, 1)',
+                        }}
+                      >
+                        <ul className="overflow-hidden min-h-0 mt-0.5 mb-1.5 space-y-0.5">
+                          {group.items.map((item) => {
+                            const active = isItemActive(item.href);
+                            const Icon = item.icon;
+                            return (
+                              <li key={item.href}>
+                                <Link
+                                  href={item.href}
+                                  className={cn(
+                                    'group relative flex items-start gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
+                                    active
+                                      ? cn(colors.bg, 'font-medium', colors.text)
+                                      : 'text-ink-soft hover:bg-sunk hover:text-ink',
+                                  )}
+                                >
+                                  {active && (
+                                    <span
+                                      className={cn(
+                                        'absolute bottom-1.5 left-0 top-1.5 w-0.5 rounded-full',
+                                        colors.dot,
+                                      )}
+                                    />
+                                  )}
+                                  <Icon
                                     className={cn(
-                                      'mt-0.5 block truncate text-[10px] leading-tight',
-                                      active ? 'text-accent-ink/60' : 'text-ink-mute',
+                                      'mt-0.5 h-4 w-4 shrink-0 transition-colors',
+                                      active
+                                        ? colors.text
+                                        : 'text-ink-mute group-hover:text-ink-soft',
                                     )}
-                                  >
-                                    {item.hint}
+                                    strokeWidth={1.5}
+                                  />
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate leading-tight">{item.label}</span>
+                                    {item.hint && (
+                                      <span
+                                        className={cn(
+                                          'mt-0.5 block truncate text-[10px] leading-tight',
+                                          active ? 'opacity-55' : 'text-ink-mute',
+                                        )}
+                                      >
+                                        {item.hint}
+                                      </span>
+                                    )}
                                   </span>
-                                )}
-                              </span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    </>
                   )}
                 </div>
               );
             })}
           </nav>
 
-          <div className="border-t border-line p-4">
-            <p className="text-2xs uppercase tracking-wider text-ink-mute">Version</p>
-            <p className="mt-0.5 font-mono text-xs text-ink-soft">v1.0 · wave 2</p>
-          </div>
+          {/* Footer */}
+          {!sidebarCollapsed && (
+            <div className="shrink-0 border-t border-line p-4">
+              <p className="text-2xs uppercase tracking-wider text-ink-mute">Version</p>
+              <p className="mt-0.5 font-mono text-xs text-ink-soft">v1.0 · wave 2</p>
+            </div>
+          )}
         </aside>
 
-        {/* Mobile horizontal nav — one chip per domain group */}
+        {/* Mobile horizontal nav */}
         <nav
           aria-label="Navigation mobile"
           className="sticky top-14 z-20 flex w-full gap-1 overflow-x-auto border-b border-line bg-paper px-4 py-2 md:hidden"
         >
           {NAV_GROUPS.map((group) => {
-            const activeItem = group.items.find((item) =>
-              item.href === '/dashboard'
-                ? pathname === '/dashboard'
-                : pathname.startsWith(item.href),
-            );
+            const activeItem = group.items.find((item) => isItemActive(item.href));
             const active = !!activeItem;
             const target = activeItem ?? group.items[0];
             if (!target) return null;
             const Icon = target.icon;
+            const colors = GROUP_COLORS[group.title] ?? DEFAULT_COLORS;
             return (
               <Link
                 key={group.title}
@@ -287,7 +388,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   'inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1 text-xs transition-colors duration-fast',
                   active
-                    ? 'bg-accent-soft font-medium text-accent-ink'
+                    ? cn(colors.bg, 'font-medium', colors.text)
                     : 'text-ink-soft hover:bg-sunk hover:text-ink',
                 )}
               >

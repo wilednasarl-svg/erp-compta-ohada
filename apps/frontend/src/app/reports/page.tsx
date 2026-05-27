@@ -8,6 +8,7 @@ import {
   Calculator,
   CheckCircle2,
   Clock,
+  Download,
   FileSpreadsheet,
   FileText,
   GitBranch,
@@ -18,6 +19,7 @@ import {
   Loader2,
   Package,
   PieChart,
+  Printer,
   Scale,
   Stethoscope,
   TrendingUp,
@@ -5449,6 +5451,21 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
 
   const isBalanced = parsed !== null ? Math.abs(parsed.totalDebit - parsed.totalCredit) < 1 : null;
 
+  const exportBalanceCsv = (): void => {
+    if (!parsed) return;
+    const header = 'Compte;Libellé;Solde Débiteur;Solde Créditeur\n';
+    const body = parsed.rows
+      .map((r) => `${r.code};${r.label};${r.debit.replace('.', ',')};${r.credit.replace('.', ',')}`)
+      .join('\n');
+    const blob = new Blob(['﻿' + header + body], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `balance-${asAtDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Card className="border-line bg-paper shadow-none">
       <CardHeader className="border-b border-line">
@@ -5662,10 +5679,32 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
                   </button>
                 ))}
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-xs border border-warn/30 bg-warn-soft px-2.5 py-1 text-xs text-warn-ink">
-                <Info className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                Simulation — données non validées
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-xs border border-warn/30 bg-warn-soft px-2.5 py-1 text-xs text-warn-ink">
+                  <Info className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                  Simulation
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={exportBalanceCsv}
+                  className="h-7 gap-1.5 text-xs"
+                >
+                  <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  CSV
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="h-7 gap-1.5 text-xs"
+                >
+                  <Printer className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  PDF
+                </Button>
+              </div>
             </div>
             {activeTab === 'bilan' ? (
               <BalanceSheetView report={mutation.data.bilan} />
