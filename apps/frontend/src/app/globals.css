@@ -89,6 +89,8 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;       /* block page-level horizontal scroll on mobile */
+    max-width: 100%;
   }
 
   body {

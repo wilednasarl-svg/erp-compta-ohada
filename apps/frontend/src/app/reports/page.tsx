@@ -5339,7 +5339,7 @@ function parseBalanceCsv(text: string): BalanceParsed {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) throw new Error('Fichier trop court ou vide.');
 
-  const first = lines[0];
+  const first = lines[0] ?? '';
   const sep = ([';', '\t', ',', '|'] as const).find((s) => first.split(s).length > 2) ?? ';';
 
   const parseLine = (line: string): string[] => {

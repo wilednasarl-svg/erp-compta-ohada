@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-canvas">
       {/* ─── Topbar ────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur supports-[backdrop-filter]:bg-paper/70">
-        <div className="flex h-14 items-center gap-4 px-6">
+        <div className="flex h-14 items-center gap-2 px-3 sm:gap-4 sm:px-6">
           {/* Wordmark */}
           <Link
             href="/dashboard"
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="group flex items-center gap-2 rounded-sm border border-line-strong/60 bg-canvas px-2.5 py-1.5 text-sm text-ink transition-colors duration-fast hover:border-line-strong hover:bg-sunk"
           >
             <Building2 className="h-3.5 w-3.5 text-ink-mute" strokeWidth={1.5} />
-            <span className="max-w-[200px] truncate font-medium">
+            <span className="max-w-[100px] truncate font-medium sm:max-w-[180px]">
               {currentOrg?.name ?? 'Aucune organisation'}
             </span>
             <span className="hidden text-2xs uppercase tracking-wider text-ink-mute md:inline">
@@ -127,8 +127,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-label="Recherche rapide"
           >
             <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
-            <span className="hidden sm:inline">Rechercher</span>
-            <kbd className="hidden rounded-xs border border-line-strong bg-paper px-1 font-mono text-[10px] text-ink-soft sm:inline-block">
+            <span className="hidden md:inline">Rechercher</span>
+            <kbd className="hidden rounded-xs border border-line-strong bg-paper px-1 font-mono text-[10px] text-ink-soft md:inline-block">
               ⌘K
             </kbd>
           </button>
@@ -299,7 +299,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Main */}
-        <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">{children}</main>
       </div>
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
