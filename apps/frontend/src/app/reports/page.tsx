@@ -5358,14 +5358,14 @@ function parseBalanceCsv(text: string): BalanceParsed {
   let headerIdx = 0;
   let header: string[] = [];
   for (let i = 0; i < Math.min(5, lines.length); i++) {
-    const h = parseLine(lines[i]).map((c) => c.toLowerCase());
+    const h = parseLine(lines[i] ?? '').map((c) => c.toLowerCase());
     if (h.some((c) => /compte|code|libel|d[eé]bit|cr[eé]dit/.test(c))) {
       header = h;
       headerIdx = i;
       break;
     }
   }
-  if (header.length === 0) { header = parseLine(lines[0]).map((c) => c.toLowerCase()); headerIdx = 0; }
+  if (header.length === 0) { header = parseLine(first).map((c) => c.toLowerCase()); headerIdx = 0; }
 
   const findCol = (...patterns: RegExp[]): number => {
     for (const p of patterns) {
@@ -5392,8 +5392,9 @@ function parseBalanceCsv(text: string): BalanceParsed {
 
   const rows: UploadedBalanceRow[] = [];
   for (let i = headerIdx + 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const cols = parseLine(lines[i]);
+    const line = lines[i] ?? '';
+    if (!line.trim()) continue;
+    const cols = parseLine(line);
     const code = (cols[codeIdx] ?? '').replace(/['" ]/g, '');
     if (!code || !/^\d/.test(code)) continue;
     const label = labelIdx >= 0 ? (cols[labelIdx] ?? '').trim() : '';
