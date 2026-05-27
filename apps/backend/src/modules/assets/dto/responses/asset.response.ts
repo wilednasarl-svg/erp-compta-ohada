@@ -77,9 +77,45 @@ export class AssetResponse {
   })
   disposalValue!: string | null;
 
-  // Note : les champs W4.3 (totalUnits, unitsPerYear, derogatory*) seront
-  // ajoutés ici lorsque la branche feat/w43-advanced-depreciation sera
-  // mergée sur main — voir AssetEntity / migration 0104.
+  // ─── W4.3 — UOP (Units Of Production) ─────────────────────────────
+  @ApiProperty({
+    description: 'W4.3 — Unités totales prévues (méthode UOP)',
+    nullable: true,
+    type: String,
+  })
+  totalUnits!: string | null;
+
+  @ApiProperty({
+    description: 'W4.3 — Unités par exercice (méthode UOP)',
+    nullable: true,
+    type: [Number],
+  })
+  unitsPerYear!: number[] | null;
+
+  // ─── W4.3 — Amortissements dérogatoires ──────────────────────────
+  @ApiProperty({ description: 'W4.3 — Amortissement dérogatoire activé', type: Boolean })
+  derogatoryEnabled!: boolean;
+
+  @ApiProperty({
+    description: 'W4.3 — Méthode fiscale dérogatoire',
+    nullable: true,
+    enum: DEPRECIATION_METHODS,
+  })
+  derogatoryFiscalMethod!: DepreciationMethod | null;
+
+  @ApiProperty({
+    description: 'W4.3 — Durée fiscale dérogatoire (mois)',
+    nullable: true,
+    type: Number,
+  })
+  derogatoryFiscalDuration!: number | null;
+
+  @ApiProperty({
+    description: 'W4.3 — Taux fiscal dérogatoire',
+    nullable: true,
+    type: String,
+  })
+  derogatoryFiscalDecliningRate!: string | null;
 
   @ApiProperty({
     description: 'UUID du créateur',
