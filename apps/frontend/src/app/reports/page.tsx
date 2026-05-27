@@ -538,17 +538,20 @@ function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Balance générale</CardTitle>
-        <CardDescription>
-          Solde de chaque compte sur la période : ouverture + mouvements + clôture. Seules les
-          écritures validées sont projetées.
+    <Card className="border-line bg-paper shadow-none">
+      <CardHeader className="border-b border-line">
+        <CardTitle className="font-display text-2xl font-medium tracking-tight">
+          Balance générale
+        </CardTitle>
+        <CardDescription className="text-ink-soft">
+          Solde de chaque compte sur la période choisie : ouverture, mouvements, clôture. Seules
+          les écritures committées au journal sont projetées — les imports en staging restent
+          invisibles tant qu&apos;ils n&apos;ont pas été validés.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-6 pt-6">
         <form
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
+          className="grid gap-5 lg:grid-cols-[auto_1fr_auto] lg:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             setSubmitted({
@@ -561,74 +564,113 @@ function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
             });
           }}
         >
-          <div className="space-y-1">
-            <Label htmlFor="tb-from">Du</Label>
-            <Input
-              id="tb-from"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="tb-to">Au</Label>
-            <Input
-              id="tb-to"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="tb-class">Classe</Label>
-            <select
-              id="tb-class"
-              value={accountClass}
-              onChange={(e) => setAccountClass(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-            >
-              <option value="">Toutes</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
-                <option key={c} value={c}>
-                  Classe {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="tb-code-from">Code de</Label>
-            <Input
-              id="tb-code-from"
-              placeholder="ex. 411"
-              value={codeFrom}
-              onChange={(e) => setCodeFrom(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="tb-code-to">Code à</Label>
-            <Input
-              id="tb-code-to"
-              placeholder="ex. 419"
-              value={codeTo}
-              onChange={(e) => setCodeTo(e.target.value)}
-            />
-          </div>
-          <div className="flex items-end gap-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={hideEmpty}
-                onChange={(e) => setHideEmpty(e.target.checked)}
-              />
-              Masquer comptes inactifs
-            </label>
-          </div>
-          <div className="sm:col-span-2 lg:col-span-6">
-            <Button type="submit" disabled={query.isFetching}>
-              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Générer
+          <FilterGroup title="Période" subtitle="Bornes de l'arrêté">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="tb-from" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Du
+                </Label>
+                <Input
+                  id="tb-from"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="tb-to" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Au
+                </Label>
+                <Input
+                  id="tb-to"
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+          </FilterGroup>
+
+          <FilterGroup title="Périmètre" subtitle="Filtres sur le plan comptable">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label
+                  htmlFor="tb-class"
+                  className="text-2xs uppercase tracking-wider text-ink-soft"
+                >
+                  Classe
+                </Label>
+                <select
+                  id="tb-class"
+                  value={accountClass}
+                  onChange={(e) => setAccountClass(e.target.value)}
+                  className="h-9 w-32 rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink focus-visible:border-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+                >
+                  <option value="">Toutes</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((c) => (
+                    <option key={c} value={c}>
+                      Classe {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label
+                  htmlFor="tb-code-from"
+                  className="text-2xs uppercase tracking-wider text-ink-soft"
+                >
+                  Code de
+                </Label>
+                <Input
+                  id="tb-code-from"
+                  placeholder="411"
+                  value={codeFrom}
+                  onChange={(e) => setCodeFrom(e.target.value)}
+                  className="h-9 w-24 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label
+                  htmlFor="tb-code-to"
+                  className="text-2xs uppercase tracking-wider text-ink-soft"
+                >
+                  Code à
+                </Label>
+                <Input
+                  id="tb-code-to"
+                  placeholder="419"
+                  value={codeTo}
+                  onChange={(e) => setCodeTo(e.target.value)}
+                  className="h-9 w-24 font-mono tabular-nums"
+                />
+              </div>
+              <label className="flex h-9 cursor-pointer items-center gap-2 self-end whitespace-nowrap rounded-sm border border-line-strong bg-paper px-3 text-sm text-ink-soft transition-colors hover:bg-sunk has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:checked]:text-accent-ink">
+                <input
+                  type="checkbox"
+                  checked={hideEmpty}
+                  onChange={(e) => setHideEmpty(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-accent"
+                />
+                Masquer comptes inactifs
+              </label>
+            </div>
+          </FilterGroup>
+
+          <div className="flex flex-col items-stretch gap-1 lg:items-end">
+            <span className="text-2xs uppercase tracking-wider text-transparent select-none">
+              .
+            </span>
+            <Button type="submit" disabled={query.isFetching} className="h-9">
+              {query.isFetching ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <BarChart3 className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              )}
+              Générer la balance
             </Button>
           </div>
         </form>
@@ -636,70 +678,271 @@ function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
         {query.isError ? <FormError error={query.error} /> : null}
 
         {query.data !== undefined ? (
-          <TrialBalanceTable report={query.data} />
+          <TrialBalanceTable report={query.data} submitted={submitted} />
         ) : submitted === null ? (
-          <p className="text-sm text-slate-500">
-            Choisissez la période puis cliquez sur « Générer ».
-          </p>
+          <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+            <p className="text-sm text-ink-soft">
+              Choisir une période puis cliquer sur{' '}
+              <span className="font-medium text-ink">Générer la balance</span>.
+            </p>
+            <p className="mt-1 text-xs text-ink-mute">
+              Par défaut, du 1<sup>er</sup> janvier de l&apos;année en cours à aujourd&apos;hui.
+            </p>
+          </div>
         ) : null}
       </CardContent>
     </Card>
   );
 }
 
-function TrialBalanceTable({ report }: { readonly report: TrialBalanceReport }) {
+/**
+ * Wrapper de section de formulaire — kicker + subtitle + champs.
+ * Utilisé pour grouper sémantiquement les filtres (Période, Périmètre…)
+ * au lieu d'une grille uniforme qui mélange tout.
+ */
+function FilterGroup({
+  title,
+  subtitle,
+  children,
+}: {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly children: React.ReactNode;
+}) {
+  return (
+    <fieldset className="min-w-0">
+      <legend className="text-2xs uppercase tracking-wider text-ink-mute">
+        {title}
+        <span className="ml-1.5 font-normal normal-case tracking-normal text-ink-mute/80">
+          · {subtitle}
+        </span>
+      </legend>
+      <div className="mt-2">{children}</div>
+    </fieldset>
+  );
+}
+
+interface TrialBalanceTableProps {
+  readonly report: TrialBalanceReport;
+  readonly submitted: {
+    readonly fromDate: string;
+    readonly toDate: string;
+  } | null;
+}
+
+function TrialBalanceTable({ report, submitted }: TrialBalanceTableProps) {
   if (report.rows.length === 0) {
     return (
-      <p className="text-sm text-slate-500">
-        Aucun mouvement sur la période avec ces filtres.
-      </p>
+      <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+        <p className="text-sm text-ink-soft">Aucun mouvement sur la période avec ces filtres.</p>
+        <p className="mt-1 text-xs text-ink-mute">
+          Élargir les bornes de période, retirer le filtre de classe, ou décocher «&nbsp;Masquer
+          comptes inactifs&nbsp;».
+        </p>
+      </div>
     );
   }
+
+  // Vérification d'équilibre : la balance doit être équilibrée
+  // (∑Débit = ∑Crédit) à chaque colonne. Un écart révèle un bug
+  // d'agrégation côté backend OU une écriture déséquilibrée passée
+  // par contournement de la double-saisie.
+  const isBalanced =
+    Number(report.totals.openingDebit) === Number(report.totals.openingCredit) &&
+    Number(report.totals.periodDebit) === Number(report.totals.periodCredit) &&
+    Number(report.totals.endingDebit) === Number(report.totals.endingCredit);
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
-            <th className="px-2 py-2">Compte</th>
-            <th className="px-2 py-2">Libellé</th>
-            <th className="px-2 py-2 text-right">Ouverture débit</th>
-            <th className="px-2 py-2 text-right">Ouverture crédit</th>
-            <th className="px-2 py-2 text-right">Mouvement débit</th>
-            <th className="px-2 py-2 text-right">Mouvement crédit</th>
-            <th className="px-2 py-2 text-right">Solde débit</th>
-            <th className="px-2 py-2 text-right">Solde crédit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {report.rows.map((row) => (
-            <tr key={row.accountId} className="border-b hover:bg-slate-50">
-              <td className="px-2 py-1 font-mono text-xs">{row.accountCode}</td>
-              <td className="px-2 py-1">{row.accountLabel}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.openingDebit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.openingCredit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.periodDebit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.periodCredit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.endingDebit)}</td>
-              <td className="px-2 py-1 text-right font-mono">{fmt(row.endingCredit)}</td>
+    <div className="space-y-3">
+      {/* Bandeau récapitulatif : période exacte, nombre de comptes,
+          équilibre. C'est ce qu'un comptable veut voir avant de scroller. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-4">
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {submitted
+              ? `${formatShortDate(submitted.fromDate)} → ${formatShortDate(submitted.toDate)}`
+              : '—'}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Comptes</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+            {report.rows.length.toLocaleString('fr-FR')}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Mouvements ∑ Débit</p>
+          <p className="mt-0.5 font-mono text-sm font-medium tabular-nums text-ink">
+            {fmt(report.totals.periodDebit)}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'px-4 py-2.5',
+            isBalanced ? 'bg-accent-soft/60' : 'bg-critical-soft',
+          )}
+        >
+          <p
+            className={cn(
+              'text-2xs uppercase tracking-wider',
+              isBalanced ? 'text-accent-ink' : 'text-critical-ink',
+            )}
+          >
+            Équilibre
+          </p>
+          <p
+            className={cn(
+              'mt-0.5 inline-flex items-center gap-1.5 font-medium',
+              isBalanced ? 'text-accent-ink' : 'text-critical-ink',
+            )}
+          >
+            {isBalanced ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Débit = Crédit
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-4 w-4" />
+                Écart détecté
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-line">
+        <table className="w-full border-collapse text-sm">
+          <colgroup>
+            <col className="w-[110px]" />
+            <col />
+            <col span={2} className="bg-paper" />
+            <col span={2} className="bg-sunk/30" />
+            <col span={2} className="bg-paper" />
+          </colgroup>
+          {/* Header à 2 niveaux : groupe (Ouverture/Mouvement/Solde) puis
+              débit/crédit. Réduit drastiquement la charge cognitive sur
+              les 8 colonnes de chiffres. */}
+          <thead className="sticky top-0 z-10 bg-sunk text-2xs uppercase tracking-wider text-ink-mute shadow-[0_1px_0_0_oklch(var(--line-strong))]">
+            <tr>
+              <th rowSpan={2} className="px-3 py-2 text-left align-bottom font-medium">
+                Compte
+              </th>
+              <th rowSpan={2} className="px-3 py-2 text-left align-bottom font-medium">
+                Libellé
+              </th>
+              <th
+                colSpan={2}
+                className="border-l border-line-strong px-3 pb-0 pt-2 text-center font-medium"
+              >
+                Ouverture
+              </th>
+              <th
+                colSpan={2}
+                className="border-l border-line-strong px-3 pb-0 pt-2 text-center font-medium"
+              >
+                Mouvements
+              </th>
+              <th
+                colSpan={2}
+                className="border-l border-line-strong px-3 pb-0 pt-2 text-center font-medium"
+              >
+                Solde
+              </th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 bg-slate-100 font-medium">
-            <td className="px-2 py-2" colSpan={2}>
-              Totaux
-            </td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.openingDebit)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.openingCredit)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.periodDebit)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.periodCredit)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.endingDebit)}</td>
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.endingCredit)}</td>
-          </tr>
-        </tfoot>
-      </table>
+            <tr>
+              <th className="border-l border-line-strong px-3 pb-2 pt-0.5 text-right font-medium">
+                Débit
+              </th>
+              <th className="px-3 pb-2 pt-0.5 text-right font-medium">Crédit</th>
+              <th className="border-l border-line-strong px-3 pb-2 pt-0.5 text-right font-medium">
+                Débit
+              </th>
+              <th className="px-3 pb-2 pt-0.5 text-right font-medium">Crédit</th>
+              <th className="border-l border-line-strong px-3 pb-2 pt-0.5 text-right font-medium">
+                Débit
+              </th>
+              <th className="px-3 pb-2 pt-0.5 text-right font-medium">Crédit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((row) => (
+              <tr key={row.accountId} className="border-t border-line hover:bg-sunk/40">
+                <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">{row.accountCode}</td>
+                <td className="px-3 py-1.5 text-ink">{row.accountLabel}</td>
+                <Amount value={row.openingDebit} bordered />
+                <Amount value={row.openingCredit} />
+                <Amount value={row.periodDebit} bordered emphasis />
+                <Amount value={row.periodCredit} emphasis />
+                <Amount value={row.endingDebit} bordered />
+                <Amount value={row.endingCredit} />
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
+              <td className="px-3 py-2.5 text-2xs uppercase tracking-wider" colSpan={2}>
+                Totaux
+              </td>
+              <Amount value={report.totals.openingDebit} bordered total />
+              <Amount value={report.totals.openingCredit} total />
+              <Amount value={report.totals.periodDebit} bordered total />
+              <Amount value={report.totals.periodCredit} total />
+              <Amount value={report.totals.endingDebit} bordered total />
+              <Amount value={report.totals.endingCredit} total />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
+}
+
+/**
+ * Cellule montant avec traitement uniforme :
+ *  - Zéro → tiret cadratin muted (réduit le bruit visuel)
+ *  - Bordure gauche entre groupes Ouverture/Mouvement/Solde
+ *  - Variant `emphasis` (mouvements) en `text-ink` plein, le reste
+ *    en `text-ink-soft` pour hiérarchiser
+ *  - Variant `total` pour la ligne de pied de table
+ */
+function Amount({
+  value,
+  bordered = false,
+  emphasis = false,
+  total = false,
+}: {
+  readonly value: string;
+  readonly bordered?: boolean;
+  readonly emphasis?: boolean;
+  readonly total?: boolean;
+}) {
+  const numeric = Number(value);
+  const isZero = !Number.isFinite(numeric) || numeric === 0;
+  return (
+    <td
+      className={cn(
+        'px-3 py-1.5 text-right font-mono tabular-nums',
+        bordered && 'border-l border-line',
+        total
+          ? 'text-accent-ink'
+          : isZero
+            ? 'text-ink-mute'
+            : emphasis
+              ? 'text-ink'
+              : 'text-ink-soft',
+      )}
+    >
+      {isZero ? '—' : fmt(value)}
+    </td>
+  );
+}
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ─── Grand livre ────────────────────────────────────────────────────────
