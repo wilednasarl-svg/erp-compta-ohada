@@ -177,3 +177,30 @@ export class ConsolidatedEnvelopeResponse {
   @ApiProperty({ type: () => ConsolidatedSummaryResponse })
   consolidated!: ConsolidatedSummaryResponse;
 }
+
+export class DashboardComparisonDataResponse {
+  @ApiProperty()
+  year!: number;
+  @ApiProperty()
+  periodStart!: string;
+  @ApiProperty()
+  periodEnd!: string;
+  @ApiProperty({ type: () => ConsolidatedMetricsResponse })
+  metrics!: ConsolidatedMetricsResponse;
+}
+
+export class DashboardComparisonSummaryResponse {
+  @ApiProperty({ format: 'uuid' })
+  organizationId!: string;
+  @ApiProperty()
+  organizationName!: string;
+  @ApiProperty()
+  currency!: string;
+  @ApiProperty({ type: () => DashboardComparisonDataResponse, isArray: true })
+  yearsData!: readonly DashboardComparisonDataResponse[];
+}
+
+export class ComparisonEnvelopeResponse {
+  @ApiProperty({ type: () => DashboardComparisonSummaryResponse })
+  comparison!: DashboardComparisonSummaryResponse;
+}

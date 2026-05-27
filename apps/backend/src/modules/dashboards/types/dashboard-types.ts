@@ -206,3 +206,28 @@ export interface DashboardConsolidatedSummary {
   };
   readonly organizationsData: ReadonlyArray<ConsolidatedOrganizationData>;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Wave 4 — Multi-year Comparison
+// ─────────────────────────────────────────────────────────────────────
+
+export interface DashboardComparisonData {
+  readonly year: number;
+  readonly periodStart: string;
+  readonly periodEnd: string;
+  readonly metrics: {
+    readonly cashBalance: string;
+    readonly receivables: string;
+    readonly payables: string;
+    readonly revenue: string;
+    readonly expenses: string;
+    readonly netResult: string;
+  };
+}
+
+export interface DashboardComparisonSummary {
+  readonly organizationId: string;
+  readonly organizationName: string;
+  readonly currency: string;
+  readonly yearsData: ReadonlyArray<DashboardComparisonData>;
+}

@@ -11,6 +11,7 @@ import { DashboardsController } from './controllers/dashboards.controller';
 import { DashboardsRepository } from './repositories/dashboards.repository';
 import { DashboardAgingService } from './services/dashboard-aging.service';
 import { DashboardAnalyticsService } from './services/dashboard-analytics.service';
+import { DashboardComparisonService } from './services/dashboard-comparison.service';
 import { DashboardConsolidatedService } from './services/dashboard-consolidated.service';
 import { DashboardSummaryService } from './services/dashboard-summary.service';
 import { DayDashboardService } from './services/day-dashboard.service';
@@ -58,10 +59,12 @@ import { DayDashboardService } from './services/day-dashboard.service';
   providers: [
     DashboardsRepository,
     DashboardSummaryService,
+    DashboardComparisonService,
     DashboardConsolidatedService,
     DashboardAgingService,
     DashboardAnalyticsService,
     DayDashboardService,
   ],
+  exports: [DashboardsRepository],
 })
 export class DashboardsModule {}

@@ -31,16 +31,19 @@ import { AgingQueryDto } from '../dto/aging-query.dto';
 import {
   AgingEnvelopeResponse,
   CashflowEnvelopeResponse,
+  ComparisonEnvelopeResponse,
   ConsolidatedEnvelopeResponse,
   EvolutionEnvelopeResponse,
   SummaryEnvelopeResponse,
   TopAccountsEnvelopeResponse,
 } from '../dto/responses';
+import { ComparisonQueryDto } from '../dto/comparison-query.dto';
 import { ConsolidatedQueryDto } from '../dto/consolidated-query.dto';
 import { SummaryQueryDto } from '../dto/summary-query.dto';
 import { TopAccountsQueryDto } from '../dto/top-accounts-query.dto';
 import { DashboardAgingService } from '../services/dashboard-aging.service';
 import { DashboardAnalyticsService } from '../services/dashboard-analytics.service';
+import { DashboardComparisonService } from '../services/dashboard-comparison.service';
 import { DashboardConsolidatedService } from '../services/dashboard-consolidated.service';
 import { DashboardSummaryService } from '../services/dashboard-summary.service';
 import { DayDashboardService, type DaySummary } from '../services/day-dashboard.service';
@@ -76,6 +79,7 @@ export class DashboardsController {
     private readonly summary: DashboardSummaryService,
     private readonly aging: DashboardAgingService,
     private readonly analytics: DashboardAnalyticsService,
+    private readonly comparison: DashboardComparisonService,
     private readonly consolidated: DashboardConsolidatedService,
     private readonly dayDashboard: DayDashboardService,
     private readonly audit: AuditTrailService,
@@ -156,6 +160,47 @@ export class DashboardsController {
     });
 
     return { consolidated: result };
+  }
+
+  @Get('comparison')
+  @RequirePermission('dashboards.read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Comparaison multi-exercices KPIs comptables' })
+  @ApiOkResponse({ type: ComparisonEnvelopeResponse })
+  async getComparison(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Query() query: ComparisonQueryDto,
+    @Req() req: Request,
+  ): Promise<ComparisonEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    this.assertActor(actorUserId);
+    
+    // Ensure years is always an array of numbers
+    const yearsArray = Array.isArray(query.years) ? query.years.map(Number) : [Number(query.years)];
+    
+    const result = await this.comparison.getComparisonSummary(
+      asTenantId(tokenOrgId),
+      yearsArray,
+    );
+
+    void this.audit.record({
+      module: DashboardsController.MODULE,
+      action: 'view_comparison',
+      entityType: 'organization',
+      entityId: pathOrgId,
+      metadata: {
+        yearsCount: result.yearsData.length,
+      },
+      ctx: {
+        ...buildAuditRequestContext(req),
+        userId: actorUserId,
+        organizationId: tokenOrgId,
+      },
+    });
+
+    return { comparison: result };
   }
 
   @Get('aging')
