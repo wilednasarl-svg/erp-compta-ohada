@@ -8,6 +8,7 @@ import {
   Brain,
   Calendar,
   Coins,
+  Compass,
   FileUp,
   Gauge,
   GitBranch,
@@ -56,6 +57,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     title: 'Pilotage',
     items: [
+      { href: '/welcome', label: 'Guide', icon: Compass, hint: 'Documentation interactive' },
       { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, hint: 'Vue du jour' },
       { href: '/dashboards', label: 'Dashboards', icon: Gauge, hint: 'KPIs détaillés' },
       { href: '/accounting-score', label: 'Score santé', icon: Award, hint: 'Indice OHADA' },
