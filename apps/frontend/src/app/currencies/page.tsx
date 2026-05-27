@@ -1,7 +1,16 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Coins, Loader2, Plus, Repeat } from 'lucide-react';
+import {
+  ArrowRight,
+  Banknote,
+  Coins,
+  LineChart,
+  Loader2,
+  Plus,
+  Repeat,
+} from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -48,17 +57,100 @@ interface ConvertResponse {
   readonly rateDate: string;
 }
 
-/**
- * `/currencies` — Module 16 wave 1 : devises ISO 4217 + taux de change
- * pluridates + convertisseur pur.
- *
- * Surface :
- *   - section A : devises (CRUD léger create + désactivation).
- *   - section B : taux de change (saisie manuelle ou source bceao/ecb/imported)
- *     + tableau historique trié desc par date.
- *   - section C : convertisseur interactif (montant + paire + date) qui
- *     appelle GET /exchange-rates/convert et affiche le résultat live.
- */
+const SOURCE_TONE: Record<RateSource, string> = {
+  manual: 'bg-sunk text-ink-mute',
+  bceao: 'bg-info-soft text-info-ink',
+  ecb: 'bg-accent-soft text-accent-ink',
+  imported: 'bg-warn-soft text-warn-ink',
+};
+
+const SOURCE_LABEL: Record<RateSource, string> = {
+  manual: 'Manuel',
+  bceao: 'BCEAO',
+  ecb: 'BCE',
+  imported: 'Importé',
+};
+
+function formatRate(raw: string): string {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return raw;
+  return n.toLocaleString('fr-FR', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 6,
+  });
+}
+
+function SkeletonRows({ n = 5 }: { n?: number }) {
+  return (
+    <div className="animate-pulse space-y-px">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-3">
+          <div className="h-3 w-14 rounded-xs bg-sunk" />
+          <div className="h-3 w-32 flex-1 rounded-xs bg-sunk" />
+          <div className="h-5 w-14 rounded-full bg-sunk" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  actionHref,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  actionHref?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[40ch] text-xs text-ink-mute">{description}</p>
+      </div>
+      {actionLabel && actionHref && (
+        <Link
+          href={actionHref}
+          className="press inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent hover:text-canvas"
+        >
+          {actionLabel}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function StatusChip({ active }: { active: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+        active ? 'bg-accent-soft text-accent-ink' : 'bg-sunk text-ink-mute'
+      }`}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {active ? 'Actif' : 'Inactif'}
+    </span>
+  );
+}
+
+function SourceChip({ source }: { source: RateSource }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-xs px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${SOURCE_TONE[source]}`}
+    >
+      {SOURCE_LABEL[source]}
+    </span>
+  );
+}
+
 export default function CurrenciesPage() {
   const currentOrg = useCurrentOrg();
   const orgId = currentOrg?.id ?? '';
@@ -67,7 +159,9 @@ export default function CurrenciesPage() {
   const currenciesQuery = useQuery<ReadonlyArray<Currency>, ApiError>({
     queryKey: ['currencies', orgId],
     queryFn: async () => {
-      const data = await api.get<CurrenciesResponse>(`/organizations/${orgId}/currencies`);
+      const data = await api.get<CurrenciesResponse>(
+        `/organizations/${orgId}/currencies`,
+      );
       return data.currencies;
     },
     enabled: orgId !== '',
@@ -76,13 +170,14 @@ export default function CurrenciesPage() {
   const ratesQuery = useQuery<ReadonlyArray<ExchangeRate>, ApiError>({
     queryKey: ['exchange-rates', orgId],
     queryFn: async () => {
-      const data = await api.get<RatesResponse>(`/organizations/${orgId}/exchange-rates`);
+      const data = await api.get<RatesResponse>(
+        `/organizations/${orgId}/exchange-rates`,
+      );
       return data.rates;
     },
     enabled: orgId !== '',
   });
 
-  // ─── Create currency ─────────────────────────────────────────────
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
   const [decimals, setDecimals] = useState<0 | 2 | 3>(2);
@@ -107,7 +202,6 @@ export default function CurrenciesPage() {
     },
   );
 
-  // ─── Create rate ─────────────────────────────────────────────────
   const [fromCode, setFromCode] = useState('');
   const [toCode, setToCode] = useState('');
   const [rateDate, setRateDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -136,59 +230,82 @@ export default function CurrenciesPage() {
     },
   );
 
-  // ─── Converter ───────────────────────────────────────────────────
   const [convAmount, setConvAmount] = useState('');
   const [convFrom, setConvFrom] = useState('');
   const [convTo, setConvTo] = useState('');
   const [convDate, setConvDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [convResult, setConvResult] = useState<ConvertResponse | null>(null);
 
-  const convert = useApiMutation(
-    async () => {
-      const params = new URLSearchParams({
-        amount: convAmount.trim(),
-        from: convFrom.trim().toUpperCase(),
-        to: convTo.trim().toUpperCase(),
-        date: convDate,
-      });
-      const data = await api.get<ConvertResponse>(
-        `/organizations/${orgId}/exchange-rates/convert?${params.toString()}`,
-      );
-      setConvResult(data);
-      return data;
-    },
-  );
+  const convert = useApiMutation(async () => {
+    const params = new URLSearchParams({
+      amount: convAmount.trim(),
+      from: convFrom.trim().toUpperCase(),
+      to: convTo.trim().toUpperCase(),
+      date: convDate,
+    });
+    const data = await api.get<ConvertResponse>(
+      `/organizations/${orgId}/exchange-rates/convert?${params.toString()}`,
+    );
+    setConvResult(data);
+    return data;
+  });
 
   const sortedRates = [...(ratesQuery.data ?? [])].sort((a, b) =>
     b.rateDate.localeCompare(a.rateDate),
   );
 
+  const activeCount = (currenciesQuery.data ?? []).filter((c) => c.isActive).length;
+  const totalCount = (currenciesQuery.data ?? []).length;
+
+  const scrollToAddCurrency = () => {
+    document
+      .getElementById('add-currency-form')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   return (
     <AppShell>
       <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
-        <header className="border-b border-line pb-3">
-          <p className="eyebrow mb-2">Référentiel</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
-            Devises & Taux de change
-          </h1>
-          <p className="mt-2 text-sm text-ink-mute">
-            Référentiel ISO 4217 et historique des taux multi-source (manuel, BCEAO, BCE,
-            importé). Le convertisseur sélectionne automatiquement le taux le plus récent
-            ≤ à la date demandée.
-          </p>
-        </header>
-
-        {/* DEVISES */}
-        <section className="space-y-4">
-          <div className="border-b border-line pb-3">
-            <h2 className="font-display text-xl font-medium text-ink">Devises</h2>
-            <p className="mt-1 text-sm text-ink-mute">
-              XOF (FCFA UEMOA) seedé par défaut à la création d&apos;org. Ajouter EUR, USD,
-              KES etc. selon les flux multi-devises de l&apos;entreprise.
+        <header className="flex items-start justify-between gap-6 border-b border-line pb-6">
+          <div>
+            <p className="eyebrow mb-2">Référentiel</p>
+            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+              Devises &amp; Taux de change
+            </h1>
+            <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
+              Référentiel ISO 4217 et historique des taux multi-source (manuel, BCEAO,
+              BCE, importé). Le convertisseur sélectionne automatiquement le taux le plus
+              récent <span className="font-mono">≤</span> à la date demandée.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={scrollToAddCurrency}
+            className="press hidden shrink-0 items-center gap-1.5 self-start rounded-sm bg-accent-soft px-3 py-2 text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent hover:text-canvas sm:inline-flex"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Ajouter une devise
+          </button>
+        </header>
+
+        <section className="space-y-4">
+          <div className="flex items-baseline justify-between border-b border-line pb-3">
+            <div className="flex items-baseline gap-2">
+              <h2 className="font-display text-xl font-medium text-ink">Devises</h2>
+              {!currenciesQuery.isLoading && totalCount > 0 && (
+                <span className="inline-flex items-center rounded-full bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
+                  {activeCount}/{totalCount} active{activeCount > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <span className="hidden text-xs text-ink-mute md:inline">
+              XOF (FCFA UEMOA) seedé par défaut
+            </span>
+          </div>
+
           <div className="space-y-4 rounded-sm border border-line bg-paper p-5">
             <form
+              id="add-currency-form"
               className="grid grid-cols-1 gap-3 md:grid-cols-[100px_2fr_120px_140px_auto] md:items-end"
               onSubmit={(e) => {
                 e.preventDefault();
@@ -224,7 +341,7 @@ export default function CurrenciesPage() {
                   id="c-dec"
                   value={decimals}
                   onChange={(e) => setDecimals(Number(e.target.value) as 0 | 2 | 3)}
-                  className="rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+                  className="w-full rounded-sm border border-line-strong bg-paper px-3 py-1.5 text-sm text-ink transition-colors duration-fast focus:border-accent focus:outline-none"
                 >
                   <option value={0}>0 (XOF, JPY)</option>
                   <option value={2}>2 (EUR, USD)</option>
@@ -252,61 +369,80 @@ export default function CurrenciesPage() {
             </form>
             <FormError error={createCurrency.error} />
 
-            {currenciesQuery.isLoading ? (
-              <p className="text-sm text-ink-mute">Chargement…</p>
-            ) : (currenciesQuery.data ?? []).length === 0 ? (
-              <p className="text-sm text-ink-mute">Aucune devise.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-sm border border-line">
-                <table className="w-full text-sm">
-                  <thead className="bg-sunk">
-                    <tr>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Code</span></th>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Libellé</span></th>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Symbole</span></th>
-                      <th className="px-3 py-2 text-right"><span className="eyebrow">Décimales</span></th>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Statut</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(currenciesQuery.data ?? []).map((c, i) => (
-                      <tr
-                        key={c.id}
-                        className={i % 2 === 0 ? 'bg-paper' : 'bg-sunk/25'}
-                      >
-                        <td className="px-3 py-2 font-mono font-medium text-ink">{c.code}</td>
-                        <td className="px-3 py-2 text-ink">{c.label}</td>
-                        <td className="px-3 py-2 text-ink">{c.symbol ?? '—'}</td>
-                        <td className="px-3 py-2 text-right text-ink">{c.decimalPlaces}</td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-block rounded-xs px-2 py-0.5 font-mono text-[11px] ${
-                              c.isActive
-                                ? 'bg-accent-soft text-accent-ink'
-                                : 'bg-sunk text-ink-mute'
-                            }`}
-                          >
-                            {c.isActive ? 'Actif' : 'Inactif'}
-                          </span>
-                        </td>
+            <div className="overflow-hidden rounded-sm border border-line">
+              {currenciesQuery.isLoading ? (
+                <SkeletonRows n={4} />
+              ) : (currenciesQuery.data ?? []).length === 0 ? (
+                <EmptyState
+                  icon={Banknote}
+                  title="Aucune devise enregistrée"
+                  description="Ajoutez EUR, USD ou toute devise utilisée par vos flux multi-devises."
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-sunk">
+                      <tr>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Code</span>
+                        </th>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Libellé</span>
+                        </th>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Symbole</span>
+                        </th>
+                        <th className="px-3 py-2 text-right">
+                          <span className="eyebrow">Décimales</span>
+                        </th>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Statut</span>
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {(currenciesQuery.data ?? []).map((c) => (
+                        <tr
+                          key={c.id}
+                          className="bg-paper transition-colors duration-fast hover:bg-sunk/40"
+                        >
+                          <td className="px-3 py-2.5 font-mono font-medium tabular-nums text-ink">
+                            {c.code}
+                          </td>
+                          <td className="px-3 py-2.5 text-ink">{c.label}</td>
+                          <td className="px-3 py-2.5 text-ink">
+                            {c.symbol ?? <span className="text-ink-mute">—</span>}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono tabular-nums text-ink">
+                            {c.decimalPlaces}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <StatusChip active={c.isActive} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
             <FormError error={currenciesQuery.error} />
           </div>
         </section>
 
-        {/* TAUX */}
         <section className="space-y-4">
-          <div className="border-b border-line pb-3">
-            <h2 className="font-display text-xl font-medium text-ink">Taux de change</h2>
-            <p className="mt-1 text-sm text-ink-mute">
-              Historique pluridates. Le convertisseur prend toujours le taux le plus récent
-              ≤ à la date demandée.
-            </p>
+          <div className="flex items-baseline justify-between border-b border-line pb-3">
+            <div className="flex items-baseline gap-2">
+              <h2 className="font-display text-xl font-medium text-ink">Taux de change</h2>
+              {!ratesQuery.isLoading && sortedRates.length > 0 && (
+                <span className="inline-flex items-center rounded-full bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
+                  {sortedRates.length} taux
+                </span>
+              )}
+            </div>
+            <span className="hidden text-xs text-ink-mute md:inline">
+              Le convertisseur utilise toujours le taux le plus récent ≤ date
+            </span>
           </div>
           <div className="space-y-4 rounded-sm border border-line bg-paper p-5">
             <form
@@ -366,7 +502,7 @@ export default function CurrenciesPage() {
                   id="r-src"
                   value={source}
                   onChange={(e) => setSource(e.target.value as RateSource)}
-                  className="rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+                  className="w-full rounded-sm border border-line-strong bg-paper px-3 py-1.5 text-sm text-ink transition-colors duration-fast focus:border-accent focus:outline-none"
                 >
                   <option value="manual">Manuel</option>
                   <option value="bceao">BCEAO</option>
@@ -395,54 +531,73 @@ export default function CurrenciesPage() {
             </form>
             <FormError error={createRate.error} />
 
-            {ratesQuery.isLoading ? (
-              <p className="text-sm text-ink-mute">Chargement…</p>
-            ) : sortedRates.length === 0 ? (
-              <p className="text-sm text-ink-mute">Aucun taux enregistré.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-sm border border-line">
-                <table className="w-full text-sm">
-                  <thead className="bg-sunk">
-                    <tr>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Date</span></th>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Paire</span></th>
-                      <th className="px-3 py-2 text-right"><span className="eyebrow">Taux</span></th>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Source</span></th>
-                      <th className="px-3 py-2 text-left"><span className="eyebrow">Référence</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedRates.slice(0, 100).map((r, i) => (
-                      <tr
-                        key={r.id}
-                        className={i % 2 === 0 ? 'bg-paper' : 'bg-sunk/25'}
-                      >
-                        <td className="px-3 py-2 font-mono text-ink">{r.rateDate}</td>
-                        <td className="px-3 py-2 text-ink">
-                          <span className="font-mono">{r.fromCurrencyCode}</span>
-                          <ArrowRight className="mx-1 inline h-3 w-3 text-ink-mute" />
-                          <span className="font-mono">{r.toCurrencyCode}</span>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-ink">{r.rate}</td>
-                        <td className="px-3 py-2">
-                          <span className="inline-block rounded-xs bg-sunk px-2 py-0.5 font-mono text-[11px] text-ink-mute">
-                            {r.source}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-xs text-ink-mute">
-                          {r.sourceRef ?? '—'}
-                        </td>
+            <div className="overflow-hidden rounded-sm border border-line">
+              {ratesQuery.isLoading ? (
+                <SkeletonRows n={5} />
+              ) : sortedRates.length === 0 ? (
+                <EmptyState
+                  icon={LineChart}
+                  title="Aucun taux enregistré"
+                  description="Saisissez un premier taux (manuel ou importé) pour activer le convertisseur."
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-sunk">
+                      <tr>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Date</span>
+                        </th>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Paire</span>
+                        </th>
+                        <th className="px-3 py-2 text-right">
+                          <span className="eyebrow">Taux</span>
+                        </th>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Source</span>
+                        </th>
+                        <th className="px-3 py-2 text-left">
+                          <span className="eyebrow">Référence</span>
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {sortedRates.slice(0, 100).map((r) => (
+                        <tr
+                          key={r.id}
+                          className="bg-paper transition-colors duration-fast hover:bg-sunk/40"
+                        >
+                          <td className="px-3 py-2.5 font-mono tabular-nums text-ink">
+                            {r.rateDate}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="inline-flex items-center gap-1 font-mono text-ink">
+                              <span>{r.fromCurrencyCode}</span>
+                              <ArrowRight className="h-3 w-3 text-ink-mute" />
+                              <span>{r.toCurrencyCode}</span>
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono font-medium tabular-nums text-ink">
+                            {formatRate(r.rate)}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <SourceChip source={r.source} />
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-ink-mute">
+                            {r.sourceRef ?? <span className="text-ink-mute/60">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
             <FormError error={ratesQuery.error} />
           </div>
         </section>
 
-        {/* CONVERTISSEUR */}
         <section className="space-y-4">
           <div className="border-b border-line pb-3">
             <h2 className="font-display text-xl font-medium text-ink">Convertisseur</h2>
@@ -514,22 +669,36 @@ export default function CurrenciesPage() {
             </form>
             <FormError error={convert.error} className="mt-3" />
             {convResult && (
-              <div className="mt-3 rounded-sm border border-accent/30 bg-accent-soft p-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Coins className="h-4 w-4 text-accent-ink" />
-                  <span className="font-medium text-ink">
-                    {convAmount} {convResult.fromCurrencyCode}
-                  </span>
-                  <ArrowRight className="h-3 w-3 text-ink-mute" />
-                  <span className="font-mono font-medium text-accent-ink">
-                    {convResult.amount} {convResult.toCurrencyCode}
-                  </span>
+              <div className="mt-4 overflow-hidden rounded-sm border border-accent/30 bg-accent-soft/60">
+                <div className="flex items-center justify-between gap-4 border-b border-accent/20 px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Coins className="h-4 w-4 text-accent-ink" strokeWidth={1.75} />
+                    <span className="font-mono tabular-nums text-ink">
+                      {convAmount} {convResult.fromCurrencyCode}
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-ink-mute" />
+                    <span className="font-display text-lg font-medium tabular-nums text-accent-ink">
+                      {convResult.amount}{' '}
+                      <span className="text-base font-normal">
+                        {convResult.toCurrencyCode}
+                      </span>
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-ink-mute">
-                  Taux appliqué : 1 {convResult.fromCurrencyCode} ={' '}
-                  <span className="font-mono">{convResult.rate}</span>{' '}
-                  {convResult.toCurrencyCode} (taux du {convResult.rateDate})
-                </div>
+                <dl className="grid grid-cols-2 divide-x divide-accent/20 text-xs">
+                  <div className="px-4 py-2.5">
+                    <dt className="eyebrow mb-1">Taux appliqué</dt>
+                    <dd className="font-mono tabular-nums text-ink">
+                      1 {convResult.fromCurrencyCode} ={' '}
+                      <span className="font-medium">{formatRate(convResult.rate)}</span>{' '}
+                      {convResult.toCurrencyCode}
+                    </dd>
+                  </div>
+                  <div className="px-4 py-2.5">
+                    <dt className="eyebrow mb-1">Date du taux</dt>
+                    <dd className="font-mono tabular-nums text-ink">{convResult.rateDate}</dd>
+                  </div>
+                </dl>
               </div>
             )}
           </div>

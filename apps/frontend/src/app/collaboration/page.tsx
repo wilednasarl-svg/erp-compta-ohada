@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, MessageSquare, Plus, Send } from 'lucide-react';
+import { Handshake, Loader2, MessageSquare, Plus, Send } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -51,14 +51,68 @@ const STATUS_LABEL: Record<CollaborationStatus, string> = {
 };
 
 const STATUS_TONE: Record<CollaborationStatus, string> = {
-  open: 'bg-info/15 text-info-ink',
-  in_progress: 'bg-warn/15 text-warn-ink',
-  completed: 'bg-accent/15 text-accent-ink',
+  open: 'bg-info-soft text-info-ink',
+  in_progress: 'bg-warn-soft text-warn-ink',
+  completed: 'bg-accent-soft text-accent-ink',
   cancelled: 'bg-sunk text-ink-mute',
 };
 
 const TEXTAREA_CLS =
   'w-full min-h-[80px] rounded-sm border border-line-strong bg-paper px-3 py-2 text-sm text-ink transition-colors focus:border-accent focus:outline-none';
+
+function Avatar({ name, email, size = 'md' }: { name?: string; email?: string; size?: 'sm' | 'md' }) {
+  const initials = (name ?? email ?? '?')
+    .split(/[ @.]/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? '')
+    .join('');
+  const sz = size === 'sm' ? 'h-7 w-7 text-2xs' : 'h-8 w-8 text-xs';
+  return (
+    <span className={`inline-flex items-center justify-center rounded-full bg-accent-soft font-medium uppercase tracking-wider text-accent-ink ${sz}`}>
+      {initials || '?'}
+    </span>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[40ch] text-xs text-ink-mute">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonRows({ n = 4 }: { n?: number }) {
+  return (
+    <div className="animate-pulse divide-y divide-line">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-3">
+          <div className="h-8 w-8 rounded-full bg-sunk" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 w-32 rounded-xs bg-sunk" />
+            <div className="h-2.5 w-48 rounded-xs bg-sunk" />
+          </div>
+          <div className="h-5 w-16 rounded-full bg-sunk" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function CollaborationPage() {
   const currentOrg = useCurrentOrg();
@@ -99,10 +153,10 @@ export default function CollaborationPage() {
       <div className="animate-page-in space-y-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow mb-2">Échanges cabinet ↔ client</p>
+            <p className="eyebrow mb-2">Organisation · Collaboration</p>
             <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Collaboration</h1>
             <p className="mt-2 max-w-2xl text-sm text-ink-mute">
-              Demandes de justificatifs et échanges cabinet ↔ client.
+              Commentaires, tâches partagées et suivi des actions en équipe.
             </p>
           </div>
           <Button onClick={() => setCreating((c) => !c)} className="press">
@@ -150,37 +204,50 @@ export default function CollaborationPage() {
         )}
 
         <div className="grid gap-4 md:grid-cols-[2fr_3fr]">
-          <div className="space-y-2">
+          <div className="rounded-sm border border-line bg-paper">
             {listQuery.isLoading ? (
-              <div className="rounded-sm border border-line bg-paper py-8 text-center text-ink-mute">
-                <Loader2 className="inline h-4 w-4 animate-spin" />
-              </div>
+              <SkeletonRows n={5} />
             ) : listQuery.data?.length === 0 ? (
-              <div className="rounded-sm border border-line bg-paper py-8 text-center text-sm text-ink-mute">
-                Aucune demande pour le moment.
-              </div>
+              <EmptyState
+                icon={Handshake}
+                title="Aucune activité"
+                description="Les commentaires et tâches partagées apparaîtront ici."
+              />
             ) : (
-              listQuery.data?.map((req) => (
-                <button
-                  key={req.id}
-                  onClick={() => setActiveId(req.id)}
-                  className={`press w-full rounded-sm border p-3 text-left transition-colors hover:bg-sunk/50 ${
-                    activeId === req.id ? 'border-accent bg-sunk/40' : 'border-line bg-paper'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-ink">{req.title}</div>
-                      <div className="text-xs text-ink-mute">
-                        {new Date(req.createdAt).toLocaleDateString('fr-FR')}
-                      </div>
-                    </div>
-                    <span className={`inline-flex shrink-0 items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[req.status]}`}>
-                      {STATUS_LABEL[req.status]}
-                    </span>
-                  </div>
-                </button>
-              ))
+              <ul className="divide-y divide-line">
+                {listQuery.data?.map((req) => {
+                  const isActive = activeId === req.id;
+                  return (
+                    <li key={req.id}>
+                      <button
+                        onClick={() => setActiveId(req.id)}
+                        className={`press flex w-full items-start gap-3 px-4 py-3 text-left transition-colors duration-fast hover:bg-sunk/50 ${
+                          isActive ? 'bg-sunk/40' : ''
+                        }`}
+                      >
+                        <Avatar email={req.requesterId} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-medium text-ink">{req.title}</span>
+                          </div>
+                          <div className="mt-0.5 text-xs text-ink-mute">
+                            {new Date(req.createdAt).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </div>
+                        </div>
+                        <span
+                          className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[req.status]}`}
+                        >
+                          {STATUS_LABEL[req.status]}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
 
@@ -188,9 +255,12 @@ export default function CollaborationPage() {
             {activeId ? (
               <RequestDetail requestId={activeId} />
             ) : (
-              <div className="rounded-sm border border-line bg-paper py-12 text-center text-ink-mute">
-                <MessageSquare className="mb-2 inline h-8 w-8 opacity-50" />
-                <div className="text-sm">Sélectionnez une demande pour voir le fil.</div>
+              <div className="rounded-sm border border-line bg-paper">
+                <EmptyState
+                  icon={MessageSquare}
+                  title="Sélectionnez une demande"
+                  description="Choisissez une demande dans la liste pour consulter son fil de discussion."
+                />
               </div>
             )}
           </div>
@@ -264,17 +334,17 @@ function RequestDetail({ requestId }: { requestId: string }) {
       <div className="flex items-start justify-between gap-3 border-b border-line p-5">
         <div className="min-w-0">
           <h2 className="font-display text-xl font-medium text-ink">{req.title}</h2>
-          <p className="mt-1 text-sm text-ink-mute">
-            Créée {new Date(req.createdAt).toLocaleDateString('fr-FR')}
+          <p className="mt-1 text-xs text-ink-mute">
+            Créée le {new Date(req.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <span className={`inline-flex shrink-0 items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[req.status]}`}>
+        <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[req.status]}`}>
           {STATUS_LABEL[req.status]}
         </span>
       </div>
-      <div className="space-y-4 p-5">
+      <div className="space-y-5 p-5">
         {req.description && (
-          <div className="whitespace-pre-wrap border-l-2 border-line-strong pl-3 text-sm text-ink-soft">
+          <div className="whitespace-pre-wrap border-l-2 border-accent pl-3 text-sm text-ink-soft">
             {req.description}
           </div>
         )}
@@ -296,25 +366,40 @@ function RequestDetail({ requestId }: { requestId: string }) {
           </div>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="eyebrow">Commentaires</div>
           {commentsQuery.data?.length === 0 ? (
-            <div className="text-sm text-ink-mute">Aucun commentaire.</div>
+            <p className="text-xs text-ink-mute">Aucun commentaire pour le moment.</p>
           ) : (
-            commentsQuery.data?.map((c) => (
-              <div key={c.id} className="rounded-sm border border-line bg-sunk/20 p-3 text-sm">
-                <div className="text-xs text-ink-mute">{new Date(c.createdAt).toLocaleString('fr-FR')}</div>
-                <div className="whitespace-pre-wrap text-ink">{c.body}</div>
-              </div>
-            ))
+            <ul className="space-y-3">
+              {commentsQuery.data?.map((c) => (
+                <li key={c.id} className="flex items-start gap-3">
+                  <Avatar email={c.authorId} size="sm" />
+                  <div className="min-w-0 flex-1 rounded-sm border border-line bg-sunk/20 p-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-medium text-ink">{c.authorId.slice(0, 8)}</span>
+                      <span className="text-2xs text-ink-mute" title={new Date(c.createdAt).toLocaleString('fr-FR')}>
+                        {new Date(c.createdAt).toLocaleString('fr-FR', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div className="mt-1 whitespace-pre-wrap text-sm text-ink">{c.body}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
-        <form onSubmit={handleComment} className="flex gap-2">
+        <form onSubmit={handleComment} className="flex gap-2 border-t border-line pt-4">
           <Input
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Ajouter un commentaire..."
+            placeholder="Ajouter un commentaire…"
           />
           <Button type="submit" size="sm" disabled={commentMut.isPending || body.trim().length === 0} className="press">
             {commentMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

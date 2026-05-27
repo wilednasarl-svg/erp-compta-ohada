@@ -1,8 +1,23 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, FileUp, Layers, Link2, Loader2, Plus } from 'lucide-react';
-import { useState } from 'react';
+import {
+  Banknote,
+  CheckCircle2,
+  FileUp,
+  Hash,
+  Landmark,
+  Layers,
+  Link2,
+  Loader2,
+  Plus,
+  Scale,
+  Sparkles,
+  Wallet,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
@@ -21,17 +36,6 @@ interface BankAccount {
   readonly currency: string;
   readonly openingBalance: string;
   readonly status: 'active' | 'closed';
-}
-
-interface BankStatement {
-  readonly id: string;
-  readonly bankAccountId: string;
-  readonly periodStart: string;
-  readonly periodEnd: string;
-  readonly openingBalance: string;
-  readonly closingBalance: string;
-  readonly lineCount: number;
-  readonly importedAt: string;
 }
 
 interface StatementLine {
@@ -62,7 +66,85 @@ interface MatchProposal {
   }>;
 }
 
-export default function BankReconciliationPage() {
+function formatAmount(value: string | number): string {
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(num)) return '—';
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+}
+
+function SkeletonRows({ n = 4 }: { n?: number }){
+  return (
+    <div className="animate-pulse divide-y divide-line">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-3.5">
+          <div className="h-3 w-10 rounded-xs bg-sunk" />
+          <div className="h-3 flex-1 rounded-xs bg-sunk" />
+          <div className="h-3 w-20 rounded-xs bg-sunk" />
+          <div className="h-5 w-16 rounded-full bg-sunk" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  actionHref,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  actionHref?: string;
+}){
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[40ch] text-xs text-ink-mute">{description}</p>
+      </div>
+      {actionLabel && actionHref && (
+        <Link
+          href={actionHref}
+          className="inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent hover:text-canvas"
+        >
+          {actionLabel}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function StatusChip({
+  tone,
+  children,
+}: {
+  tone: 'accent' | 'warn' | 'info' | 'critical' | 'neutral';
+  children: React.ReactNode;
+}){
+  const styles: Record<typeof tone, string> = {
+    accent: 'bg-accent-soft text-accent-ink',
+    warn: 'bg-warn-soft text-warn-ink',
+    info: 'bg-info-soft text-info-ink',
+    critical: 'bg-critical-soft text-critical-ink',
+    neutral: 'bg-sunk text-ink-mute',
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${styles[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+export default function BankReconciliationPage(){
   const currentOrg = useCurrentOrg();
   const orgId = currentOrg?.id ?? '';
   const qc = useQueryClient();
@@ -95,6 +177,7 @@ export default function BankReconciliationPage() {
   const [multiLineEnabled, setMultiLineEnabled] = useState(false);
   const [amountTolerance, setAmountTolerance] = useState<string>('');
   const [selectedByLine, setSelectedByLine] = useState<Record<string, ReadonlyArray<string>>>({});
+  const [focusedLineId, setFocusedLineId] = useState<string | null>(null);
 
   const matchMut = useApiMutation(
     async (input: {
@@ -127,28 +210,56 @@ export default function BankReconciliationPage() {
   }
 
   const activeAccount = accountsQuery.data?.find((a) => a.id === activeAccountId) ?? null;
+  const proposals = proposalsQuery.data ?? [];
+  const focusedProposal = useMemo(
+    () => proposals.find((p) => p.statementLineId === focusedLineId) ?? proposals[0] ?? null,
+    [proposals, focusedLineId],
+  );
+
+  const totals = useMemo(() => {
+    if (proposals.length === 0) {
+      return { unreconciled: 0, credits: 0, debits: 0 };
+    }
+    return proposals.reduce(
+      (acc, p) => {
+        const amt = Number(p.amount);
+        if (Number.isFinite(amt)) {
+          if (p.direction === 'credit') acc.credits += amt;
+          else acc.debits += amt;
+        }
+        acc.unreconciled += 1;
+        return acc;
+      },
+      { unreconciled: 0, credits: 0, debits: 0 },
+    );
+  }, [proposals]);
 
   return (
     <AppShell>
-      <div className="animate-page-in space-y-6">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <p className="eyebrow mb-2">Trésorerie</p>
+      <div className="animate-page-in space-y-8">
+        {/* Hero header */}
+        <header className="flex flex-col gap-6 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="eyebrow mb-2">Retraitement · Rapprochement</p>
             <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
               Rapprochement bancaire
             </h1>
-            <p className="mt-2 text-sm text-ink-mute">
-              Comptes bancaires, import CSV des relevés, et matching auto/manuel des lignes.
+            <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+              Confronter les lignes de relevé bancaire aux écritures comptables. Le moteur de
+              matching propose les candidats triés par similarité de libellé (Jaro-Winkler) et
+              proximité de date, puis vous validez en un clic.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => setCreatingAccount((v) => !v)}
               variant="outline"
               className="press"
             >
               {creatingAccount ? (
-                'Annuler'
+                <>
+                  <X className="mr-2 h-4 w-4" /> Annuler
+                </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" /> Compte bancaire
@@ -158,7 +269,9 @@ export default function BankReconciliationPage() {
             {activeAccountId !== null && (
               <Button onClick={() => setImporting((v) => !v)} className="press">
                 {importing ? (
-                  'Annuler'
+                  <>
+                    <X className="mr-2 h-4 w-4" /> Annuler
+                  </>
                 ) : (
                   <>
                     <FileUp className="mr-2 h-4 w-4" /> Importer un relevé
@@ -168,6 +281,40 @@ export default function BankReconciliationPage() {
             )}
           </div>
         </header>
+
+        {/* KPI strip when account active */}
+        {activeAccount && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <KpiTile
+              icon={Landmark}
+              label="Compte actif"
+              value={activeAccount.code}
+              detail={activeAccount.bankName}
+            />
+            <KpiTile
+              icon={Wallet}
+              label="Devise"
+              value={activeAccount.currency}
+              detail={
+                activeAccount.currency !== 'XOF' ? 'Conversion FX appliquée' : 'Devise locale'
+              }
+            />
+            <KpiTile
+              icon={Scale}
+              label="Lignes en attente"
+              value={String(totals.unreconciled)}
+              detail={totals.unreconciled === 0 ? 'À jour' : 'À pointer'}
+              tone={totals.unreconciled === 0 ? 'accent' : 'warn'}
+            />
+            <KpiTile
+              icon={Hash}
+              label="Volume net"
+              value={formatAmount(totals.credits - totals.debits)}
+              detail={`+${formatAmount(totals.credits)} / -${formatAmount(totals.debits)}`}
+              mono
+            />
+          </div>
+        )}
 
         {creatingAccount && (
           <CreateAccountForm
@@ -190,58 +337,88 @@ export default function BankReconciliationPage() {
           />
         )}
 
-        <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
-          {/* Accounts list */}
-          <section className="rounded-sm border border-line bg-paper p-5">
-            <div className="border-b border-line pb-3">
-              <h2 className="font-display text-xl font-medium text-ink">Comptes bancaires</h2>
-            </div>
-            <div className="mt-3 space-y-2">
+        {/* Two-column workspace */}
+        <div className="grid gap-5 lg:grid-cols-[280px_1fr_1fr]">
+          {/* Accounts sidebar */}
+          <aside className="rounded-sm border border-line bg-paper">
+            <header className="flex items-center justify-between border-b border-line px-4 py-3">
+              <div>
+                <p className="eyebrow">Comptes</p>
+                <h2 className="font-display text-base font-medium text-ink">Bancaires</h2>
+              </div>
+              <span className="font-mono text-xs tabular-nums text-ink-mute">
+                {accountsQuery.data?.length ?? 0}
+              </span>
+            </header>
+            <div className="p-2">
               {accountsQuery.isLoading ? (
-                <Loader2 className="inline h-4 w-4 animate-spin text-ink-mute" />
-              ) : accountsQuery.data?.length === 0 ? (
-                <div className="py-4 text-center text-sm text-ink-mute">
-                  Aucun compte. Créez-en un.
+                <div className="p-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-ink-mute" />
                 </div>
+              ) : (accountsQuery.data ?? []).length === 0 ? (
+                <EmptyState
+                  icon={Banknote}
+                  title="Aucun compte"
+                  description="Créez un compte bancaire pour démarrer l'import des relevés."
+                />
               ) : (
-                accountsQuery.data?.map((acc) => {
-                  const isActive = activeAccountId === acc.id;
-                  return (
-                    <button
-                      key={acc.id}
-                      onClick={() => setActiveAccountId(acc.id)}
-                      className={`press w-full rounded-sm border p-3 text-left transition-colors ${
-                        isActive
-                          ? 'border-accent bg-accent-soft'
-                          : 'border-line bg-paper hover:bg-sunk/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Banknote className="h-4 w-4 text-ink-mute" />
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-ink">{acc.code}</div>
-                          <div className="truncate text-xs text-ink-mute">
-                            {acc.label} · {acc.bankName}
+                <ul className="space-y-1">
+                  {(accountsQuery.data ?? []).map((acc) => {
+                    const isActive = activeAccountId === acc.id;
+                    return (
+                      <li key={acc.id}>
+                        <button
+                          onClick={() => setActiveAccountId(acc.id)}
+                          className={`press group flex w-full items-start gap-3 rounded-sm border px-3 py-2.5 text-left transition-colors duration-fast ${
+                            isActive
+                              ? 'border-accent bg-accent-soft'
+                              : 'border-transparent hover:bg-sunk/50'
+                          }`}
+                        >
+                          <span
+                            className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm ${
+                              isActive ? 'bg-canvas text-accent-ink' : 'bg-sunk text-ink-mute'
+                            }`}
+                          >
+                            <Banknote className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm font-medium tabular-nums text-ink">
+                                {acc.code}
+                              </span>
+                              <span className="text-[10px] uppercase tracking-wide text-ink-mute">
+                                {acc.currency}
+                              </span>
+                            </div>
+                            <p className="truncate text-xs text-ink-soft">{acc.label}</p>
+                            <p className="truncate text-[11px] text-ink-mute">{acc.bankName}</p>
                           </div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
-          </section>
+          </aside>
 
-          {/* Proposals */}
-          <section className="rounded-sm border border-line bg-paper p-5">
-            <div className="border-b border-line pb-3">
-              <h2 className="font-display text-xl font-medium text-ink">
-                Lignes de relevé à rapprocher
-              </h2>
-              <p className="mt-1 text-sm text-ink-mute">
-                Tri par score Jaro-Winkler (libellé) + écart date (≤ 5 j). Mode multi-lignes (1:N)
-                optionnel.
-              </p>
+          {/* Statement lines column */}
+          <section className="overflow-hidden rounded-sm border border-line bg-paper">
+            <header className="border-b border-line px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="eyebrow">Relevé</p>
+                  <h2 className="font-display text-base font-medium text-ink">
+                    Lignes à pointer
+                  </h2>
+                </div>
+                {activeAccountId !== null && proposals.length > 0 && (
+                  <StatusChip tone="warn">
+                    {proposals.length} en attente
+                  </StatusChip>
+                )}
+              </div>
               {activeAccountId !== null && (
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ink-soft">
                   <label className="flex cursor-pointer items-center gap-1.5">
@@ -255,7 +432,7 @@ export default function BankReconciliationPage() {
                     Multi-lignes (1:N)
                   </label>
                   <label className="flex items-center gap-1.5">
-                    Tolérance
+                    <span className="text-ink-mute">Tolérance</span>
                     <Input
                       type="number"
                       step="0.01"
@@ -263,164 +440,247 @@ export default function BankReconciliationPage() {
                       value={amountTolerance}
                       onChange={(e) => setAmountTolerance(e.target.value)}
                       placeholder="0.01"
-                      className="h-7 w-24 text-xs"
+                      className="h-7 w-20 text-xs"
                     />
                   </label>
                   {activeAccount && activeAccount.currency !== 'XOF' && (
-                    <span className="inline-flex items-center rounded-sm border border-line-strong bg-info-soft px-2 py-0.5 text-2xs uppercase tracking-wide text-info-ink">
-                      Devise compte : {activeAccount.currency} (FX requis)
-                    </span>
+                    <StatusChip tone="info">FX {activeAccount.currency}</StatusChip>
                   )}
                 </div>
               )}
-            </div>
+            </header>
 
-            <div className="mt-4">
+            <div className="max-h-[640px] overflow-y-auto">
               {!activeAccountId ? (
-                <div className="py-8 text-center text-sm text-ink-mute">
-                  Sélectionnez un compte.
-                </div>
+                <EmptyState
+                  icon={Banknote}
+                  title="Sélectionnez un compte"
+                  description="Choisissez un compte bancaire à gauche pour afficher les lignes à rapprocher."
+                />
               ) : proposalsQuery.isLoading ? (
-                <div className="py-8 text-center">
-                  <Loader2 className="inline h-4 w-4 animate-spin text-ink-mute" />
-                </div>
-              ) : proposalsQuery.data?.length === 0 ? (
-                <div className="py-8 text-center text-sm text-ink-mute">
-                  Aucune ligne en attente.
-                </div>
+                <SkeletonRows n={5} />
+              ) : proposals.length === 0 ? (
+                <EmptyState
+                  icon={Banknote}
+                  title="Tout est à jour"
+                  description="Aucune écriture en attente de rapprochement sur ce compte."
+                />
               ) : (
-                <div className="max-h-[600px] space-y-3 overflow-y-auto">
-                  {proposalsQuery.data?.map((p) => (
-                    <div
-                      key={p.statementLineId}
-                      className="space-y-2 rounded-sm border border-line bg-paper p-3"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-ink">
-                            {p.description}
-                          </div>
-                          <div className="text-xs text-ink-mute">{p.transactionDate}</div>
-                        </div>
-                        <div
-                          className={`font-mono text-sm ${
-                            p.direction === 'credit' ? 'text-accent-ink' : 'text-critical-ink'
+                <ul className="divide-y divide-line">
+                  {proposals.map((p) => {
+                    const isFocused =
+                      focusedLineId === p.statementLineId ||
+                      (focusedLineId === null && focusedProposal?.statementLineId === p.statementLineId);
+                    const isCredit = p.direction === 'credit';
+                    return (
+                      <li key={p.statementLineId}>
+                        <button
+                          type="button"
+                          onClick={() => setFocusedLineId(p.statementLineId)}
+                          className={`press flex w-full items-start gap-3 px-4 py-3 text-left transition-colors duration-fast ${
+                            isFocused ? 'bg-accent-soft/40' : 'hover:bg-sunk/40'
                           }`}
                         >
-                          {p.direction === 'credit' ? '+' : '-'}
-                          {new Intl.NumberFormat('fr-FR').format(Number(p.amount))}
+                          <span
+                            className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+                              isCredit ? 'bg-accent' : 'bg-critical'
+                            }`}
+                            aria-hidden
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-3">
+                              <p className="truncate text-sm font-medium text-ink">
+                                {p.description}
+                              </p>
+                              <span
+                                className={`shrink-0 font-mono text-sm font-medium tabular-nums ${
+                                  isCredit ? 'text-accent-ink' : 'text-critical-ink'
+                                }`}
+                              >
+                                {isCredit ? '+' : '−'}
+                                {formatAmount(p.amount)}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="font-mono text-[11px] tabular-nums text-ink-mute">
+                                {p.transactionDate}
+                              </span>
+                              <span className="text-ink-mute">·</span>
+                              {p.proposals.length > 0 ? (
+                                <StatusChip tone="warn">À pointer · {p.proposals.length} cand.</StatusChip>
+                              ) : (
+                                <StatusChip tone="critical">Sans candidat</StatusChip>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          {/* Candidates / matching column */}
+          <section className="overflow-hidden rounded-sm border border-line bg-paper">
+            <header className="border-b border-line px-4 py-3">
+              <p className="eyebrow">Écritures</p>
+              <h2 className="font-display text-base font-medium text-ink">Candidats</h2>
+              <p className="mt-1 text-xs text-ink-mute">
+                Tri par score Jaro-Winkler · écart date ≤ 5 j
+              </p>
+            </header>
+
+            <div className="max-h-[640px] overflow-y-auto">
+              {!activeAccountId || !focusedProposal ? (
+                <EmptyState
+                  icon={Sparkles}
+                  title="Aucune ligne sélectionnée"
+                  description="Cliquez sur une ligne du relevé pour voir les écritures candidates."
+                />
+              ) : focusedProposal.proposals.length === 0 ? (
+                <EmptyState
+                  icon={Sparkles}
+                  title="Aucun candidat"
+                  description="Aucune écriture journal ne correspond à cette ligne. Créez-la manuellement si nécessaire."
+                />
+              ) : (
+                <div className="space-y-3 p-4">
+                  <FocusedLineHeader proposal={focusedProposal} />
+                  <div className="space-y-2">
+                    {focusedProposal.proposals.slice(0, 8).map((c) => {
+                      const selected = selectedByLine[focusedProposal.statementLineId] ?? [];
+                      const isChecked = selected.includes(c.journalEntryLineId);
+                      const lineAmount =
+                        Number(c.debit) > 0 ? Number(c.debit) : Number(c.credit);
+                      const statementAmount = Number(focusedProposal.amount);
+                      const diff = Math.abs(lineAmount - statementAmount);
+                      return (
+                        <article
+                          key={c.journalEntryLineId}
+                          className={`group rounded-sm border bg-paper p-3 transition-colors duration-fast ${
+                            isChecked
+                              ? 'border-accent bg-accent-soft/40'
+                              : 'border-line hover:border-line-strong'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {multiLineEnabled && (
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() =>
+                                  toggleCandidate(
+                                    focusedProposal.statementLineId,
+                                    c.journalEntryLineId,
+                                  )
+                                }
+                                className="mt-1 h-4 w-4 shrink-0 accent-accent"
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center rounded-sm border border-line-strong bg-sunk px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-ink">
+                                  {c.journalCode}/{c.entryNumber}
+                                </span>
+                                <span className="font-mono text-[11px] tabular-nums text-ink-mute">
+                                  {c.entryDate}
+                                </span>
+                                <ScoreBadge score={c.score} />
+                              </div>
+                              <p className="mt-1.5 text-sm text-ink">{c.description}</p>
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
+                                <span className="font-mono tabular-nums text-ink-soft">
+                                  Débit {formatAmount(c.debit)}
+                                </span>
+                                <span className="font-mono tabular-nums text-ink-soft">
+                                  Crédit {formatAmount(c.credit)}
+                                </span>
+                                {diff > 0.01 && (
+                                  <span className="font-mono tabular-nums text-critical-ink">
+                                    Δ {formatAmount(diff)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {!multiLineEnabled && (
+                              <Button
+                                size="sm"
+                                className="press shrink-0"
+                                onClick={() => {
+                                  void matchMut
+                                    .mutateAsync({
+                                      statementLineId: focusedProposal.statementLineId,
+                                      journalEntryLineIds: [c.journalEntryLineId],
+                                    })
+                                    .then((res) => {
+                                      if (res?.matchGroupId) {
+                                        // eslint-disable-next-line no-console
+                                        console.info('Match group:', res.matchGroupId.slice(0, 6));
+                                      }
+                                      return qc.invalidateQueries({
+                                        queryKey: ['bank-proposals'],
+                                      });
+                                    });
+                                }}
+                                disabled={matchMut.isPending}
+                              >
+                                <Link2 className="mr-1 h-3.5 w-3.5" /> Pointer
+                              </Button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  {multiLineEnabled &&
+                    (selectedByLine[focusedProposal.statementLineId]?.length ?? 0) > 0 && (
+                      <div className="sticky bottom-0 -mx-4 -mb-4 border-t border-line bg-canvas/95 px-4 py-3 backdrop-blur">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs text-ink-soft">
+                            <span className="font-medium text-ink">
+                              {selectedByLine[focusedProposal.statementLineId]?.length}
+                            </span>{' '}
+                            ligne(s) sélectionnée(s)
+                          </div>
+                          <Button
+                            size="sm"
+                            className="press"
+                            onClick={() => {
+                              const ids = selectedByLine[focusedProposal.statementLineId] ?? [];
+                              void matchMut
+                                .mutateAsync({
+                                  statementLineId: focusedProposal.statementLineId,
+                                  journalEntryLineIds: ids,
+                                })
+                                .then((res) => {
+                                  if (res?.matchGroupId) {
+                                    // eslint-disable-next-line no-console
+                                    console.info(
+                                      'Match group:',
+                                      res.matchGroupId.slice(0, 6),
+                                      'FX:',
+                                      res.fxRateApplied ?? 'n/a',
+                                    );
+                                  }
+                                  setSelectedByLine((prev) => ({
+                                    ...prev,
+                                    [focusedProposal.statementLineId]: [],
+                                  }));
+                                  return qc.invalidateQueries({
+                                    queryKey: ['bank-proposals'],
+                                  });
+                                });
+                            }}
+                            disabled={matchMut.isPending}
+                          >
+                            <Link2 className="mr-1.5 h-3.5 w-3.5" /> Rapprocher en groupe
+                          </Button>
                         </div>
                       </div>
-                      {p.proposals.length === 0 ? (
-                        <div className="text-xs italic text-ink-mute">
-                          Aucune écriture candidate.
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          {p.proposals.slice(0, 6).map((c) => {
-                            const selected = selectedByLine[p.statementLineId] ?? [];
-                            const isChecked = selected.includes(c.journalEntryLineId);
-                            return (
-                              <div
-                                key={c.journalEntryLineId}
-                                className="flex items-center justify-between gap-2 rounded-sm bg-sunk/40 px-2 py-1.5 text-xs"
-                              >
-                                {multiLineEnabled && (
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() =>
-                                      toggleCandidate(p.statementLineId, c.journalEntryLineId)
-                                    }
-                                    className="h-3.5 w-3.5 accent-accent"
-                                  />
-                                )}
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate text-ink">
-                                    <span className="mr-1 inline-flex items-center rounded-sm border border-line-strong bg-paper px-1.5 py-0.5 font-mono text-2xs text-ink-soft">
-                                      {c.journalCode}/{c.entryNumber}
-                                    </span>
-                                    {c.description}
-                                  </div>
-                                  <div className="text-ink-mute">
-                                    {c.entryDate} · score {(c.score * 100).toFixed(0)}%
-                                  </div>
-                                </div>
-                                {!multiLineEnabled && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="press"
-                                    onClick={() => {
-                                      void matchMut
-                                        .mutateAsync({
-                                          statementLineId: p.statementLineId,
-                                          journalEntryLineIds: [c.journalEntryLineId],
-                                        })
-                                        .then((res) => {
-                                          if (res?.matchGroupId) {
-                                            // eslint-disable-next-line no-console
-                                            console.info('Match group:', res.matchGroupId.slice(0, 6));
-                                          }
-                                          return qc.invalidateQueries({
-                                            queryKey: ['bank-proposals'],
-                                          });
-                                        });
-                                    }}
-                                    disabled={matchMut.isPending}
-                                  >
-                                    <Link2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {multiLineEnabled &&
-                            (selectedByLine[p.statementLineId]?.length ?? 0) > 0 && (
-                              <div className="flex items-center justify-between pt-1">
-                                <div className="text-xs text-ink-mute">
-                                  {selectedByLine[p.statementLineId]?.length} ligne(s)
-                                  sélectionnée(s)
-                                </div>
-                                <Button
-                                  size="sm"
-                                  className="press"
-                                  onClick={() => {
-                                    const ids = selectedByLine[p.statementLineId] ?? [];
-                                    void matchMut
-                                      .mutateAsync({
-                                        statementLineId: p.statementLineId,
-                                        journalEntryLineIds: ids,
-                                      })
-                                      .then((res) => {
-                                        if (res?.matchGroupId) {
-                                          // eslint-disable-next-line no-console
-                                          console.info(
-                                            'Match group:',
-                                            res.matchGroupId.slice(0, 6),
-                                            'FX:',
-                                            res.fxRateApplied ?? 'n/a',
-                                          );
-                                        }
-                                        setSelectedByLine((prev) => ({
-                                          ...prev,
-                                          [p.statementLineId]: [],
-                                        }));
-                                        return qc.invalidateQueries({
-                                          queryKey: ['bank-proposals'],
-                                        });
-                                      });
-                                  }}
-                                  disabled={matchMut.isPending}
-                                >
-                                  <Link2 className="mr-1 h-3.5 w-3.5" /> Rapprocher (groupe)
-                                </Button>
-                              </div>
-                            )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    )}
                 </div>
               )}
             </div>
@@ -431,7 +691,92 @@ export default function BankReconciliationPage() {
   );
 }
 
-function CreateAccountForm({ orgId, onSuccess }: { orgId: string; onSuccess: () => void }) {
+function KpiTile({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone = 'neutral',
+  mono = false,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: 'neutral' | 'accent' | 'warn';
+  mono?: boolean;
+}){
+  const toneClass: Record<typeof tone, string> = {
+    neutral: 'text-ink-soft',
+    accent: 'text-accent-ink',
+    warn: 'text-warn-ink',
+  };
+  return (
+    <div className="rounded-sm border border-line bg-paper p-4">
+      <div className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-ink-mute" strokeWidth={1.5} />
+        <p className="eyebrow">{label}</p>
+      </div>
+      <p
+        className={`mt-2 text-2xl font-medium tracking-tight text-ink ${mono ? 'font-mono tabular-nums' : 'font-display'}`}
+      >
+        {value}
+      </p>
+      {detail && <p className={`mt-1 text-[11px] ${toneClass[tone]}`}>{detail}</p>}
+    </div>
+  );
+}
+
+function ScoreBadge({ score }: { score: number }){
+  const pct = Math.round(score * 100);
+  const tone: 'accent' | 'warn' | 'critical' =
+    pct >= 80 ? 'accent' : pct >= 50 ? 'warn' : 'critical';
+  const cls: Record<typeof tone, string> = {
+    accent: 'bg-accent-soft text-accent-ink',
+    warn: 'bg-warn-soft text-warn-ink',
+    critical: 'bg-critical-soft text-critical-ink',
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[10px] tabular-nums ${cls[tone]}`}
+    >
+      {pct}%
+    </span>
+  );
+}
+
+function FocusedLineHeader({ proposal }: { proposal: MatchProposal }){
+  const isCredit = proposal.direction === 'credit';
+  return (
+    <div className="rounded-sm border border-line-strong bg-sunk/60 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow">Ligne ciblée</p>
+          <p className="mt-1 truncate text-sm font-medium text-ink">{proposal.description}</p>
+          <p className="mt-0.5 font-mono text-[11px] tabular-nums text-ink-mute">
+            {proposal.transactionDate}
+          </p>
+        </div>
+        <div
+          className={`shrink-0 text-right font-mono text-base font-medium tabular-nums ${
+            isCredit ? 'text-accent-ink' : 'text-critical-ink'
+          }`}
+        >
+          {isCredit ? '+' : '−'}
+          {formatAmount(proposal.amount)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CreateAccountForm({
+  orgId,
+  onSuccess,
+}: {
+  orgId: string;
+  onSuccess: () => void;
+}){
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
   const [bankName, setBankName] = useState('');
@@ -455,11 +800,12 @@ function CreateAccountForm({ orgId, onSuccess }: { orgId: string; onSuccess: () 
   }
 
   return (
-    <section className="rounded-sm border border-line bg-paper p-5">
-      <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">Nouveau compte bancaire</h2>
-      </div>
-      <form onSubmit={handle} className="mt-4 grid gap-3 md:grid-cols-2">
+    <section className="overflow-hidden rounded-sm border border-line bg-paper">
+      <header className="border-b border-line px-5 py-3">
+        <p className="eyebrow">Création</p>
+        <h2 className="font-display text-lg font-medium text-ink">Nouveau compte bancaire</h2>
+      </header>
+      <form onSubmit={handle} className="grid gap-4 p-5 md:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="b-code">Code</Label>
           <Input
@@ -517,7 +863,12 @@ function CreateAccountForm({ orgId, onSuccess }: { orgId: string; onSuccess: () 
         )}
         <div className="md:col-span-2">
           <Button type="submit" disabled={mut.isPending} className="press">
-            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Créer
+            {mut.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+            )}
+            Créer le compte
           </Button>
         </div>
       </form>
@@ -533,7 +884,7 @@ function ImportStatementForm({
   orgId: string;
   bankAccountId: string;
   onSuccess: () => void;
-}) {
+}){
   const [fileName, setFileName] = useState('');
   const [fileContent, setFileContent] = useState('');
   const [periodStart, setPeriodStart] = useState('');
@@ -542,10 +893,14 @@ function ImportStatementForm({
   const [closingBalance, setClosingBalance] = useState('');
 
   const mut = useApiMutation(async () => {
-    return api.post(
-      `/organizations/${orgId}/bank-accounts/${bankAccountId}/statements/import`,
-      { fileName, fileContent, periodStart, periodEnd, openingBalance, closingBalance },
-    );
+    return api.post(`/organizations/${orgId}/bank-accounts/${bankAccountId}/statements/import`, {
+      fileName,
+      fileContent,
+      periodStart,
+      periodEnd,
+      openingBalance,
+      closingBalance,
+    });
   });
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>): void {
@@ -555,7 +910,6 @@ function ImportStatementForm({
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // result is "data:text/csv;base64,XXXX"
       const b64 = result.split(',')[1] ?? '';
       setFileContent(b64);
     };
@@ -569,17 +923,21 @@ function ImportStatementForm({
   }
 
   return (
-    <section className="rounded-sm border border-line bg-paper p-5">
-      <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">Importer un relevé CSV</h2>
-        <p className="mt-1 text-sm text-ink-mute">
-          Wave 1 : encodage automatique en base64. Format attendu : date, libellé, montant.
+    <section className="overflow-hidden rounded-sm border border-line bg-paper">
+      <header className="border-b border-line px-5 py-3">
+        <p className="eyebrow">Import</p>
+        <h2 className="font-display text-lg font-medium text-ink">Relevé CSV</h2>
+        <p className="mt-1 text-xs text-ink-mute">
+          Encodage base64 automatique. Format attendu : date · libellé · montant.
         </p>
-      </div>
-      <form onSubmit={handle} className="mt-4 grid gap-3 md:grid-cols-2">
+      </header>
+      <form onSubmit={handle} className="grid gap-4 p-5 md:grid-cols-2">
         <div className="space-y-1.5 md:col-span-2">
           <Label htmlFor="s-file">Fichier CSV</Label>
           <Input id="s-file" type="file" accept=".csv,text/csv" onChange={handleFile} required />
+          {fileName && (
+            <p className="font-mono text-[11px] text-ink-mute">{fileName}</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="s-start">Période début</Label>
@@ -632,11 +990,18 @@ function ImportStatementForm({
             disabled={mut.isPending || fileContent.length === 0}
             className="press"
           >
-            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Importer
+            {mut.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileUp className="mr-2 h-4 w-4" />
+            )}
+            Importer le relevé
           </Button>
         </div>
       </form>
     </section>
   );
 }
+
+// Suppress unused export warning for type kept for downstream consumers
+export type { StatementLine };

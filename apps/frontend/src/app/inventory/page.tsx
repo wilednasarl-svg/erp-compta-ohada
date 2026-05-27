@@ -1,8 +1,9 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownToLine, ArrowUpFromLine, Loader2, Package, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowDownToLine, ArrowUpFromLine, Loader2, Package, Plus, Warehouse } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
@@ -58,14 +59,79 @@ const MOVEMENT_LABEL: Record<MovementType, string> = {
 };
 
 const MOVEMENT_TONE: Record<MovementType, string> = {
-  purchase: 'bg-accent/15 text-accent-ink',
-  sale: 'bg-info/15 text-info-ink',
-  adjustment: 'bg-warn/15 text-warn-ink',
+  purchase: 'bg-accent-soft text-accent-ink',
+  sale: 'bg-info-soft text-info-ink',
+  adjustment: 'bg-warn-soft text-warn-ink',
   inventory_count: 'bg-sunk text-ink-soft',
 };
 
 const SELECT_CLS =
-  'w-full rounded-sm border border-line-strong bg-paper px-3 py-2 text-sm text-ink transition-colors focus:border-accent focus:outline-none';
+  'w-full rounded-sm border border-line-strong bg-paper px-3 py-2 text-sm text-ink transition-colors duration-fast focus:border-accent focus:outline-none';
+
+function fmt(n: number | string): string {
+  const v = typeof n === 'string' ? Number(n) : n;
+  return Number.isFinite(v) ? v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+}
+
+function SkeletonRows({ n = 5 }: { n?: number }) {
+  return (
+    <div className="animate-pulse divide-y divide-line">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-3">
+          <div className="h-3 w-20 rounded-xs bg-sunk" />
+          <div className="h-3 flex-1 rounded-xs bg-sunk" />
+          <div className="h-3 w-24 rounded-xs bg-sunk" />
+          <div className="h-3 w-16 rounded-xs bg-sunk" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  actionHref,
+  onAction,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  actionHref?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[40ch] text-xs text-ink-mute">{description}</p>
+      </div>
+      {actionLabel && actionHref && (
+        <Link
+          href={actionHref}
+          className="inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent hover:text-canvas"
+        >
+          {actionLabel}
+        </Link>
+      )}
+      {actionLabel && !actionHref && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="press inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent hover:text-canvas"
+        >
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function InventoryPage() {
   const currentOrg = useCurrentOrg();
@@ -97,26 +163,63 @@ export default function InventoryPage() {
     enabled: orgId !== '' && tab === 'movements',
   });
 
+  const summary = useMemo(() => {
+    const items = itemsQuery.data ?? [];
+    const totalSkus = items.length;
+    const totalValue = items.reduce((acc, it) => acc + Number(it.qtyOnHand) * Number(it.cmp), 0);
+    const zeroCount = items.filter((it) => Number(it.qtyOnHand) === 0).length;
+    const negativeCount = items.filter((it) => Number(it.qtyOnHand) < 0).length;
+    return { totalSkus, totalValue, zeroCount, negativeCount };
+  }, [itemsQuery.data]);
+
   return (
     <AppShell>
       <div className="animate-page-in space-y-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow mb-2">Stocks & valorisation</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Inventaire & Stock</h1>
+            <p className="eyebrow mb-2">États · Inventaire</p>
+            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Inventaire</h1>
             <p className="mt-2 max-w-2xl text-sm text-ink-mute">
-              Registre articles + mouvements + valorisation Coût Moyen Pondéré (CMP) SYSCOHADA.
+              Suivi des stocks et inventaire physique SYSCOHADA. Valorisation au coût moyen pondéré (CMP).
             </p>
           </div>
           <Button onClick={() => setCreatingItem((v) => !v)} className="press">
-            {creatingItem ? 'Annuler' : <><Plus className="mr-2 h-4 w-4" /> Nouvel article</>}
+            {creatingItem ? 'Annuler' : (<><Plus className="mr-2 h-4 w-4" /> Nouvel article</>)}
           </Button>
+        </div>
+
+        {/* Summary bar */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-sm border border-line bg-paper p-4">
+            <p className="eyebrow">Articles (SKU)</p>
+            <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-ink">{summary.totalSkus}</p>
+            <p className="mt-1 text-xs text-ink-mute">fiches actives</p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-4">
+            <p className="eyebrow">Valeur du stock</p>
+            <p className="mt-1 font-mono text-2xl font-medium tabular-nums text-ink">{fmt(summary.totalValue)}</p>
+            <p className="mt-1 text-xs text-ink-mute">XOF · Qté × CMP</p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-4">
+            <p className="eyebrow">Stocks nuls</p>
+            <p className={`mt-1 font-mono text-2xl font-medium tabular-nums ${summary.zeroCount > 0 ? 'text-warn-ink' : 'text-ink'}`}>
+              {summary.zeroCount}
+            </p>
+            <p className="mt-1 text-xs text-ink-mute">à réapprovisionner</p>
+          </div>
+          <div className="rounded-sm border border-line bg-paper p-4">
+            <p className="eyebrow">Stocks négatifs</p>
+            <p className={`mt-1 font-mono text-2xl font-medium tabular-nums ${summary.negativeCount > 0 ? 'text-critical-ink' : 'text-ink'}`}>
+              {summary.negativeCount}
+            </p>
+            <p className="mt-1 text-xs text-ink-mute">anomalies à corriger</p>
+          </div>
         </div>
 
         <div className="flex gap-2 border-b border-line">
           <button
             onClick={() => setTab('items')}
-            className={`press border-b-2 px-4 py-2 text-sm transition-colors ${
+            className={`press border-b-2 px-4 py-2 text-sm transition-colors duration-fast ${
               tab === 'items' ? 'border-accent font-medium text-ink' : 'border-transparent text-ink-mute hover:text-ink'
             }`}
           >
@@ -124,7 +227,7 @@ export default function InventoryPage() {
           </button>
           <button
             onClick={() => setTab('movements')}
-            className={`press border-b-2 px-4 py-2 text-sm transition-colors ${
+            className={`press border-b-2 px-4 py-2 text-sm transition-colors duration-fast ${
               tab === 'movements' ? 'border-accent font-medium text-ink' : 'border-transparent text-ink-mute hover:text-ink'
             }`}
           >
@@ -156,104 +259,163 @@ export default function InventoryPage() {
 
         {tab === 'items' ? (
           <section className="space-y-4">
-            <div className="border-b border-line pb-3">
-              <h2 className="font-display text-xl font-medium text-ink">Articles en stock</h2>
-              <p className="mt-1 text-sm text-ink-mute">{itemsQuery.data?.length ?? 0} articles</p>
+            <div className="flex items-end justify-between gap-3 border-b border-line pb-3">
+              <div>
+                <h2 className="font-display text-xl font-medium text-ink">Articles en stock</h2>
+                <p className="mt-1 text-sm text-ink-mute">
+                  {itemsQuery.data?.length ?? 0} fiche{(itemsQuery.data?.length ?? 0) > 1 ? 's' : ''}
+                </p>
+              </div>
             </div>
             {itemsQuery.isLoading ? (
-              <div className="py-8 text-center text-ink-mute">
-                <Loader2 className="inline h-4 w-4 animate-spin" />
+              <div className="rounded-sm border border-line">
+                <SkeletonRows n={6} />
               </div>
             ) : itemsQuery.data?.length === 0 ? (
-              <div className="py-8 text-center text-sm text-ink-mute">Aucun article.</div>
+              <div className="rounded-sm border border-line bg-paper">
+                <EmptyState
+                  icon={Warehouse}
+                  title="Aucun article en stock"
+                  description="Importez ou saisissez vos premières fiches de stock"
+                  actionLabel="Créer un article"
+                  onAction={() => setCreatingItem(true)}
+                />
+              </div>
             ) : (
-              <div className="overflow-x-auto rounded-sm border border-line">
+              <div className="overflow-x-auto rounded-sm border border-line bg-paper">
                 <table className="w-full text-sm">
                   <thead className="bg-sunk">
                     <tr>
-                      <th className="px-2 py-2 text-left"><span className="eyebrow">Code</span></th>
-                      <th className="px-2 py-2 text-left"><span className="eyebrow">Désignation</span></th>
-                      <th className="px-2 py-2 text-left"><span className="eyebrow">Famille</span></th>
-                      <th className="px-2 py-2 text-right"><span className="eyebrow">Qté</span></th>
-                      <th className="px-2 py-2 text-right"><span className="eyebrow">CMP</span></th>
-                      <th className="px-2 py-2 text-right"><span className="eyebrow">Valeur</span></th>
-                      <th className="px-2 py-2 text-right"><span className="eyebrow">Actions</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Code</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Désignation</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Famille</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">Quantité</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">CMP</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">Valeur</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {itemsQuery.data?.map((it, idx) => (
-                      <tr
-                        key={it.id}
-                        className={`border-t border-line transition-colors hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
-                      >
-                        <td className="px-2 py-2 font-mono text-ink">{it.code}</td>
-                        <td className="px-2 py-2 text-ink">{it.label}</td>
-                        <td className="px-2 py-2 text-xs text-ink-mute">{FAMILY_LABEL[it.family]}</td>
-                        <td className="px-2 py-2 text-right font-mono text-ink">
-                          {Number(it.qtyOnHand).toFixed(2)} {it.unitOfMeasure}
-                        </td>
-                        <td className="px-2 py-2 text-right font-mono text-ink">{Number(it.cmp).toFixed(2)}</td>
-                        <td className="px-2 py-2 text-right font-mono text-ink">
-                          {new Intl.NumberFormat('fr-FR').format(Number(it.qtyOnHand) * Number(it.cmp))}
-                        </td>
-                        <td className="px-2 py-2 text-right">
-                          <Button size="sm" variant="outline" onClick={() => setMovementFor(it)} className="press">
-                            <ArrowUpFromLine className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                    {itemsQuery.data?.map((it, idx) => {
+                      const qty = Number(it.qtyOnHand);
+                      const cmp = Number(it.cmp);
+                      const value = qty * cmp;
+                      const qtyTone =
+                        qty < 0 ? 'text-critical-ink' : qty === 0 ? 'text-warn-ink' : 'text-ink';
+                      return (
+                        <tr
+                          key={it.id}
+                          className={`border-t border-line transition-colors duration-fast hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
+                        >
+                          <td className="px-3 py-2 font-mono text-ink">{it.code}</td>
+                          <td className="px-3 py-2 text-ink">{it.label}</td>
+                          <td className="px-3 py-2 text-xs text-ink-mute">{FAMILY_LABEL[it.family]}</td>
+                          <td className={`num px-3 py-2 text-right font-mono tabular-nums ${qtyTone}`}>
+                            <span className="inline-flex items-center justify-end gap-2">
+                              {qty === 0 && (
+                                <span className="inline-flex items-center rounded-xs bg-warn-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-warn-ink">
+                                  Stock nul
+                                </span>
+                              )}
+                              {qty < 0 && (
+                                <span className="inline-flex items-center rounded-xs bg-critical-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-critical-ink">
+                                  Négatif
+                                </span>
+                              )}
+                              <span>{fmt(qty)} <span className="text-ink-mute">{it.unitOfMeasure}</span></span>
+                            </span>
+                          </td>
+                          <td className="num px-3 py-2 text-right font-mono tabular-nums text-ink-soft">
+                            {fmt(cmp)}
+                          </td>
+                          <td className="num px-3 py-2 text-right font-mono font-medium tabular-nums text-ink">
+                            {fmt(value)}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button size="sm" variant="outline" onClick={() => setMovementFor(it)} className="press">
+                              <ArrowUpFromLine className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
+                  {(itemsQuery.data?.length ?? 0) > 0 && (
+                    <tfoot className="border-t-2 border-line-strong bg-sunk">
+                      <tr>
+                        <td colSpan={5} className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-ink-soft">
+                          Total valeur stock
+                        </td>
+                        <td className="num px-3 py-2 text-right font-mono text-base font-medium tabular-nums text-ink">
+                          {fmt(summary.totalValue)}
+                        </td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             )}
+            <FormError error={itemsQuery.error} />
           </section>
         ) : (
           <section className="space-y-4">
             <div className="border-b border-line pb-3">
               <h2 className="font-display text-xl font-medium text-ink">Historique des mouvements</h2>
+              <p className="mt-1 text-sm text-ink-mute">
+                {movementsQuery.data?.length ?? 0} mouvement{(movementsQuery.data?.length ?? 0) > 1 ? 's' : ''}
+              </p>
             </div>
             {movementsQuery.isLoading ? (
-              <div className="py-8 text-center text-ink-mute">
-                <Loader2 className="inline h-4 w-4 animate-spin" />
+              <div className="rounded-sm border border-line">
+                <SkeletonRows n={6} />
               </div>
             ) : movementsQuery.data?.length === 0 ? (
-              <div className="py-8 text-center text-sm text-ink-mute">Aucun mouvement.</div>
+              <div className="rounded-sm border border-line bg-paper">
+                <EmptyState
+                  icon={ArrowDownToLine}
+                  title="Aucun mouvement enregistré"
+                  description="Les entrées, sorties et inventaires apparaîtront ici dès la première saisie"
+                />
+              </div>
             ) : (
-              <div className="overflow-x-auto rounded-sm border border-line">
+              <div className="overflow-x-auto rounded-sm border border-line bg-paper">
                 <table className="w-full text-sm">
                   <thead className="bg-sunk">
                     <tr>
-                      <th className="px-2 py-2 text-left"><span className="eyebrow">Date</span></th>
-                      <th className="px-2 py-2 text-left"><span className="eyebrow">Type</span></th>
-                      <th className="px-2 py-2 text-right"><span className="eyebrow">Quantité</span></th>
-                      <th className="px-2 py-2 text-right"><span className="eyebrow">Prix unitaire</span></th>
-                      <th className="px-2 py-2 text-right"><span className="eyebrow">CMP après</span></th>
-                      <th className="px-2 py-2 text-left"><span className="eyebrow">Réf.</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Date</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Type</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">Quantité</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">Prix unitaire</span></th>
+                      <th className="px-3 py-2 text-right"><span className="eyebrow">CMP après</span></th>
+                      <th className="px-3 py-2 text-left"><span className="eyebrow">Référence</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {movementsQuery.data?.map((m, idx) => (
                       <tr
                         key={m.id}
-                        className={`border-t border-line transition-colors hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
+                        className={`border-t border-line transition-colors duration-fast hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
                       >
-                        <td className="px-2 py-2 text-ink">{m.movementDate}</td>
-                        <td className="px-2 py-2">
+                        <td className="px-3 py-2 font-mono text-xs text-ink-soft">{m.movementDate}</td>
+                        <td className="px-3 py-2">
                           <span className={`inline-flex items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${MOVEMENT_TONE[m.type]}`}>
                             {MOVEMENT_LABEL[m.type]}
                           </span>
                         </td>
-                        <td className="px-2 py-2 text-right font-mono text-ink">{m.qty}</td>
-                        <td className="px-2 py-2 text-right font-mono text-ink">{m.unitPrice ?? '—'}</td>
-                        <td className="px-2 py-2 text-right font-mono text-ink">{m.cmpAfter}</td>
-                        <td className="px-2 py-2 font-mono text-xs text-ink-mute">{m.reference ?? '—'}</td>
+                        <td className="num px-3 py-2 text-right font-mono tabular-nums text-ink">{fmt(m.qty)}</td>
+                        <td className="num px-3 py-2 text-right font-mono tabular-nums text-ink-soft">
+                          {m.unitPrice ? fmt(m.unitPrice) : '—'}
+                        </td>
+                        <td className="num px-3 py-2 text-right font-mono tabular-nums text-ink">{fmt(m.cmpAfter)}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-ink-mute">{m.reference ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+            <FormError error={movementsQuery.error} />
           </section>
         )}
       </div>
@@ -379,7 +541,7 @@ function MovementForm({ orgId, item, onSuccess, onCancel }: {
         <div>
           <h2 className="font-display text-xl font-medium text-ink">Mouvement — {item.code}</h2>
           <p className="mt-1 text-sm text-ink-mute">
-            {item.label} · Stock : {item.qtyOnHand} {item.unitOfMeasure} · CMP : {item.cmp}
+            {item.label} · Stock : <span className="font-mono tabular-nums">{fmt(item.qtyOnHand)}</span> {item.unitOfMeasure} · CMP : <span className="font-mono tabular-nums">{fmt(item.cmp)}</span>
           </p>
         </div>
         <Button size="sm" variant="ghost" onClick={onCancel} className="press">×</Button>

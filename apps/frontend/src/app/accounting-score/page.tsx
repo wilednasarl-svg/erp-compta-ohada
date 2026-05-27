@@ -47,76 +47,201 @@ const CRITERION_LABEL: Record<CriterionKey, string> = {
   workflow_delays: 'Retards workflow',
 };
 
+const CRITERION_HELP: Record<CriterionKey, string> = {
+  anomalies: 'Détection automatique d’incohérences sur écritures validées.',
+  missing_justification: 'Pièces justificatives attendues mais non rattachées.',
+  bank_reconciliation: 'Couverture du rapprochement sur comptes 521x/512x.',
+  workflow_delays: 'Délai moyen draft → approved sur instances ouvertes.',
+};
+
 /* ─── Helpers ────────────────────────────────────────────────── */
 
-function gradeTokens(grade: Grade): { bg: string; text: string; border: string } {
-  if (grade === 'A') return { bg: 'bg-accent-soft', text: 'text-accent-ink', border: 'border-accent' };
-  if (grade === 'B') return { bg: 'bg-accent-soft/60', text: 'text-accent-ink', border: 'border-accent/50' };
-  if (grade === 'C') return { bg: 'bg-warn-soft', text: 'text-warn-ink', border: 'border-warn' };
-  return { bg: 'bg-critical-soft', text: 'text-critical-ink', border: 'border-critical' };
+function gradeMeta(grade: Grade): { label: string; tone: 'accent' | 'warn' | 'critical' } {
+  if (grade === 'A') return { label: 'Excellent', tone: 'accent' };
+  if (grade === 'B') return { label: 'Correct', tone: 'accent' };
+  if (grade === 'C') return { label: 'À surveiller', tone: 'warn' };
+  return { label: 'À améliorer', tone: 'critical' };
 }
 
-function scoreColor(value: number): string {
-  if (value >= 70) return 'text-accent-ink';
-  if (value >= 50) return 'text-warn-ink';
-  return 'text-critical-ink';
+function scoreTone(value: number): 'accent' | 'warn' | 'critical' {
+  if (value >= 80) return 'accent';
+  if (value >= 60) return 'warn';
+  return 'critical';
 }
 
-function scoreBarColor(value: number): string {
-  if (value >= 70) return 'bg-accent';
-  if (value >= 50) return 'bg-warn';
+function toneChip(tone: 'accent' | 'warn' | 'critical'): string {
+  if (tone === 'accent') return 'bg-accent-soft text-accent-ink';
+  if (tone === 'warn') return 'bg-warn-soft text-warn-ink';
+  return 'bg-critical-soft text-critical-ink';
+}
+
+function toneBar(tone: 'accent' | 'warn' | 'critical'): string {
+  if (tone === 'accent') return 'bg-accent';
+  if (tone === 'warn') return 'bg-warn';
   return 'bg-critical';
 }
 
-/* ─── ScoreRing ──────────────────────────────────────────────── */
+/* ─── ScoreGauge ─────────────────────────────────────────────── */
 
-function ScoreRing({ value, size = 72 }: { value: number; size?: number }) {
-  const r = size / 2 - 5;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - value / 100);
-  const strokeColor =
-    value >= 70
-      ? 'oklch(var(--accent))'
-      : value >= 50
-        ? 'oklch(var(--warn))'
-        : 'oklch(var(--critical))';
+function ScoreGauge({ score, max = 100 }: { score: number; max?: number }) {
+  const pct = Math.max(0, Math.min(100, Math.round((score / max) * 100)));
+  const tone = scoreTone(pct);
+  const ringColor =
+    tone === 'accent' ? 'text-accent' : tone === 'warn' ? 'text-warn' : 'text-critical';
+  const meta = pct >= 80 ? 'Excellent' : pct >= 60 ? 'Correct' : 'À améliorer';
 
   return (
-    <div
-      className="relative flex shrink-0 items-center justify-center"
-      style={{ width: size, height: size }}
-    >
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        fill="none"
-        className="absolute inset-0"
-        aria-hidden
-      >
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="oklch(var(--line-strong))"
-          strokeWidth="4"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={strokeColor}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={offset}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ transition: 'stroke-dashoffset 900ms cubic-bezier(0.23, 1, 0.32, 1)' }}
-        />
-      </svg>
-      <span className={`font-mono text-sm font-semibold tabular-nums ${scoreColor(value)}`}>
-        {Math.round(value)}
+    <div className="flex items-center gap-5">
+      <div className="relative h-28 w-28">
+        <svg viewBox="0 0 36 36" className="h-28 w-28 -rotate-90">
+          <circle
+            cx="18"
+            cy="18"
+            r="15.9155"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            className="text-line-strong"
+          />
+          <circle
+            cx="18"
+            cy="18"
+            r="15.9155"
+            fill="none"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            className={ringColor}
+            stroke="currentColor"
+            strokeDasharray={`${pct} 100`}
+            style={{ transition: 'stroke-dasharray 900ms cubic-bezier(0.23, 1, 0.32, 1)' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-mono text-2xl font-semibold tabular-nums text-ink">
+            {Math.round(score)}
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-ink-mute">
+            / {max}
+          </span>
+        </div>
+      </div>
+      <div>
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium ${toneChip(tone)}`}
+        >
+          {meta}
+        </span>
+        <p className="mt-1.5 text-xs text-ink-mute">Score sur {max} points</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── EmptyState ─────────────────────────────────────────────── */
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
       </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[40ch] text-xs text-ink-mute">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Skeleton ───────────────────────────────────────────────── */
+
+function ScoreSkeleton() {
+  return (
+    <div className="animate-pulse space-y-8">
+      <div className="flex items-center gap-6 rounded-sm border border-line bg-paper p-6">
+        <div className="h-28 w-28 rounded-full bg-sunk" />
+        <div className="flex-1 space-y-3">
+          <div className="h-3 w-24 rounded-xs bg-sunk" />
+          <div className="h-5 w-48 rounded-xs bg-sunk" />
+          <div className="h-3 w-32 rounded-xs bg-sunk" />
+        </div>
+      </div>
+      <div className="divide-y divide-line rounded-sm border border-line bg-paper">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 px-5 py-4">
+            <div className="h-3 w-40 rounded-xs bg-sunk" />
+            <div className="h-3 flex-1 rounded-xs bg-sunk" />
+            <div className="h-3 w-16 rounded-xs bg-sunk" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── CriterionRow ───────────────────────────────────────────── */
+
+function CriterionRow({
+  label,
+  help,
+  criterion,
+}: {
+  label: string;
+  help: string;
+  criterion: CriterionResult;
+}) {
+  const tone = scoreTone(criterion.score);
+  const contribution = Math.round(criterion.score * criterion.weight);
+  const good = criterion.score >= 70;
+
+  return (
+    <div className="grid grid-cols-1 gap-4 px-5 py-5 transition-colors duration-fast hover:bg-sunk/40 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-ink">{label}</p>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-ink-mute">
+            poids {Math.round(criterion.weight * 100)}%
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-ink-mute">{help}</p>
+        <p className="mt-2 text-xs text-ink-soft">{criterion.description}</p>
+
+        <div className="mt-3 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunk">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${toneBar(tone)}`}
+              style={{ width: `${Math.max(2, criterion.score)}%` }}
+            />
+          </div>
+          <span className="shrink-0 font-mono text-xs tabular-nums text-ink-soft">
+            {Math.round(criterion.score)}/100
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 md:flex-col md:items-end">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${toneChip(tone)}`}
+        >
+          {good ? (
+            <TrendingUp className="h-3 w-3" strokeWidth={2} />
+          ) : (
+            <TrendingDown className="h-3 w-3" strokeWidth={2} />
+          )}
+          {contribution} pts
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-mute">
+          contribution
+        </span>
+      </div>
     </div>
   );
 }
@@ -183,34 +308,35 @@ export default function AccountingScorePage() {
   }
 
   const score = scoreQuery.data;
-  const g = score ? gradeTokens(score.grade) : null;
+  const grade = score ? gradeMeta(score.grade) : null;
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[900px] animate-page-in space-y-10">
+      <div className="mx-auto max-w-[960px] animate-page-in space-y-10">
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
-          <p className="eyebrow mb-2">Qualité comptable</p>
+          <p className="eyebrow mb-2">Analyse &amp; IA · Score</p>
           <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
-            Score de santé
+            Score de santé comptable
           </h1>
-          <p className="mt-3 max-w-[60ch] text-sm leading-relaxed text-ink-soft">
-            Indicateur 0-100 agrégé sur 4 critères pondérés : anomalies IA, justificatifs,
-            rapprochements bancaires, retards workflow. Heuristique SYSCOHADA.
+          <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
+            Indice qualité OHADA calculé en temps réel. Mesure la rigueur de la saisie,
+            l&apos;exhaustivité des états, la conformité aux normes SYSCOHADA.
           </p>
         </header>
 
         {/* ─── Controls ───────────────────────────────────── */}
-        <div className="flex flex-wrap items-end gap-4 border-b border-line pb-8">
-          <div className="min-w-[240px] space-y-2">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
+          <div className="min-w-[260px] space-y-1.5">
             <Label htmlFor="exercise">Exercice</Label>
             <select
               id="exercise"
-              className="flex h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+              className="flex h-9 w-full rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors duration-fast focus:border-accent focus:outline-none"
               value={selectedExerciseId}
               onChange={(e) => setSelectedExerciseId(e.target.value)}
               disabled={periodsQuery.isLoading}
             >
+              {exercises.length === 0 && <option value="">— aucun exercice —</option>}
               {exercises.map((ex) => (
                 <option key={ex.id} value={ex.id}>
                   {ex.label}
@@ -232,117 +358,72 @@ export default function AccountingScorePage() {
           </Button>
         </div>
 
-        {/* ─── Score body ─────────────────────────────────── */}
+        {/* ─── Body ───────────────────────────────────────── */}
         {scoreQuery.isLoading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-ink-mute" />
-          </div>
-        ) : !score ? (
-          <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <Award className="h-12 w-12 text-ink-mute opacity-20" strokeWidth={1} />
-            <p className="text-sm text-ink-mute">
-              Aucun score pour cet exercice. Cliquez Recalculer.
-            </p>
+          <ScoreSkeleton />
+        ) : !score || !grade ? (
+          <div className="rounded-sm border border-dashed border-line bg-paper">
+            <EmptyState
+              icon={Award}
+              title="Score non calculé"
+              description="Validez vos premières écritures pour obtenir votre indice qualité."
+            />
           </div>
         ) : (
           <>
-            {/* Global score banner */}
-            <div className={`rounded-sm border-2 p-8 ${g!.bg} ${g!.border}`}>
-              <div className="flex flex-wrap items-center justify-between gap-8">
+            {/* Score banner */}
+            <section
+              className={`rounded-sm border border-line bg-paper p-6 ${grade.tone === 'critical' ? 'border-critical/40' : grade.tone === 'warn' ? 'border-warn/40' : 'border-accent/40'}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-6">
                 <div className="flex items-center gap-8">
-                  {/* Grade letter */}
-                  <div className="text-center">
-                    <p className="eyebrow mb-1">Note</p>
-                    <p className={`font-display text-7xl font-medium leading-none ${g!.text}`}>
+                  <ScoreGauge score={score.score} />
+                  <div className="hidden h-16 w-px bg-line md:block" aria-hidden />
+                  <div>
+                    <p className="eyebrow mb-1">Note OHADA</p>
+                    <p className="font-display text-6xl font-medium leading-none text-ink">
                       {score.grade}
                     </p>
-                  </div>
-
-                  <div className="h-16 w-px bg-line" aria-hidden />
-
-                  {/* Numeric score */}
-                  <div>
-                    <p className="eyebrow mb-1">Score</p>
-                    <p
-                      className={`font-display text-5xl font-medium tabular-nums tracking-tight ${g!.text}`}
-                    >
-                      {Math.round(score.score)}
-                      <span className="ml-1 font-display text-2xl font-medium text-ink-mute">
-                        /100
-                      </span>
-                    </p>
+                    <p className="mt-2 text-xs text-ink-mute">{grade.label}</p>
                   </div>
                 </div>
-
                 <div className="text-right text-xs text-ink-mute">
-                  <p>
-                    Calculé le{' '}
+                  <p className="eyebrow mb-1">Dernier calcul</p>
+                  <p className="font-mono tabular-nums text-ink-soft">
                     {new Date(score.calculatedAt).toLocaleString('fr-FR', {
-                      day: 'numeric',
-                      month: 'long',
+                      day: '2-digit',
+                      month: 'short',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                   </p>
-                  <p className="mt-0.5">{score.calculatedBy}</p>
+                  <p className="mt-0.5">par {score.calculatedBy}</p>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Criteria breakdown */}
-            <div className="grid gap-6 md:grid-cols-2">
-              {(Object.keys(score.breakdown) as CriterionKey[]).map((key) => {
-                const c = score.breakdown[key];
-                const good = c.score >= 70;
-                return (
-                  <div
+            {/* Criteria */}
+            <section>
+              <div className="mb-4 flex items-baseline justify-between">
+                <h2 className="font-display text-xl font-medium text-ink">
+                  Décomposition par critère
+                </h2>
+                <span className="font-mono text-xs uppercase tracking-wider text-ink-mute">
+                  4 critères pondérés
+                </span>
+              </div>
+              <div className="divide-y divide-line rounded-sm border border-line bg-paper">
+                {(Object.keys(score.breakdown) as CriterionKey[]).map((key) => (
+                  <CriterionRow
                     key={key}
-                    className="space-y-4 rounded-sm border border-line bg-paper p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="eyebrow mb-1">
-                          Poids {Math.round(c.weight * 100)}%
-                        </p>
-                        <p className="text-base font-medium text-ink">
-                          {CRITERION_LABEL[key]}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ScoreRing value={c.score} size={52} />
-                        {good ? (
-                          <TrendingUp
-                            className="h-4 w-4 text-accent-ink"
-                            strokeWidth={1.5}
-                          />
-                        ) : (
-                          <TrendingDown
-                            className="h-4 w-4 text-critical-ink"
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="h-1.5 overflow-hidden rounded-full bg-sunk">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${scoreBarColor(c.score)}`}
-                        style={{ width: `${c.score}%` }}
-                      />
-                    </div>
-
-                    <div className="flex items-baseline justify-between">
-                      <p className="text-xs text-ink-mute">{c.description}</p>
-                      <span className="shrink-0 rounded-xs bg-sunk px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-soft">
-                        contribution {Math.round(c.score * c.weight)} pts
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    label={CRITERION_LABEL[key]}
+                    help={CRITERION_HELP[key]}
+                    criterion={score.breakdown[key]}
+                  />
+                ))}
+              </div>
+            </section>
           </>
         )}
       </div>

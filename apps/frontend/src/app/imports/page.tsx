@@ -22,13 +22,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,11 +44,6 @@ import {
 import { DeleteSessionConfirm } from './_components/delete-confirm';
 import { PipelineStepper } from './_components/pipeline-stepper';
 
-/**
- * Libellés FR courts pour la phrase « Ce fichier ressemble plutôt à
- * une {libellé} ». Distincts de `DOCUMENT_TYPE_LABELS` (formels) :
- * ici on veut une formulation contextuelle et concise.
- */
 const DOCUMENT_TYPE_SUGGESTION_LABEL: Record<DocumentType, string> = {
   entries: 'liste d’écritures',
   general_ledger: 'grand livre',
@@ -98,23 +86,96 @@ interface CommitResponse {
   readonly result: CommitResult;
 }
 
-/**
- * `/imports` — pipeline d'import comptable Module 3.
- *
- * Surface en une page, articulée autour de 4 phases visibles via
- * <PipelineStepper /> dans le panneau détail :
- *
- *   1. Préparer    — création de session (top form)
- *   2. Réception   — upload + parsing du fichier source
- *   3. Vérification — mapping colonnes + contrôle ligne par ligne
- *   4. Au journal  — commit définitif vers le grand livre
- *
- * Visibilité : pas de gating client. Le backend renvoie
- * FORBIDDEN_PERMISSION sur write/commit pour les rôles auditeur /
- * client_readonly, et l'erreur remonte inline. Cacher les boutons
- * créerait un trou de découverte (un auditeur doit comprendre
- * pourquoi il n'a pas le droit, pas voir l'action disparaître).
- */
+/* ─── Status mapping ─────────────────────────────────────────── */
+
+const STATUS_LABEL: Record<SessionSummary['status'], string> = {
+  draft: 'Brouillon',
+  parsing: 'Parsing…',
+  parsed: 'Parsé',
+  validated: 'Validé',
+  ready_for_import: 'Prêt à committer',
+  completed: 'Committé',
+  failed: 'Échec',
+};
+
+const STATUS_CHIP_CLASS: Record<SessionSummary['status'], string> = {
+  draft: 'bg-sunk text-ink-soft',
+  parsing: 'bg-info-soft text-info-ink',
+  parsed: 'bg-info-soft text-info-ink',
+  validated: 'bg-accent-soft text-accent-ink',
+  ready_for_import: 'bg-accent-soft text-accent-ink',
+  completed: 'bg-accent text-canvas',
+  failed: 'bg-critical-soft text-critical-ink',
+};
+
+function SessionStatusChip({ status }: { status: SessionSummary['status'] }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+        STATUS_CHIP_CLASS[status],
+      )}
+    >
+      {STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+/* ─── Skeleton + empty state ─────────────────────────────────── */
+
+function SkeletonRows({ n = 5 }: { n?: number }) {
+  return (
+    <div className="animate-pulse divide-y divide-line">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-5 py-4">
+          <div className="h-3 w-32 rounded-xs bg-sunk" />
+          <div className="h-3 w-20 rounded-xs bg-sunk" />
+          <div className="h-3 flex-1 rounded-xs bg-sunk" />
+          <div className="h-5 w-20 rounded-full bg-sunk" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[44ch] text-xs text-ink-mute">{description}</p>
+      </div>
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="press inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent hover:text-canvas"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ─── Page ───────────────────────────────────────────────────── */
+
 export default function ImportsPage() {
   const currentOrg = useCurrentOrg();
   const orgId = currentOrg?.id ?? '';
@@ -129,10 +190,11 @@ export default function ImportsPage() {
     enabled: orgId !== '',
   });
 
-  // ─── Création de session ────────────────────────────────────────────
+  // ─── Create session form state ──────────────────────────────────────
   const [createSourceType, setCreateSourceType] = useState<ImportSourceType>('csv');
   const [createDocumentType, setCreateDocumentType] = useState<DocumentType>('entries');
   const [createLabel, setCreateLabel] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const createSession = useApiMutation(
     async () => {
@@ -149,20 +211,18 @@ export default function ImportsPage() {
     {
       onSuccess: (session) => {
         setCreateLabel('');
+        setShowCreateForm(false);
         setSelectedSessionId(session.id);
         void queryClient.invalidateQueries({ queryKey: ['imports', 'sessions', orgId] });
       },
     },
   );
 
-  // ─── Sélection + détail ─────────────────────────────────────────────
+  // ─── Selection + detail ─────────────────────────────────────────────
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const selectedSession = sessionsQuery.data?.find((s) => s.id === selectedSessionId) ?? null;
 
-  // ─── Suppression de session (Module 3 wave 3) ───────────────────────
-  // Mutation partagée entre la liste et le panneau détail : déclenchée
-  // depuis l'icône poubelle sur chaque ligne. On garde l'ID en flight
-  // pour disabled-only-this-row pendant que les autres restent cliquables.
+  // ─── Delete (per-row mutation tracking) ────────────────────────────
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const deleteSession = useApiMutation(
     async (sessionId: string) => {
@@ -181,19 +241,37 @@ export default function ImportsPage() {
     },
   );
 
+  const sessions = sessionsQuery.data ?? [];
+
+  // Stats summary by status family. We collapse the technical states
+  // (parsing/parsed/validated/ready_for_import) into "in progress" so
+  // the bar reads at a glance for a non-technical operator.
+  const stats = useMemo(() => {
+    let inProgress = 0;
+    let completed = 0;
+    let failed = 0;
+    let draft = 0;
+    for (const s of sessions) {
+      if (s.status === 'completed') completed += 1;
+      else if (s.status === 'failed') failed += 1;
+      else if (s.status === 'draft') draft += 1;
+      else inProgress += 1;
+    }
+    return { total: sessions.length, inProgress, completed, failed, draft };
+  }, [sessions]);
+
   return (
     <AppShell>
-      <div className="space-y-6">
-        <header className="border-b border-line pb-5">
-          <p className="text-2xs uppercase tracking-wider text-ink-mute">
-            Saisie · Imports comptables
-          </p>
-          <h1 className="mt-1 font-display text-3xl font-medium tracking-tight text-ink">
-            Importer des écritures
+      <div className="mx-auto max-w-[1200px] animate-page-in space-y-8">
+        {/* ─── Header ──────────────────────────────────────── */}
+        <header className="space-y-3">
+          <p className="eyebrow">Saisie · Imports</p>
+          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            Imports
           </h1>
-          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-ink-soft">
-            Ingérer un fichier comptable (CSV, Excel, PDF natif, export Sage). Chaque fichier
-            passe par quatre étapes&nbsp;:{' '}
+          <p className="max-w-[68ch] text-sm leading-relaxed text-ink-soft">
+            Importer un fichier comptable (CSV, Excel, PDF natif, export Sage Saari).
+            Pipeline en quatre étapes&nbsp;:{' '}
             <span className="font-medium text-ink">préparation</span>,{' '}
             <span className="font-medium text-ink">réception</span>,{' '}
             <span className="font-medium text-ink">vérification</span>,{' '}
@@ -202,24 +280,72 @@ export default function ImportsPage() {
           </p>
         </header>
 
-        {/* Création de session */}
-        <Card className="border-line bg-paper shadow-none">
-          <CardHeader className="border-b border-line">
-            <p className="text-2xs uppercase tracking-wider text-accent-ink">
-              Étape 1 · Préparer
-            </p>
-            <CardTitle className="mt-1 font-display text-2xl font-medium tracking-tight">
-              Nouvelle session d&apos;import
-            </CardTitle>
-            <CardDescription className="text-ink-soft">
-              Indiquer le type de document attendu et le format du fichier source. La session
-              reste vide tant qu&apos;aucun fichier n&apos;est téléversé&nbsp;: vous pouvez la
-              créer maintenant et envoyer le fichier plus tard.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
+        {/* ─── Stats summary bar ──────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line bg-paper px-4 py-3 text-xs">
+          <span className="text-ink-soft">
+            <span className="font-mono text-sm font-medium tabular-nums text-ink">
+              {stats.total}
+            </span>{' '}
+            session{stats.total > 1 ? 's' : ''}
+          </span>
+          <span aria-hidden className="text-line-strong">·</span>
+          <span className="flex items-center gap-1.5 text-ink-soft">
+            <span className="h-1.5 w-1.5 rounded-full bg-info" />
+            <span className="font-mono tabular-nums text-ink">{stats.inProgress}</span> en
+            cours
+          </span>
+          <span className="flex items-center gap-1.5 text-ink-soft">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <span className="font-mono tabular-nums text-ink">{stats.completed}</span>{' '}
+            committée{stats.completed > 1 ? 's' : ''}
+          </span>
+          <span className="flex items-center gap-1.5 text-ink-soft">
+            <span className="h-1.5 w-1.5 rounded-full bg-sunk" />
+            <span className="font-mono tabular-nums text-ink">{stats.draft}</span>{' '}
+            brouillon{stats.draft > 1 ? 's' : ''}
+          </span>
+          {stats.failed > 0 && (
+            <span className="flex items-center gap-1.5 text-critical-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-critical" />
+              <span className="font-mono tabular-nums">{stats.failed}</span> en échec
+            </span>
+          )}
+          <span className="ml-auto">
+            <button
+              type="button"
+              onClick={() => setShowCreateForm((v) => !v)}
+              className="press inline-flex items-center gap-1.5 rounded-sm bg-ink px-3 py-1.5 text-xs font-medium text-canvas transition-colors duration-fast hover:bg-ink-soft"
+            >
+              {showCreateForm ? (
+                <>
+                  <X className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Annuler
+                </>
+              ) : (
+                <>
+                  <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Nouvel import
+                </>
+              )}
+            </button>
+          </span>
+        </div>
+
+        {/* ─── Create form (collapsible) ─────────────────── */}
+        {showCreateForm && (
+          <section className="rounded-sm border border-line bg-paper">
+            <div className="border-b border-line px-5 py-4">
+              <p className="eyebrow mb-1">Étape 1 · Préparer</p>
+              <h2 className="font-display text-xl font-medium tracking-tight text-ink">
+                Nouvelle session d&apos;import
+              </h2>
+              <p className="mt-1.5 max-w-[60ch] text-xs leading-relaxed text-ink-soft">
+                Préciser le type de document attendu et le format du fichier source. Vous
+                pourrez téléverser le fichier dans un second temps.
+              </p>
+            </div>
             <form
-              className="space-y-5"
+              className="space-y-5 p-5"
               onSubmit={(e) => {
                 e.preventDefault();
                 createSession.mutate(undefined);
@@ -229,7 +355,7 @@ export default function ImportsPage() {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="documentType"
-                    className="text-2xs uppercase tracking-wider text-ink-soft"
+                    className="eyebrow"
                   >
                     Type de document
                   </Label>
@@ -250,10 +376,7 @@ export default function ImportsPage() {
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label
-                    htmlFor="sourceType"
-                    className="text-2xs uppercase tracking-wider text-ink-soft"
-                  >
+                  <Label htmlFor="sourceType" className="eyebrow">
                     Format de fichier
                   </Label>
                   <select
@@ -269,19 +392,15 @@ export default function ImportsPage() {
                     ))}
                   </select>
                   <p className="text-xs leading-snug text-ink-mute">
-                    Format d&apos;export attendu pour le fichier source. Sage TXT correspond
-                    aux exports natifs Sage Saari.
+                    Sage TXT correspond aux exports natifs Sage Saari.
                   </p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
                 <div className="space-y-1.5">
-                  <Label
-                    htmlFor="label"
-                    className="text-2xs uppercase tracking-wider text-ink-soft"
-                  >
+                  <Label htmlFor="label" className="eyebrow">
                     Libellé{' '}
-                    <span className="font-normal text-ink-mute lowercase tracking-normal">
+                    <span className="font-normal lowercase tracking-normal text-ink-mute">
                       (optionnel)
                     </span>
                   </Label>
@@ -293,7 +412,7 @@ export default function ImportsPage() {
                     maxLength={200}
                   />
                 </div>
-                <Button type="submit" disabled={createSession.isPending}>
+                <Button type="submit" disabled={createSession.isPending} className="press">
                   {createSession.isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -302,146 +421,133 @@ export default function ImportsPage() {
                   Créer la session
                 </Button>
               </div>
+              <FormError error={createSession.error} />
             </form>
-            <FormError error={createSession.error} className="mt-4" />
-          </CardContent>
-        </Card>
+          </section>
+        )}
 
-        {/* Liste des sessions */}
-        <Card className="border-line bg-paper shadow-none">
-          <CardHeader className="border-b border-line">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <CardTitle className="font-display text-2xl font-medium tracking-tight">
-                  Sessions récentes
-                </CardTitle>
-                <CardDescription className="mt-1 text-ink-soft">
-                  Sélectionner une session pour reprendre où vous en étiez.
-                </CardDescription>
-              </div>
-              {sessionsQuery.data && sessionsQuery.data.length > 0 && (
-                <p className="text-2xs uppercase tracking-wider text-ink-mute">
-                  <span className="font-mono tabular-nums text-ink">
-                    {sessionsQuery.data.length}
-                  </span>{' '}
-                  session{sessionsQuery.data.length > 1 ? 's' : ''}
-                </p>
+        {/* ─── Sessions list ──────────────────────────────── */}
+        <section className="overflow-hidden rounded-sm border border-line bg-paper">
+          <div className="flex items-baseline justify-between border-b border-line px-5 py-4">
+            <div>
+              <p className="eyebrow mb-1">Sessions récentes</p>
+              <p className="text-xs text-ink-mute">
+                Sélectionner une session pour reprendre où vous en étiez.
+              </p>
+            </div>
+            {sessions.length > 0 && (
+              <p className="text-xs text-ink-mute">
+                <span className="font-mono tabular-nums text-ink">{sessions.length}</span>{' '}
+                session{sessions.length > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+          {sessionsQuery.isLoading ? (
+            <SkeletonRows n={4} />
+          ) : sessions.length === 0 ? (
+            <EmptyState
+              icon={FileUp}
+              title="Aucun import récent"
+              description="Importez vos écritures depuis Sage Saari, CSV, Excel ou PDF. Le pipeline en quatre étapes garantit qu’aucune ligne n’atteint le journal sans vérification."
+              actionLabel="Nouvel import"
+              onAction={() => setShowCreateForm(true)}
+            />
+          ) : (
+            <ul className="divide-y divide-line">
+              {sessions.map((s) => {
+                const isSelected = s.id === selectedSessionId;
+                const canAnalyze = s.totalLines > 0;
+                const isPendingDelete =
+                  deleteSession.isPending && deletingSessionId === s.id;
+                const labelOrId = s.label ?? `Session ${s.id.slice(0, 8)}`;
+                return (
+                  <li
+                    key={s.id}
+                    className={cn(
+                      'group flex items-center gap-3 px-5 py-3.5 transition-colors duration-fast',
+                      isSelected
+                        ? 'bg-accent-soft/60 ring-1 ring-inset ring-accent/30'
+                        : 'hover:bg-sunk/60',
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSessionId(s.id)}
+                      className="press flex min-w-0 flex-1 items-center gap-4 text-left"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={cn(
+                              'truncate text-sm',
+                              isSelected
+                                ? 'font-semibold text-ink'
+                                : 'font-medium text-ink',
+                            )}
+                          >
+                            {labelOrId}
+                          </span>
+                          <SessionStatusChip status={s.status} />
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-mute">
+                          {s.documentType !== null && (
+                            <MetaChip>{DOCUMENT_TYPE_LABELS[s.documentType]}</MetaChip>
+                          )}
+                          <MetaChip mono>{s.sourceType.toUpperCase()}</MetaChip>
+                          <MetaChip mono>
+                            {s.totalLines.toLocaleString('fr-FR')} lignes
+                          </MetaChip>
+                          {s.errorLines > 0 && (
+                            <MetaChip tone="critical" mono>
+                              {s.errorLines.toLocaleString('fr-FR')} en erreur
+                            </MetaChip>
+                          )}
+                          <MetaChip mono>
+                            {new Date(s.createdAt).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </MetaChip>
+                        </div>
+                      </div>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {canAnalyze && (
+                        <Link
+                          href={`/imports/${s.id}/dashboard`}
+                          className="press inline-flex items-center gap-1.5 rounded-sm border border-line-strong bg-paper px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors duration-fast hover:border-ink hover:text-ink"
+                          title="Voir l'analyse de cette session"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <BarChart3 className="h-3.5 w-3.5" />
+                          Analyse
+                        </Link>
+                      )}
+                      <DeleteSessionConfirm
+                        label={labelOrId}
+                        disabled={s.status === 'completed'}
+                        disabledReason="Session committée — utiliser la contre-passation depuis Journaux"
+                        isPending={isPendingDelete}
+                        onConfirm={() => deleteSession.mutate(s.id)}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {(deleteSession.error || sessionsQuery.error) && (
+            <div className="border-t border-line px-5 py-3">
+              {deleteSession.error && <FormError error={deleteSession.error} />}
+              {sessionsQuery.error && (
+                <FormError error={sessionsQuery.error} className="mt-2" />
               )}
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {sessionsQuery.isLoading ? (
-              <div className="flex items-center gap-2 px-6 py-8 text-sm text-ink-mute">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Chargement des sessions…
-              </div>
-            ) : sessionsQuery.data?.length === 0 ? (
-              <SessionsEmptyState />
-            ) : (
-              <ul className="divide-y divide-line">
-                {(sessionsQuery.data ?? []).map((s) => {
-                  const isSelected = s.id === selectedSessionId;
-                  const canAnalyze = s.totalLines > 0;
-                  const isPendingDelete =
-                    deleteSession.isPending && deletingSessionId === s.id;
-                  const labelOrId = s.label ?? `Session ${s.id.slice(0, 8)}`;
-                  return (
-                    <li
-                      key={s.id}
-                      className={cn(
-                        'group flex items-center gap-3 px-5 py-3 transition-colors',
-                        isSelected
-                          ? 'bg-accent-soft/60'
-                          : 'hover:bg-sunk',
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSessionId(s.id)}
-                        className="flex min-w-0 flex-1 items-center gap-4 text-left"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                'truncate text-sm',
-                                isSelected
-                                  ? 'font-semibold text-ink'
-                                  : 'font-medium text-ink',
-                              )}
-                            >
-                              {labelOrId}
-                            </span>
-                            <SessionStatusBadge status={s.status} />
-                          </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-mute">
-                            {s.documentType !== null && (
-                              <span>{DOCUMENT_TYPE_LABELS[s.documentType]}</span>
-                            )}
-                            <span className="font-mono text-2xs uppercase tracking-wider">
-                              {s.sourceType}
-                            </span>
-                            <span>
-                              <span className="font-mono tabular-nums text-ink-soft">
-                                {s.totalLines.toLocaleString('fr-FR')}
-                              </span>{' '}
-                              lignes
-                            </span>
-                            {s.errorLines > 0 && (
-                              <span className="text-critical">
-                                <span className="font-mono tabular-nums">
-                                  {s.errorLines.toLocaleString('fr-FR')}
-                                </span>{' '}
-                                en erreur
-                              </span>
-                            )}
-                            <span className="font-mono tabular-nums">
-                              {new Date(s.createdAt).toLocaleDateString('fr-FR', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {canAnalyze && (
-                          <Link
-                            href={`/imports/${s.id}/dashboard`}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-line-strong bg-paper px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-ink hover:text-ink"
-                            title="Voir l'analyse de cette session"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <BarChart3 className="h-3.5 w-3.5" />
-                            Analyse
-                          </Link>
-                        )}
-                        <DeleteSessionConfirm
-                          label={labelOrId}
-                          disabled={s.status === 'completed'}
-                          disabledReason="Session committée — utiliser la contre-passation depuis Journaux"
-                          isPending={isPendingDelete}
-                          onConfirm={() => deleteSession.mutate(s.id)}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {(deleteSession.error || sessionsQuery.error) && (
-              <div className="border-t border-line px-5 py-3">
-                {deleteSession.error && <FormError error={deleteSession.error} />}
-                {sessionsQuery.error && (
-                  <FormError error={sessionsQuery.error} className="mt-2" />
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </section>
 
-        {/* Panneau détail */}
+        {/* Detail panel */}
         {selectedSession && (
           <SessionDetailPanel
             orgId={orgId}
@@ -458,127 +564,33 @@ export default function ImportsPage() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Status badge — color-coded variant per session status.
-//
-// Chaque catégorie a une teinte propre pour scanner une liste de 50
-// sessions en diagonale :
-//   - draft              → neutre (en attente d'action)
-//   - parsing/parsed     → info bleu encre (en cours technique)
-//   - validated/ready    → accent vert pâle (prêt, mais pas figé)
-//   - completed          → accent vert plein (terminé, immuable)
-//   - failed             → critical rouge (terminal d'erreur)
-// ─────────────────────────────────────────────────────────────────────
+/* ─── Meta chip used in session row metadata ─────────────────── */
 
-const STATUS_LABEL: Record<SessionSummary['status'], string> = {
-  draft: 'Brouillon',
-  parsing: 'Parsing…',
-  parsed: 'Parsé',
-  validated: 'Validé',
-  ready_for_import: 'Prêt à committer',
-  completed: 'Committé',
-  failed: 'Échec',
-};
-
-const STATUS_CLASSES: Record<SessionSummary['status'], string> = {
-  draft: 'bg-sunk text-ink-soft border-line-strong',
-  parsing: 'bg-info-soft text-info-ink border-info/30',
-  parsed: 'bg-info-soft text-info-ink border-info/30',
-  validated: 'bg-accent-soft text-accent-ink border-accent/30',
-  ready_for_import: 'bg-accent-soft text-accent-ink border-accent/30',
-  completed: 'bg-accent text-paper border-accent',
-  failed: 'bg-critical-soft text-critical-ink border-critical/30',
-};
-
-function SessionStatusBadge({ status }: { status: SessionSummary['status'] }) {
+function MetaChip({
+  children,
+  mono = false,
+  tone,
+}: {
+  children: React.ReactNode;
+  mono?: boolean;
+  tone?: 'critical';
+}) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-xs border px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider',
-        STATUS_CLASSES[status],
+        'inline-flex items-center rounded-xs border px-1.5 py-0.5 text-2xs leading-none',
+        mono && 'font-mono tabular-nums',
+        tone === 'critical'
+          ? 'border-critical/30 bg-critical-soft text-critical-ink'
+          : 'border-line bg-sunk/50 text-ink-soft',
       )}
     >
-      {STATUS_LABEL[status]}
+      {children}
     </span>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Empty state — onboarding pédagogique. Pas un personnage générique qui
-// cherche : une mini-fresque texte qui enseigne le pipeline en 4 étapes
-// et renvoie vers le formulaire au-dessus.
-// ─────────────────────────────────────────────────────────────────────
-
-function SessionsEmptyState() {
-  const steps: ReadonlyArray<{ icon: React.ReactNode; title: string; body: string }> = [
-    {
-      icon: <Plus className="h-4 w-4" strokeWidth={1.5} />,
-      title: 'Créer une session',
-      body: 'Indiquer le type de document (écritures, balance, grand livre…) et le format du fichier source.',
-    },
-    {
-      icon: <Upload className="h-4 w-4" strokeWidth={1.5} />,
-      title: 'Téléverser le fichier',
-      body: 'CSV, Excel, PDF natif ou export Sage TXT. Les lignes sont parsées et placées en staging.',
-    },
-    {
-      icon: <Sparkles className="h-4 w-4" strokeWidth={1.5} />,
-      title: 'Vérifier le mapping',
-      body: 'Associer chaque colonne du fichier à un champ canonique. Corriger les erreurs de format.',
-    },
-    {
-      icon: <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />,
-      title: 'Committer au journal',
-      body: 'Les écritures rejoignent le grand livre. Toute correction passe ensuite par contre-passation.',
-    },
-  ];
-  return (
-    <div className="px-6 py-10">
-      <div className="mx-auto max-w-2xl">
-        <p className="text-2xs uppercase tracking-wider text-ink-mute">Aucune session</p>
-        <h3 className="mt-1 font-display text-xl font-medium tracking-tight text-ink">
-          Démarrer un premier import
-        </h3>
-        <p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-ink-soft">
-          Le pipeline d&apos;import sépare le fichier source des écritures réelles&nbsp;: rien
-          n&apos;atteint le grand livre avant la dernière étape. Vous pouvez revenir en arrière
-          ou supprimer la session tant qu&apos;elle n&apos;est pas committée.
-        </p>
-        <ol className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {steps.map((step, i) => (
-            <li
-              key={step.title}
-              className="flex gap-3 rounded-md border border-line bg-canvas px-3 py-2.5"
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sunk text-ink-soft">
-                {step.icon}
-              </span>
-              <div className="min-w-0">
-                <p className="text-2xs uppercase tracking-wider text-ink-mute">
-                  Étape <span className="font-mono tabular-nums">{i + 1}</span>
-                </p>
-                <p className="text-sm font-medium text-ink">{step.title}</p>
-                <p className="mt-0.5 text-xs leading-snug text-ink-soft">{step.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-6 flex items-center gap-2 text-sm text-ink-soft">
-          <ArrowRight className="h-4 w-4 text-accent" />
-          Utiliser le formulaire&nbsp;
-          <span className="font-medium text-ink">Nouvelle session d&apos;import</span>
-          &nbsp;ci-dessus pour commencer.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// Section heading — titre de phase numéroté avec hint contextuel.
-// État `active=false` grise l'ensemble pour signaler que l'étape n'est
-// pas encore atteignable ou qu'elle est déjà franchie.
-// ─────────────────────────────────────────────────────────────────────
+/* ─── Section heading ────────────────────────────────────────── */
 
 interface SectionHeadingProps {
   readonly phase: number;
@@ -615,12 +627,7 @@ function SectionHeading({ phase, title, active, hint }: SectionHeadingProps) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Suggestion bandeau : « Ce fichier ressemble plutôt à une {libellé}. »
-//
-// Ton ambré informatif. Pas un toast volatil — le signal reste visible
-// pour qu'un opérateur puisse y revenir après inspection de la preview.
-// ─────────────────────────────────────────────────────────────────────
+/* ─── Suggested type banner ──────────────────────────────────── */
 
 interface SuggestedDocumentTypeBannerProps {
   readonly suggested: DocumentType;
@@ -638,7 +645,7 @@ function SuggestedDocumentTypeBanner({
   onSwitch,
 }: SuggestedDocumentTypeBannerProps) {
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-warn/30 bg-warn-soft px-3 py-2.5 text-sm text-warn-ink sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 rounded-sm border border-warn/30 bg-warn-soft px-3 py-2.5 text-sm text-warn-ink sm:flex-row sm:items-center sm:justify-between">
       <p className="leading-snug">
         <Sparkles className="mr-1.5 inline h-3.5 w-3.5" strokeWidth={1.5} />
         Ce fichier ressemble plutôt à une{' '}
@@ -650,7 +657,7 @@ function SuggestedDocumentTypeBanner({
           type="button"
           size="sm"
           variant="outline"
-          className="border-warn/40 bg-paper text-warn-ink hover:bg-warn-soft"
+          className="press border-warn/40 bg-paper text-warn-ink hover:bg-warn-soft"
           disabled={isPending}
           onClick={onSwitch}
         >
@@ -673,9 +680,7 @@ function SuggestedDocumentTypeBanner({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Detail panel — actions contextuelles selon le statut
-// ─────────────────────────────────────────────────────────────────────
+/* ─── Detail panel ───────────────────────────────────────────── */
 
 interface DetailProps {
   readonly orgId: string;
@@ -685,12 +690,11 @@ interface DetailProps {
 
 function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [commitDone, setCommitDone] = useState<CommitResult | null>(null);
 
-  // ─── Renommage inline ───────────────────────────────────────────────
-  // Label informationnel — autorisé sur TOUS les statuts (y compris
-  // `completed`) puisqu'il n'est pas propagé dans les écritures réelles.
+  // Inline rename — label is informational, allowed on every status.
   const [isRenaming, setIsRenaming] = useState(false);
   const [labelDraft, setLabelDraft] = useState(session.label ?? '');
   useEffect(() => {
@@ -714,7 +718,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     },
   );
 
-  // Upload — multipart, on contourne le client JSON pour passer FormData.
+  // Multipart upload — bypasses JSON api client.
   const upload = useApiMutation(
     async () => {
       if (!file) {
@@ -760,7 +764,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     },
   );
 
-  // Preview — re-déclenche le mapping + validation + persist (idempotent).
+  // Preview — re-runs mapping + validation + persist (idempotent).
   const previewMutation = useApiMutation(
     async () => {
       const data = await api.post<PreviewResult>(
@@ -777,10 +781,6 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     },
   );
 
-  // Bascule de DocumentType — injecte la sentinelle `__documentType`
-  // dans le `mappingOverride` existant pour préserver les overrides
-  // de colonnes déjà choisis par l'utilisateur. Le backend re-applique
-  // le mapping + revalide la staging, et repasse la session en `parsed`.
   const switchDocumentType = useApiMutation(
     async (target: DocumentType) => {
       const overrideOnly = preview
@@ -806,7 +806,6 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     },
   );
 
-  // Commit — passe staging → journal_entries via EntriesService.
   const commitMutation = useApiMutation(
     async () => {
       const data = await api.post<CommitResponse>(
@@ -835,9 +834,6 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     setCommitDone(null);
   }, [session.id]);
 
-  // Auto-trigger preview on mount (and on session swap) when the session
-  // is already in a state where preview is meaningful. Guards prevent
-  // an infinite retry loop on a persistent failure.
   useEffect(() => {
     if (!canPreview) return;
     if (preview !== null) return;
@@ -848,16 +844,14 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
   }, [session.id, canPreview, preview, previewMutation.isPending, previewMutation.error]);
 
   return (
-    <Card className="border-line bg-paper shadow-none">
-      <CardHeader className="border-b border-line">
+    <section className="rounded-sm border border-line bg-paper">
+      <header className="border-b border-line p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-2xs uppercase tracking-wider text-ink-mute">
-              Détail · session sélectionnée
-            </p>
+            <p className="eyebrow mb-1">Détail · session sélectionnée</p>
             {isRenaming ? (
               <form
-                className="mt-2 flex flex-wrap items-center gap-2"
+                className="mt-1 flex flex-wrap items-center gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   const trimmed = labelDraft.trim();
@@ -872,7 +866,12 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   autoFocus
                   className="h-9 w-72 font-display text-xl"
                 />
-                <Button type="submit" size="sm" disabled={renameSession.isPending}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={renameSession.isPending}
+                  className="press"
+                >
                   {renameSession.isPending ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                   ) : (
@@ -885,6 +884,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   size="sm"
                   variant="ghost"
                   disabled={renameSession.isPending}
+                  className="press"
                   onClick={() => {
                     setLabelDraft(session.label ?? '');
                     setIsRenaming(false);
@@ -896,77 +896,55 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                 <FormError error={renameSession.error} className="basis-full" />
               </form>
             ) : (
-              <CardTitle className="mt-1 flex items-center gap-2 font-display text-2xl font-medium tracking-tight">
+              <h2 className="flex flex-wrap items-center gap-2 font-display text-xl font-medium tracking-tight">
                 <span className="truncate text-ink">
                   {session.label ?? `Session ${session.id.slice(0, 8)}`}
                 </span>
-                <SessionStatusBadge status={session.status} />
-              </CardTitle>
+                <SessionStatusChip status={session.status} />
+              </h2>
             )}
             {!isRenaming && (
-              <CardDescription className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-mute">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-ink-mute">
                 <button
                   type="button"
                   onClick={() => {
                     setLabelDraft(session.label ?? '');
                     setIsRenaming(true);
                   }}
-                  className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 text-ink-soft transition-colors hover:bg-sunk hover:text-ink"
+                  className="press inline-flex items-center gap-1 rounded-xs px-1.5 py-0.5 text-ink-soft transition-colors duration-fast hover:bg-sunk hover:text-ink"
                   title="Renommer la session"
                 >
                   <Pencil className="h-3 w-3" />
                   Renommer
                 </button>
-                <span className="text-line-strong" aria-hidden>
-                  ·
-                </span>
-                <span>
-                  <span className="font-mono tabular-nums text-ink-soft">
-                    {session.totalLines.toLocaleString('fr-FR')}
-                  </span>{' '}
-                  lignes en staging
-                </span>
+                <MetaChip mono>
+                  {session.totalLines.toLocaleString('fr-FR')} lignes
+                </MetaChip>
                 {session.errorLines > 0 && (
-                  <>
-                    <span className="text-line-strong" aria-hidden>
-                      ·
-                    </span>
-                    <span className="text-critical">
-                      <span className="font-mono tabular-nums">
-                        {session.errorLines.toLocaleString('fr-FR')}
-                      </span>{' '}
-                      en erreur
-                    </span>
-                  </>
+                  <MetaChip tone="critical" mono>
+                    {session.errorLines.toLocaleString('fr-FR')} en erreur
+                  </MetaChip>
                 )}
                 {session.documentType !== null && (
-                  <>
-                    <span className="text-line-strong" aria-hidden>
-                      ·
-                    </span>
-                    <span>{DOCUMENT_TYPE_LABELS[session.documentType]}</span>
-                  </>
+                  <MetaChip>{DOCUMENT_TYPE_LABELS[session.documentType]}</MetaChip>
                 )}
-              </CardDescription>
+                <MetaChip mono>{session.sourceType.toUpperCase()}</MetaChip>
+              </div>
             )}
           </div>
           {session.totalLines > 0 && (
             <Link
               href={`/imports/${session.id}/dashboard`}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-line-strong bg-paper px-3 py-1.5 text-sm font-medium text-ink-soft transition-colors hover:border-ink hover:text-ink"
+              className="press inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-line-strong bg-paper px-3 py-1.5 text-sm font-medium text-ink-soft transition-colors duration-fast hover:border-ink hover:text-ink"
             >
               <BarChart3 className="h-4 w-4" />
               Voir l&apos;analyse
             </Link>
           )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-8 pt-6">
-        {/* Pipeline stepper — visualisation pédagogique du parcours en 4
-            phases. Remplace l'orientation purement textuelle qu'imposait
-            la liste « 1. Upload / 2. Preview / 3. Commit » des sections
-            ci-dessous. Le statut technique reste dans le badge du header,
-            le stepper donne la trajectoire métier. */}
+      </header>
+
+      <div className="space-y-8 p-5">
         <PipelineStepper status={session.status} errorLines={session.errorLines} />
 
         {/* Upload */}
@@ -982,50 +960,87 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
             }
           />
           {canUpload ? (
-            <div className="flex flex-col gap-3 rounded-md border border-line bg-sunk/40 p-4 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <Label
-                  htmlFor="file-upload"
-                  className="mb-1 block text-2xs uppercase tracking-wider text-ink-soft"
-                >
-                  Fichier
-                </Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  accept=".csv,.xlsx,.xls,.txt,.pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="cursor-pointer file:mr-3 file:rounded-sm file:border file:border-line-strong file:bg-paper file:px-3 file:py-1 file:text-sm file:text-ink-soft hover:file:bg-sunk"
-                />
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                const dropped = e.dataTransfer.files?.[0];
+                if (dropped) setFile(dropped);
+              }}
+              className={cn(
+                'rounded-sm border-2 border-dashed bg-sunk/50 px-5 py-6 transition-colors duration-fast',
+                isDragOver
+                  ? 'border-accent bg-accent-soft/40'
+                  : 'border-line-strong hover:border-accent',
+              )}
+            >
+              <div className="flex flex-col items-center gap-3 text-center">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-paper text-ink-soft">
+                  <Upload className="h-4 w-4" strokeWidth={1.5} />
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-ink">
+                    Glisser un fichier ici, ou
+                  </p>
+                  <Label
+                    htmlFor="file-upload"
+                    className="press mt-1 inline-flex cursor-pointer items-center gap-1.5 rounded-xs px-2 py-1 text-xs font-medium text-accent-ink underline-offset-2 hover:underline"
+                  >
+                    parcourir vos fichiers
+                  </Label>
+                  <Input
+                    id="file-upload"
+                    type="file"
+                    accept=".csv,.xlsx,.xls,.txt,.pdf"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </div>
+                <p className="text-xs text-ink-mute">
+                  Formats acceptés&nbsp;:{' '}
+                  <span className="font-mono">.csv, .xlsx, .xls, .txt, .pdf</span>
+                </p>
                 {file && (
-                  <p className="mt-1.5 text-xs text-ink-mute">
-                    Sélectionné&nbsp;:{' '}
-                    <span className="font-mono text-ink-soft">{file.name}</span>{' '}
-                    <span className="tabular-nums">
-                      (
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                    <MetaChip mono>{file.name}</MetaChip>
+                    <MetaChip mono>
                       {(file.size / 1024).toLocaleString('fr-FR', {
                         maximumFractionDigits: 1,
                       })}{' '}
-                      Ko)
-                    </span>
-                  </p>
+                      Ko
+                    </MetaChip>
+                    <button
+                      type="button"
+                      onClick={() => setFile(null)}
+                      className="press inline-flex items-center gap-1 rounded-xs px-1.5 py-0.5 text-2xs text-ink-mute hover:bg-sunk hover:text-ink"
+                    >
+                      <X className="h-3 w-3" />
+                      Retirer
+                    </button>
+                  </div>
                 )}
+                <Button
+                  type="button"
+                  disabled={!file || upload.isPending}
+                  onClick={() => upload.mutate(undefined)}
+                  className="press mt-2"
+                >
+                  {upload.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  Téléverser et analyser
+                </Button>
               </div>
-              <Button
-                type="button"
-                disabled={!file || upload.isPending}
-                onClick={() => upload.mutate(undefined)}
-              >
-                {upload.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="mr-2 h-4 w-4" />
-                )}
-                Téléverser et analyser
-              </Button>
             </div>
           ) : (
-            <p className="rounded-md border border-line bg-sunk/40 px-4 py-3 text-xs text-ink-soft">
+            <p className="rounded-sm border border-line bg-sunk/40 px-4 py-3 text-xs text-ink-soft">
               <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5 text-accent" />
               Le fichier a déjà été reçu (statut «&nbsp;{STATUS_LABEL[session.status]}&nbsp;»).
               Passer à l&apos;étape de vérification ci-dessous.
@@ -1033,7 +1048,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
           )}
           <FormError error={upload.error} />
           {upload.data && (
-            <div className="rounded-md border border-accent/20 bg-accent-soft/40 px-3 py-2.5 text-sm text-accent-ink">
+            <div className="rounded-sm border border-accent/20 bg-accent-soft/40 px-3 py-2.5 text-sm text-accent-ink">
               <p className="font-medium">
                 <CheckCircle2 className="mr-1.5 inline h-4 w-4" />
                 Analyse réussie ·{' '}
@@ -1058,7 +1073,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
             active={canPreview}
             hint={
               canPreview
-                ? "Associer chaque colonne du fichier à un champ canonique (Compte, Journal, Date, Débit, Crédit…). La validation des règles OHADA s'exécute en direct."
+                ? "Associer chaque colonne du fichier à un champ canonique (Compte, Journal, Date, Débit, Crédit…). La validation OHADA s'exécute en direct."
                 : session.status === 'draft'
                   ? "Téléverser un fichier à l'étape précédente pour activer la vérification."
                   : 'Étape déjà franchie pour cette session.'
@@ -1067,6 +1082,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
           <Button
             type="button"
             variant="secondary"
+            className="press"
             disabled={!canPreview || previewMutation.isPending}
             onClick={() => previewMutation.mutate(undefined)}
           >
@@ -1095,22 +1111,16 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
 
           {preview && (
             <div className="space-y-4">
-              {/* Bandeau de totaux — 3 indicateurs en grille pleine
-                  largeur. Le bloc « En erreur » bascule en critical-soft
-                  quand des erreurs existent, accent-soft sinon, pour
-                  qu'on voie l'état en un coup d'œil. */}
-              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-3">
-                <div className="bg-paper px-4 py-2.5">
-                  <p className="text-2xs uppercase tracking-wider text-ink-mute">
-                    Lignes en staging
-                  </p>
-                  <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-sm border border-line bg-line sm:grid-cols-3">
+                <div className="bg-paper px-4 py-3">
+                  <p className="eyebrow mb-0">Lignes en staging</p>
+                  <p className="mt-1 font-mono text-xl font-medium tabular-nums text-ink">
                     {preview.totals.total.toLocaleString('fr-FR')}
                   </p>
                 </div>
                 <div
                   className={cn(
-                    'px-4 py-2.5',
+                    'px-4 py-3',
                     preview.totals.withErrors > 0
                       ? 'bg-critical-soft'
                       : 'bg-accent-soft/60',
@@ -1118,30 +1128,24 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                 >
                   <p
                     className={cn(
-                      'text-2xs uppercase tracking-wider',
-                      preview.totals.withErrors > 0
-                        ? 'text-critical-ink'
-                        : 'text-accent-ink',
+                      'text-2xs font-medium uppercase tracking-wider',
+                      preview.totals.withErrors > 0 ? 'text-critical-ink' : 'text-accent-ink',
                     )}
                   >
                     {preview.totals.withErrors > 0 ? 'En erreur' : 'Toutes validées'}
                   </p>
                   <p
                     className={cn(
-                      'mt-0.5 font-mono text-xl font-medium tabular-nums',
-                      preview.totals.withErrors > 0
-                        ? 'text-critical-ink'
-                        : 'text-accent-ink',
+                      'mt-1 font-mono text-xl font-medium tabular-nums',
+                      preview.totals.withErrors > 0 ? 'text-critical-ink' : 'text-accent-ink',
                     )}
                   >
                     {preview.totals.withErrors.toLocaleString('fr-FR')}
                   </p>
                 </div>
-                <div className="col-span-2 bg-paper px-4 py-2.5 sm:col-span-1">
-                  <p className="text-2xs uppercase tracking-wider text-ink-mute">
-                    Colonnes non mappées
-                  </p>
-                  <p className="mt-0.5 text-sm leading-snug text-ink">
+                <div className="col-span-2 bg-paper px-4 py-3 sm:col-span-1">
+                  <p className="eyebrow mb-0">Colonnes non mappées</p>
+                  <p className="mt-1 text-sm leading-snug text-ink">
                     {preview.unmappedTargets.length > 0 ? (
                       <span className="font-mono text-xs">
                         {preview.unmappedTargets.join(', ')}
@@ -1166,12 +1170,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   />
                 )}
 
-              {/* Table preview — règles DESIGN.md :
-                    header sunk + uppercase + tracking,
-                    montants mono + tabular,
-                    erreurs en critical-soft (pas destructive/5),
-                    pas de zebra stripes (Excel-ism daté). */}
-              <div className="overflow-x-auto rounded-md border border-line">
+              <div className="overflow-x-auto rounded-sm border border-line">
                 <table className="w-full text-sm">
                   <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
                     <tr>
@@ -1206,7 +1205,9 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                           </td>
                           <td className="px-3 py-2 font-mono text-xs uppercase tracking-wider text-ink-soft">
                             {e.mappedValues.journal ?? (
-                              <span className="text-ink-mute normal-case tracking-normal">—</span>
+                              <span className="normal-case tracking-normal text-ink-mute">
+                                —
+                              </span>
                             )}
                           </td>
                           <td className="px-3 py-2 font-mono text-xs tabular-nums text-ink-soft">
@@ -1264,14 +1265,15 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   ? `Action bloquée : ${session.errorLines} ligne(s) en erreur à corriger d'abord.`
                   : session.status === 'completed'
                     ? 'Étape déjà franchie. Les écritures sont au journal.'
-                    : 'Vérifier les lignes à l\'étape précédente pour débloquer le passage.'
+                    : "Vérifier les lignes à l'étape précédente pour débloquer le passage."
             }
           />
-          <div className="rounded-md border border-line bg-sunk/40 p-4">
+          <div className="rounded-sm border border-line bg-sunk/40 p-4">
             <p className="text-xs leading-relaxed text-ink-soft">
-              <span className="font-medium text-ink">Action irréversible.</span> Cette opération
-              crée les écritures comptables réelles à partir des lignes en staging. Pour annuler
-              une écriture committée, utiliser la contre-passation depuis la page&nbsp;
+              <span className="font-medium text-ink">Action irréversible.</span> Cette
+              opération crée les écritures comptables réelles à partir des lignes en staging.
+              Pour annuler une écriture committée, utiliser la contre-passation depuis la
+              page&nbsp;
               <Link
                 href={`/journals`}
                 className="text-accent-ink underline-offset-2 hover:underline"
@@ -1283,6 +1285,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <Button
                 type="button"
+                className="press"
                 disabled={!canCommit || commitMutation.isPending}
                 onClick={() => commitMutation.mutate(undefined)}
               >
@@ -1304,7 +1307,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
           </div>
           <FormError error={commitMutation.error} />
           {commitDone && (
-            <div className="rounded-md border border-accent/30 bg-accent-soft/60 px-3 py-2.5 text-sm text-accent-ink">
+            <div className="rounded-sm border border-accent/30 bg-accent-soft/60 px-3 py-2.5 text-sm text-accent-ink">
               <p className="font-medium">
                 <CheckCircle2 className="mr-1.5 inline h-4 w-4" />
                 Passage réussi
@@ -1318,21 +1321,12 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
             </div>
           )}
         </section>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Mapping override panel — wave 2 (projet-ferme-3wy)
-//
-// Pour chaque header détecté dans le fichier source, propose un dropdown
-// vers une `TargetField` canonique (ou "(ignorer)").
-//
-// Contrainte backend (MappingService) : un même TargetField ne peut être
-// mappé qu'à UN header — on désactive en grisé les options déjà prises
-// par un autre header pour éviter une erreur 422 côté serveur.
-// ─────────────────────────────────────────────────────────────────────
+/* ─── Mapping override panel ─────────────────────────────────── */
 
 const TARGET_LABEL: Record<TargetField, string> = {
   account: 'Compte',
@@ -1444,7 +1438,7 @@ function MappingOverridePanel({
   }, [headers, draft, currentMapping]);
 
   return (
-    <div className="rounded-md border border-line bg-canvas p-4">
+    <div className="rounded-sm border border-line bg-canvas p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h4 className="text-sm font-semibold text-ink">Mapping des colonnes</h4>
@@ -1454,14 +1448,14 @@ function MappingOverridePanel({
           </p>
         </div>
         {unmappedTargets.length > 0 && (
-          <Badge variant="destructive" className="rounded-xs">
+          <Badge variant="destructive" className="rounded-full">
             {unmappedTargets.length} champ(s) non mappé(s)&nbsp;:{' '}
             {unmappedTargets.map((t) => TARGET_LABEL[t]).join(', ')}
           </Badge>
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-line bg-paper">
+      <div className="overflow-x-auto rounded-sm border border-line bg-paper">
         <table className="w-full text-sm">
           <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
             <tr>
@@ -1511,6 +1505,7 @@ function MappingOverridePanel({
         <Button
           type="button"
           size="sm"
+          className="press"
           disabled={!hasChanges || save.isPending}
           onClick={() => save.mutate(undefined)}
         >
@@ -1525,6 +1520,7 @@ function MappingOverridePanel({
           type="button"
           size="sm"
           variant="outline"
+          className="press"
           disabled={reset.isPending}
           onClick={() => reset.mutate(undefined)}
         >
@@ -1537,6 +1533,7 @@ function MappingOverridePanel({
         </Button>
         {missingRequired.length > 0 && (
           <span className="text-xs text-critical">
+            <ArrowRight className="mr-1 inline h-3 w-3" />
             Champs requis manquants&nbsp;:{' '}
             {missingRequired.map((t) => TARGET_LABEL[t]).join(', ')}
           </span>

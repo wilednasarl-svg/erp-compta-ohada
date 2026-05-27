@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Brain,
@@ -10,32 +10,33 @@ import {
   MessageCircle,
   Play,
   Search,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+  ShieldCheck,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
-import { FormError } from "@/components/ui/form-error";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useApiMutation } from "@/hooks/use-api-mutation";
-import { ApiError, api } from "@/lib/api-client";
-import { useCurrentOrg } from "@/stores/auth-store";
-import type { AccountingPeriodView } from "@/types/journals";
+import { AppShell } from '@/components/app-shell';
+import { Button } from '@/components/ui/button';
+import { FormError } from '@/components/ui/form-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useApiMutation } from '@/hooks/use-api-mutation';
+import { ApiError, api } from '@/lib/api-client';
+import { useCurrentOrg } from '@/stores/auth-store';
+import type { AccountingPeriodView } from '@/types/journals';
 
 type AnomalyType =
-  | "extreme_amount"
-  | "sensitive_account"
-  | "potential_duplicate"
-  | "suspicious_date"
-  | "rare_account_journal";
+  | 'extreme_amount'
+  | 'sensitive_account'
+  | 'potential_duplicate'
+  | 'suspicious_date'
+  | 'rare_account_journal';
 
 const ANOMALY_TYPE_LABELS: Readonly<Record<AnomalyType, string>> = {
-  extreme_amount: "Montant extrême",
-  sensitive_account: "Compte sensible",
-  potential_duplicate: "Doublon potentiel",
-  suspicious_date: "Date suspecte",
-  rare_account_journal: "Combinaison rare",
+  extreme_amount: 'Montant extrême',
+  sensitive_account: 'Compte sensible',
+  potential_duplicate: 'Doublon potentiel',
+  suspicious_date: 'Date suspecte',
+  rare_account_journal: 'Combinaison rare',
 };
 
 interface AiAnomaly {
@@ -86,49 +87,134 @@ interface SuggestionResult {
 }
 
 const SELECT_CLASS =
-  "rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none";
+  'flex h-9 rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors duration-fast focus:border-accent focus:outline-none';
 
-const PANEL_CLASS = "rounded-sm border border-line bg-paper p-5";
+/* ─── Severity helpers ────────────────────────────────────────────── */
+
+type Severity = 'critical' | 'warn' | 'info';
+
+function severityFromScore(score: number): Severity {
+  if (score >= 70) return 'critical';
+  if (score >= 40) return 'warn';
+  return 'info';
+}
+
+function severityChip(sev: Severity): string {
+  if (sev === 'critical') return 'bg-critical-soft text-critical-ink';
+  if (sev === 'warn') return 'bg-warn-soft text-warn-ink';
+  return 'bg-info-soft text-info-ink';
+}
+
+function severityLabel(sev: Severity): string {
+  if (sev === 'critical') return 'Critique';
+  if (sev === 'warn') return 'Alerte';
+  return 'Info';
+}
+
+function severityDot(sev: Severity): string {
+  if (sev === 'critical') return 'bg-critical';
+  if (sev === 'warn') return 'bg-warn';
+  return 'bg-info';
+}
+
+/* ─── Skeleton & Empty ────────────────────────────────────────────── */
+
+function SkeletonRows({ n = 4 }: { n?: number }) {
+  return (
+    <div className="animate-pulse divide-y divide-line rounded-sm border border-line bg-paper">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-3.5">
+          <div className="h-5 w-16 rounded-full bg-sunk" />
+          <div className="h-3 flex-1 rounded-xs bg-sunk" />
+          <div className="h-3 w-24 rounded-xs bg-sunk" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyStateOk({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft">
+        <Icon className="h-5 w-5 text-accent-ink" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[44ch] text-xs text-ink-mute">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[44ch] text-xs text-ink-mute">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Page ────────────────────────────────────────────────────────── */
 
 export default function AiPage() {
   const currentOrg = useCurrentOrg();
-  const orgId = currentOrg?.id ?? "";
+  const orgId = currentOrg?.id ?? '';
   const queryClient = useQueryClient();
 
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<AnomalyType | "">("");
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<AnomalyType | ''>('');
   const [minScore, setMinScore] = useState<number>(0);
 
   const periodsQuery = useQuery<ReadonlyArray<AccountingPeriodView>, ApiError>({
-    queryKey: ["accounting-periods", orgId],
+    queryKey: ['accounting-periods', orgId],
     queryFn: async () => {
       const data = await api.get<PeriodsResponse>(
         `/organizations/${orgId}/accounting-periods`,
       );
       return data.periods;
     },
-    enabled: orgId !== "",
+    enabled: orgId !== '',
   });
 
   const anomaliesQuery = useQuery<AnomaliesResponse, ApiError>({
-    queryKey: ["ai-anomalies", orgId, selectedPeriodId, typeFilter, minScore],
+    queryKey: ['ai-anomalies', orgId, selectedPeriodId, typeFilter, minScore],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedPeriodId) params.set("periodId", selectedPeriodId);
-      if (typeFilter) params.set("anomalyType", typeFilter);
-      if (minScore > 0) params.set("minScore", String(minScore));
-      params.set("pageSize", "100");
+      if (selectedPeriodId) params.set('periodId', selectedPeriodId);
+      if (typeFilter) params.set('anomalyType', typeFilter);
+      if (minScore > 0) params.set('minScore', String(minScore));
+      params.set('pageSize', '100');
       return api.get<AnomaliesResponse>(
         `/organizations/${orgId}/ai/anomalies?${params}`,
       );
     },
-    enabled: orgId !== "",
+    enabled: orgId !== '',
   });
 
-  const scanMutation = useApiMutation<
-    { stats: ScanStats },
-    { periodId: string }
-  >(
+  const scanMutation = useApiMutation<{ stats: ScanStats }, { periodId: string }>(
     ({ periodId }) =>
       api.post<{ stats: ScanStats }>(
         `/organizations/${orgId}/ai/anomalies/scan`,
@@ -136,7 +222,7 @@ export default function AiPage() {
       ),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["ai-anomalies", orgId] });
+        queryClient.invalidateQueries({ queryKey: ['ai-anomalies', orgId] });
       },
     },
   );
@@ -148,38 +234,60 @@ export default function AiPage() {
       .sort((a, b) => b.startDate.localeCompare(a.startDate));
   }, [periodsQuery.data]);
 
+  const anomalies = anomaliesQuery.data?.anomalies ?? [];
+  const criticalCount = anomalies.filter((a) => a.riskScore >= 70).length;
+  const warnCount = anomalies.filter((a) => a.riskScore >= 40 && a.riskScore < 70).length;
+  const infoCount = anomalies.filter((a) => a.riskScore < 40).length;
+
   return (
     <AppShell>
-      <div className="animate-page-in space-y-8 p-6">
-        <header className="flex items-center gap-3">
-          <Brain className="h-7 w-7 text-ink" />
+      <div className="mx-auto max-w-[1100px] animate-page-in space-y-10">
+        {/* ─── Header ─────────────────────────────────────── */}
+        <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="eyebrow mb-2">Module 11 · Intelligence</p>
+            <p className="eyebrow mb-2">Analyse &amp; IA · Anomalies</p>
             <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
-              IA — Anomalies &amp; suggestions
+              Détection d&apos;anomalies
             </h1>
-            <p className="mt-1 text-sm text-ink-mute">
-              Wave 1 — heuristiques déterministes (sans LLM).
+            <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
+              Analyse automatique des écritures pour détecter les incohérences, doublons
+              et erreurs de classification SYSCOHADA.
             </p>
           </div>
+          {criticalCount > 0 && (
+            <span
+              className={`inline-flex items-center gap-2 self-end rounded-full px-3 py-1.5 text-xs font-medium ${severityChip('critical')}`}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-critical opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-critical" />
+              </span>
+              {criticalCount} anomalie{criticalCount > 1 ? 's' : ''} critique
+              {criticalCount > 1 ? 's' : ''}
+            </span>
+          )}
         </header>
 
+        {/* ─── Scan ───────────────────────────────────────── */}
         <ScanSection
           periods={annualPeriods}
           selectedPeriodId={selectedPeriodId}
           onPeriodChange={setSelectedPeriodId}
           onScan={() => {
-            if (selectedPeriodId)
-              scanMutation.mutate({ periodId: selectedPeriodId });
+            if (selectedPeriodId) scanMutation.mutate({ periodId: selectedPeriodId });
           }}
           loading={scanMutation.isPending}
           stats={scanMutation.data?.stats ?? null}
           error={scanMutation.error}
         />
 
+        {/* ─── Anomalies ──────────────────────────────────── */}
         <AnomaliesSection
-          anomalies={anomaliesQuery.data?.anomalies ?? []}
+          anomalies={anomalies}
           total={anomaliesQuery.data?.meta.total ?? 0}
+          critical={criticalCount}
+          warn={warnCount}
+          info={infoCount}
           loading={anomaliesQuery.isLoading}
           error={anomaliesQuery.error}
           typeFilter={typeFilter}
@@ -188,17 +296,20 @@ export default function AiPage() {
           onMinScoreChange={setMinScore}
         />
 
+        {/* ─── Suggestion ─────────────────────────────────── */}
         <SuggestionSection orgId={orgId} />
 
+        {/* ─── Mapping ────────────────────────────────────── */}
         <MappingSection orgId={orgId} />
 
+        {/* ─── Assistant ──────────────────────────────────── */}
         <AssistantSection orgId={orgId} periodId={selectedPeriodId} />
       </div>
     </AppShell>
   );
 }
 
-// ─── Scan section ─────────────────────────────────────────────────────
+/* ─── ScanSection ─────────────────────────────────────────────────── */
 
 interface ScanSectionProps {
   readonly periods: ReadonlyArray<AccountingPeriodView>;
@@ -220,39 +331,43 @@ function ScanSection({
   error,
 }: ScanSectionProps) {
   return (
-    <section className={PANEL_CLASS}>
-      <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">
-          <Play className="mr-2 inline h-4 w-4" />
-          Scanner une période
-        </h2>
-        <p className="mt-1 text-sm text-ink-mute">
-          Recalcul complet des anomalies sur la période choisie. Les anciennes
-          anomalies de la période sont effacées avant ré-insertion.
-        </p>
+    <section className="rounded-sm border border-line bg-paper">
+      <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-sm bg-sunk">
+          <Play className="h-4 w-4 text-ink" strokeWidth={1.75} />
+        </span>
+        <div>
+          <h2 className="font-display text-xl font-medium text-ink">
+            Scanner une période
+          </h2>
+          <p className="mt-1 text-xs text-ink-mute">
+            Recalcul complet des anomalies sur la période choisie. Les anciennes
+            anomalies de la période sont effacées avant ré-insertion.
+          </p>
+        </div>
       </div>
-      <div className="space-y-4 pt-4">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end">
-          <div className="flex-1">
+      <div className="space-y-4 px-5 py-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end">
+          <div className="flex-1 space-y-1.5">
             <Label htmlFor="period-select">Période fiscale</Label>
             <select
               id="period-select"
-              className={`${SELECT_CLASS} mt-1 w-full`}
+              className={`${SELECT_CLASS} w-full`}
               value={selectedPeriodId}
               onChange={(e) => onPeriodChange(e.target.value)}
             >
               <option value="">— Toutes les anomalies déjà détectées —</option>
               {periods.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label} ({p.startDate} → {p.endDate}){" "}
-                  {p.status === "closed" ? "— clôturée" : ""}
+                  {p.label} ({p.startDate} → {p.endDate}){' '}
+                  {p.status === 'closed' ? '— clôturée' : ''}
                 </option>
               ))}
             </select>
           </div>
           <Button
             onClick={onScan}
-            disabled={loading || selectedPeriodId === ""}
+            disabled={loading || selectedPeriodId === ''}
             className="press md:w-44"
           >
             {loading ? (
@@ -263,20 +378,21 @@ function ScanSection({
             Lancer le scan
           </Button>
         </div>
-        {error && (
-          <FormError error={{ code: error.code, message: error.message }} />
-        )}
+        {error && <FormError error={{ code: error.code, message: error.message }} />}
         {stats && (
-          <div className="rounded-sm border border-accent/30 bg-accent-soft p-3 text-sm text-accent-ink">
-            <div className="font-medium">
-              Scan terminé en {stats.durationMs} ms.
+          <div className="rounded-sm border border-accent/30 bg-accent-soft px-3 py-2.5 text-sm text-accent-ink">
+            <div className="flex items-center gap-2 font-medium">
+              <ShieldCheck className="h-4 w-4" strokeWidth={1.75} />
+              Scan terminé en {stats.durationMs} ms
             </div>
-            <div className="mt-1 text-ink-mute">
-              {stats.entriesScanned} écriture
-              {stats.entriesScanned > 1 ? "s" : ""} · {stats.linesScanned} ligne
-              {stats.linesScanned > 1 ? "s" : ""} · {stats.anomaliesDetected}{" "}
-              anomalie{stats.anomaliesDetected > 1 ? "s" : ""} détectée
-              {stats.anomaliesDetected > 1 ? "s" : ""}.
+            <div className="mt-1 text-xs text-accent-ink/80">
+              <span className="font-mono tabular-nums">{stats.entriesScanned}</span>{' '}
+              écriture{stats.entriesScanned > 1 ? 's' : ''} ·{' '}
+              <span className="font-mono tabular-nums">{stats.linesScanned}</span> ligne
+              {stats.linesScanned > 1 ? 's' : ''} ·{' '}
+              <span className="font-mono tabular-nums">{stats.anomaliesDetected}</span>{' '}
+              anomalie{stats.anomaliesDetected > 1 ? 's' : ''} détectée
+              {stats.anomaliesDetected > 1 ? 's' : ''}
             </div>
           </div>
         )}
@@ -285,15 +401,18 @@ function ScanSection({
   );
 }
 
-// ─── Anomalies section ────────────────────────────────────────────────
+/* ─── AnomaliesSection ────────────────────────────────────────────── */
 
 interface AnomaliesSectionProps {
   readonly anomalies: ReadonlyArray<AiAnomaly>;
   readonly total: number;
+  readonly critical: number;
+  readonly warn: number;
+  readonly info: number;
   readonly loading: boolean;
   readonly error: ApiError | null;
-  readonly typeFilter: AnomalyType | "";
-  readonly onTypeFilterChange: (t: AnomalyType | "") => void;
+  readonly typeFilter: AnomalyType | '';
+  readonly onTypeFilterChange: (t: AnomalyType | '') => void;
   readonly minScore: number;
   readonly onMinScoreChange: (s: number) => void;
 }
@@ -301,6 +420,9 @@ interface AnomaliesSectionProps {
 function AnomaliesSection({
   anomalies,
   total,
+  critical,
+  warn,
+  info,
   loading,
   error,
   typeFilter,
@@ -309,27 +431,64 @@ function AnomaliesSection({
   onMinScoreChange,
 }: AnomaliesSectionProps) {
   return (
-    <section className={PANEL_CLASS}>
-      <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">
-          <AlertTriangle className="mr-2 inline h-4 w-4 text-warn-ink" />
-          Anomalies détectées ({total})
-        </h2>
-        <p className="mt-1 text-sm text-ink-mute">
-          Triées par risque décroissant. Chaque ligne expose ses raisons en
-          clair.
-        </p>
+    <section className="rounded-sm border border-line bg-paper">
+      <div className="border-b border-line px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-sm bg-sunk">
+              <AlertTriangle className="h-4 w-4 text-warn-ink" strokeWidth={1.75} />
+            </span>
+            <div>
+              <h2 className="font-display text-xl font-medium text-ink">
+                Anomalies détectées
+              </h2>
+              <p className="mt-1 text-xs text-ink-mute">
+                Triées par risque décroissant. Chaque ligne expose ses raisons en clair.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sunk px-2.5 py-1 font-medium text-ink-soft">
+              <span className="font-mono tabular-nums">{total}</span> total
+            </span>
+            {critical > 0 && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${severityChip('critical')}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${severityDot('critical')}`} />
+                <span className="font-mono tabular-nums">{critical}</span>
+              </span>
+            )}
+            {warn > 0 && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${severityChip('warn')}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${severityDot('warn')}`} />
+                <span className="font-mono tabular-nums">{warn}</span>
+              </span>
+            )}
+            {info > 0 && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${severityChip('info')}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${severityDot('info')}`} />
+                <span className="font-mono tabular-nums">{info}</span>
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="space-y-4 pt-4">
+
+      <div className="space-y-4 px-5 py-5">
         <div className="flex flex-wrap items-end gap-3">
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="type-filter">Type</Label>
             <select
               id="type-filter"
-              className={`${SELECT_CLASS} mt-1`}
+              className={SELECT_CLASS}
               value={typeFilter}
               onChange={(e) =>
-                onTypeFilterChange((e.target.value as AnomalyType) || "")
+                onTypeFilterChange((e.target.value as AnomalyType) || '')
               }
             >
               <option value="">Tous</option>
@@ -340,7 +499,7 @@ function AnomaliesSection({
               ))}
             </select>
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="min-score">Score minimum</Label>
             <Input
               id="min-score"
@@ -349,25 +508,23 @@ function AnomaliesSection({
               max={100}
               value={minScore}
               onChange={(e) => onMinScoreChange(Number(e.target.value) || 0)}
-              className="mt-1 w-24"
+              className="w-24"
             />
           </div>
         </div>
 
-        {error && (
-          <FormError error={{ code: error.code, message: error.message }} />
-        )}
+        {error && <FormError error={{ code: error.code, message: error.message }} />}
 
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-ink-mute">
-            <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
-          </div>
+          <SkeletonRows n={5} />
         ) : anomalies.length === 0 ? (
-          <div className="rounded-sm border border-dashed border-line p-6 text-center text-sm text-ink-mute">
-            Aucune anomalie détectée pour les filtres actuels.
-          </div>
+          <EmptyStateOk
+            icon={Brain}
+            title="Aucune anomalie détectée"
+            description="La comptabilité semble cohérente avec les filtres actuels."
+          />
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-line rounded-sm border border-line">
             {anomalies.map((a) => (
               <AnomalyRow key={a.id} anomaly={a} />
             ))}
@@ -379,44 +536,51 @@ function AnomaliesSection({
 }
 
 function AnomalyRow({ anomaly }: { anomaly: AiAnomaly }) {
-  const badgeClass =
-    anomaly.riskScore >= 70
-      ? "bg-critical-soft text-critical-ink"
-      : anomaly.riskScore >= 40
-        ? "bg-warn-soft text-warn-ink"
-        : "bg-sunk text-ink-soft";
+  const sev = severityFromScore(anomaly.riskScore);
   return (
-    <div className="rounded-sm border border-line bg-paper p-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="group px-4 py-3.5 transition-colors duration-fast hover:bg-sunk/40">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide ${badgeClass}`}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${severityChip(sev)}`}
           >
-            Score {anomaly.riskScore}
+            <span className={`h-1.5 w-1.5 rounded-full ${severityDot(sev)}`} />
+            {severityLabel(sev)}
           </span>
           <span className="text-sm font-medium text-ink">
             {ANOMALY_TYPE_LABELS[anomaly.anomalyType]}
           </span>
+          <span className="font-mono text-[11px] uppercase tracking-wider text-ink-mute">
+            score{' '}
+            <span className="font-semibold tabular-nums text-ink-soft">
+              {anomaly.riskScore}
+            </span>
+          </span>
         </div>
-        <span className="text-xs text-ink-mute">
-          {new Date(anomaly.detectedAt).toLocaleString("fr-FR")}
+        <span className="font-mono text-[11px] tabular-nums text-ink-mute">
+          {new Date(anomaly.detectedAt).toLocaleString('fr-FR')}
         </span>
       </div>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-mute">
-        {anomaly.reasons.map((r, i) => (
-          <li key={i}>{r}</li>
-        ))}
-      </ul>
+      {anomaly.reasons.length > 0 && (
+        <ul className="mt-2 space-y-1 text-sm text-ink-soft">
+          {anomaly.reasons.map((r, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ink-mute" />
+              <span>{r}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
-// ─── Suggestion sandbox ───────────────────────────────────────────────
+/* ─── SuggestionSection ───────────────────────────────────────────── */
 
 function SuggestionSection({ orgId }: { orgId: string }) {
-  const [description, setDescription] = useState("");
-  const [partner, setPartner] = useState("");
-  const [side, setSide] = useState<"" | "debit" | "credit">("");
+  const [description, setDescription] = useState('');
+  const [partner, setPartner] = useState('');
+  const [side, setSide] = useState<'' | 'debit' | 'credit'>('');
 
   const suggestionMutation = useApiMutation<SuggestionResult, void>(() =>
     api.post<SuggestionResult>(`/organizations/${orgId}/ai/suggestions/entry`, {
@@ -427,48 +591,48 @@ function SuggestionSection({ orgId }: { orgId: string }) {
   );
 
   return (
-    <section className={PANEL_CLASS}>
-      <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">
-          <Lightbulb className="mr-2 inline h-4 w-4 text-warn-ink" />
-          Suggestion de compte
-        </h2>
-        <p className="mt-1 text-sm text-ink-mute">
-          Bac à sable : saisir un libellé d&apos;écriture pour voir le compte
-          heuristique proposé.
-        </p>
+    <section className="rounded-sm border border-line bg-paper">
+      <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-sm bg-sunk">
+          <Lightbulb className="h-4 w-4 text-warn-ink" strokeWidth={1.75} />
+        </span>
+        <div>
+          <h2 className="font-display text-xl font-medium text-ink">
+            Suggestion de compte
+          </h2>
+          <p className="mt-1 text-xs text-ink-mute">
+            Bac à sable : saisir un libellé d&apos;écriture pour voir le compte
+            heuristique proposé.
+          </p>
+        </div>
       </div>
-      <div className="space-y-4 pt-4">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="md:col-span-2">
+      <div className="space-y-4 px-5 py-5">
+        <div className="grid gap-3 md:grid-cols-[2fr_1fr_minmax(120px,auto)]">
+          <div className="space-y-1.5">
             <Label htmlFor="suggest-desc">Libellé</Label>
             <Input
               id="suggest-desc"
-              placeholder="Ex: Loyer bureau juin 2026"
+              placeholder="Ex : Loyer bureau juin 2026"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="mt-1"
             />
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="suggest-partner">Tiers (optionnel)</Label>
             <Input
               id="suggest-partner"
               placeholder="SODECI"
               value={partner}
               onChange={(e) => setPartner(e.target.value)}
-              className="mt-1"
             />
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="suggest-side">Sens</Label>
             <select
               id="suggest-side"
-              className={`${SELECT_CLASS} mt-1 w-full`}
+              className={`${SELECT_CLASS} w-full`}
               value={side}
-              onChange={(e) =>
-                setSide(e.target.value as "" | "debit" | "credit")
-              }
+              onChange={(e) => setSide(e.target.value as '' | 'debit' | 'credit')}
             >
               <option value="">—</option>
               <option value="debit">Débit</option>
@@ -478,9 +642,7 @@ function SuggestionSection({ orgId }: { orgId: string }) {
         </div>
         <Button
           onClick={() => suggestionMutation.mutate()}
-          disabled={
-            suggestionMutation.isPending || description.trim().length === 0
-          }
+          disabled={suggestionMutation.isPending || description.trim().length === 0}
           className="press"
         >
           {suggestionMutation.isPending ? (
@@ -502,47 +664,59 @@ function SuggestionSection({ orgId }: { orgId: string }) {
 
         {suggestionMutation.data &&
           (suggestionMutation.data.suggestion ? (
-            <div className="space-y-2 rounded-sm border border-line bg-paper p-3">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-ink">
-                  Compte{" "}
-                  {suggestionMutation.data.suggestion.suggestedAccountCode}
+            <div className="space-y-3 rounded-sm border border-line bg-sunk/40 p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink">
+                  Compte{' '}
+                  <span className="font-mono tabular-nums">
+                    {suggestionMutation.data.suggestion.suggestedAccountCode}
+                  </span>
                 </span>
-                <span className="text-sm font-medium text-ink">
-                  Confiance : {suggestionMutation.data.suggestion.confidence} /
-                  100
+                <span className="text-xs text-ink-soft">
+                  Confiance{' '}
+                  <span className="font-mono font-semibold tabular-nums text-ink">
+                    {suggestionMutation.data.suggestion.confidence}
+                  </span>
+                  <span className="text-ink-mute"> / 100</span>
                 </span>
               </div>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-ink-mute">
+              <ul className="space-y-1 text-sm text-ink-soft">
                 {suggestionMutation.data.suggestion.reasons.map((r, i) => (
-                  <li key={i}>{r}</li>
+                  <li key={i} className="flex gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ink-mute" />
+                    <span>{r}</span>
+                  </li>
                 ))}
               </ul>
               {suggestionMutation.data.suggestion.alternative && (
-                <div className="border-t border-line pt-2 text-sm text-ink-mute">
-                  <span className="font-medium text-ink">Alternative :</span>{" "}
-                  Compte{" "}
-                  {suggestionMutation.data.suggestion.alternative.accountCode}{" "}
-                  (confiance{" "}
-                  {suggestionMutation.data.suggestion.alternative.confidence}) —{" "}
-                  {suggestionMutation.data.suggestion.alternative.reasons.join(
-                    " ",
-                  )}
+                <div className="border-t border-line pt-3 text-xs text-ink-mute">
+                  <span className="font-medium text-ink">Alternative : </span>
+                  Compte{' '}
+                  <span className="font-mono tabular-nums">
+                    {suggestionMutation.data.suggestion.alternative.accountCode}
+                  </span>{' '}
+                  · confiance{' '}
+                  <span className="font-mono tabular-nums">
+                    {suggestionMutation.data.suggestion.alternative.confidence}
+                  </span>{' '}
+                  —{' '}
+                  {suggestionMutation.data.suggestion.alternative.reasons.join(' ')}
                 </div>
               )}
             </div>
           ) : (
-            <div className="rounded-sm border border-dashed border-line p-3 text-sm text-ink-mute">
-              Aucune suggestion : le libellé ne matche aucun pattern ni
-              historique suffisant.
-            </div>
+            <EmptyState
+              icon={Lightbulb}
+              title="Aucune suggestion"
+              description="Le libellé ne matche aucun pattern ni historique suffisant."
+            />
           ))}
       </div>
     </section>
   );
 }
 
-// ─── Assistant chat (wave 2) ──────────────────────────────────────────
+/* ─── AssistantSection ────────────────────────────────────────────── */
 
 interface AssistantResponse {
   readonly answer: {
@@ -554,23 +728,17 @@ interface AssistantResponse {
 }
 
 const SAMPLE_QUESTIONS: ReadonlyArray<string> = [
-  "Quelles anomalies détectées ?",
-  "Quelle est l’écriture la plus risquée ?",
-  "Solde du compte 411",
-  "Combien j’ai dépensé en 6132 ?",
-  "Pourquoi le compte 6132 augmente ?",
+  'Quelles anomalies détectées ?',
+  'Quelle est l’écriture la plus risquée ?',
+  'Solde du compte 411',
+  'Combien j’ai dépensé en 6132 ?',
+  'Pourquoi le compte 6132 augmente ?',
 ];
 
-function AssistantSection({
-  orgId,
-  periodId,
-}: {
-  orgId: string;
-  periodId: string;
-}) {
-  const [question, setQuestion] = useState("");
+function AssistantSection({ orgId, periodId }: { orgId: string; periodId: string }) {
+  const [question, setQuestion] = useState('');
   const [history, setHistory] = useState<
-    ReadonlyArray<{ q: string; a: AssistantResponse["answer"] }>
+    ReadonlyArray<{ q: string; a: AssistantResponse['answer'] }>
   >([]);
 
   const askMutation = useApiMutation<AssistantResponse, { question: string }>(
@@ -582,36 +750,38 @@ function AssistantSection({
     {
       onSuccess: (data, vars) => {
         setHistory((prev) => [...prev, { q: vars.question, a: data.answer }]);
-        setQuestion("");
+        setQuestion('');
       },
     },
   );
 
   return (
-    <section className={PANEL_CLASS}>
-      <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">
-          <MessageCircle className="mr-2 inline h-4 w-4 text-ink" />
-          Assistant comptable
-        </h2>
-        <p className="mt-1 text-sm text-ink-mute">
-          Provider rule-based v1 — 5 patterns reconnus. Un LLM est prévu en wave
-          3.
-        </p>
+    <section className="rounded-sm border border-line bg-paper">
+      <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-sm bg-sunk">
+          <MessageCircle className="h-4 w-4 text-info-ink" strokeWidth={1.75} />
+        </span>
+        <div>
+          <h2 className="font-display text-xl font-medium text-ink">
+            Assistant comptable
+          </h2>
+          <p className="mt-1 text-xs text-ink-mute">
+            Provider rule-based v1 — 5 patterns reconnus. Un LLM est prévu en wave 3.
+          </p>
+        </div>
       </div>
-      <div className="space-y-4 pt-4">
+      <div className="space-y-4 px-5 py-5">
         <div className="flex flex-wrap gap-2">
           {SAMPLE_QUESTIONS.map((sample) => (
-            <Button
+            <button
               key={sample}
-              variant="outline"
-              size="sm"
+              type="button"
               onClick={() => setQuestion(sample)}
               disabled={askMutation.isPending}
-              className="press"
+              className="press rounded-full border border-line bg-sunk/40 px-3 py-1 text-xs text-ink-soft transition-colors duration-fast hover:border-line-strong hover:bg-sunk hover:text-ink disabled:opacity-50"
             >
               {sample}
-            </Button>
+            </button>
           ))}
         </div>
 
@@ -621,7 +791,7 @@ function AssistantSection({
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && question.trim().length > 0) {
+              if (e.key === 'Enter' && question.trim().length > 0) {
                 askMutation.mutate({ question });
               }
             }}
@@ -655,18 +825,25 @@ function AssistantSection({
             {history.map((entry, i) => (
               <div
                 key={i}
-                className="space-y-2 rounded-sm border border-line bg-paper p-3"
+                className="space-y-2 rounded-sm border border-line bg-sunk/30 p-4"
               >
-                <div className="text-sm font-medium text-ink">
-                  Q : {entry.q}
+                <div className="text-xs font-medium uppercase tracking-wider text-ink-mute">
+                  Question
                 </div>
-                <div className="text-sm text-ink-mute">{entry.a.answer}</div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-ink-mute">
-                  <span className="inline-flex items-center rounded-full bg-sunk px-2.5 py-0.5 text-xs font-medium text-ink-soft">
-                    Intent : {entry.a.matchedIntent ?? "non reconnu"}
+                <div className="text-sm font-medium text-ink">{entry.q}</div>
+                <div className="text-xs font-medium uppercase tracking-wider text-ink-mute">
+                  Réponse
+                </div>
+                <div className="text-sm text-ink-soft">{entry.a.answer}</div>
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                  <span className="inline-flex items-center rounded-full bg-paper px-2.5 py-0.5 font-medium text-ink-soft">
+                    Intent : {entry.a.matchedIntent ?? 'non reconnu'}
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-sunk px-2.5 py-0.5 text-xs font-medium text-ink-soft">
-                    Confiance {entry.a.confidence}/100
+                  <span className="inline-flex items-center rounded-full bg-paper px-2.5 py-0.5 font-medium text-ink-soft">
+                    Confiance{' '}
+                    <span className="ml-1 font-mono tabular-nums">
+                      {entry.a.confidence}/100
+                    </span>
                   </span>
                 </div>
               </div>
@@ -678,27 +855,27 @@ function AssistantSection({
   );
 }
 
-// ─── AI Mapping sandbox (wave 2.5) ────────────────────────────────────
+/* ─── MappingSection ──────────────────────────────────────────────── */
 
 type TargetField =
-  | "account_code"
-  | "description"
-  | "debit"
-  | "credit"
-  | "entry_date"
-  | "journal_code"
-  | "partner"
-  | "reference";
+  | 'account_code'
+  | 'description'
+  | 'debit'
+  | 'credit'
+  | 'entry_date'
+  | 'journal_code'
+  | 'partner'
+  | 'reference';
 
 const TARGET_FIELD_LABELS: Readonly<Record<TargetField, string>> = {
-  account_code: "Compte",
-  description: "Libellé",
-  debit: "Débit",
-  credit: "Crédit",
-  entry_date: "Date",
-  journal_code: "Journal",
-  partner: "Tiers",
-  reference: "Référence",
+  account_code: 'Compte',
+  description: 'Libellé',
+  debit: 'Débit',
+  credit: 'Crédit',
+  entry_date: 'Date',
+  journal_code: 'Journal',
+  partner: 'Tiers',
+  reference: 'Référence',
 };
 
 interface ColumnMapping {
@@ -716,10 +893,10 @@ interface MappingSuggestionResult {
 
 function MappingSection({ orgId }: { orgId: string }) {
   const [headersInput, setHeadersInput] = useState(
-    "Date, Code journal, N° Compte, Libellé, Débit, Crédit, Tiers, N° Pièce",
+    'Date, Code journal, N° Compte, Libellé, Débit, Crédit, Tiers, N° Pièce',
   );
   const [sampleInput, setSampleInput] = useState(
-    "15/06/2026; AC; 6132; Loyer juin; 750000; 0; SOCIDA; F-2026-001\n16/06/2026; AC; 6051; CIE juin; 120000; 0; CIE; F-2026-002",
+    '15/06/2026; AC; 6132; Loyer juin; 750000; 0; SOCIDA; F-2026-001\n16/06/2026; AC; 6051; CIE juin; 120000; 0; CIE; F-2026-002',
   );
 
   const mappingMutation = useApiMutation<MappingSuggestionResult, void>(() => {
@@ -728,7 +905,7 @@ function MappingSection({ orgId }: { orgId: string }) {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
     const sampleRows = sampleInput
-      .split("\n")
+      .split('\n')
       .map((line) => line.split(/[;,]/).map((c) => c.trim()))
       .filter((row) => row.length > 0 && row.some((c) => c.length > 0));
     return api.post<MappingSuggestionResult>(
@@ -738,33 +915,32 @@ function MappingSection({ orgId }: { orgId: string }) {
   });
 
   return (
-    <section className={PANEL_CLASS}>
-      <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">
-          <Columns3 className="mr-2 inline h-4 w-4 text-ink" />
-          Mapping IA des colonnes Sage
-        </h2>
-        <p className="mt-1 text-sm text-ink-mute">
-          Bac à sable : coller des en-têtes Sage + quelques lignes
-          d&apos;échantillon. L&apos;IA détecte chaque colonne par pattern +
-          inférence de type. Coverage affichée pour mesurer combien de champs
-          cibles ont été reconnus.
-        </p>
+    <section className="rounded-sm border border-line bg-paper">
+      <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-sm bg-sunk">
+          <Columns3 className="h-4 w-4 text-ink" strokeWidth={1.75} />
+        </span>
+        <div>
+          <h2 className="font-display text-xl font-medium text-ink">
+            Mapping IA des colonnes Sage
+          </h2>
+          <p className="mt-1 text-xs text-ink-mute">
+            Bac à sable : coller des en-têtes Sage + quelques lignes d&apos;échantillon.
+            L&apos;IA détecte chaque colonne par pattern et inférence de type.
+          </p>
+        </div>
       </div>
-      <div className="space-y-4 pt-4">
+      <div className="space-y-4 px-5 py-5">
         <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <Label htmlFor="headers-input">
-              En-têtes (séparées par , ou ;)
-            </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="headers-input">En-têtes (séparées par , ou ;)</Label>
             <Input
               id="headers-input"
               value={headersInput}
               onChange={(e) => setHeadersInput(e.target.value)}
-              className="mt-1"
             />
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label htmlFor="sample-input">
               Lignes d&apos;échantillon (une par ligne, colonnes séparées par ;)
             </Label>
@@ -773,15 +949,13 @@ function MappingSection({ orgId }: { orgId: string }) {
               value={sampleInput}
               onChange={(e) => setSampleInput(e.target.value)}
               rows={3}
-              className="mt-1 w-full rounded-sm border border-line-strong bg-paper px-3 py-2 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+              className="w-full rounded-sm border border-line-strong bg-paper px-3 py-2 font-mono text-xs text-ink transition-colors duration-fast focus:border-accent focus:outline-none"
             />
           </div>
         </div>
         <Button
           onClick={() => mappingMutation.mutate()}
-          disabled={
-            mappingMutation.isPending || headersInput.trim().length === 0
-          }
+          disabled={mappingMutation.isPending || headersInput.trim().length === 0}
           className="press"
         >
           {mappingMutation.isPending ? (
@@ -803,67 +977,74 @@ function MappingSection({ orgId }: { orgId: string }) {
 
         {mappingMutation.data && (
           <div className="space-y-3">
-            <div className="rounded-sm border border-line bg-paper p-3 text-sm">
-              <span className="font-medium text-ink">Coverage :</span>{" "}
+            <div className="flex flex-wrap items-center gap-3 rounded-sm border border-line bg-sunk/40 px-4 py-3 text-sm">
+              <span className="text-xs font-medium uppercase tracking-wider text-ink-mute">
+                Coverage
+              </span>
               <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
                   mappingMutation.data.coverage >= 80
-                    ? "bg-accent-soft text-accent-ink"
-                    : "bg-sunk text-ink-soft"
+                    ? 'bg-accent-soft text-accent-ink'
+                    : mappingMutation.data.coverage >= 50
+                      ? 'bg-warn-soft text-warn-ink'
+                      : 'bg-critical-soft text-critical-ink'
                 }`}
               >
-                {mappingMutation.data.coverage} / 100
-              </span>{" "}
-              <span className="text-ink-mute">
-                (
-                {
-                  mappingMutation.data.mappings.filter((m) => m.targetField)
-                    .length
-                }{" "}
-                colonne(s) reconnue(s) sur{" "}
-                {mappingMutation.data.mappings.length})
+                <span className="font-mono tabular-nums">
+                  {mappingMutation.data.coverage}
+                </span>
+                <span className="opacity-70"> / 100</span>
+              </span>
+              <span className="text-xs text-ink-mute">
+                <span className="font-mono tabular-nums text-ink-soft">
+                  {mappingMutation.data.mappings.filter((m) => m.targetField).length}
+                </span>{' '}
+                colonne(s) reconnue(s) sur{' '}
+                <span className="font-mono tabular-nums text-ink-soft">
+                  {mappingMutation.data.mappings.length}
+                </span>
               </span>
             </div>
-            <div className="overflow-x-auto rounded-sm border border-line">
+            <div className="overflow-hidden rounded-sm border border-line">
               <table className="w-full text-sm">
-                <thead className="bg-sunk">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left">
+                <thead>
+                  <tr className="border-b border-line bg-sunk">
+                    <th className="px-3 py-2 text-left">
                       <span className="eyebrow">Colonne source</span>
                     </th>
-                    <th className="px-2 py-1.5 text-left">
+                    <th className="px-3 py-2 text-left">
                       <span className="eyebrow">Champ cible</span>
                     </th>
-                    <th className="px-2 py-1.5 text-left">
+                    <th className="px-3 py-2 text-left">
                       <span className="eyebrow">Confiance</span>
                     </th>
-                    <th className="px-2 py-1.5 text-left">
+                    <th className="px-3 py-2 text-left">
                       <span className="eyebrow">Raison</span>
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {mappingMutation.data.mappings.map((m, idx) => (
+                <tbody className="divide-y divide-line">
+                  {mappingMutation.data.mappings.map((m) => (
                     <tr
                       key={m.sourceIndex}
-                      className={`border-t border-line ${idx % 2 === 1 ? "bg-sunk/30" : ""}`}
+                      className="transition-colors duration-fast hover:bg-sunk/30"
                     >
-                      <td className="px-2 py-1.5 font-medium text-ink">
+                      <td className="px-3 py-2 font-mono text-xs text-ink">
                         {m.sourceColumn}
                       </td>
-                      <td className="px-2 py-1.5">
+                      <td className="px-3 py-2">
                         {m.targetField ? (
                           <span className="inline-flex items-center rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-ink">
                             {TARGET_FIELD_LABELS[m.targetField]}
                           </span>
                         ) : (
-                          <span className="text-ink-mute">non mappé</span>
+                          <span className="text-xs text-ink-mute">non mappé</span>
                         )}
                       </td>
-                      <td className="px-2 py-1.5 text-ink">{m.confidence}</td>
-                      <td className="px-2 py-1.5 text-xs text-ink-mute">
-                        {m.reason}
+                      <td className="px-3 py-2 font-mono text-xs tabular-nums text-ink-soft">
+                        {m.confidence}
                       </td>
+                      <td className="px-3 py-2 text-xs text-ink-mute">{m.reason}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, KeyRound, Loader2, QrCode, ShieldAlert, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -14,27 +14,6 @@ import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { api } from '@/lib/api-client';
 import type { MfaActivationResponse, MfaSetupResponse } from '@/types/auth';
-
-/*
- * `/settings/mfa` — TOTP enrollment surface (BE-AUTH-MFA-01..03).
- *
- * UX is a small state machine:
- *
- *   IDLE ───┬─ "Activer" ─► SETUP   (otpauth URI + secret rendered)
- *           │                  │
- *           │            verify code
- *           │                  ▼
- *           │              ACTIVATED (backup codes shown ONCE)
- *           │
- *           └─ "Désactiver" ─► IDLE  (after `mfa/disable`)
- *
- * We deliberately render the otpauth URI as text + a clickable link
- * rather than embedding a QR-code library — keeps the bundle small for
- * MVP. Authenticator apps on phones can scan a QR drawn from this URI
- * via any QR generator (e.g. the user copies the URI into their app's
- * manual-entry field). A future iteration can drop in `qrcode.react`
- * without touching the API surface.
- */
 
 const verifySchema = z.object({
   code: z
@@ -51,6 +30,34 @@ type Stage =
   | { kind: 'activated'; backupCodes: ReadonlyArray<string> }
   | { kind: 'disabling' };
 
+function StepCircle({ n, done = false }: { n: number; done?: boolean }) {
+  return (
+    <span
+      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-medium tabular-nums ${
+        done ? 'bg-accent text-canvas' : 'border border-line-strong bg-paper text-ink'
+      }`}
+    >
+      {done ? <CheckCircle2 className="h-4 w-4" strokeWidth={2} /> : n}
+    </span>
+  );
+}
+
+function SecurityCallout() {
+  return (
+    <div className="flex items-start gap-3 rounded-sm border border-info/30 bg-info-soft/60 p-4">
+      <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-info-ink" strokeWidth={1.75} />
+      <div className="space-y-1 text-sm">
+        <p className="font-medium text-info-ink">Pourquoi activer la MFA ?</p>
+        <p className="text-xs leading-relaxed text-info-ink/80">
+          La double authentification protège votre compte même si votre mot de passe est compromis.
+          Elle est requise pour accéder aux fonctions sensibles (clôture, journal d&apos;audit,
+          export FEC).
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function MfaSettingsPage() {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' });
 
@@ -62,8 +69,6 @@ export default function MfaSettingsPage() {
     api.post<MfaActivationResponse>('/auth/mfa/verify', { code: values.code }),
   );
 
-  // Disabling requires a fresh TOTP / backup code (step-up). The form
-  // collects it; we don't trigger this from the idle state without one.
   const disableMutation = useApiMutation(async (values: VerifyValues) => {
     await api.post('/auth/mfa/disable', { code: values.code });
     return undefined;
@@ -96,56 +101,60 @@ export default function MfaSettingsPage() {
     disableForm.reset();
   });
 
+  const codeInputCls =
+    'h-12 text-center font-mono text-2xl tracking-[0.5em] tabular-nums';
+
   return (
-    <main className="container max-w-2xl space-y-8 py-10">
+    <main className="container mx-auto max-w-2xl px-4 py-10 md:py-14">
       <div className="animate-page-in space-y-8">
-        <header className="space-y-2">
-          <p className="eyebrow mb-2">Sécurité</p>
+        <header>
+          <p className="eyebrow mb-2">Organisation · Sécurité</p>
           <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
-            Authentification à deux facteurs
+            Double authentification
           </h1>
-          <p className="text-sm text-ink-mute">
-            Ajoutez une étape de vérification à la connexion via une application TOTP (Google
-            Authenticator, 1Password, Authy, …).
+          <p className="mt-2 max-w-2xl text-sm text-ink-mute">
+            Protection renforcée de votre compte par code TOTP (Google Authenticator, 1Password,
+            Authy, …).
           </p>
         </header>
 
         {stage.kind === 'idle' ? (
-          <section className="space-y-4">
-            <div className="border-b border-line pb-3">
-              <div className="flex flex-row items-start gap-3">
-                <ShieldAlert className="mt-1 h-5 w-5 text-ink-mute" />
-                <div className="space-y-1">
+          <section className="space-y-6">
+            <SecurityCallout />
+
+            <div className="rounded-sm border border-line bg-paper p-5">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warn-soft">
+                  <ShieldAlert className="h-5 w-5 text-warn-ink" strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
                   <h2 className="font-display text-xl font-medium text-ink">MFA non activée</h2>
-                  <p className="text-sm text-ink-mute">
-                    Sans MFA, votre compte est protégé uniquement par votre mot de passe. Activer
-                    la MFA ajoute un code à 6 chiffres demandé à chaque connexion.
+                  <p className="text-sm leading-relaxed text-ink-soft">
+                    Sans MFA, votre compte est protégé uniquement par votre mot de passe. Activer la
+                    MFA ajoute un code à 6 chiffres demandé à chaque connexion.
                   </p>
                 </div>
               </div>
-            </div>
-            <div className="space-y-4">
-              <FormError error={setupMutation.error} />
-              <div className="flex gap-3">
+              <FormError error={setupMutation.error} className="mt-4" />
+              <div className="mt-5 flex flex-wrap gap-3">
                 <Button
                   className="press"
                   onClick={() => void onActivate()}
                   disabled={setupMutation.isPending}
                 >
+                  {setupMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="mr-2 h-4 w-4" strokeWidth={1.75} />
+                  )}
                   {setupMutation.isPending ? 'Préparation…' : 'Activer la MFA'}
                 </Button>
-                {/*
-                 * The "Désactiver" button reveals a code-entry form rather
-                 * than calling disable directly: the backend now requires a
-                 * fresh TOTP / backup code as a step-up factor (prevents a
-                 * leaked access token from stripping MFA).
-                 */}
                 <Button
                   variant="ghost"
                   className="press"
                   onClick={() => setStage({ kind: 'disabling' })}
                 >
-                  Désactiver
+                  J&apos;ai déjà activé — désactiver
                 </Button>
               </div>
             </div>
@@ -159,20 +168,25 @@ export default function MfaSettingsPage() {
                 Confirmer la désactivation
               </h2>
               <p className="mt-1 text-sm text-ink-mute">
-                Saisissez un code TOTP courant ou un code de secours pour confirmer la
-                désactivation de la MFA. Cette vérification empêche qu&apos;un jeton d&apos;accès
-                volé désactive silencieusement votre second facteur.
+                Saisissez un code TOTP courant ou un code de secours pour confirmer. Cette
+                vérification empêche qu&apos;un jeton d&apos;accès volé désactive silencieusement
+                votre second facteur.
               </p>
             </div>
-            <form onSubmit={onDisable} noValidate className="space-y-4">
+            <form
+              onSubmit={onDisable}
+              noValidate
+              className="space-y-4 rounded-sm border border-line bg-paper p-5"
+            >
               <FormError error={disableMutation.error} />
               <div className="space-y-2">
-                <Label htmlFor="disable-code">Code</Label>
+                <Label htmlFor="disable-code">Code de vérification</Label>
                 <Input
                   id="disable-code"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   autoFocus
+                  className={codeInputCls}
                   {...disableForm.register('code')}
                 />
                 {disableForm.formState.errors.code !== undefined ? (
@@ -181,13 +195,16 @@ export default function MfaSettingsPage() {
                   </p>
                 ) : null}
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Button
                   type="submit"
                   variant="destructive"
                   className="press"
                   disabled={disableMutation.isPending}
                 >
+                  {disableMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   {disableMutation.isPending ? 'Désactivation…' : 'Désactiver la MFA'}
                 </Button>
                 <Button
@@ -205,94 +222,159 @@ export default function MfaSettingsPage() {
         ) : null}
 
         {stage.kind === 'setup' ? (
-          <section className="space-y-4">
+          <section className="space-y-6">
             <div className="border-b border-line pb-3">
               <h2 className="font-display text-xl font-medium text-ink">
-                Scanner le code dans votre application
+                Configurer votre application
               </h2>
               <p className="mt-1 text-sm text-ink-mute">
-                Ouvrez votre application d&apos;authentification et ajoutez un nouveau compte.
-                Saisissez ensuite le code à 6 chiffres généré pour confirmer.
+                Deux étapes : scanner le code, puis vérifier avec un code généré.
               </p>
             </div>
-            <div className="space-y-4">
-              <div className="space-y-2 rounded-sm border border-line bg-sunk/30 p-4 font-mono text-xs break-all text-ink">
-                <div>
-                  <span className="text-ink-mute">URI otpauth :</span>
-                  <br />
-                  {stage.setup.otpauthUri}
-                </div>
-                <div>
-                  <span className="text-ink-mute">Secret (saisie manuelle) :</span>
-                  <br />
-                  {stage.setup.secret}
-                </div>
-              </div>
 
-              <form onSubmit={onVerify} noValidate className="space-y-4">
-                <FormError error={verifyMutation.error} />
-                <div className="space-y-2">
-                  <Label htmlFor="code">Code à 6 chiffres</Label>
-                  <Input
-                    id="code"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    {...verifyForm.register('code')}
-                  />
-                  {verifyForm.formState.errors.code !== undefined ? (
-                    <p className="text-xs text-critical-ink">
-                      {verifyForm.formState.errors.code.message}
+            <ol className="space-y-6">
+              <li className="flex gap-4">
+                <StepCircle n={1} />
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-ink">
+                      Scanner le code dans votre application
                     </p>
-                  ) : null}
+                    <p className="mt-1 text-xs text-ink-mute">
+                      Ouvrez votre application d&apos;authentification et ajoutez un nouveau compte.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                    <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-sm border border-line bg-white p-4">
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-ink-mute">
+                        <QrCode className="h-10 w-10" strokeWidth={1.25} />
+                        <span className="text-2xs uppercase tracking-wider">QR placeholder</span>
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2 rounded-sm border border-line bg-sunk/40 p-3 text-xs">
+                      <div className="space-y-1">
+                        <div className="eyebrow">URI otpauth</div>
+                        <div className="break-all font-mono text-[11px] text-ink select-all">
+                          {stage.setup.otpauthUri}
+                        </div>
+                      </div>
+                      <div className="space-y-1 border-t border-line pt-2">
+                        <div className="eyebrow flex items-center gap-1.5">
+                          <KeyRound className="h-3 w-3" strokeWidth={1.5} /> Secret (saisie manuelle)
+                        </div>
+                        <div className="break-all font-mono text-xs tracking-wider text-ink select-all">
+                          {stage.setup.secret}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-3">
-                  <Button type="submit" className="press" disabled={verifyMutation.isPending}>
-                    {verifyMutation.isPending ? 'Vérification…' : 'Confirmer'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="press"
-                    onClick={() => setStage({ kind: 'idle' })}
-                    disabled={verifyMutation.isPending}
-                  >
-                    Annuler
-                  </Button>
+              </li>
+
+              <li className="flex gap-4">
+                <StepCircle n={2} />
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-ink">Saisir le code généré</p>
+                    <p className="mt-1 text-xs text-ink-mute">
+                      Entrez le code à 6 chiffres affiché par votre application pour confirmer.
+                    </p>
+                  </div>
+                  <form onSubmit={onVerify} noValidate className="space-y-4">
+                    <FormError error={verifyMutation.error} />
+                    <div className="space-y-2">
+                      <Label htmlFor="code" className="sr-only">
+                        Code à 6 chiffres
+                      </Label>
+                      <Input
+                        id="code"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        autoFocus
+                        placeholder="000 000"
+                        maxLength={8}
+                        className={codeInputCls}
+                        {...verifyForm.register('code')}
+                      />
+                      {verifyForm.formState.errors.code !== undefined ? (
+                        <p className="text-xs text-critical-ink">
+                          {verifyForm.formState.errors.code.message}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button type="submit" className="press" disabled={verifyMutation.isPending}>
+                        {verifyMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        {verifyMutation.isPending ? 'Vérification…' : 'Confirmer'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="press"
+                        onClick={() => setStage({ kind: 'idle' })}
+                        disabled={verifyMutation.isPending}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </form>
                 </div>
-              </form>
-            </div>
+              </li>
+            </ol>
           </section>
         ) : null}
 
         {stage.kind === 'activated' ? (
-          <section className="space-y-4">
-            <div className="border-b border-line pb-3">
-              <div className="flex flex-row items-start gap-3">
-                <ShieldCheck className="mt-1 h-5 w-5 text-accent-ink" />
-                <div className="space-y-1">
-                  <h2 className="font-display text-xl font-medium text-ink">MFA activée</h2>
-                  <p className="text-sm text-ink-mute">
-                    Conservez ces 10 codes de secours dans un endroit sûr. Chacun fonctionne une
-                    seule fois et remplace le code TOTP si vous perdez l&apos;accès à votre
-                    application. Cette liste ne sera pas affichée à nouveau.
-                  </p>
-                </div>
+          <section className="space-y-6">
+            <div className="flex items-start gap-3 rounded-sm border border-accent/40 bg-accent-soft/70 p-5">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-canvas">
+                <ShieldCheck className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <div className="min-w-0 flex-1 space-y-1">
+                <h2 className="font-display text-xl font-medium text-accent-ink">MFA activée</h2>
+                <p className="text-sm leading-relaxed text-accent-ink/85">
+                  Votre compte est désormais protégé par un second facteur. Un code TOTP sera
+                  demandé à chaque connexion.
+                </p>
               </div>
             </div>
-            <div className="space-y-4">
-              <ul className="grid grid-cols-2 gap-2 rounded-sm border border-line bg-sunk/30 p-4 font-mono text-sm text-ink">
+
+            <div className="space-y-3">
+              <div className="border-b border-line pb-3">
+                <h3 className="font-display text-base font-medium text-ink">Codes de secours</h3>
+                <p className="mt-1 text-xs text-ink-mute">
+                  Conservez ces 10 codes dans un endroit sûr. Chacun fonctionne une seule fois et
+                  remplace le code TOTP si vous perdez l&apos;accès à votre application.{' '}
+                  <span className="font-medium text-critical-ink">
+                    Cette liste ne sera pas affichée à nouveau.
+                  </span>
+                </p>
+              </div>
+              <ul className="grid grid-cols-2 gap-2 rounded-sm border border-line bg-sunk/40 p-4 font-mono text-sm text-ink">
                 {stage.backupCodes.map((code) => (
-                  <li key={code} className="select-all">
+                  <li
+                    key={code}
+                    className="select-all rounded-xs bg-paper px-2 py-1.5 text-center tabular-nums tracking-wider"
+                  >
                     {code}
                   </li>
                 ))}
               </ul>
-              <div>
-                <Button asChild variant="outline" className="press">
-                  <Link href="/dashboard">Retour au tableau de bord</Link>
-                </Button>
-              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button asChild className="press">
+                <Link href="/dashboard">Retour au tableau de bord</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                className="press"
+                onClick={() => setStage({ kind: 'disabling' })}
+              >
+                Désactiver la MFA
+              </Button>
             </div>
           </section>
         ) : null}

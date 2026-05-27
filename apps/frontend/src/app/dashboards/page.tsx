@@ -3,9 +3,11 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUp,
+  BarChart3,
   Banknote,
+  CalendarRange,
   Coins,
-  Loader2,
+  Inbox,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -28,9 +30,7 @@ import {
 } from 'recharts';
 
 import { AppShell } from '@/components/app-shell';
-import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
-import { Label } from '@/components/ui/label';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountingPeriodView } from '@/types/journals';
@@ -50,13 +50,11 @@ interface PeriodsResponse {
   readonly periods: ReadonlyArray<AccountingPeriodView>;
 }
 
-const SELECT_CLASS =
-  'flex h-9 w-full max-w-md rounded-sm border border-line-strong bg-paper px-3 py-1 text-sm text-ink transition-colors focus:border-accent focus:outline-none';
-
-const PANEL_CLASS = 'rounded-sm border border-line bg-paper p-5';
+const PANEL_CLASS = 'rounded-sm border border-line bg-paper';
+const PANEL_PADDED = `${PANEL_CLASS} p-5`;
 
 /**
- * `/dashboards` — Module 19 : overview KPIs + balance âgée + charts.
+ * `/dashboards` — KPIs détaillés par exercice (trésorerie, P&L, balance âgée).
  */
 export default function DashboardsPage() {
   const currentOrg = useCurrentOrg();
@@ -93,57 +91,50 @@ export default function DashboardsPage() {
     <AppShell>
       <div className="animate-page-in space-y-8">
         <header>
-          <p className="eyebrow mb-2">Module 19 · Pilotage</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
-            Dashboards
+          <p className="eyebrow">Pilotage · KPIs</p>
+          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-ink">
+            Tableaux de bord
           </h1>
-          <p className="mt-2 text-sm text-ink-mute">
-            Vue synthétique de la santé comptable : trésorerie, créances, dettes, résultat
-            YTD, balance âgée des tiers.
+          <p className="mt-2 max-w-[64ch] text-sm text-ink-soft">
+            Trésorerie, créances, dettes, résultat YTD et balance âgée des tiers — scoped
+            sur l'exercice fiscal sélectionné.
           </p>
         </header>
 
-        <section className={PANEL_CLASS}>
-          <div className="border-b border-line pb-3">
-            <h2 className="font-display text-xl font-medium text-ink">Exercice</h2>
-            <p className="mt-1 text-sm text-ink-mute">
-              Les KPIs et l&apos;aging sont scoped sur cet exercice fiscal.
-            </p>
+        {/* ── Period selector ──────────────────────────────────── */}
+        <section className={PANEL_PADDED}>
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-3">
+            <div>
+              <h2 className="font-display text-xl font-medium text-ink">Exercice fiscal</h2>
+              <p className="mt-1 text-sm text-ink-mute">
+                Les KPIs ci-dessous sont scopés sur l'exercice sélectionné.
+              </p>
+            </div>
+            <CalendarRange className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
           </div>
           <div className="pt-4">
             {periodsQuery.isLoading ? (
-              <p className="text-sm text-ink-mute">Chargement…</p>
+              <PeriodSelectorSkeleton />
             ) : annualPeriods.length === 0 ? (
-              <p className="text-sm text-ink-mute">
-                Aucun exercice créé.{' '}
-                <a className="underline text-accent-ink" href="/accounting-periods">
-                  Créer un exercice
-                </a>{' '}
-                d&apos;abord.
-              </p>
+              <EmptyState
+                icon={CalendarRange}
+                title="Aucun exercice créé"
+                description="Créez un exercice fiscal pour consulter les KPIs et la balance âgée."
+                actionLabel="Créer un exercice"
+                actionHref="/accounting-periods"
+              />
             ) : (
-              <div className="space-y-1">
-                <Label htmlFor="exercise">Exercice fiscal</Label>
-                <select
-                  id="exercise"
-                  value={effectiveExerciseId ?? ''}
-                  onChange={(e) => setSelectedExerciseId(e.target.value)}
-                  className={SELECT_CLASS}
-                >
-                  {annualPeriods.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label} ({p.startDate} → {p.endDate}) ·{' '}
-                      {p.status === 'open' ? 'Ouvert' : 'Fermé'}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <PeriodTabs
+                periods={annualPeriods}
+                activeId={effectiveExerciseId}
+                onChange={setSelectedExerciseId}
+              />
             )}
             <FormError error={periodsQuery.error} className="mt-3" />
           </div>
         </section>
 
-        {effectiveExerciseId && (
+        {effectiveExerciseId !== null && (
           <>
             <SummarySection orgId={orgId} exerciseId={effectiveExerciseId} />
             <CashflowSection orgId={orgId} exerciseId={effectiveExerciseId} />
@@ -154,6 +145,71 @@ export default function DashboardsPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PERIOD SELECTOR
+// ─────────────────────────────────────────────────────────────────────
+
+interface PeriodTabsProps {
+  readonly periods: ReadonlyArray<AccountingPeriodView>;
+  readonly activeId: string | null;
+  readonly onChange: (id: string) => void;
+}
+
+function PeriodTabs({ periods, activeId, onChange }: PeriodTabsProps) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {periods.map((p) => {
+        const isActive = p.id === activeId;
+        const isOpen = p.status === 'open';
+        return (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onChange(p.id)}
+            className={`press group flex items-center gap-2 rounded-sm border px-3 py-2 text-left transition-colors duration-fast ${
+              isActive
+                ? 'border-ink bg-ink text-canvas'
+                : 'border-line bg-paper text-ink hover:bg-sunk'
+            }`}
+          >
+            <span className="flex flex-col">
+              <span className="text-sm font-medium leading-tight">{p.label}</span>
+              <span
+                className={`mt-0.5 font-mono text-2xs tabular-nums ${
+                  isActive ? 'text-canvas/70' : 'text-ink-mute'
+                }`}
+              >
+                {p.startDate} → {p.endDate}
+              </span>
+            </span>
+            <span
+              className={`ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium ${
+                isActive
+                  ? 'bg-canvas/15 text-canvas'
+                  : isOpen
+                    ? 'bg-accent-soft text-accent-ink'
+                    : 'bg-sunk text-ink-soft'
+              }`}
+            >
+              {isOpen ? 'Ouvert' : 'Fermé'}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PeriodSelectorSkeleton() {
+  return (
+    <div className="flex animate-pulse flex-wrap gap-1.5">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="h-12 w-44 rounded-sm bg-sunk" />
+      ))}
+    </div>
   );
 }
 
@@ -169,19 +225,12 @@ function SummarySection({ orgId, exerciseId }: { orgId: string; exerciseId: stri
   });
 
   if (summaryQuery.isLoading) {
-    return (
-      <section className={PANEL_CLASS}>
-        <p className="text-sm text-ink-mute">
-          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-          Chargement du summary…
-        </p>
-      </section>
-    );
+    return <KpiSkeletonGrid />;
   }
 
   if (summaryQuery.error) {
     return (
-      <section className={PANEL_CLASS}>
+      <section className={PANEL_PADDED}>
         <FormError error={summaryQuery.error} />
       </section>
     );
@@ -224,13 +273,14 @@ function SummarySection({ orgId, exerciseId }: { orgId: string; exerciseId: stri
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <section className={PANEL_CLASS}>
+        <section className={PANEL_PADDED}>
           <div className="border-b border-line pb-3">
             <h2 className="font-display text-xl font-medium text-ink">
               Produits / Charges YTD
             </h2>
             <p className="mt-1 text-sm text-ink-mute">
-              Période {s.periodStart} → {s.periodEnd}
+              Période <span className="font-mono tabular-nums">{s.periodStart}</span> →{' '}
+              <span className="font-mono tabular-nums">{s.periodEnd}</span>
             </p>
           </div>
           <div className="space-y-3 pt-4">
@@ -252,20 +302,22 @@ function SummarySection({ orgId, exerciseId }: { orgId: string; exerciseId: stri
           </div>
         </section>
 
-        <section className={PANEL_CLASS}>
+        <section className={PANEL_PADDED}>
           <div className="border-b border-line pb-3">
             <h2 className="font-display text-xl font-medium text-ink">
               Répartition par classe OHADA
             </h2>
             <p className="mt-1 text-sm text-ink-mute">
-              Mouvements de l&apos;exercice (signed net)
+              Mouvements de l'exercice (net signé)
             </p>
           </div>
           <div className="pt-4">
             {s.accountClassBreakdown.length === 0 ? (
-              <p className="text-sm text-ink-mute">
-                Aucune écriture validée sur cet exercice.
-              </p>
+              <EmptyState
+                icon={BarChart3}
+                title="Aucune écriture validée"
+                description="Validez des écritures pour voir la répartition par classe."
+              />
             ) : (
               <ClassBreakdownChart breakdown={s.accountClassBreakdown} />
             )}
@@ -280,7 +332,7 @@ interface KpiCardProps {
   readonly label: string;
   readonly value: string;
   readonly currency: string;
-  readonly icon: React.ComponentType<{ className?: string }>;
+  readonly icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   readonly tone: 'positive' | 'negative' | 'neutral' | 'signed';
 }
 
@@ -297,15 +349,32 @@ function KpiCard({ label, value, currency, icon: Icon, tone }: KpiCardProps) {
             : 'text-critical-ink'
           : 'text-ink';
   return (
-    <div className="rounded-sm border border-line bg-paper p-5">
-      <div className="flex items-center justify-between text-sm text-ink-mute">
+    <div className="rounded-sm border border-line bg-paper p-5 transition-colors duration-fast hover:border-line-strong">
+      <div className="flex items-center justify-between text-xs uppercase tracking-wider text-ink-mute">
         <span>{label}</span>
-        <Icon className="h-4 w-4" />
+        <Icon className="h-4 w-4" strokeWidth={1.5} />
       </div>
-      <div className={`mt-2 font-mono text-2xl font-semibold ${color}`}>
+      <div className={`mt-3 font-mono text-2xl font-semibold tabular-nums ${color}`}>
         {formatAmount(num)}
       </div>
-      <div className="text-xs text-ink-mute">{currency}</div>
+      <div className="mt-0.5 text-xs text-ink-mute">{currency}</div>
+    </div>
+  );
+}
+
+function KpiSkeletonGrid() {
+  return (
+    <div className="grid animate-pulse grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-sm border border-line bg-paper p-5">
+          <div className="flex items-center justify-between">
+            <div className="h-3 w-24 rounded-xs bg-sunk" />
+            <div className="h-4 w-4 rounded-xs bg-sunk" />
+          </div>
+          <div className="mt-3 h-7 w-32 rounded-xs bg-sunk" />
+          <div className="mt-1 h-3 w-10 rounded-xs bg-sunk" />
+        </div>
+      ))}
     </div>
   );
 }
@@ -336,9 +405,9 @@ function Row({
           : 'text-ink';
   return (
     <div className="flex items-baseline justify-between text-sm">
-      <span className={bold ? 'font-medium text-ink' : 'text-ink-mute'}>{label}</span>
-      <span className={`font-mono ${color} ${bold ? 'font-semibold' : ''}`}>
-        {formatAmount(num)} <span className="text-xs">{currency}</span>
+      <span className={bold ? 'font-medium text-ink' : 'text-ink-soft'}>{label}</span>
+      <span className={`font-mono tabular-nums ${color} ${bold ? 'font-semibold' : ''}`}>
+        {formatAmount(num)} <span className="text-xs text-ink-mute">{currency}</span>
       </span>
     </div>
   );
@@ -354,9 +423,9 @@ function RatioCard({
   format: 'percent' | 'multiple';
 }) {
   return (
-    <div className="rounded-sm border border-line bg-sunk/30 px-3 py-2">
+    <div className="rounded-sm bg-sunk px-3 py-2">
       <div className="text-xs text-ink-mute">{label}</div>
-      <div className="mt-0.5 font-mono text-sm font-medium text-ink">
+      <div className="mt-0.5 font-mono text-sm font-medium tabular-nums text-ink">
         {value === null ? (
           <span className="text-ink-mute">N/A</span>
         ) : format === 'percent' ? (
@@ -390,13 +459,13 @@ function ClassBreakdownChart({
           <li key={b.accountClass} className="space-y-1">
             <div className="flex items-baseline justify-between">
               <span className="text-ink">
-                <span className="font-mono text-xs text-ink-mute">
+                <span className="font-mono text-xs text-ink-mute tabular-nums">
                   Cl.{b.accountClass}
                 </span>{' '}
                 {b.label}
               </span>
               <span
-                className={`font-mono text-xs ${
+                className={`font-mono text-xs tabular-nums ${
                   positive ? 'text-accent-ink' : 'text-critical-ink'
                 }`}
               >
@@ -435,56 +504,50 @@ function AgingSection({ orgId, exerciseId }: { orgId: string; exerciseId: string
   const aging = agingQuery.data?.aging;
 
   return (
-    <section className={PANEL_CLASS}>
+    <section className={PANEL_PADDED}>
       <div className="border-b border-line pb-3">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-xl font-medium text-ink">Balance âgée</h2>
             <p className="mt-1 text-sm text-ink-mute">
-              Soldes non lettrés par bucket d&apos;ancienneté ·{' '}
-              {aging ? `arrêté au ${aging.asOfDate}` : '…'}
+              Soldes non lettrés par bucket d'ancienneté ·{' '}
+              {aging ? (
+                <>
+                  arrêté au{' '}
+                  <span className="font-mono tabular-nums">{aging.asOfDate}</span>
+                </>
+              ) : (
+                '…'
+              )}
             </p>
           </div>
-          <div className="flex gap-1 rounded-sm border border-line bg-sunk/30 p-0.5">
-            <Button
-              type="button"
-              size="sm"
-              variant={type === 'clients' ? 'default' : 'outline'}
-              onClick={() => setType('clients')}
-              className={`press ${type === 'clients' ? '' : 'border-0 bg-transparent'}`}
-            >
-              Clients
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={type === 'fournisseurs' ? 'default' : 'outline'}
-              onClick={() => setType('fournisseurs')}
-              className={`press ${type === 'fournisseurs' ? '' : 'border-0 bg-transparent'}`}
-            >
-              Fournisseurs
-            </Button>
-          </div>
+          <SegmentedControl
+            options={[
+              { value: 'clients', label: 'Clients' },
+              { value: 'fournisseurs', label: 'Fournisseurs' },
+            ]}
+            value={type}
+            onChange={(v) => setType(v as AgingType)}
+          />
         </div>
       </div>
       <div className="space-y-4 pt-4">
         {agingQuery.isLoading ? (
-          <p className="text-sm text-ink-mute">
-            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-            Chargement…
-          </p>
+          <AgingSkeleton />
         ) : agingQuery.error ? (
           <FormError error={agingQuery.error} />
         ) : !aging ? null : aging.partnerBreakdown.length === 0 ? (
-          <p className="text-sm text-ink-mute">
-            Aucun encours {type === 'clients' ? 'client' : 'fournisseur'} sur cet exercice.
-          </p>
+          <EmptyState
+            icon={Inbox}
+            title={`Aucun encours ${type === 'clients' ? 'client' : 'fournisseur'}`}
+            description="Tous les comptes auxiliaires sont lettrés sur cet exercice."
+          />
         ) : (
           <>
             <BucketBars buckets={aging.buckets} currency={aging.currency} />
             <div className="flex items-baseline justify-between border-t border-line pt-3 text-sm">
               <span className="font-medium text-ink">Total encours</span>
-              <span className="font-mono text-lg font-semibold text-ink">
+              <span className="font-mono text-lg font-semibold tabular-nums text-ink">
                 {formatAmount(Number(aging.totalOutstanding))}{' '}
                 <span className="text-xs text-ink-mute">{aging.currency}</span>
               </span>
@@ -497,6 +560,23 @@ function AgingSection({ orgId, exerciseId }: { orgId: string; exerciseId: string
         )}
       </div>
     </section>
+  );
+}
+
+function AgingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-sm border border-line bg-paper p-3">
+            <div className="h-3 w-16 rounded-xs bg-sunk" />
+            <div className="mt-2 h-5 w-24 rounded-xs bg-sunk" />
+            <div className="mt-2 h-1 w-full rounded-full bg-sunk" />
+          </div>
+        ))}
+      </div>
+      <div className="h-40 w-full rounded-sm bg-sunk" />
+    </div>
   );
 }
 
@@ -526,7 +606,7 @@ function BucketBars({
           >
             <div className="text-xs text-ink-mute">{AGING_BUCKET_LABELS[b]}</div>
             <div
-              className={`mt-1 font-mono text-lg font-semibold ${
+              className={`mt-1 font-mono text-lg font-semibold tabular-nums ${
                 isOver && amount > 0 ? 'text-critical-ink' : 'text-ink'
               }`}
             >
@@ -590,14 +670,16 @@ function PartnerAgingTable({
                 key={p.accountId}
                 className={`border-t border-line ${idx % 2 === 1 ? 'bg-sunk/30' : ''}`}
               >
-                <td className="px-3 py-2 font-mono text-xs text-ink">{p.accountCode}</td>
+                <td className="px-3 py-2 font-mono text-xs tabular-nums text-ink">
+                  {p.accountCode}
+                </td>
                 <td className="px-3 py-2 text-ink">{p.accountLabel}</td>
                 {AGING_BUCKETS.map((b) => {
                   const v = Number(p.amountsByBucket[b]);
                   return (
                     <td
                       key={b}
-                      className={`px-3 py-2 text-right font-mono ${
+                      className={`px-3 py-2 text-right font-mono tabular-nums ${
                         b === 'over-90' && v > 0
                           ? 'font-medium text-critical-ink'
                           : v === 0
@@ -609,10 +691,10 @@ function PartnerAgingTable({
                     </td>
                   );
                 })}
-                <td className="px-3 py-2 text-right font-mono font-medium text-ink">
+                <td className="px-3 py-2 text-right font-mono font-medium tabular-nums text-ink">
                   {formatAmount(Number(p.totalOutstanding))}
                   {over > 0 && (
-                    <span className="ml-2 inline-flex items-center rounded-full bg-critical-soft px-1.5 py-0 text-[10px] font-medium text-critical-ink">
+                    <span className="ml-2 inline-flex items-center rounded-full bg-critical-soft px-1.5 py-0 text-2xs font-medium text-critical-ink">
                       <ArrowUp className="mr-0.5 inline h-2 w-2" /> 90j+
                     </span>
                   )}
@@ -621,7 +703,7 @@ function PartnerAgingTable({
             );
           })}
         </tbody>
-        <tfoot className="border-t border-line bg-sunk/40 text-sm font-medium text-ink">
+        <tfoot className="border-t border-line bg-sunk text-sm font-medium text-ink">
           <tr>
             <td className="px-3 py-2" colSpan={2}>
               Total ({partners.length} partenaire(s))
@@ -632,12 +714,12 @@ function PartnerAgingTable({
                 0,
               );
               return (
-                <td key={b} className="px-3 py-2 text-right font-mono">
+                <td key={b} className="px-3 py-2 text-right font-mono tabular-nums">
                   {formatAmount(total)}
                 </td>
               );
             })}
-            <td className="px-3 py-2 text-right font-mono">
+            <td className="px-3 py-2 text-right font-mono tabular-nums">
               {formatAmount(
                 partners.reduce((sum, p) => sum + Number(p.totalOutstanding), 0),
               )}{' '}
@@ -651,16 +733,98 @@ function PartnerAgingTable({
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// SEGMENTED CONTROL
+// ─────────────────────────────────────────────────────────────────────
+
+interface SegmentedOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+function SegmentedControl({
+  options,
+  value,
+  onChange,
+}: {
+  options: ReadonlyArray<SegmentedOption>;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      className="inline-flex gap-0.5 rounded-sm border border-line bg-sunk p-0.5"
+    >
+      {options.map((o) => {
+        const isActive = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(o.value)}
+            className={`press rounded-xs px-3 py-1.5 text-xs font-medium transition-colors duration-fast ${
+              isActive
+                ? 'bg-paper text-ink shadow-sm'
+                : 'text-ink-soft hover:text-ink'
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// EMPTY STATE
+// ─────────────────────────────────────────────────────────────────────
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  actionHref,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  actionHref?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[40ch] text-xs text-ink-mute">{description}</p>
+      </div>
+      {actionLabel !== undefined && actionHref !== undefined && (
+        <a
+          href={actionHref}
+          className="press inline-flex items-center gap-1.5 rounded-sm bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent hover:text-canvas"
+        >
+          {actionLabel}
+        </a>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // CASHFLOW (AreaChart)
 // ─────────────────────────────────────────────────────────────────────
 
-// Chart palette aligned with token system (OKLCH→hex approximations).
-const CHART_ACCENT = '#3f8a52';   // accent green
-const CHART_CRITICAL = '#b3441f'; // critical red
-const CHART_INFO = '#3c5d99';     // info blue
-const CHART_WARN = '#c08329';     // warn ochre
-const CHART_GRID = '#e7e3dc';     // line
-const CHART_INK_SOFT = '#5c5c66'; // ink-soft
+const CHART_ACCENT = '#3f8a52';
+const CHART_CRITICAL = '#b3441f';
+const CHART_INFO = '#3c5d99';
+const CHART_GRID = '#e7e3dc';
+const CHART_INK_SOFT = '#5c5c66';
 
 function CashflowSection({ orgId, exerciseId }: { orgId: string; exerciseId: string }) {
   const cashflowQuery = useQuery<{ cashflow: DashboardCashflow }, ApiError>({
@@ -683,7 +847,7 @@ function CashflowSection({ orgId, exerciseId }: { orgId: string; exerciseId: str
   );
 
   return (
-    <section className={PANEL_CLASS}>
+    <section className={PANEL_PADDED}>
       <div className="border-b border-line pb-3">
         <h2 className="font-display text-xl font-medium text-ink">Flux de trésorerie</h2>
         <p className="mt-1 text-sm text-ink-mute">
@@ -692,16 +856,15 @@ function CashflowSection({ orgId, exerciseId }: { orgId: string; exerciseId: str
       </div>
       <div className="pt-4">
         {cashflowQuery.isLoading ? (
-          <p className="text-sm text-ink-mute">
-            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-            Chargement…
-          </p>
+          <ChartSkeleton />
         ) : cashflowQuery.error ? (
           <FormError error={cashflowQuery.error} />
         ) : points.length === 0 ? (
-          <p className="text-sm text-ink-mute">
-            Aucun mouvement sur les comptes de trésorerie pour cet exercice.
-          </p>
+          <EmptyState
+            icon={Banknote}
+            title="Aucun flux de trésorerie"
+            description="Aucun mouvement sur les comptes de trésorerie pour cet exercice."
+          />
         ) : (
           <>
             <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
@@ -743,6 +906,22 @@ function CashflowSection({ orgId, exerciseId }: { orgId: string; exerciseId: str
   );
 }
 
+function ChartSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3">
+      <div className="grid grid-cols-3 gap-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-sm bg-sunk px-3 py-2">
+            <div className="h-3 w-20 rounded-xs bg-paper" />
+            <div className="mt-1 h-4 w-24 rounded-xs bg-paper" />
+          </div>
+        ))}
+      </div>
+      <div className="h-64 w-full rounded-sm bg-sunk" />
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // EVOLUTION P&L
 // ─────────────────────────────────────────────────────────────────────
@@ -767,7 +946,7 @@ function EvolutionSection({ orgId, exerciseId }: { orgId: string; exerciseId: st
   );
 
   return (
-    <section className={PANEL_CLASS}>
+    <section className={PANEL_PADDED}>
       <div className="border-b border-line pb-3">
         <h2 className="font-display text-xl font-medium text-ink">
           Évolution Produits / Charges
@@ -778,16 +957,15 @@ function EvolutionSection({ orgId, exerciseId }: { orgId: string; exerciseId: st
       </div>
       <div className="pt-4">
         {evolutionQuery.isLoading ? (
-          <p className="text-sm text-ink-mute">
-            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-            Chargement…
-          </p>
+          <ChartSkeleton />
         ) : evolutionQuery.error ? (
           <FormError error={evolutionQuery.error} />
         ) : points.length === 0 ? (
-          <p className="text-sm text-ink-mute">
-            Aucun produit/charge sur cet exercice.
-          </p>
+          <EmptyState
+            icon={TrendingUp}
+            title="Aucun produit / charge"
+            description="Validez des écritures sur les classes 6 et 7 pour voir l'évolution."
+          />
         ) : (
           <>
             <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
@@ -820,18 +998,17 @@ function EvolutionSection({ orgId, exerciseId }: { orgId: string; exerciseId: st
 // TOP ACCOUNTS (PieChart)
 // ─────────────────────────────────────────────────────────────────────
 
-// Editorial palette tied to OKLCH tokens — restrained, alternates ink/accent tones.
 const PIE_COLORS = [
-  '#3f8a52', // accent
-  '#3c5d99', // info
-  '#c08329', // warn
-  '#b3441f', // critical
-  '#5c5c66', // ink-soft
-  '#6b9c7c', // accent muted
-  '#7a8baf', // info muted
-  '#a78c5e', // warn muted
-  '#b87a5e', // critical muted
-  '#8a8a96', // ink-mute
+  '#3f8a52',
+  '#3c5d99',
+  '#c08329',
+  '#b3441f',
+  '#5c5c66',
+  '#6b9c7c',
+  '#7a8baf',
+  '#a78c5e',
+  '#b87a5e',
+  '#8a8a96',
 ];
 
 function TopAccountsSection({ orgId, exerciseId }: { orgId: string; exerciseId: string }) {
@@ -857,49 +1034,36 @@ function TopAccountsSection({ orgId, exerciseId }: { orgId: string; exerciseId: 
   );
 
   return (
-    <section className={PANEL_CLASS}>
+    <section className={PANEL_PADDED}>
       <div className="border-b border-line pb-3">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-xl font-medium text-ink">Top comptes</h2>
             <p className="mt-1 text-sm text-ink-mute">
-              {category === 'expenses' ? 'Top 10 charges' : 'Top 10 produits'} de l&apos;exercice
+              {category === 'expenses' ? 'Top 10 charges' : 'Top 10 produits'} de l'exercice
             </p>
           </div>
-          <div className="flex gap-1 rounded-sm border border-line bg-sunk/30 p-0.5">
-            <Button
-              type="button"
-              size="sm"
-              variant={category === 'expenses' ? 'default' : 'outline'}
-              onClick={() => setCategory('expenses')}
-              className={`press ${category === 'expenses' ? '' : 'border-0 bg-transparent'}`}
-            >
-              Charges
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={category === 'revenue' ? 'default' : 'outline'}
-              onClick={() => setCategory('revenue')}
-              className={`press ${category === 'revenue' ? '' : 'border-0 bg-transparent'}`}
-            >
-              Produits
-            </Button>
-          </div>
+          <SegmentedControl
+            options={[
+              { value: 'expenses', label: 'Charges' },
+              { value: 'revenue', label: 'Produits' },
+            ]}
+            value={category}
+            onChange={(v) => setCategory(v as TopAccountCategory)}
+          />
         </div>
       </div>
       <div className="pt-4">
         {topQuery.isLoading ? (
-          <p className="text-sm text-ink-mute">
-            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-            Chargement…
-          </p>
+          <ChartSkeleton />
         ) : topQuery.error ? (
           <FormError error={topQuery.error} />
         ) : pieData.length === 0 ? (
-          <p className="text-sm text-ink-mute">
-            Aucune écriture sur cette catégorie pour l&apos;exercice.
-          </p>
+          <EmptyState
+            icon={BarChart3}
+            title="Aucune écriture sur cette catégorie"
+            description="Validez des écritures pour voir les top comptes."
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
             <div className="h-72 w-full">
@@ -952,19 +1116,19 @@ function TopAccountsSection({ orgId, exerciseId }: { orgId: string; exerciseId: 
                             className="inline-block h-2.5 w-2.5 rounded-full"
                             style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
                           />
-                          <span className="font-mono text-xs text-ink">{r.accountCode}</span>
+                          <span className="font-mono text-xs tabular-nums text-ink">{r.accountCode}</span>
                           <span className="truncate text-ink">{r.accountLabel}</span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-ink">{formatAmount(Number(r.amount))}</td>
-                      <td className="px-3 py-2 text-right text-xs text-ink-mute">{r.sharePercent}%</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-ink">{formatAmount(Number(r.amount))}</td>
+                      <td className="px-3 py-2 text-right text-xs text-ink-mute tabular-nums">{r.sharePercent}%</td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="border-t border-line bg-sunk/40 text-sm font-medium text-ink">
+                <tfoot className="border-t border-line bg-sunk text-sm font-medium text-ink">
                   <tr>
                     <td className="px-3 py-2">Total catégorie</td>
-                    <td className="px-3 py-2 text-right font-mono">{formatAmount(Number(top?.totalAmount ?? 0))}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{formatAmount(Number(top?.totalAmount ?? 0))}</td>
                     <td className="px-3 py-2 text-right text-ink-mute">{top?.currency}</td>
                   </tr>
                 </tfoot>
@@ -997,10 +1161,10 @@ function MiniStat({
           ? 'text-accent-ink'
           : 'text-critical-ink';
   return (
-    <div className="rounded-sm border border-line bg-sunk/20 px-3 py-2">
+    <div className="rounded-sm border border-line bg-sunk px-3 py-2">
       <div className="text-xs text-ink-mute">{label}</div>
-      <div className={`font-mono text-sm font-semibold ${color}`}>
-        {formatAmount(value)} {currency && <span className="text-xs">{currency}</span>}
+      <div className={`font-mono text-sm font-semibold tabular-nums ${color}`}>
+        {formatAmount(value)} {currency !== undefined && <span className="text-xs">{currency}</span>}
       </div>
     </div>
   );

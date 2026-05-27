@@ -1,7 +1,15 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Loader2, Paperclip, Trash2, Upload } from 'lucide-react';
+import {
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Paperclip,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -36,20 +44,100 @@ interface ListResponse {
 }
 
 const OCR_TONE: Record<OcrStatus, string> = {
-  pending: 'bg-sunk/60 text-ink-soft',
-  processing: 'bg-info/15 text-info-ink',
-  completed: 'bg-accent/15 text-accent-ink',
-  failed: 'bg-critical/15 text-critical-ink',
-  skipped: 'bg-sunk/60 text-ink-mute',
+  pending: 'bg-sunk text-ink-soft',
+  processing: 'bg-info-soft text-info-ink',
+  completed: 'bg-accent-soft text-accent-ink',
+  failed: 'bg-critical-soft text-critical-ink',
+  skipped: 'bg-sunk text-ink-mute',
 };
 
-/**
- * `/documents` — pièces comptables (factures, contrats, justificatifs).
- *
- * Surface MVP : upload multipart, liste filtrable, download via
- * fetch authenticated puis blob link (le endpoint /content sert le
- * fichier original avec Content-Disposition), soft-delete.
- */
+const OCR_LABEL: Record<OcrStatus, string> = {
+  pending: 'En attente',
+  processing: 'OCR en cours',
+  completed: 'OCR terminé',
+  failed: 'OCR échoué',
+  skipped: 'OCR ignoré',
+};
+
+function fileExtension(filename: string): string {
+  const idx = filename.lastIndexOf('.');
+  if (idx === -1) return '';
+  return filename.slice(idx + 1).toUpperCase();
+}
+
+function FileTypeBadge({ filename }: { filename: string }) {
+  const ext = fileExtension(filename);
+  const tone =
+    ext === 'PDF'
+      ? 'bg-critical-soft text-critical-ink'
+      : ext === 'CSV'
+        ? 'bg-info-soft text-info-ink'
+        : ext === 'XLSX' || ext === 'XLS'
+          ? 'bg-accent-soft text-accent-ink'
+          : 'bg-sunk text-ink-soft';
+  return (
+    <span className={`inline-flex items-center rounded-xs px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider ${tone}`}>
+      {ext || 'FILE'}
+    </span>
+  );
+}
+
+function FileIcon({ filename }: { filename: string }) {
+  const ext = fileExtension(filename);
+  if (ext === 'CSV' || ext === 'XLSX' || ext === 'XLS') {
+    return <FileSpreadsheet className="h-4 w-4 text-ink-mute" strokeWidth={1.5} />;
+  }
+  if (ext === 'PDF') {
+    return <FileText className="h-4 w-4 text-ink-mute" strokeWidth={1.5} />;
+  }
+  return <Paperclip className="h-4 w-4 text-ink-mute" strokeWidth={1.5} />;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function SkeletonRows({ n = 4 }: { n?: number }) {
+  return (
+    <div className="animate-pulse divide-y divide-line">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-3">
+          <div className="h-8 w-8 rounded-full bg-sunk" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 w-32 rounded-xs bg-sunk" />
+            <div className="h-2.5 w-48 rounded-xs bg-sunk" />
+          </div>
+          <div className="h-5 w-16 rounded-full bg-sunk" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk">
+        <Icon className="h-5 w-5 text-ink-mute" strokeWidth={1.5} />
+      </span>
+      <div>
+        <p className="text-sm font-medium text-ink">{title}</p>
+        <p className="mt-1 max-w-[40ch] text-xs text-ink-mute">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function DocumentsPage() {
   const currentOrg = useCurrentOrg();
   const orgId = currentOrg?.id ?? '';
@@ -71,7 +159,6 @@ export default function DocumentsPage() {
     enabled: orgId !== '',
   });
 
-  // ─── Upload ─────────────────────────────────────────────────────────
   const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
   const [tagsInput, setTagsInput] = useState('');
@@ -115,16 +202,17 @@ export default function DocumentsPage() {
     },
   );
 
+  const rows = docsQuery.data?.rows ?? [];
+
   return (
     <AppShell>
       <div className="animate-page-in space-y-8">
         <header>
-          <p className="eyebrow mb-2">Pièces justificatives</p>
+          <p className="eyebrow mb-2">Organisation · GED</p>
           <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Documents</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-mute">
-            Pièces comptables : factures, contrats, justificatifs. Stockage hash-addressé
-            avec dédoublonnage SHA-256 ; OCR (Module 10 vague 2) extraira les champs
-            automatiquement.
+            Gestion électronique des pièces justificatives. Associez chaque document à une écriture
+            ou une période.
           </p>
         </header>
 
@@ -132,7 +220,11 @@ export default function DocumentsPage() {
           <div className="border-b border-line pb-3">
             <h2 className="font-display text-xl font-medium text-ink">Téléverser un document</h2>
             <p className="mt-1 text-sm text-ink-mute">
-              Tags séparés par virgules (ex. <code className="rounded-sm bg-sunk px-1 py-0.5 text-xs text-ink-soft">facture, fournisseur, mars-2026</code>).
+              Tags séparés par virgules (ex.{' '}
+              <code className="rounded-xs bg-sunk px-1 py-0.5 font-mono text-xs text-ink-soft">
+                facture, fournisseur, mars-2026
+              </code>
+              ).
             </p>
           </div>
           <div className="rounded-sm border border-line bg-paper p-5">
@@ -188,14 +280,15 @@ export default function DocumentsPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="border-b border-line pb-3">
-            <h2 className="font-display text-xl font-medium text-ink">Bibliothèque</h2>
-            <p className="mt-1 text-sm text-ink-mute">
-              {docsQuery.data?.total ?? 0} document(s) — page {page}
-            </p>
-          </div>
-
-          <div className="mb-3 flex gap-2">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
+            <div>
+              <h2 className="font-display text-xl font-medium text-ink">Bibliothèque</h2>
+              <p className="mt-1 text-sm text-ink-mute">
+                <span className="font-mono tabular-nums text-ink">{docsQuery.data?.total ?? 0}</span> document
+                {(docsQuery.data?.total ?? 0) > 1 ? 's' : ''} · page{' '}
+                <span className="font-mono tabular-nums">{page}</span>
+              </p>
+            </div>
             <Input
               value={filterTag}
               onChange={(e) => {
@@ -207,61 +300,55 @@ export default function DocumentsPage() {
             />
           </div>
 
-          {docsQuery.isLoading ? (
-            <p className="text-sm text-ink-mute">Chargement…</p>
-          ) : (docsQuery.data?.rows.length ?? 0) === 0 ? (
-            <p className="text-sm text-ink-mute">Aucun document.</p>
-          ) : (
-            <div className="overflow-x-auto rounded-sm border border-line">
-              <table className="w-full text-sm">
-                <thead className="bg-sunk">
-                  <tr>
-                    <th className="px-3 py-2 text-left"><span className="eyebrow">Fichier</span></th>
-                    <th className="px-3 py-2 text-left"><span className="eyebrow">Tags</span></th>
-                    <th className="px-3 py-2 text-right"><span className="eyebrow">Taille</span></th>
-                    <th className="px-3 py-2 text-left"><span className="eyebrow">OCR</span></th>
-                    <th className="px-3 py-2 text-left"><span className="eyebrow">Date</span></th>
-                    <th className="px-3 py-2 text-right"><span className="eyebrow">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(docsQuery.data?.rows ?? []).map((d, idx) => (
-                    <DocumentRow key={d.id} doc={d} alt={idx % 2 === 1} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="rounded-sm border border-line bg-paper">
+            {docsQuery.isLoading ? (
+              <SkeletonRows n={5} />
+            ) : rows.length === 0 ? (
+              <EmptyState
+                icon={Paperclip}
+                title="Aucun document"
+                description="Importez des pièces justificatives pour les associer à vos écritures."
+              />
+            ) : (
+              <ul className="divide-y divide-line">
+                {rows.map((d) => (
+                  <DocumentRow key={d.id} doc={d} />
+                ))}
+              </ul>
+            )}
+          </div>
           <FormError error={docsQuery.error} className="mt-3" />
 
-          <div className="mt-3 flex items-center justify-between text-sm">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={page === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="press"
-            >
-              Précédent
-            </Button>
-            <span className="text-ink-mute">Page {page}</span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={(docsQuery.data?.rows.length ?? 0) < pageSize}
-              onClick={() => setPage((p) => p + 1)}
-              className="press"
-            >
-              Suivant
-            </Button>
-          </div>
+          {rows.length > 0 && (
+            <div className="mt-3 flex items-center justify-between text-sm">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="press"
+              >
+                Précédent
+              </Button>
+              <span className="font-mono tabular-nums text-xs text-ink-mute">Page {page}</span>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={rows.length < pageSize}
+                onClick={() => setPage((p) => p + 1)}
+                className="press"
+              >
+                Suivant
+              </Button>
+            </div>
+          )}
         </section>
       </div>
     </AppShell>
   );
 }
 
-function DocumentRow({ doc, alt }: { doc: DocumentView; alt: boolean }) {
+function DocumentRow({ doc }: { doc: DocumentView }) {
   const qc = useQueryClient();
   const [downloading, setDownloading] = useState(false);
 
@@ -290,60 +377,70 @@ function DocumentRow({ doc, alt }: { doc: DocumentView; alt: boolean }) {
   });
 
   return (
-    <tr className={`border-t border-line transition-colors hover:bg-sunk/50 ${alt ? 'bg-sunk/20' : ''}`}>
-      <td className="px-3 py-2">
+    <li className="group flex items-center gap-3 px-4 py-3 transition-colors duration-fast hover:bg-sunk/30">
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-sunk">
+        <FileIcon filename={doc.filename} />
+      </span>
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <Paperclip className="h-3 w-3 text-ink-mute" />
-          <span className="font-medium text-ink">{doc.filename}</span>
+          <FileTypeBadge filename={doc.filename} />
+          <span className="truncate text-sm font-medium text-ink">{doc.filename}</span>
         </div>
-        {doc.description && (
-          <div className="text-xs text-ink-mute">{doc.description}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-mute">
+          <span className="font-mono tabular-nums">{formatSize(doc.sizeBytes)}</span>
+          <span aria-hidden>·</span>
+          <span title={new Date(doc.uploadedAt).toLocaleString('fr-FR')}>
+            {new Date(doc.uploadedAt).toLocaleDateString('fr-FR', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </span>
+          {doc.description && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="truncate text-ink-soft">{doc.description}</span>
+            </>
+          )}
+        </div>
+        {doc.tags.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {doc.tags.map((t) => (
+              <span
+                key={t}
+                className="inline-flex items-center rounded-xs border border-line bg-canvas px-1.5 py-0.5 text-[10px] font-medium text-ink-soft"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
         )}
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex flex-wrap gap-1">
-          {doc.tags.map((t) => (
-            <span
-              key={t}
-              className="inline-flex items-center rounded-sm border border-line bg-paper px-1.5 py-0.5 text-[11px] font-medium text-ink-soft"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      </td>
-      <td className="px-3 py-2 text-right font-mono text-xs text-ink">
-        {(doc.sizeBytes / 1024).toFixed(1)} KB
-      </td>
-      <td className="px-3 py-2">
-        <span className={`inline-flex items-center rounded-sm px-2 py-0.5 text-[11px] font-medium ${OCR_TONE[doc.ocrStatus]}`}>
-          {doc.ocrStatus}
-        </span>
-      </td>
-      <td className="px-3 py-2 text-xs text-ink-mute">
-        {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
-      </td>
-      <td className="px-3 py-2 text-right">
-        <div className="flex justify-end gap-1">
-          <Button type="button" size="sm" variant="outline" disabled={downloading} onClick={downloadFile} className="press">
-            {downloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={remove.isPending}
-            onClick={() => remove.mutate(undefined)}
-            className="press"
-          >
-            {remove.isPending ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Trash2 className="h-3 w-3" />
-            )}
-          </Button>
-        </div>
-      </td>
-    </tr>
+      </div>
+      <span
+        className={`hidden shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium md:inline-flex ${OCR_TONE[doc.ocrStatus]}`}
+      >
+        {OCR_LABEL[doc.ocrStatus]}
+      </span>
+      <div className="flex shrink-0 gap-1">
+        <button
+          type="button"
+          disabled={downloading}
+          onClick={downloadFile}
+          aria-label={`Télécharger ${doc.filename}`}
+          className="press inline-flex h-7 w-7 items-center justify-center rounded-xs border border-line text-ink-soft transition-colors duration-fast hover:border-accent hover:text-accent-ink disabled:opacity-40"
+        >
+          {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        </button>
+        <button
+          type="button"
+          disabled={remove.isPending}
+          onClick={() => remove.mutate(undefined)}
+          aria-label={`Supprimer ${doc.filename}`}
+          className="press inline-flex h-7 w-7 items-center justify-center rounded-xs border border-line text-ink-mute transition-colors duration-fast hover:border-critical hover:text-critical-ink disabled:opacity-40"
+        >
+          {remove.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        </button>
+      </div>
+    </li>
   );
 }
