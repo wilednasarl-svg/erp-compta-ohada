@@ -5,14 +5,14 @@
  *   - métadonnées statiques (id, label, section, applicableByDefault)
  *   - handler associé (fonction asynchrone qui calcule les rows)
  *
- * 38 notes implémentées (W2.4.a + W2.4.b + W2.4.c) :
+ * 36 notes implémentées (W2.4.a + W2.4.b + W2.4.c) :
  *   N1, N2, N3A, N3B, N3C, N3D, N4, N5, N6, N7, N8, N9, N10, N11, N12,
  *   N13, N14, N15, N16, N17, N18, N19, N20, N21, N22, N23, N24, N25,
- *   N26, N27, N28, N29, N30, N32, N33, N34, N35, N36
+ *   N26, N27, N28, N29, N30, N31, N32, N33, N34, N35, N36.
  *
- * 1 note restante en stub avec `NotImplementedError` :
- *   N31 — TFT détaillé. Demande l'injection de CashFlowService dans
- *   NoteHandlerDependencies (refactor à venir en W5.5).
+ * N31 (TFT ventilé) consomme la 5e sous-dépendance `cashFlow` exposée
+ * par `NoteHandlerDependencies` ; elle est branchée sur `CashFlowService`
+ * dans `reports.module.ts`.
  *
  * Les notes N32-N36 (effectif, engagements HB, parties liées, événements
  * postérieurs, sectorielles) sont des notes "texte libre" : le handler
@@ -44,6 +44,7 @@ import { handleN27Financiers } from './handlers/note-27-financiers';
 import { handleN28Provisions } from './handlers/note-28-provisions';
 import { handleN29Hao } from './handlers/note-29-hao';
 import { handleN30Impot } from './handlers/note-30-impot';
+import { handleN31FluxTresorerie } from './handlers/note-31-flux-tresorerie';
 import { handleN3aImmoCorp } from './handlers/note-3a-immo-corp';
 import { handleN3bImmoIncorp } from './handlers/note-3b-immo-incorp';
 import { handleN3cCessions } from './handlers/note-3c-cessions';
@@ -54,16 +55,7 @@ import { handleN6Stocks } from './handlers/note-6-stocks';
 import { handleN7Clients } from './handlers/note-7-clients';
 import { handleN8AutresCreances } from './handlers/note-8-autres-creances';
 import { handleN9TitresPlacement } from './handlers/note-9-titres-placement';
-import { type NoteHandler, type NoteId, type NoteMetadata, NotImplementedError } from './types';
-
-/** Factory pour un handler stub. */
-function stub(noteId: NoteId, jsdocSummary: string): NoteHandler {
-  // jsdocSummary est conservé pour la doc API future.
-  void jsdocSummary;
-  return async () => {
-    throw new NotImplementedError(noteId, 'W2.4.b');
-  };
-}
+import { type NoteHandler, type NoteId, type NoteMetadata } from './types';
 
 interface NoteRegistryEntry {
   readonly metadata: NoteMetadata;
@@ -341,7 +333,7 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
     'N31' as NoteId,
     {
       metadata: meta('N31', 'Note 31 — Tableau des flux de trésorerie (détail)', 'TFT', true),
-      handler: stub('N31' as NoteId, 'Reprise du TFT avec ventilation'),
+      handler: handleN31FluxTresorerie,
     },
   ],
   [

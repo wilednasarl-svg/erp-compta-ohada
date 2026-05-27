@@ -21,6 +21,7 @@ export {
   type NoteAssetsDeps,
   type NoteInventoryDeps,
   type NoteAccountsDeps,
+  type NoteCashFlowDeps,
   type NoteAssetRecord,
   type NoteDepreciationRecord,
   type NoteInventoryItem,

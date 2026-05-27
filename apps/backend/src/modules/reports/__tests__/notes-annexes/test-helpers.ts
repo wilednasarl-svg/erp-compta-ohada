@@ -12,6 +12,7 @@ import type {
   GetNoteRequest,
   NoteAccountsDeps,
   NoteAssetsDeps,
+  NoteCashFlowDeps,
   NoteInventoryDeps,
   NoteReportsDeps,
 } from '../../services/notes-annexes';
@@ -26,6 +27,7 @@ export interface Harness {
   assetsMock: { findAllForExercise: jest.Mock; findDepreciationForYear: jest.Mock };
   inventoryMock: { findAllItems: jest.Mock };
   accountsMock: { findById: jest.Mock };
+  cashFlowMock: { getCashFlow: jest.Mock };
   commentsMock: {
     getOne: jest.Mock;
     getByExercise: jest.Mock;
@@ -42,6 +44,7 @@ export function buildHarness(): Harness {
   };
   const inventoryMock = { findAllItems: jest.fn().mockResolvedValue([]) };
   const accountsMock = { findById: jest.fn().mockResolvedValue(null) };
+  const cashFlowMock = { getCashFlow: jest.fn() };
   const commentsMock = {
     getOne: jest.fn().mockResolvedValue(null),
     getByExercise: jest.fn().mockResolvedValue([]),
@@ -54,6 +57,7 @@ export function buildHarness(): Harness {
     assetsMock as unknown as NoteAssetsDeps,
     inventoryMock as unknown as NoteInventoryDeps,
     accountsMock as unknown as NoteAccountsDeps,
+    cashFlowMock as unknown as NoteCashFlowDeps,
   );
 
   const request: GetNoteRequest = {
@@ -64,5 +68,14 @@ export function buildHarness(): Harness {
     fiscalYear: 2026,
   };
 
-  return { service, reportsMock, assetsMock, inventoryMock, accountsMock, commentsMock, request };
+  return {
+    service,
+    reportsMock,
+    assetsMock,
+    inventoryMock,
+    accountsMock,
+    cashFlowMock,
+    commentsMock,
+    request,
+  };
 }

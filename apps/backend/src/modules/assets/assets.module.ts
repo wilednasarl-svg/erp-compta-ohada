@@ -36,6 +36,9 @@ import { AssetsController } from './controllers/assets.controller';
   ],
   controllers: [AssetsController],
   providers: [AssetsRepository, DepreciationSchedulesRepository, AssetsService],
-  exports: [AssetsService],
+  // W2.4.c — `AssetsRepository` et `DepreciationSchedulesRepository`
+  // sont ré-exportés pour que `ReportsModule` puisse les injecter dans
+  // l'adapter `NoteAssetsDeps` (Notes annexes N3A/N3B/N3C/N3D).
+  exports: [AssetsService, AssetsRepository, DepreciationSchedulesRepository],
 })
 export class AssetsModule {}

@@ -19,10 +19,10 @@ describe('NotesAnnexesService — smoke', () => {
     await expect(service.getNote(request, 'N99' as NoteId)).rejects.toThrow(/Unknown noteId/);
   });
 
-  it('getAllNotes returns all entries; les 10 notes implémentées portent des rows non-PENDING', async () => {
-    const { service, request, commentsMock } = buildHarness();
-    // Forcer tous les stubs à être applicable=true pour qu'ils déclenchent
-    // NotImplementedError et soient marqués PENDING par getAllNotes.
+  it('getAllNotes returns all entries; toutes les notes (36) sont implémentées (plus aucun PENDING)', async () => {
+    const { service, request, commentsMock, cashFlowMock } = buildHarness();
+    // Forcer tous les stubs à être applicable=true pour que chaque handler
+    // soit appelé (et qu'aucun ne retourne PENDING).
     commentsMock.getOne.mockImplementation(
       async (_org: string, _ex: string, noteId: string) => ({
         applicable: true,
@@ -30,19 +30,26 @@ describe('NotesAnnexesService — smoke', () => {
         noteId,
       }),
     );
+    // N31 dépend de CashFlowService — minimal stub pour qu'il ne crash pas.
+    cashFlowMock.getCashFlow.mockResolvedValue({
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+      openingCash: '0.00',
+      closingCash: '0.00',
+      netCashVariation: '0.00',
+      coherenceCheck: '0.00',
+      sections: [
+        { code: 'ZA', label: 'ZA', subtotal: '0.00', postes: [] },
+        { code: 'ZB', label: 'ZB', subtotal: '0.00', postes: [] },
+        { code: 'ZC', label: 'ZC', subtotal: '0.00', postes: [] },
+      ],
+    });
 
     const notes = await service.getAllNotes(request);
     expect(notes.length).toBe(ALL_NOTE_IDS.length);
 
     const pending = notes.filter((n) => n.rows[0]?.key === 'PENDING');
-    const implemented = notes.filter((n) => n.rows[0]?.key !== 'PENDING');
-    expect(implemented.length).toBe(10);
-    expect(pending.length).toBe(ALL_NOTE_IDS.length - 10);
-
-    const implementedIds = new Set(implemented.map((n) => n.id));
-    for (const id of ['N1', 'N2', 'N3A', 'N3C', 'N3D', 'N6', 'N7', 'N17', 'N18', 'N28']) {
-      expect(implementedIds.has(id as NoteId)).toBe(true);
-    }
+    expect(pending.length).toBe(0);
   });
 
   it('respects user override applicable=false (no calc, no rows)', async () => {

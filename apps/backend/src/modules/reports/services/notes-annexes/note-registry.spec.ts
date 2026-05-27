@@ -9,7 +9,7 @@
  *   - la coverage W2.4 (>=31 notes implémentées) ne régresse pas
  */
 import { ALL_NOTE_IDS, NOTE_REGISTRY } from './note-registry';
-import { NotImplementedError, type NoteHandlerDependencies, type NoteId } from './types';
+import type { NoteHandlerDependencies, NoteId } from './types';
 
 const EXPECTED_NOTE_IDS: ReadonlyArray<NoteId> = [
   'N1', 'N2',
@@ -20,9 +20,12 @@ const EXPECTED_NOTE_IDS: ReadonlyArray<NoteId> = [
   'N30', 'N31', 'N32', 'N33', 'N34', 'N35', 'N36',
 ] as ReadonlyArray<NoteId>;
 
-const STILL_STUB: ReadonlyArray<NoteId> = [
-  'N31',
-] as ReadonlyArray<NoteId>;
+/**
+ * W2.4.c — toutes les notes sont implémentées (N31 inclus, branché sur
+ * `CashFlowService`). Plus aucun handler en stub : la liste reste
+ * vide volontairement comme garde-fou anti-régression.
+ */
+const STILL_STUB: ReadonlyArray<NoteId> = [] as ReadonlyArray<NoteId>;
 
 function emptyDeps(): NoteHandlerDependencies {
   return {
@@ -33,6 +36,21 @@ function emptyDeps(): NoteHandlerDependencies {
     },
     inventory: { findAllItems: async () => [] },
     accounts: { findById: async () => null },
+    cashFlow: {
+      getCashFlow: async (_org, fromDate, toDate) => ({
+        fromDate,
+        toDate,
+        openingCash: '0.00',
+        closingCash: '0.00',
+        netCashVariation: '0.00',
+        coherenceCheck: '0.00',
+        sections: [
+          { code: 'ZA', label: 'ZA', subtotal: '0.00', postes: [] },
+          { code: 'ZB', label: 'ZB', subtotal: '0.00', postes: [] },
+          { code: 'ZC', label: 'ZC', subtotal: '0.00', postes: [] },
+        ],
+      }),
+    },
   };
 }
 
@@ -64,8 +82,8 @@ describe('notes-annexes registry — structure', () => {
 describe('notes-annexes registry — handlers implémentés', () => {
   const implementedIds = ALL_NOTE_IDS.filter((id) => !STILL_STUB.includes(id));
 
-  it(`a au moins 38 notes implémentées (livraison W2.4.c)`, () => {
-    expect(implementedIds.length).toBeGreaterThanOrEqual(38);
+  it(`a au moins 39 notes implémentées (livraison W2.4.c — toutes notes)`, () => {
+    expect(implementedIds.length).toBeGreaterThanOrEqual(39);
   });
 
   it.each(implementedIds)(
@@ -90,23 +108,7 @@ describe('notes-annexes registry — handlers implémentés', () => {
 });
 
 describe('notes-annexes registry — stubs explicites', () => {
-  it.each(STILL_STUB)(
-    '%s — handler stub doit lever NotImplementedError',
-    async (id) => {
-      const entry = NOTE_REGISTRY.get(id);
-      if (!entry) throw new Error(`missing ${id}`);
-      await expect(
-        entry.handler(
-          {
-            organizationId: '00000000-0000-4000-8000-000000000001',
-            exerciseId: 'exo-1',
-            periodStart: '2026-01-01',
-            periodEnd: '2026-12-31',
-            fiscalYear: 2026,
-          },
-          emptyDeps(),
-        ),
-      ).rejects.toBeInstanceOf(NotImplementedError);
-    },
-  );
+  it('aucun handler ne reste en stub (W2.4.c — toutes notes branchées)', () => {
+    expect(STILL_STUB.length).toBe(0);
+  });
 });

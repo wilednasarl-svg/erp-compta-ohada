@@ -16,6 +16,7 @@
  */
 
 import type { TenantId } from '../../../../common/persistence/tenant-scope';
+import type { CashFlowReport } from '../cash-flow.service';
 
 /**
  * Identifiant d'une note annexe SYSCOHADA. Format : 'N' suivi du numéro
@@ -117,6 +118,7 @@ export interface NoteHandlerDependencies {
   readonly assets: NoteAssetsDeps;
   readonly inventory: NoteInventoryDeps;
   readonly accounts: NoteAccountsDeps;
+  readonly cashFlow: NoteCashFlowDeps;
 }
 
 /** Sous-interfaces — minimales, écrites côté consommateur. */
@@ -159,6 +161,23 @@ export interface NoteAccountsDeps {
     organizationId: TenantId | string,
     accountId: string,
   ) => Promise<{ id: string; code: string; label: string; class: number } | null>;
+}
+
+/**
+ * Sous-dépendance dédiée à N31 (TFT ventilé). Le handler N31 consomme
+ * uniquement le rendu du Tableau des Flux de Trésorerie produit par
+ * `CashFlowService.getCashFlow`. On expose une fonction au signature
+ * réduite (sans `CashFlowQuery`) pour découpler les handlers du shape
+ * exact du service.
+ */
+export interface NoteCashFlowDeps {
+  readonly getCashFlow: (
+    organizationId: TenantId | string,
+    fromDate: string,
+    toDate: string,
+    previousFromDate?: string,
+    previousToDate?: string,
+  ) => Promise<CashFlowReport>;
 }
 
 /**

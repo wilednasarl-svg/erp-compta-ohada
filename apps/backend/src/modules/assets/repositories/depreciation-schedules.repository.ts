@@ -88,6 +88,22 @@ export class DepreciationSchedulesRepository {
     });
   }
 
+  /**
+   * Tous les schedules d'un exercice fiscal donné pour une organisation.
+   * Utilisé par `ReportsModule` (Notes annexes N3A/N3D — dotations
+   * de l'exercice). Lecture seule, ordonnée par assetId/fiscalYear.
+   */
+  async listByOrgAndFiscalYear(
+    organizationId: TenantId | string,
+    fiscalYear: number,
+  ): Promise<DepreciationScheduleEntity[]> {
+    assertTenantId(organizationId);
+    return this.repo.find({
+      where: { organizationId, fiscalYear },
+      order: { assetId: 'ASC' },
+    });
+  }
+
   async findById(
     id: string,
     organizationId: TenantId | string,

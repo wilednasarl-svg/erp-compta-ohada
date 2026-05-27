@@ -6,6 +6,7 @@ import { ALL_NOTE_IDS, NOTE_REGISTRY } from './note-registry';
 import {
   type NoteAccountsDeps,
   type NoteAssetsDeps,
+  type NoteCashFlowDeps,
   type NoteComputationContext,
   type NoteContent,
   type NoteHandlerDependencies,
@@ -48,6 +49,7 @@ export class NotesAnnexesService {
     private readonly assetsDeps: NoteAssetsDeps,
     private readonly inventoryDeps: NoteInventoryDeps,
     private readonly accountsDeps: NoteAccountsDeps,
+    private readonly cashFlowDeps: NoteCashFlowDeps,
   ) {}
 
   /** Tous les NoteIds (36 IDs). */
@@ -90,6 +92,7 @@ export class NotesAnnexesService {
       assets: this.assetsDeps,
       inventory: this.inventoryDeps,
       accounts: this.accountsDeps,
+      cashFlow: this.cashFlowDeps,
     };
 
     const handlerResult = await entry.handler(ctx, deps);
