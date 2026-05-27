@@ -5419,6 +5419,18 @@ function parseBalanceCsv(text: string): BalanceParsed {
   };
 }
 
+async function parseBalanceXlsx(buffer: ArrayBuffer): Promise<BalanceParsed> {
+  const XLSX = await import('xlsx');
+  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+  const wsName = wb.SheetNames[0];
+  if (!wsName) throw new Error('Fichier Excel vide (aucune feuille détectée).');
+  const ws = wb.Sheets[wsName];
+  if (!ws) throw new Error('Feuille Excel introuvable.');
+  /* Convert to semicolon-delimited CSV — reuses all header-detection logic */
+  const csv = XLSX.utils.sheet_to_csv(ws, { FS: ';' });
+  return parseBalanceCsv(csv);
+}
+
 function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
   const [dragging, setDragging] = useState(false);
   const [parsed, setParsed] = useState<BalanceParsed | null>(null);
@@ -5441,8 +5453,16 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
 
   const handleFile = async (f: File): Promise<void> => {
     try {
-      const text = await f.text();
-      setParsed(parseBalanceCsv(text));
+      const isExcel = /\.(xlsx|xls)$/i.test(f.name) || f.type.includes('spreadsheetml') || f.type.includes('ms-excel');
+      let result: BalanceParsed;
+      if (isExcel) {
+        const buffer = await f.arrayBuffer();
+        result = await parseBalanceXlsx(buffer);
+      } else {
+        const text = await f.text();
+        result = parseBalanceCsv(text);
+      }
+      setParsed(result);
       setParseError(null);
       mutation.reset();
     } catch (e) {
@@ -5518,9 +5538,9 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
           Balance personnalisée
         </CardTitle>
         <CardDescription className="text-ink-soft">
-          Uploadez une balance CSV (Sage Saari, CIEL, export tableur…) pour générer Bilan et
-          Compte de résultat sans passer par les écritures validées. Utile pour des simulations
-          ou des reprises d&apos;antériorité.
+          Uploadez une balance CSV ou Excel (Sage Saari, CIEL, export tableur…) pour générer
+          Bilan et Compte de résultat sans passer par les écritures validées. Utile pour des
+          simulations ou des reprises d&apos;antériorité.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
@@ -5539,13 +5559,13 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
           <input
             ref={inputRef}
             type="file"
-            accept=".csv,.txt,.tsv"
+            accept=".csv,.txt,.tsv,.xlsx,.xls"
             className="sr-only"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }}
           />
           <Upload className="mx-auto mb-3 h-9 w-9 text-ink-mute" strokeWidth={1.5} />
-          <p className="font-medium text-ink">Glisser-déposer une balance CSV</p>
-          <p className="mt-1 text-sm text-ink-soft">ou cliquer pour choisir un fichier (.csv, .txt, .tsv)</p>
+          <p className="font-medium text-ink">Glisser-déposer une balance CSV ou Excel</p>
+          <p className="mt-1 text-sm text-ink-soft">ou cliquer pour choisir un fichier (.csv, .txt, .tsv, .xlsx)</p>
           <p className="mt-3 inline-block rounded-xs bg-sunk px-3 py-1 font-mono text-2xs text-ink-mute">
             Compte · Libellé · Solde Débiteur · Solde Créditeur
           </p>
