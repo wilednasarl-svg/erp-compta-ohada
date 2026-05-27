@@ -167,7 +167,7 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1200px] animate-page-in space-y-10">
+      <div className="w-full animate-page-in space-y-10">
 
         {/* ─── En-tête éditorial ────────────────────────────── */}
         <header>

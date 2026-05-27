@@ -262,7 +262,7 @@ export default function ImportsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1200px] animate-page-in space-y-8">
+      <div className="w-full animate-page-in space-y-8">
         {/* ─── Header ──────────────────────────────────────── */}
         <header className="space-y-3">
           <p className="eyebrow">Saisie · Imports</p>

@@ -20,10 +20,10 @@
     --paper: 99.2% 0.004 85;        /* elevated surfaces (cards, popovers) */
     --sunk: 96.5% 0.006 85;         /* recessed surfaces (table headers, inputs bg) */
 
-    /* Ink — cool-tinted near-black for crisp legibility on warm paper */
-    --ink: 18% 0.008 270;
-    --ink-soft: 38% 0.010 270;
-    --ink-mute: 58% 0.012 270;
+    /* Ink — near-black hierarchy: ink=black, soft=dark gray, mute=secondary only */
+    --ink: 10% 0.010 270;        /* true near-black */
+    --ink-soft: 26% 0.010 270;   /* dark gray — still clearly readable (was 38%) */
+    --ink-mute: 48% 0.012 270;   /* mid gray — reserved for tertiary/hints (was 58%) */
 
     /* Lines */
     --line: 90% 0.006 85;
@@ -112,13 +112,23 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Editorial serif reserved for major page-level headings.
-     Anything else uses Geist Sans for UI consistency. */
+  /* Editorial serif — major page headings only */
   h1, h2 {
     font-family: var(--font-fraunces), Georgia, serif;
     font-feature-settings: 'tnum' 1, 'ss01' 1;
     font-variation-settings: 'opsz' 36, 'SOFT' 30, 'WONK' 0;
     letter-spacing: -0.015em;
+  }
+
+  /* Heading colour hierarchy: h1 = accent green, h2/h3 = near-black */
+  h1 {
+    color: oklch(var(--accent-ink));
+  }
+  h2, h3 {
+    color: oklch(var(--ink));
+  }
+  h4, h5, h6 {
+    color: oklch(var(--ink));
   }
 
   /* Monospace block — amounts, account codes, IDs */

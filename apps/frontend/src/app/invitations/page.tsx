@@ -155,7 +155,7 @@ export default function InvitationsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[960px] animate-page-in space-y-8">
+      <div className="w-full animate-page-in space-y-8">
         <header>
           <p className="eyebrow mb-2">Organisation · Invitations</p>
           <h1 className="font-display text-4xl font-medium tracking-tight text-ink">

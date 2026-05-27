@@ -172,7 +172,7 @@ export default function WorkflowsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[960px] animate-page-in space-y-10">
+      <div className="w-full animate-page-in space-y-10">
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
           <p className="eyebrow mb-2">Analyse &amp; IA · Workflows</p>

@@ -111,7 +111,7 @@ export default function ChartOfAccountsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
+      <div className="w-full animate-page-in space-y-12">
         <header className="border-b border-line pb-3">
           <p className="eyebrow mb-2">Référentiel</p>
           <h1 className="font-display text-4xl font-medium tracking-tight text-ink">

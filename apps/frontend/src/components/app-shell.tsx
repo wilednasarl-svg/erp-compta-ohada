@@ -291,7 +291,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1 text-xs transition-colors duration-fast',
                 active
                   ? cn(c.itemBg, 'font-medium', c.itemText)
-                  : 'text-ink-soft hover:bg-sunk hover:text-ink',
+                  : 'text-ink hover:bg-sunk',
               )}
             >
               <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -344,7 +344,7 @@ function TopNavGroup({
             ? cn(c.itemBg, c.itemText)
             : isOpen
               ? 'bg-sunk text-ink'
-              : 'text-ink-soft hover:bg-sunk hover:text-ink',
+              : 'text-ink hover:bg-sunk',
         )}
       >
         {/* Active / color dot */}
@@ -435,7 +435,7 @@ function TopNavGroup({
                         <Icon
                           className={cn(
                             'h-3.5 w-3.5',
-                            active ? c.itemText : 'text-ink-mute group-hover/item:text-ink-soft',
+                            active ? c.itemText : 'text-ink-soft group-hover/item:text-ink',
                           )}
                           strokeWidth={1.5}
                         />

@@ -53,7 +53,7 @@ export default function ComparisonDashboardPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1200px] animate-page-in space-y-8">
+      <div className="w-full animate-page-in space-y-8">
         <header>
           <p className="eyebrow">Pilotage · Multi-exercices</p>
           <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-ink">

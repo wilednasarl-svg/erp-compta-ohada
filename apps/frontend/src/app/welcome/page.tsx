@@ -122,7 +122,7 @@ const STEPS: ReadonlyArray<GuideStep> = [
 export default function WelcomePage() {
   return (
     <AppShell>
-      <div className="animate-page-in mx-auto max-w-[1180px] pb-24">
+      <div className="animate-page-in w-full pb-24">
         {/* ── Page head ────────────────────────────────────────── */}
         <header className="border-b border-line py-12">
           <p className="eyebrow">Pilotage · Guide</p>

@@ -162,7 +162,7 @@ export default function AccountingPeriodsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
+      <div className="w-full animate-page-in space-y-12">
         <header className="flex items-start justify-between gap-6 border-b border-line pb-6">
           <div>
             <p className="eyebrow mb-2">Référentiel</p>

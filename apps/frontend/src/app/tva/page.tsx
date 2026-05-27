@@ -95,7 +95,7 @@ export default function TvaPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1100px] animate-page-in space-y-12">
+      <div className="w-full animate-page-in space-y-12">
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
           <p className="eyebrow mb-2">Fiscalité</p>
