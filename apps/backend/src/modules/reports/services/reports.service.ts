@@ -2919,6 +2919,185 @@ export class ReportsService {
     return this.enrichBalanceSheetWithComparison(current, previous);
   }
 
+  /**
+   * Génère Bilan + CR directement depuis une balance uploadée (lignes CSV),
+   * sans passer par les écritures validées en base.
+   */
+  async getReportsFromBalance(
+    _organizationId: TenantId,
+    input: {
+      rows: ReadonlyArray<{ code: string; label: string; debit: string; credit: string }>;
+      asAtDate: string;
+      fiscalYearStartDate?: string;
+    },
+  ): Promise<{ bilan: BalanceSheetReport; cr: ProfitLossReport }> {
+    const { rows, asAtDate, fiscalYearStartDate } = input;
+
+    // ── 1. Convert uploaded rows to internal formats ────────────────
+    const accountRows = rows.map((r) => ({
+      accountId: r.code,
+      accountCode: r.code,
+      accountLabel: r.label,
+      accountClass: Math.min(9, Math.max(1, parseInt(r.code[0] ?? '9') || 9)),
+      totalDebit: r.debit || '0',
+      totalCredit: r.credit || '0',
+      isOpposing: /^(28|29|39|491|499|59)/.test(r.code),
+    }));
+
+    const trialRows: TrialBalanceRow[] = rows.map((r) => ({
+      accountId: r.code,
+      accountCode: r.code,
+      accountLabel: r.label,
+      accountClass: Math.min(9, Math.max(1, parseInt(r.code[0] ?? '9') || 9)),
+      openingDebit: '0',
+      openingCredit: '0',
+      periodDebit: r.debit || '0',
+      periodCredit: r.credit || '0',
+      endingDebit: r.debit || '0',
+      endingCredit: r.credit || '0',
+    }));
+
+    // ── 2. Compute P&L ──────────────────────────────────────────────
+    const class6 = trialRows.filter((r) => r.accountClass === 6);
+    const class7 = trialRows.filter((r) => r.accountClass === 7);
+
+    const charges = PL_CHARGE_SECTIONS.map((s) =>
+      this.buildPlSection(s.code, s.label, class6, 'CHARGE'),
+    );
+    const produits = PL_PRODUIT_SECTIONS.map((s) =>
+      this.buildPlSection(s.code, s.label, class7, 'PRODUIT'),
+    );
+
+    const totalCharges = charges.reduce((s, sect) => s + Number(sect.amount), 0);
+    const totalProduits = produits.reduce((s, sect) => s + Number(sect.amount), 0);
+    const resultat = totalProduits - totalCharges;
+    const lines = ReportsService.buildProfitLossDoctrinalLines(trialRows);
+
+    const fromDate = fiscalYearStartDate ?? `${asAtDate.slice(0, 4)}-01-01`;
+
+    const cr: ProfitLossReport = {
+      fromDate,
+      toDate: asAtDate,
+      charges,
+      produits,
+      lines,
+      totalCharges: totalCharges.toFixed(2),
+      totalProduits: totalProduits.toFixed(2),
+      resultat: resultat.toFixed(2),
+    };
+
+    // ── 3. Compute Balance Sheet ────────────────────────────────────
+    const actifBuckets = new Map<BalanceSheetActifKey, BalanceSheetGroup[]>();
+    const passifBuckets = new Map<BalanceSheetPassifKey, BalanceSheetGroup[]>();
+    const opposingAccountIds = new Set<string>();
+
+    for (const row of accountRows) {
+      const debit = Number(row.totalDebit);
+      const credit = Number(row.totalCredit);
+      const net = debit - credit;
+      if (Math.abs(net) < 0.005) continue;
+      const netSign: 'D' | 'C' = net > 0 ? 'D' : 'C';
+      const classification = classifyForBilan(
+        row.accountCode,
+        row.accountClass,
+        netSign,
+        row.isOpposing,
+      );
+      if (classification === null) continue;
+      const group: BalanceSheetGroup = {
+        accountId: row.accountId,
+        code: row.accountCode,
+        label: row.accountLabel,
+        amount: Math.abs(net).toFixed(2),
+      };
+      if (classification.contraSign === -1) {
+        opposingAccountIds.add(row.accountId);
+      }
+      if (classification.side === 'ACTIF') {
+        const k = classification.key as BalanceSheetActifKey;
+        const bucket = actifBuckets.get(k) ?? [];
+        bucket.push(group);
+        actifBuckets.set(k, bucket);
+      } else {
+        const k = classification.key as BalanceSheetPassifKey;
+        const bucket = passifBuckets.get(k) ?? [];
+        bucket.push(group);
+        passifBuckets.set(k, bucket);
+      }
+    }
+
+    let netResultIncorporated: string | null = null;
+    if (fiscalYearStartDate !== undefined && Math.abs(resultat) >= 0.005) {
+      netResultIncorporated = resultat.toFixed(2);
+      const cpBucket = passifBuckets.get('CAPITAUX_PROPRES') ?? [];
+      cpBucket.push({
+        accountId: RESULTAT_GROUP_ID,
+        code: resultat >= 0 ? '130' : '129',
+        label:
+          resultat >= 0 ? `Résultat de l'exercice (bénéfice)` : `Résultat de l'exercice (perte)`,
+        amount: Math.abs(resultat).toFixed(2),
+      });
+      passifBuckets.set('CAPITAUX_PROPRES', cpBucket);
+    }
+
+    const actifSections: BalanceSheetSection[] = (
+      Object.keys(ACTIF_SECTION_LABELS) as BalanceSheetActifKey[]
+    ).map((key) => {
+      const groups = actifBuckets.get(key) ?? [];
+      const total = groups.reduce((s, g) => {
+        const signed = opposingAccountIds.has(g.accountId) ? -Number(g.amount) : Number(g.amount);
+        return s + signed;
+      }, 0);
+      return {
+        key,
+        label: ACTIF_SECTION_LABELS[key],
+        groups,
+        total: total.toFixed(2),
+      };
+    });
+
+    const passifSections: BalanceSheetSection[] = (
+      Object.keys(PASSIF_SECTION_LABELS) as BalanceSheetPassifKey[]
+    ).map((key) => {
+      const groups = passifBuckets.get(key) ?? [];
+      const total = groups.reduce((s, g) => {
+        const isLossMarker = g.accountId === RESULTAT_GROUP_ID && g.code === '129';
+        const isOpposingAcc = opposingAccountIds.has(g.accountId);
+        const signed = isLossMarker || isOpposingAcc ? -Number(g.amount) : Number(g.amount);
+        return s + signed;
+      }, 0);
+      return {
+        key,
+        label: PASSIF_SECTION_LABELS[key],
+        groups,
+        total: total.toFixed(2),
+      };
+    });
+
+    const totalActif = actifSections.reduce((s, sect) => s + Number(sect.total), 0);
+    const totalPassif = passifSections.reduce((s, sect) => s + Number(sect.total), 0);
+
+    const hierarchy = this.buildBilanHierarchy(accountRows, netResultIncorporated);
+
+    const bilan: BalanceSheetReport = {
+      asAtDate,
+      actif: { sections: actifSections, total: totalActif.toFixed(2) },
+      passif: { sections: passifSections, total: totalPassif.toFixed(2) },
+      actifMasses: hierarchy.actifMasses,
+      passifMasses: hierarchy.passifMasses,
+      unclassified: hierarchy.unclassified,
+      totals: {
+        actif: hierarchy.totalActif,
+        passif: hierarchy.totalPassif,
+        difference: hierarchy.difference,
+      },
+      netResultIncorporated,
+      difference: (totalActif - totalPassif).toFixed(2),
+    };
+
+    return { bilan, cr };
+  }
+
   private async computeBalanceSheetBare(
     organizationId: TenantId,
     asAtDate: string,

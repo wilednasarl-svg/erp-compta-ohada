@@ -14,6 +14,7 @@ import {
   Scale,
   Stethoscope,
   TrendingUp,
+  Upload,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -49,7 +50,8 @@ export type ReportMode =
   | 'annexe'
   | 'margin-by-axis'
   | 'general-ledger'
-  | 'import-diagnostic';
+  | 'import-diagnostic'
+  | 'balance-upload';
 
 interface ReportItem {
   readonly mode: ReportMode;
@@ -171,10 +173,23 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
         hint: 'Mouvements chronologiques par compte avec cumul.',
       },
       {
-        mode: 'import-diagnostic',
-        label: 'Diagnostic d’import',
+        mode: ‘import-diagnostic’,
+        label: ‘Diagnostic d’import’,
         icon: Stethoscope,
-        hint: 'Anomalies sur les écritures issues d’un import récent.',
+        hint: ‘Anomalies sur les écritures issues d’un import récent.’,
+      },
+    ],
+  },
+  {
+    key: ‘simulation’,
+    title: ‘Simulation’,
+    subtitle: ‘Générer des états sans écritures validées’,
+    items: [
+      {
+        mode: ‘balance-upload’,
+        label: ‘Balance personnalisée’,
+        icon: Upload,
+        hint: ‘Uploadez une balance CSV pour générer Bilan et CR sans passer par les journaux.’,
       },
     ],
   },

@@ -1,10 +1,12 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Post,
   Query,
   Res,
   UseGuards,
@@ -20,6 +22,7 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { BalanceSheetQueryDto } from '../dto/balance-sheet-query.dto';
+import { FromBalanceBodyDto } from '../dto/from-balance.dto';
 import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
 import { AnnexeNoteDetailQueryDto } from '../dto/annexe-note-detail-query.dto';
 import { AnnexeQueryDto } from '../dto/annexe-query.dto';
@@ -421,6 +424,22 @@ export class ReportsController {
       compareWith,
     });
     return { report };
+  }
+
+  @Post('from-balance')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('journals.reports')
+  @ApiOperation({ summary: 'Génère Bilan + CR depuis une balance uploadée (sans écritures validées)' })
+  async reportsFromBalance(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Body() body: FromBalanceBodyDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ bilan: BalanceSheetReport; cr: ProfitLossReport }> {
+    return this.reports.getReportsFromBalance(asTenantId(org.id), {
+      rows: body.rows,
+      asAtDate: body.asAtDate,
+      fiscalYearStartDate: body.fiscalYearStartDate,
+    });
   }
 
   @Get('import-diagnostic/:sessionId')

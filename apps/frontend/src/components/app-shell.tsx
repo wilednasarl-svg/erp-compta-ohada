@@ -1,8 +1,9 @@
 'use client';
 
-import { Building2, ChevronsUpDown, LogOut, Search } from 'lucide-react';
+import { Building2, ChevronRight, ChevronsUpDown, LogOut, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { CommandPalette, useCommandPalette } from '@/components/command-palette';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -34,6 +35,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const signout = useAuthStore((s) => s.signout);
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
+
+  const activeGroupTitle = NAV_GROUPS.find((g) =>
+    g.items.some((item) =>
+      item.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(item.href),
+    ),
+  )?.title;
+
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    () => new Set(activeGroupTitle ? [activeGroupTitle] : NAV_GROUPS.map((g) => g.title)),
+  );
+
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  };
 
   const logout = useApiMutation(async () => {
     if (typeof refreshToken === 'string') {
@@ -92,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
 
           {/* Active period chip (placeholder until period selector ships) */}
-          <span className="hidden items-center gap-1.5 rounded-xs bg-sunk px-2 py-1 text-2xs uppercase tracking-wider text-ink-soft lg:inline-flex">
+          <span className="hidden items-center gap-1.5 rounded-xs bg-sunk px-2 py-1 text-2xs uppercase tracking-wider text-ink-soft md:inline-flex">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
             Exercice 2026
           </span>
@@ -149,55 +169,94 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-label="Navigation principale"
           className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-paper md:block"
         >
-          <nav className="py-4">
-            {NAV_GROUPS.map((group) => (
-              <div key={group.title} className="mb-4 px-3">
-                <div className="eyebrow mb-1.5 px-2">{group.title}</div>
-                <ul className="space-y-0.5">
-                  {group.items.map((item) => {
-                    const active =
-                      item.href === '/dashboard'
-                        ? pathname === '/dashboard'
-                        : pathname.startsWith(item.href);
-                    const Icon = item.icon;
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            'group relative flex items-start gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
-                            active
-                              ? "bg-accent-soft font-medium text-accent-ink before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-0.5 before:rounded-full before:bg-accent before:content-['']"
-                              : 'text-ink-soft hover:bg-sunk hover:text-ink',
-                          )}
-                        >
-                          <Icon
-                            className={cn(
-                              'mt-0.5 h-4 w-4 shrink-0 transition-colors',
-                              active ? 'text-accent-ink' : 'text-ink-mute group-hover:text-ink-soft',
-                            )}
-                            strokeWidth={1.5}
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate leading-tight">{item.label}</span>
-                            {item.hint && (
-                              <span
+          <nav className="py-3">
+            {NAV_GROUPS.map((group) => {
+              const isOpen = openGroups.has(group.title);
+              const groupHasActive = group.items.some((item) =>
+                item.href === '/dashboard'
+                  ? pathname === '/dashboard'
+                  : pathname.startsWith(item.href),
+              );
+              return (
+                <div key={group.title} className="mb-0.5 px-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.title)}
+                    className={cn(
+                      'flex w-full items-center justify-between rounded-xs px-2 py-1.5 transition-colors duration-fast',
+                      'hover:bg-sunk',
+                      groupHasActive ? 'text-accent-ink' : 'text-ink-mute hover:text-ink-soft',
+                    )}
+                    aria-expanded={isOpen}
+                  >
+                    <span
+                      className={cn(
+                        'text-[10px] font-semibold uppercase tracking-wider',
+                        groupHasActive ? 'text-accent-ink' : 'text-ink-mute',
+                      )}
+                    >
+                      {group.title}
+                    </span>
+                    <ChevronRight
+                      className={cn(
+                        'h-3 w-3 shrink-0 transition-transform duration-fast',
+                        isOpen ? 'rotate-90' : '',
+                        groupHasActive ? 'text-accent-ink/70' : 'text-ink-mute',
+                      )}
+                      strokeWidth={2}
+                    />
+                  </button>
+
+                  {isOpen && (
+                    <ul className="mt-0.5 mb-2 space-y-0.5">
+                      {group.items.map((item) => {
+                        const active =
+                          item.href === '/dashboard'
+                            ? pathname === '/dashboard'
+                            : pathname.startsWith(item.href);
+                        const Icon = item.icon;
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                'group relative flex items-start gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors duration-fast',
+                                active
+                                  ? "bg-accent-soft font-medium text-accent-ink before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-0.5 before:rounded-full before:bg-accent before:content-['']"
+                                  : 'text-ink-soft hover:bg-sunk hover:text-ink',
+                              )}
+                            >
+                              <Icon
                                 className={cn(
-                                  'mt-0.5 block truncate text-[10px] leading-tight',
-                                  active ? 'text-accent-ink/60' : 'text-ink-mute',
+                                  'mt-0.5 h-4 w-4 shrink-0 transition-colors',
+                                  active
+                                    ? 'text-accent-ink'
+                                    : 'text-ink-mute group-hover:text-ink-soft',
                                 )}
-                              >
-                                {item.hint}
+                                strokeWidth={1.5}
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate leading-tight">{item.label}</span>
+                                {item.hint && (
+                                  <span
+                                    className={cn(
+                                      'mt-0.5 block truncate text-[10px] leading-tight',
+                                      active ? 'text-accent-ink/60' : 'text-ink-mute',
+                                    )}
+                                  >
+                                    {item.hint}
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
           </nav>
 
           <div className="border-t border-line p-4">
@@ -206,28 +265,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        {/* Mobile horizontal nav — only top-level groups */}
+        {/* Mobile horizontal nav — one chip per domain group */}
         <nav
           aria-label="Navigation mobile"
           className="sticky top-14 z-20 flex w-full gap-1 overflow-x-auto border-b border-line bg-paper px-4 py-2 md:hidden"
         >
-          {NAV_GROUPS.flatMap((g) => g.items.slice(0, 1)).map((item) => {
-            const active =
+          {NAV_GROUPS.map((group) => {
+            const activeItem = group.items.find((item) =>
               item.href === '/dashboard'
                 ? pathname === '/dashboard'
-                : pathname.startsWith(item.href);
-            const Icon = item.icon;
+                : pathname.startsWith(item.href),
+            );
+            const active = !!activeItem;
+            const target = activeItem ?? group.items[0];
+            if (!target) return null;
+            const Icon = target.icon;
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={group.title}
+                href={target.href}
                 className={cn(
-                  'inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1 text-xs',
-                  active ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft',
+                  'inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1 text-xs transition-colors duration-fast',
+                  active
+                    ? 'bg-accent-soft font-medium text-accent-ink'
+                    : 'text-ink-soft hover:bg-sunk hover:text-ink',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
-                {item.label}
+                {group.title}
               </Link>
             );
           })}
