@@ -7,6 +7,7 @@ import type { FiscalYearSnapshotEntity } from '../entities/fiscal-year-snapshot.
 import type { FiscalYearSnapshotsRepository } from '../repositories/fiscal-year-snapshots.repository';
 import { FiscalYearSnapshotsService } from '../services/fiscal-year-snapshots.service';
 import type { ReportsService } from '../services/reports.service';
+import type { CashFlowService } from '../services/cash-flow.service';
 
 const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
 const EXERCISE_ID = '11111111-2222-4333-8444-555555555555';
@@ -43,7 +44,11 @@ function buildHarness(overrides: {
     getBalanceSheet: jest.fn().mockResolvedValue({ asAtDate: '2026-12-31', total: '1000' }),
     getProfitLoss: jest.fn().mockResolvedValue({ fromDate: '2026-01-01', toDate: '2026-12-31' }),
     getSig: jest.fn().mockResolvedValue({ fromDate: '2026-01-01', toDate: '2026-12-31' }),
-    getTft: jest.fn().mockResolvedValue({ fromDate: '2026-01-01', toDate: '2026-12-31' }),
+  };
+  const cashFlow = {
+    getCashFlow: jest
+      .fn()
+      .mockResolvedValue({ fromDate: '2026-01-01', toDate: '2026-12-31' }),
   };
   const periodRepo = {
     findById: jest.fn().mockResolvedValue(period),
@@ -67,9 +72,10 @@ function buildHarness(overrides: {
     reports as unknown as ReportsService,
     periodRepo as unknown as AccountingPeriodRepository,
     snapshotsRepo as unknown as FiscalYearSnapshotsRepository,
+    cashFlow as unknown as CashFlowService,
   );
 
-  return { service, reports, periodRepo, snapshotsRepo };
+  return { service, reports, periodRepo, snapshotsRepo, cashFlow };
 }
 
 describe('FiscalYearSnapshotsService.takeSnapshot — guards', () => {
@@ -100,7 +106,7 @@ describe('FiscalYearSnapshotsService.takeSnapshot — dispatch per type', () => 
     });
     expect(h.reports.getProfitLoss).not.toHaveBeenCalled();
     expect(h.reports.getSig).not.toHaveBeenCalled();
-    expect(h.reports.getTft).not.toHaveBeenCalled();
+    expect(h.cashFlow.getCashFlow).not.toHaveBeenCalled();
   });
 
   it('PROFIT_LOSS appelle getProfitLoss avec la période', async () => {
@@ -125,12 +131,12 @@ describe('FiscalYearSnapshotsService.takeSnapshot — dispatch per type', () => 
     });
   });
 
-  it('TFT appelle getTft', async () => {
+  it('TFT appelle cashFlow.getCashFlow (B4 — sur shape CashFlowReport)', async () => {
     const h = buildHarness();
 
     await h.service.takeSnapshot(ORG_ID, EXERCISE_ID, 'TFT', 'user-1');
 
-    expect(h.reports.getTft).toHaveBeenCalledWith(ORG_ID, {
+    expect(h.cashFlow.getCashFlow).toHaveBeenCalledWith(ORG_ID, {
       fromDate: '2026-01-01',
       toDate: '2026-12-31',
     });

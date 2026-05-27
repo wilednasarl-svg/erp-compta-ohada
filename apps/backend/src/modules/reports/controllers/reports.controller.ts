@@ -44,7 +44,6 @@ import {
   type AnnexeReport,
   type CashTrendReport,
   type ImportDiagnosticReport,
-  type TftReport,
   type ComparativeBalanceReport,
   type MarginByAxisReport,
   type MultiYearBalanceReport,
@@ -54,6 +53,7 @@ import {
   type SigReport,
   type TrialBalanceReport,
 } from '../services/reports.service';
+import { CashFlowService, type CashFlowReport } from '../services/cash-flow.service';
 import {
   DsfValidatorService,
   type DsfValidationReport,
@@ -113,6 +113,7 @@ export class ReportsController {
     private readonly xlsx: ReportsXlsxService,
     private readonly packageBuilder: ReportsPackageService,
     private readonly dsfValidator: DsfValidatorService,
+    private readonly cashFlow: CashFlowService,
   ) {}
 
   // ─── W5.4 — Validation pré-dépôt DSF ─────────────────────────────
@@ -465,14 +466,14 @@ export class ReportsController {
   @Get('tft')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3' })
+  @ApiOperation({ summary: 'TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3 p. 34' })
   @ApiOkResponse({ type: TftReportEnvelope })
   async tft(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: PeriodQueryDto,
     @CurrentOrg() org: CurrentOrgContext,
-  ): Promise<{ report: TftReport }> {
-    const report = await this.reports.getTft(asTenantId(org.id), {
+  ): Promise<{ report: CashFlowReport }> {
+    const report = await this.cashFlow.getCashFlow(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
     });
@@ -577,7 +578,7 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const report = await this.reports.getTft(asTenantId(org.id), {
+    const report = await this.cashFlow.getCashFlow(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
     });
@@ -958,7 +959,7 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const report = await this.reports.getTft(asTenantId(org.id), {
+    const report = await this.cashFlow.getCashFlow(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
     });

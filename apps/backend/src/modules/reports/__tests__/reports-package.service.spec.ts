@@ -18,8 +18,11 @@ import { ReportsXlsxService } from '../services/reports-xlsx.service';
 import type {
   BalanceSheetReport,
   ProfitLossReport,
-  TftReport,
 } from '../services/reports.service';
+import type {
+  CashFlowReport,
+  CashFlowService,
+} from '../services/cash-flow.service';
 import type { DsfIdentificationBundle } from '../types/dsf-profile.types';
 
 /* ────────────────────────────────────────────────────────────────────
@@ -52,18 +55,20 @@ function buildProfitLoss(): ProfitLossReport {
   } as unknown as ProfitLossReport;
 }
 
-function buildTft(): TftReport {
+function buildTft(): CashFlowReport {
   return {
     fromDate: '2026-01-01',
     toDate: '2026-12-31',
-    fluxExploitation: { code: 'ZA', label: 'Exploitation', lines: [], total: '0' },
-    fluxInvestissement: { code: 'ZB', label: 'Investissement', lines: [], total: '0' },
-    fluxFinancement: { code: 'ZC', label: 'Financement', lines: [], total: '0' },
-    tresorerieOuverture: '0',
-    tresorerieCloture: '0',
-    variationTresorerie: '0',
-    methodologyNotes: [],
-  } as unknown as TftReport;
+    openingCash: '0.00',
+    operatingFlows: { code: 'ZB', label: 'Opérationnel', subtotal: '0.00', postes: [] },
+    investingFlows: { code: 'ZC', label: 'Investissement', subtotal: '0.00', postes: [] },
+    financingFlowsEquity: { code: 'ZD', label: 'Financement CP', subtotal: '0.00', postes: [] },
+    financingFlowsDebt: { code: 'ZE', label: 'Financement CE', subtotal: '0.00', postes: [] },
+    financingFlowsTotal: '0.00',
+    netCashVariation: '0.00',
+    closingCash: '0.00',
+    coherenceCheck: '0.00',
+  };
 }
 
 function buildFichesBundle(): DsfIdentificationBundle {
@@ -158,7 +163,6 @@ function makeService(opts: {
   const reports = {
     getBalanceSheet: jest.fn().mockResolvedValue(buildBalanceSheet()),
     getProfitLoss: jest.fn().mockResolvedValue(buildProfitLoss()),
-    getTft: jest.fn().mockResolvedValue(buildTft()),
     getTrialBalance: jest.fn(),
     getComparativeBalance: jest.fn(),
     getSig: jest.fn(),
@@ -166,6 +170,10 @@ function makeService(opts: {
     getAnnexe: jest.fn(),
     getAgingBalance: jest.fn(),
   } as unknown as ReportsService;
+
+  const cashFlow = {
+    getCashFlow: jest.fn().mockResolvedValue(buildTft()),
+  } as unknown as CashFlowService;
 
   const xlsx = new ReportsXlsxService();
   const pdf = new ReportsPdfService();
@@ -192,6 +200,7 @@ function makeService(opts: {
     dsfFichesPdf,
     dsfIdentification,
     notesAnnexes,
+    cashFlow,
   );
 }
 

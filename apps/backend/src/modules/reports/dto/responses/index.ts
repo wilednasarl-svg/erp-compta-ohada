@@ -15,9 +15,9 @@ import type {
   MultiYearBalanceReport,
   ProfitLossReport,
   SigReport,
-  TftReport,
   TrialBalanceReport,
 } from '../../services/reports.service';
+import type { CashFlowReport } from '../../services/cash-flow.service';
 import type { DsfValidationReport } from '../../services/dsf-validator.service';
 
 export class TrialBalanceReportEnvelope {
@@ -56,8 +56,8 @@ export class BalanceSheetReportEnvelope {
 }
 
 export class TftReportEnvelope {
-  @ApiProperty({ type: 'object', description: 'Tableau Flux Trésorerie' })
-  report!: TftReport;
+  @ApiProperty({ type: 'object', description: 'Tableau Flux Trésorerie (CashFlowReport — Tome 3 p. 34)' })
+  report!: CashFlowReport;
 }
 
 export class AnnexeReportEnvelope {

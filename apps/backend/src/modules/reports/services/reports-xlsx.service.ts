@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 
+import type { CashFlowReport, CashFlowSection } from './cash-flow.service';
 import { PL_POSTES } from './postes';
+import { getTftLabel } from './postes/tft-postes';
 import type {
   AgingBalanceReport,
   AnnexeReport,
   CashTrendReport,
-  TftReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
   MultiYearBalanceReport,
@@ -538,14 +539,19 @@ export class ReportsXlsxService {
    * normalisé ZD / ZG / ZH. Affiche un contrôle de cohérence
    * ZH = ZG − ZD = ZA + ZB + ZC.
    *
-   * `TftReport` n'expose pas N-1 ; la colonne reste vide en attendant
-   * `compareWith` sur `getTft`. Format numérique : parenthèses négatives.
+   * Nomenclature OFFICIELLE Tome 3 p. 34 :
+   *   ZA ouverture / ZB op. / ZC invest. / ZD fin. CP / ZE fin. CE
+   *   ZF = ZD + ZE / ZG = ZB + ZC + ZF / ZH = ZA + ZG
+   *
+   * Si `report.previous` est fourni, la colonne « Montant N-1 » est
+   * remplie pour les sous-totaux Z. Format numérique : parenthèses
+   * négatives + espace fine insécable (cellule `# ##0,00;(# ##0,00);"";@`).
    */
-  tftXlsx(report: TftReport, orgName: string): Buffer {
+  tftXlsx(report: CashFlowReport, orgName: string): Buffer {
     const rows: unknown[][] = [];
     rows.push([orgName]);
     rows.push([
-      `Tableau des Flux de Trésorerie (TFT) — SYSCOHADA AUDCIF — Du ${report.fromDate} au ${report.toDate} — méthode indirecte — Devise : XOF`,
+      `Tableau des flux de trésorerie — SYSCOHADA AUDCIF — Du ${report.fromDate} au ${report.toDate} — méthode indirecte — Devise : XOF`,
     ]);
     rows.push([]);
     const header: unknown[] = ['Réf.', 'Libellé', 'Montant N', 'Montant N-1'];
@@ -553,57 +559,96 @@ export class ReportsXlsxService {
     rows.push(header);
     const numericRowIndexes: number[] = [];
 
-    const pushSection = (s: TftReport['fluxExploitation'], title: string) => {
+    const prev = report.previous;
+    const numOrEmpty = (value: string | undefined): number | string =>
+      value !== undefined ? this.num(value) : '';
+
+    // ── ZA — Trésorerie nette au 1er janvier ───────────────────────
+    numericRowIndexes.push(rows.length);
+    rows.push([
+      'ZA',
+      getTftLabel('ZA'),
+      this.num(report.openingCash),
+      numOrEmpty(prev?.openingCash),
+    ]);
+    rows.push([]);
+
+    // ── Helper sections ────────────────────────────────────────────
+    const pushSection = (
+      section: CashFlowSection,
+      title: string,
+      previousSubtotal: string | undefined,
+    ): void => {
       rows.push(['', title, '', '']);
-      rows.push([s.code, s.label, '', '']);
-      for (const ln of s.lines) {
+      for (const poste of section.postes) {
         numericRowIndexes.push(rows.length);
-        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount), '']);
+        rows.push([poste.code, `  ${poste.label}`, this.num(poste.amount), '']);
       }
       numericRowIndexes.push(rows.length);
-      rows.push(['', `  Sous-total ${s.code}`, this.num(s.total), '']);
+      rows.push([
+        section.code,
+        section.label,
+        this.num(section.subtotal),
+        numOrEmpty(previousSubtotal),
+      ]);
       rows.push([]);
     };
-    pushSection(report.fluxExploitation, 'ACTIVITÉS OPÉRATIONNELLES (ZA)');
-    pushSection(report.fluxInvestissement, "OPÉRATIONS D'INVESTISSEMENT (ZB)");
-    pushSection(report.fluxFinancement, 'OPÉRATIONS DE FINANCEMENT (ZC)');
 
+    pushSection(
+      report.operatingFlows,
+      "Flux de trésorerie provenant des activités opérationnelles",
+      prev?.operatingFlow,
+    );
+    pushSection(
+      report.investingFlows,
+      "Flux de trésorerie provenant des opérations d'investissement",
+      prev?.investingFlow,
+    );
+    pushSection(
+      report.financingFlowsEquity,
+      'Flux de trésorerie provenant du financement par les capitaux propres',
+      prev?.financingFlowEquity,
+    );
+    pushSection(
+      report.financingFlowsDebt,
+      'Trésorerie provenant du financement par les capitaux étrangers',
+      prev?.financingFlowDebt,
+    );
+
+    // ── ZF / ZG / ZH ───────────────────────────────────────────────
     numericRowIndexes.push(rows.length);
-    rows.push(['ZD', "Trésorerie nette à l'ouverture", this.num(report.tresorerieOuverture), '']);
+    rows.push([
+      'ZF',
+      `${getTftLabel('ZF')} (D+E)`,
+      this.num(report.financingFlowsTotal),
+      numOrEmpty(prev?.financingFlowTotal),
+    ]);
     numericRowIndexes.push(rows.length);
-    rows.push(['ZG', 'Trésorerie nette à la clôture', this.num(report.tresorerieCloture), '']);
+    rows.push([
+      'ZG',
+      `${getTftLabel('ZG')} (B+C+F)`,
+      this.num(report.netCashVariation),
+      numOrEmpty(prev?.netCashVariation),
+    ]);
     numericRowIndexes.push(rows.length);
     rows.push([
       'ZH',
-      'Variation totale (ZA + ZB + ZC = ZG − ZD)',
-      this.num(report.variationTresorerie),
-      '',
+      `${getTftLabel('ZH')} (G+A)`,
+      this.num(report.closingCash),
+      numOrEmpty(prev?.closingCash),
     ]);
 
-    // Cohérence
-    const za = parseFloat(report.fluxExploitation.total);
-    const zb = parseFloat(report.fluxInvestissement.total);
-    const zc = parseFloat(report.fluxFinancement.total);
-    const zd = parseFloat(report.tresorerieOuverture);
-    const zg = parseFloat(report.tresorerieCloture);
-    const ecart = Math.abs(za + zb + zc - (zg - zd));
-    if (ecart > 0.005) {
+    // ── Contrôle de cohérence ──────────────────────────────────────
+    const coherence = parseFloat(report.coherenceCheck);
+    if (Math.abs(coherence) > 0.005) {
       rows.push([]);
       numericRowIndexes.push(rows.length);
       rows.push([
         '',
-        'Écart de cohérence (Σ flux − (ZG − ZD))',
-        this.num((za + zb + zc - (zg - zd)).toFixed(2)),
+        'Contrôle : Trésorerie actif N − Trésorerie passif N (écart)',
+        this.num(report.coherenceCheck),
         '',
       ]);
-    }
-
-    if (report.methodologyNotes.length > 0) {
-      rows.push([]);
-      rows.push(['', 'NOTES MÉTHODOLOGIQUES', '', '']);
-      for (const n of report.methodologyNotes) {
-        rows.push(['', n, '', '']);
-      }
     }
 
     return this.buildWorkbookFormatted(rows, 'TFT', {

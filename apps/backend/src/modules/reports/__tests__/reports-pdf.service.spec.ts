@@ -1,12 +1,12 @@
 import PDFDocument from 'pdfkit';
 
+import type { CashFlowReport } from '../services/cash-flow.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
 import type {
   BalanceSheetReport,
   BilanMasse,
   BilanPoste,
   ProfitLossReport,
-  TftReport,
 } from '../services/reports.service';
 
 /**
@@ -275,37 +275,59 @@ const fakeProfitLoss = (): ProfitLossReport => ({
   resultat: '2000000.00',
 });
 
-const fakeTft = (): TftReport => ({
+const fakeTft = (): CashFlowReport => ({
   fromDate: '2025-01-01',
   toDate: '2025-12-31',
-  fluxExploitation: {
-    code: 'ZA',
-    label: 'Flux de trésorerie liés aux activités opérationnelles',
-    total: '3000000.00',
-    lines: [
-      { code: 'FA', label: 'CAFG' , amount: '2500000.00' },
-      { code: 'FB', label: 'Variation BFR', amount: '500000.00' },
-    ],
-  },
-  fluxInvestissement: {
+  openingCash: '1000000.00',
+  operatingFlows: {
     code: 'ZB',
-    label: "Flux liés aux opérations d'investissement",
-    total: '-1500000.00',
-    lines: [
-      { code: 'FF', label: "Acquisitions d'immobilisations", amount: '-2000000.00' },
-      { code: 'FG', label: "Cessions d'immobilisations", amount: '500000.00' },
+    label: 'Flux de trésorerie provenant des activités opérationnelles',
+    subtotal: '3000000.00',
+    postes: [
+      { code: 'FA', label: 'CAFG', amount: '2500000.00' },
+      { code: 'FB', label: "Variation actif circulant HAO", amount: '0.00' },
+      { code: 'FC', label: 'Variation stocks', amount: '0.00' },
+      { code: 'FD', label: 'Variation créances', amount: '500000.00' },
+      { code: 'FE', label: 'Variation passif circulant', amount: '0.00' },
     ],
   },
-  fluxFinancement: {
+  investingFlows: {
     code: 'ZC',
-    label: 'Flux liés aux opérations de financement',
-    total: '500000.00',
-    lines: [{ code: 'FK', label: 'Augmentation de capital', amount: '500000.00' }],
+    label: "Flux de trésorerie provenant des opérations d'investissement",
+    subtotal: '-1500000.00',
+    postes: [
+      { code: 'FF', label: "Acquisitions d'immobilisations", amount: '-2000000.00' },
+      { code: 'FG', label: 'Acquisitions immo. financières', amount: '0.00' },
+      { code: 'FH', label: "Cessions d'immobilisations", amount: '500000.00' },
+      { code: 'FI', label: 'Cessions immo. financières', amount: '0.00' },
+      { code: 'FJ', label: 'Variation créances cessions', amount: '0.00' },
+    ],
   },
-  variationTresorerie: '2000000.00',
-  tresorerieOuverture: '1000000.00',
-  tresorerieCloture: '3000000.00',
-  methodologyNotes: ['Note méthodologique de test pour cohérence ZH = ZG − ZD.'],
+  financingFlowsEquity: {
+    code: 'ZD',
+    label: 'Flux de trésorerie provenant des capitaux propres',
+    subtotal: '500000.00',
+    postes: [
+      { code: 'FK', label: 'Augmentation de capital', amount: '500000.00' },
+      { code: 'FL', label: 'Subventions investissement', amount: '0.00' },
+      { code: 'FM', label: 'Prélèvements capital', amount: '0.00' },
+      { code: 'FN', label: 'Dividendes versés', amount: '0.00' },
+    ],
+  },
+  financingFlowsDebt: {
+    code: 'ZE',
+    label: 'Flux de trésorerie provenant des capitaux étrangers',
+    subtotal: '0.00',
+    postes: [
+      { code: 'FO', label: 'Emprunts nouveaux', amount: '0.00' },
+      { code: 'FP', label: 'Autres dettes financières', amount: '0.00' },
+      { code: 'FQ', label: 'Remboursements emprunts', amount: '0.00' },
+    ],
+  },
+  financingFlowsTotal: '500000.00',
+  netCashVariation: '2000000.00',
+  closingCash: '3000000.00',
+  coherenceCheck: '0.00',
 });
 
 describe('ReportsPdfService — Compte de Résultat W5.2 volet 2', () => {
@@ -378,7 +400,7 @@ describe('ReportsPdfService — TFT W5.2 volet 2', () => {
     expect(buf.slice(0, 5).toString('ascii')).toBe('%PDF-');
   });
 
-  it('contient les 3 sections ZA / ZB / ZC + pied ZD / ZG / ZH', async () => {
+  it('contient la nomenclature doctrine ZA → ZH (Tome 3 p. 34)', async () => {
     const cap = captureTextCalls();
     try {
       await service.tftPdf(fakeTft(), 'ACME SARL');
@@ -386,7 +408,7 @@ describe('ReportsPdfService — TFT W5.2 volet 2', () => {
       cap.restore();
     }
     const joined = cap.calls.join('||');
-    for (const code of ['ZA', 'ZB', 'ZC', 'ZD', 'ZG', 'ZH']) {
+    for (const code of ['ZA', 'ZB', 'ZC', 'ZD', 'ZE', 'ZF', 'ZG', 'ZH']) {
       expect(joined).toContain(code);
     }
   });

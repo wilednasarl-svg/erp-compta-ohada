@@ -15,6 +15,7 @@ import type {
   AnnexeNoteDetailReport,
   AgingBalanceReport,
 } from '../services/reports.service';
+import type { CashFlowService } from '../services/cash-flow.service';
 import type { ReportsPackageService } from '../services/reports-package.service';
 import type { ReportsPdfService } from '../services/reports-pdf.service';
 import type { ReportsXlsxService } from '../services/reports-xlsx.service';
@@ -31,7 +32,6 @@ function buildHarness() {
     getFinancialRatios: jest.fn(),
     getAgingBalance: jest.fn(),
     getCashTrend: jest.fn(),
-    getTft: jest.fn(),
     getAnnexe: jest.fn(),
     getAnnexeNoteDetail: jest.fn(),
   };
@@ -39,14 +39,16 @@ function buildHarness() {
   const xlsx = { sigXlsx: jest.fn() };
   const pkg = { buildAnnualPackage: jest.fn() };
   const dsfValidator = { validate: jest.fn() };
+  const cashFlow = { getCashFlow: jest.fn() };
   const controller = new ReportsController(
     reports as unknown as ReportsService,
     pdf as unknown as ReportsPdfService,
     xlsx as unknown as ReportsXlsxService,
     pkg as unknown as ReportsPackageService,
     dsfValidator as unknown as import('../services/dsf-validator.service').DsfValidatorService,
+    cashFlow as unknown as CashFlowService,
   );
-  return { controller, reports, pdf, xlsx, pkg, dsfValidator };
+  return { controller, reports, pdf, xlsx, pkg, dsfValidator, cashFlow };
 }
 
 function buildRes(): Response {
@@ -273,10 +275,9 @@ describe('ReportsController.annualPackage', () => {
   });
 });
 
-describe('ReportsController.cashTrend + tft + financialRatios', () => {
+describe('ReportsController.cashTrend + financialRatios', () => {
   it.each([
     ['cashTrend', 'getCashTrend', () => Object.assign(new CashTrendQueryDto(), { fromMonth: '2026-01', toMonth: '2026-12' })],
-    ['tft', 'getTft', () => Object.assign(new PeriodQueryDto(), { fromDate: '2026-01-01', toDate: '2026-12-31' })],
     [
       'financialRatios',
       'getFinancialRatios',
@@ -289,6 +290,23 @@ describe('ReportsController.cashTrend + tft + financialRatios', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (h.controller as any)[method](ORG_ID, q, ORG);
     expect((h.reports as Record<string, jest.Mock>)[serviceMethod]).toHaveBeenCalled();
+    expect(result).toEqual({ report: { stub: true } });
+  });
+});
+
+describe('ReportsController.tft — B4 (delegates to CashFlowService)', () => {
+  it('calls cashFlow.getCashFlow and wraps result', async () => {
+    const h = buildHarness();
+    h.cashFlow.getCashFlow.mockResolvedValue({ stub: true });
+    const q = Object.assign(new PeriodQueryDto(), {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    const result = await h.controller.tft(ORG_ID, q, ORG);
+    expect(h.cashFlow.getCashFlow).toHaveBeenCalledWith(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
     expect(result).toEqual({ report: { stub: true } });
   });
 });

@@ -79,50 +79,21 @@ export interface DsfIdentificationBundle {
 }
 
 /**
- * Liste figée des 36 notes annexes AUDCIF (Tome 3 p. 31). Sert de
- * référence pour générer la fiche R4 — toute note absente du profile
- * est considérée NOT_APPLICABLE par défaut.
+ * Liste OFFICIELLE des 45 notes annexes AUDCIF doctrine (Tome 3 p. 31).
+ *
+ * **B4 (sync registry)** — Cette constante était auparavant une
+ * énumération en literal qui divergeait du `NOTE_REGISTRY` (nomenclature
+ * legacy 41 entrées). Elle est désormais un re-export du
+ * `ALL_NOTE_IDS` calculé depuis le registry pour garantir l'unicité de
+ * la source de vérité. Toute note ajoutée / supprimée dans
+ * `note-registry.ts` se propage automatiquement à la fiche R4.
+ *
+ * Ordre canonique (45 entrées) : N1, N2, N3A, N3B, N3C, N3D, N3E, N3F,
+ * N4..N12, N13, N14, N15A, N15B, N16A, N16B, N16Bbis, N16C, N17..N19,
+ * N21..N26, N27A, N27B, N28..N36. (N20 omis : non-réservé en R4.)
  */
-export const AUDCIF_ANNEXE_NOTES: ReadonlyArray<string> = Object.freeze([
-  'N1',
-  'N2',
-  'N3',
-  'N3A',
-  'N3B',
-  'N3C',
-  'N3D',
-  'N3E',
-  'N4',
-  'N5',
-  'N6',
-  'N7',
-  'N8',
-  'N9',
-  'N10',
-  'N11',
-  'N12',
-  'N13',
-  'N14',
-  'N15',
-  'N16',
-  'N17',
-  'N18',
-  'N19',
-  'N20',
-  'N21',
-  'N22',
-  'N23',
-  'N24',
-  'N25',
-  'N26',
-  'N27',
-  'N28',
-  'N29',
-  'N30',
-  'N31',
-  'N32',
-  'N33',
-  'N34',
-  'N35',
-  'N36',
-]);
+import { ALL_NOTE_IDS } from '../services/notes-annexes/note-registry';
+
+export const AUDCIF_ANNEXE_NOTES: ReadonlyArray<string> = Object.freeze(
+  ALL_NOTE_IDS.map((id) => String(id)),
+);

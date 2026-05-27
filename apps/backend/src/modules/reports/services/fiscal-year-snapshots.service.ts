@@ -7,6 +7,7 @@ import {
   type FiscalYearSnapshotType,
 } from '../entities/fiscal-year-snapshot.entity';
 import { FiscalYearSnapshotsRepository } from '../repositories/fiscal-year-snapshots.repository';
+import { CashFlowService } from './cash-flow.service';
 import { ReportsService } from './reports.service';
 
 /**
@@ -34,6 +35,7 @@ export class FiscalYearSnapshotsService {
     private readonly reports: ReportsService,
     private readonly periodRepo: AccountingPeriodRepository,
     private readonly snapshotsRepo: FiscalYearSnapshotsRepository,
+    private readonly cashFlow: CashFlowService,
   ) {}
 
   /**
@@ -141,7 +143,7 @@ export class FiscalYearSnapshotsService {
           toDate: periodEnd,
         })) as unknown as Record<string, unknown>;
       case 'TFT':
-        return (await this.reports.getTft(organizationId, {
+        return (await this.cashFlow.getCashFlow(organizationId, {
           fromDate: periodStart,
           toDate: periodEnd,
         })) as unknown as Record<string, unknown>;

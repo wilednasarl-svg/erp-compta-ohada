@@ -508,33 +508,13 @@ export interface AgingBalanceReport {
   readonly grandTotal: string;
 }
 
-// ─── TFT / Annexes (états OHADA composés) ───────────────────────────
-
-export interface OhadaStatementLine {
-  readonly code: string;
-  readonly label: string;
-  readonly amount: string;
-  readonly note?: string;
-}
-
-export interface OhadaStatementSection {
-  readonly code: string;
-  readonly label: string;
-  readonly lines: readonly OhadaStatementLine[];
-  readonly total: string;
-}
-
-export interface TftReport {
-  readonly fromDate: string;
-  readonly toDate: string;
-  readonly fluxExploitation: OhadaStatementSection;
-  readonly fluxInvestissement: OhadaStatementSection;
-  readonly fluxFinancement: OhadaStatementSection;
-  readonly variationTresorerie: string;
-  readonly tresorerieOuverture: string;
-  readonly tresorerieCloture: string;
-  readonly methodologyNotes: readonly string[];
-}
+// ─── Annexes (états OHADA composés) ─────────────────────────────────
+//
+// NOTE: `TftReport` legacy supprimé (B4). Le TFT est désormais exposé
+// uniquement via `CashFlowReport` (cash-flow.service.ts) conforme à la
+// nomenclature doctrinale Tome 3 p. 34 (codes ZA → ZH). Le rendu PDF/
+// XLSX, le contrôleur `/tft`, le bundle DSF et les snapshots
+// fiscaux consomment tous `CashFlowService.getCashFlow`.
 
 export interface AnnexeNote {
   readonly code: string;
@@ -1547,153 +1527,14 @@ export class ReportsService {
     };
   }
 
-  /**
-   * TFT (Tableau de Flux de Trésorerie) OHADA — méthode indirecte.
-   *
-   * Partition les flux en 3 catégories selon Vol. 3 :
-   *   1. Flux d'exploitation : RN ± non-cash ± variation BFR
-   *   2. Flux d'investissement : variation actif immobilisé (signe inversé)
-   *   3. Flux de financement : variation dettes fin + capital − dividendes
-   *
-   * Scope livré (V1) :
-   *   - Sections officielles avec lignes vides + totaux calculés
-   *   - Réconciliation : variation trésorerie début / fin
-   */
-  async getTft(
-    organizationId: TenantId,
-    query: { fromDate: string; toDate: string },
-  ): Promise<TftReport> {
-    assertTenantId(organizationId);
-    this.assertDateRange(query.fromDate, query.toDate);
-
-    const [bilanN, bilanNm1, sig] = await Promise.all([
-      this.getBalanceSheet(organizationId, {
-        asAtDate: query.toDate,
-        fiscalYearStartDate: query.fromDate,
-      }),
-      this.getBalanceSheet(organizationId, {
-        asAtDate: ReportsService.previousDayIso(query.fromDate),
-        fiscalYearStartDate: ReportsService.previousFiscalYearStart(query.fromDate),
-      }),
-      this.getSig(organizationId, { fromDate: query.fromDate, toDate: query.toDate }),
-    ]);
-
-    const sectionTotal = (
-      sections: BalanceSheetReport['actif']['sections'],
-      key: string,
-    ): number => Number(sections.find((s) => s.key === key)?.total ?? '0');
-
-    const sigSolde = (code: string): number =>
-      Number(sig.soldes.find((s) => s.code === code)?.amount ?? '0');
-
-    const rn = sigSolde('XI');
-    const dotations = Number(
-      sig.charges.find((c) => c.code === 'RL')?.amount ?? '0',
-    );
-    const reprises = Number(
-      sig.produits.find((p) => p.code === 'TJ')?.amount ?? '0',
-    );
-    const circN = sectionTotal(bilanN.actif.sections, 'CIRCULANT');
-    const circNm1 = sectionTotal(bilanNm1.actif.sections, 'CIRCULANT');
-    const passifCircN = sectionTotal(bilanN.passif.sections, 'PASSIF_CIRCULANT');
-    const passifCircNm1 = sectionTotal(bilanNm1.passif.sections, 'PASSIF_CIRCULANT');
-    const variationBfr = circN - circNm1 - (passifCircN - passifCircNm1);
-    const fluxExploitation = rn + dotations - reprises - variationBfr;
-
-    const immoN = sectionTotal(bilanN.actif.sections, 'IMMOBILISE');
-    const immoNm1 = sectionTotal(bilanNm1.actif.sections, 'IMMOBILISE');
-    // Detail acquisitions vs cessions
-    const sigPosteAmount = (
-      postes: ReadonlyArray<SyscohadaPosteAmount>,
-      code: string,
-    ): number => Number(postes.find((p) => p.code === code)?.amount ?? '0');
-    const produitsCessions = sigPosteAmount(sig.produits, 'TN');
-    const valeursCessions = sigPosteAmount(sig.charges, 'RO');
-    const acquisitionsEstimees = immoN - immoNm1 + dotations + valeursCessions;
-    // Flux investissement net = -Acquisitions + Cessions encaissées
-    const fluxInvestissement = -acquisitionsEstimees + produitsCessions;
-
-    const dettesFinN = sectionTotal(bilanN.passif.sections, 'DETTES_FINANCIERES');
-    const dettesFinNm1 = sectionTotal(bilanNm1.passif.sections, 'DETTES_FINANCIERES');
-    const capN = sectionTotal(bilanN.passif.sections, 'CAPITAUX_PROPRES');
-    const capNm1 = sectionTotal(bilanNm1.passif.sections, 'CAPITAUX_PROPRES');
-    const variationCapHorsRn = capN - capNm1 - rn;
-    const apportsNouveaux = Math.max(variationCapHorsRn, 0);
-    const dividendesVerses = Math.max(-variationCapHorsRn, 0);
-    const fluxFinancement = dettesFinN - dettesFinNm1 + apportsNouveaux - dividendesVerses;
-
-    const tresoN =
-      sectionTotal(bilanN.actif.sections, 'TRESORERIE_ACTIF') -
-      sectionTotal(bilanN.passif.sections, 'TRESORERIE_PASSIF');
-    const tresoNm1 =
-      sectionTotal(bilanNm1.actif.sections, 'TRESORERIE_ACTIF') -
-      sectionTotal(bilanNm1.passif.sections, 'TRESORERIE_PASSIF');
-
-    return {
-      fromDate: query.fromDate,
-      toDate: query.toDate,
-      fluxExploitation: {
-        code: 'FA',
-        label: "Flux de trésorerie provenant des activités d'exploitation",
-        lines: [
-          { code: 'FA.1', label: 'Résultat net de l\'exercice', amount: rn.toFixed(2) },
-          { code: 'FA.2', label: '+ Dotations aux amortissements et provisions', amount: dotations.toFixed(2) },
-          { code: 'FA.3', label: '− Reprises sur amortissements et provisions', amount: (-reprises).toFixed(2) },
-          { code: 'FA.4', label: '± Variation du BFR', amount: (-variationBfr).toFixed(2) },
-        ],
-        total: fluxExploitation.toFixed(2),
-      },
-      fluxInvestissement: {
-        code: 'FB',
-        label: "Flux de trésorerie provenant des activités d'investissement",
-        lines: [
-          {
-            code: 'FB.1',
-            label: "− Acquisitions d'immobilisations (estimées)",
-            amount: (-acquisitionsEstimees).toFixed(2),
-            note: 'ΔImmoNet + dotations + valeurs comptables cédées',
-          },
-          {
-            code: 'FB.2',
-            label: '+ Produits de cessions (poste TN, compte 82)',
-            amount: produitsCessions.toFixed(2),
-          },
-        ],
-        total: fluxInvestissement.toFixed(2),
-      },
-      fluxFinancement: {
-        code: 'FC',
-        label: 'Flux de trésorerie provenant des activités de financement',
-        lines: [
-          {
-            code: 'FC.1',
-            label: 'Variation des dettes financières',
-            amount: (dettesFinN - dettesFinNm1).toFixed(2),
-          },
-          {
-            code: 'FC.2',
-            label: '+ Apports nouveaux en capitaux propres (estimés)',
-            amount: apportsNouveaux.toFixed(2),
-          },
-          {
-            code: 'FC.3',
-            label: '− Dividendes versés (estimés)',
-            amount: (-dividendesVerses).toFixed(2),
-          },
-        ],
-        total: fluxFinancement.toFixed(2),
-      },
-      variationTresorerie: (fluxExploitation + fluxInvestissement + fluxFinancement).toFixed(2),
-      tresorerieOuverture: tresoNm1.toFixed(2),
-      tresorerieCloture: tresoN.toFixed(2),
-      methodologyNotes: [
-        'Méthode indirecte : partir du résultat net + ajustements non-cash + variation BFR.',
-        "Flux investissement = variation nette de l'actif immobilisé (acquisitions − cessions).",
-        "Flux financement = variation dettes financières + variation capitaux propres hors RN (apports nouveaux − dividendes − rachats actions).",
-        "Réconciliation : Tresoreire fin = Tresoreire debut + Total flux. Ecart attendu = 0.",
-      ],
-    };
-  }
+  // ───────────────────────────────────────────────────────────────
+  // `getTft` (legacy TFT méthode indirecte basée sur le bilan) a été
+  // SUPPRIMÉ (B4). Le TFT officiel doctrinal Tome 3 p. 34 est désormais
+  // exposé uniquement via `CashFlowService.getCashFlow`, qui retourne
+  // un `CashFlowReport` (codes ZA → ZH, postes FA → FQ). Tous les call
+  // sites (controller `/tft*`, `ReportsPackageService`,
+  // `FiscalYearSnapshotsService`) ont été migrés.
+  // ───────────────────────────────────────────────────────────────
 
   /**
    * Squelette de l'Annexe (Notes 1 à 35) SYSCOHADA AUDCIF.

@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { type TenantId, assertTenantId } from '../../../common/persistence/tenant-scope';
+import { CashFlowService } from './cash-flow.service';
 import { DsfFichesPdfService } from './dsf-fiches-pdf.service';
 import { DsfIdentificationService } from './dsf-identification.service';
 import {
@@ -50,6 +51,7 @@ export class ReportsPackageService {
     private readonly dsfFichesPdf: DsfFichesPdfService,
     private readonly dsfIdentification: DsfIdentificationService,
     private readonly notesAnnexes: NotesAnnexesService,
+    private readonly cashFlow: CashFlowService,
   ) {}
 
   async buildAnnualPackage(
@@ -121,7 +123,7 @@ export class ReportsPackageService {
         return this.xlsx.financialRatiosXlsx(r, query.orgName);
       }),
       this.safeBuild('08-tft.xlsx', async () => {
-        const r = await this.reports.getTft(organizationId, {
+        const r = await this.cashFlow.getCashFlow(organizationId, {
           fromDate: query.fromDate,
           toDate: query.toDate,
         });
@@ -283,14 +285,14 @@ export class ReportsPackageService {
         return this.xlsx.profitLossXlsx(r, options.orgName);
       }),
       this.safeBuild('12-tft.pdf', async () => {
-        const r = await this.reports.getTft(organizationId, {
+        const r = await this.cashFlow.getCashFlow(organizationId, {
           fromDate: options.fromDate,
           toDate: options.toDate,
         });
         return this.pdf.tftPdf(r, options.orgName);
       }),
       this.safeBuild('12-tft.xlsx', async () => {
-        const r = await this.reports.getTft(organizationId, {
+        const r = await this.cashFlow.getCashFlow(organizationId, {
           fromDate: options.fromDate,
           toDate: options.toDate,
         });
