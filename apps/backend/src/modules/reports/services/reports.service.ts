@@ -202,6 +202,13 @@ export interface BalanceSheetPreviousSummary {
 export interface BilanPoste {
   readonly code: string;
   readonly label: string;
+  /**
+   * Code de la note annexe pointée par le poste (Tome 3 p. 32, colonne
+   * « Note »). Optionnel — undefined pour les sous-totaux et les
+   * postes n'ayant pas de renvoi (ex. Capital sans annexe détaillée).
+   * Propagé tel quel depuis `BILAN_POSTES[i].note`.
+   */
+  readonly note?: string;
   readonly side: 'ACTIF' | 'PASSIF';
   readonly net: string;
   /** Brut (avant déductions). Optionnel — `undefined` si pas pertinent. */
@@ -2947,6 +2954,7 @@ export class ReportsService {
       const poste: BilanPoste = {
         code: ref.code,
         label: ref.label,
+        ...(ref.note !== undefined ? { note: ref.note } : {}),
         side: ref.side,
         net: net.toFixed(2),
         brut: acc.brut > 0 ? acc.brut.toFixed(2) : undefined,

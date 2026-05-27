@@ -43,6 +43,15 @@ export interface BilanPosteRef {
   readonly code: string;
   /** Libellé officiel exact (doctrine OHADA Tome 3, page 32). */
   readonly label: string;
+  /**
+   * Code de la note annexe associée (Tome 3 p. 32, colonne « Note »).
+   * Exemple : '3' pour les Immobilisations, '7' pour les Clients,
+   * '11' pour la Trésorerie-Actif. Optionnel — les sous-totaux et
+   * les écarts de conversion peuvent en porter aussi (note 12). Les
+   * masses pures (AZ, BK, BT, BZ, CP, DD, DF, DP, DT, DZ) n'en
+   * portent pas.
+   */
+  readonly note?: string;
   /** Côté Actif ou Passif. */
   readonly side: BilanSide;
   /**
@@ -79,6 +88,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'AD',
     label: 'IMMOBILISATIONS INCORPORELLES',
+    note: '3',
     side: 'ACTIF',
     section: 'Actif immobilisé',
     sourceAccountPrefixes: ['21'],
@@ -154,6 +164,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'AI',
     label: 'IMMOBILISATIONS CORPORELLES',
+    note: '3',
     side: 'ACTIF',
     section: 'Actif immobilisé',
     sourceAccountPrefixes: ['22', '23', '24'],
@@ -234,6 +245,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'AP',
     label: 'AVANCES ET ACOMPTES VERSÉS SUR IMMOBILISATIONS',
+    note: '3',
     side: 'ACTIF',
     section: 'Actif immobilisé',
     sourceAccountPrefixes: ['251', '252'],
@@ -246,6 +258,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'AQ',
     label: 'IMMOBILISATIONS FINANCIÈRES',
+    note: '4',
     side: 'ACTIF',
     section: 'Actif immobilisé',
     sourceAccountPrefixes: ['26', '27'],
@@ -295,6 +308,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BA',
     label: 'ACTIF CIRCULANT HAO',
+    note: '5',
     side: 'ACTIF',
     section: 'Actif circulant',
     sourceAccountPrefixes: ['485', '488'],
@@ -307,6 +321,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BB',
     label: 'STOCKS ET ENCOURS',
+    note: '6',
     side: 'ACTIF',
     section: 'Actif circulant',
     sourceAccountPrefixes: ['31', '32', '33', '34', '35', '36', '37', '38'],
@@ -331,6 +346,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BH',
     label: 'Fournisseurs avances versées',
+    note: '17',
     side: 'ACTIF',
     section: 'Actif circulant',
     sourceAccountPrefixes: ['409'],
@@ -343,6 +359,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BI',
     label: 'Clients',
+    note: '7',
     side: 'ACTIF',
     section: 'Actif circulant',
     sourceAccountPrefixes: ['411', '412', '413', '414', '416', '418', '419'],
@@ -355,6 +372,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BJ',
     label: 'Autres créances',
+    note: '8',
     side: 'ACTIF',
     section: 'Actif circulant',
     sourceAccountPrefixes: [
@@ -403,6 +421,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BQ',
     label: 'Titres de placement',
+    note: '10',
     side: 'ACTIF',
     section: 'Trésorerie-Actif',
     sourceAccountPrefixes: ['50'],
@@ -415,6 +434,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BR',
     label: 'Valeurs à encaisser',
+    note: '9',
     side: 'ACTIF',
     section: 'Trésorerie-Actif',
     sourceAccountPrefixes: ['51'],
@@ -427,6 +447,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BS',
     label: 'Banques, chèques postaux, caisse et assimilés',
+    note: '11',
     side: 'ACTIF',
     section: 'Trésorerie-Actif',
     sourceAccountPrefixes: ['52', '53', '54', '55', '56', '57', '58'],
@@ -452,6 +473,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BU',
     label: 'Écart de conversion — Actif',
+    note: '12',
     side: 'ACTIF',
     section: 'Écart de conversion',
     sourceAccountPrefixes: ['478'],
@@ -483,6 +505,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CA',
     label: 'Capital',
+    note: '13',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['101', '102', '103', '104'],
@@ -495,6 +518,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CB',
     label: 'Apporteurs capital non appelé (−)',
+    note: '13',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['109'],
@@ -507,6 +531,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CD',
     label: 'Primes liées au capital social',
+    note: '3E',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['105'],
@@ -519,6 +544,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CE',
     label: 'Écarts de réévaluation',
+    note: '3E',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['106'],
@@ -531,6 +557,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CF',
     label: 'Réserves indisponibles',
+    note: '14',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['111', '112', '113'],
@@ -543,6 +570,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CG',
     label: 'Réserves libres',
+    note: '14',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['118'],
@@ -555,6 +583,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CH',
     label: 'Report à nouveau (+ ou −)',
+    note: '14',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['121', '129'],
@@ -579,6 +608,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CL',
     label: "Subventions d'investissement",
+    note: '15',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['141', '142', '148'],
@@ -591,6 +621,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CM',
     label: 'Provisions réglementées',
+    note: '15',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['151', '152', '153', '154', '155'],
@@ -616,6 +647,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DA',
     label: 'Emprunts et dettes financières diverses',
+    note: '16',
     side: 'PASSIF',
     section: 'Dettes financières',
     sourceAccountPrefixes: [
@@ -642,6 +674,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DB',
     label: 'Dettes de location acquisition',
+    note: '16',
     side: 'PASSIF',
     section: 'Dettes financières',
     sourceAccountPrefixes: ['17'],
@@ -654,6 +687,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DC',
     label: 'Provisions pour risques et charges',
+    note: '16',
     side: 'PASSIF',
     section: 'Dettes financières',
     sourceAccountPrefixes: ['191', '192', '193', '194', '195', '196', '197', '198'],
@@ -691,6 +725,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DH',
     label: 'Dettes circulantes HAO',
+    note: '5',
     side: 'PASSIF',
     section: 'Passif circulant',
     sourceAccountPrefixes: ['481', '482', '484'],
@@ -703,6 +738,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DI',
     label: 'Clients, avances reçues',
+    note: '7',
     side: 'PASSIF',
     section: 'Passif circulant',
     sourceAccountPrefixes: ['4191', '4192'],
@@ -715,6 +751,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DJ',
     label: "Fournisseurs d'exploitation",
+    note: '17',
     side: 'PASSIF',
     section: 'Passif circulant',
     sourceAccountPrefixes: ['401', '402', '403', '408'],
@@ -727,6 +764,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DK',
     label: 'Dettes fiscales et sociales',
+    note: '18',
     side: 'PASSIF',
     section: 'Passif circulant',
     sourceAccountPrefixes: ['42', '43', '44'],
@@ -740,6 +778,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DM',
     label: 'Autres dettes',
+    note: '19',
     side: 'PASSIF',
     section: 'Passif circulant',
     sourceAccountPrefixes: ['462', '463', '471', '472', '474', '477'],
@@ -752,6 +791,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DN',
     label: 'Provisions pour risques à court terme',
+    note: '19',
     side: 'PASSIF',
     section: 'Passif circulant',
     sourceAccountPrefixes: ['499', '599'],
@@ -777,6 +817,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DQ',
     label: "Banques, crédits d'escompte",
+    note: '20',
     side: 'PASSIF',
     section: 'Trésorerie-Passif',
     sourceAccountPrefixes: ['564', '565'],
@@ -789,6 +830,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DR',
     label: 'Banques, établissements financiers et crédits de trésorerie',
+    note: '20',
     side: 'PASSIF',
     section: 'Trésorerie-Passif',
     sourceAccountPrefixes: ['561', '562', '563', '566'],
@@ -814,6 +856,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'DV',
     label: 'Écart de conversion — Passif',
+    note: '12',
     side: 'PASSIF',
     section: 'Écart de conversion',
     sourceAccountPrefixes: ['479'],

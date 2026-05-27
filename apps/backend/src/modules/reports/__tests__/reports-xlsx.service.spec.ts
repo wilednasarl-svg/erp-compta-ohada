@@ -225,6 +225,20 @@ describe('ReportsXlsxService — Bilan W5.2 volet 2', () => {
     expect(joined).toContain('CP');
     expect(joined).toContain('DZ');
   });
+
+  /**
+   * C2 — En-tête à 7 colonnes (Tome 3 p. 32) : la colonne « Note »
+   * doit apparaître entre Libellé et Brut N pour le renvoi annexes.
+   */
+  it("contient la colonne « Note » à 7 colonnes côté ACTIF", () => {
+    const buf = service.balanceSheetXlsx(fakeBilan(), 'ACME SARL');
+    const wb = XLSX.read(buf, { type: 'buffer' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const cells = sheetStrings(sheet);
+    expect(cells).toContain('Note');
+    // Cellule "Note" présente dans la ligne d'entête (entre Libellé et Brut N)
+    expect(cells.filter((c) => c === 'Note').length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 describe('ReportsXlsxService — CR feuille unique Tome 3 p. 33', () => {

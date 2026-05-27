@@ -43,6 +43,64 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
     it('contient au moins 30 postes (smoke test)', () => {
       expect(BILAN_POSTES.length).toBeGreaterThanOrEqual(30);
     });
+
+    /**
+     * Spot-check des libellés doctrinaux SYSCOHADA Tome 3 p. 32.
+     * Vérifie mot pour mot un échantillon des postes critiques pour
+     * une DSF déposable (libellés affichés dans le rendu PDF/XLSX).
+     */
+    it('a les libellés officiels exacts du Tome 3 p. 32 (spot-check 10 postes)', () => {
+      const byCode = new Map(BILAN_POSTES.map((p) => [p.code, p.label]));
+      expect(byCode.get('AE')).toBe('Frais de développement et de prospection');
+      expect(byCode.get('AF')).toBe(
+        'Brevets, licences, logiciels et droits similaires',
+      );
+      expect(byCode.get('AI')).toBe('IMMOBILISATIONS CORPORELLES');
+      expect(byCode.get('AP')).toBe(
+        'AVANCES ET ACOMPTES VERSÉS SUR IMMOBILISATIONS',
+      );
+      expect(byCode.get('BI')).toBe('Clients');
+      expect(byCode.get('BS')).toBe(
+        'Banques, chèques postaux, caisse et assimilés',
+      );
+      expect(byCode.get('CA')).toBe('Capital');
+      expect(byCode.get('CJ')).toBe(
+        "Résultat net de l'exercice (bénéfice + / perte −)",
+      );
+      expect(byCode.get('DJ')).toBe("Fournisseurs d'exploitation");
+      expect(byCode.get('DR')).toBe(
+        'Banques, établissements financiers et crédits de trésorerie',
+      );
+    });
+
+    /**
+     * Mapping note ↔ poste (Tome 3 p. 32 colonne « Note »).
+     * Les postes critiques doivent porter un code de note annexe pour
+     * que le rendu DSF affiche la liaison bilan ↔ annexes.
+     */
+    it('porte les codes de notes annexes attendus par la doctrine', () => {
+      const byCode = new Map(BILAN_POSTES.map((p) => [p.code, p.note]));
+      // Immobilisations → Note 3 ; Financières → Note 4
+      expect(byCode.get('AD')).toBe('3');
+      expect(byCode.get('AI')).toBe('3');
+      expect(byCode.get('AP')).toBe('3');
+      expect(byCode.get('AQ')).toBe('4');
+      // Circulant
+      expect(byCode.get('BA')).toBe('5');
+      expect(byCode.get('BB')).toBe('6');
+      expect(byCode.get('BI')).toBe('7');
+      expect(byCode.get('BJ')).toBe('8');
+      // Trésorerie + écarts
+      expect(byCode.get('BS')).toBe('11');
+      expect(byCode.get('BU')).toBe('12');
+      expect(byCode.get('DV')).toBe('12');
+      // Capitaux propres + dettes
+      expect(byCode.get('CA')).toBe('13');
+      expect(byCode.get('CB')).toBe('13');
+      expect(byCode.get('DA')).toBe('16');
+      expect(byCode.get('DJ')).toBe('17');
+      expect(byCode.get('DK')).toBe('18');
+    });
   });
 
   describe('PL_POSTES', () => {

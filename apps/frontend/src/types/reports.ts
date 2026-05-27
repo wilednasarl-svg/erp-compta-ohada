@@ -479,6 +479,13 @@ export interface GeneralLedgerReport {
 export interface BilanPoste {
   readonly code: string;
   readonly label: string;
+  /**
+   * Code de la note annexe pointée par le poste (Tome 3 p. 32, colonne
+   * « Note »). Optionnel — non renseigné pour les sous-totaux et les
+   * postes sans renvoi spécifique. Additif et rétrocompatible : les
+   * consommateurs qui ignorent ce champ continuent de fonctionner.
+   */
+  readonly note?: string;
   readonly side: 'ACTIF' | 'PASSIF';
   readonly net: string;
   readonly brut?: string;

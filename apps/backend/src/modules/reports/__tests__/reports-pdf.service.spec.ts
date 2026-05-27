@@ -227,6 +227,21 @@ describe('ReportsPdfService — Bilan W5.2', () => {
     }
     expect(cap.calls.join('||')).toContain('XOF');
   });
+
+  /**
+   * C2 — La colonne « Note » doit apparaître dans l'en-tête entre
+   * Libellé et Brut N, conformément au Tome 3 p. 32 (renvoi vers
+   * les notes annexes du bilan).
+   */
+  it("contient la colonne « Note » dans l'en-tête (Tome 3 p. 32)", async () => {
+    const cap = captureTextCalls();
+    try {
+      await service.balanceSheetPdf(fakeReport(), 'ACME SARL');
+    } finally {
+      cap.restore();
+    }
+    expect(cap.calls).toContain('Note');
+  });
 });
 
 /* ========================================================================== */

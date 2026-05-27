@@ -331,16 +331,19 @@ export class ReportsPdfService {
         ' — Devise : XOF',
     );
 
-    // Colonnes ACTIF (4 colonnes montant) — utilisées aussi pour le
-    // PASSIF, où les colonnes Brut / Amort restent vides (sans objet
-    // pour les capitaux propres et les dettes).
+    // Colonnes ACTIF (4 colonnes montant + Note) — utilisées aussi pour
+    // le PASSIF, où les colonnes Brut / Amort restent vides (sans objet
+    // pour les capitaux propres et les dettes). La colonne « Note » est
+    // insérée entre Libellé et Brut N conformément à la doctrine Tome 3
+    // p. 32 (renvoie vers l'annexe correspondante).
     const cols = [
-      { label: 'Réf.', width: 40 },
-      { label: 'Libellé', width: 240 },
-      { label: 'Brut N', width: 90, align: 'right' as const },
-      { label: 'Amort. & dépréc.', width: 100, align: 'right' as const },
-      { label: 'Net N', width: 90, align: 'right' as const },
-      { label: 'Net N-1', width: 90, align: 'right' as const },
+      { label: 'Réf.', width: 36 },
+      { label: 'Libellé', width: 214 },
+      { label: 'Note', width: 30, align: 'center' as const },
+      { label: 'Brut N', width: 88, align: 'right' as const },
+      { label: 'Amort. & dépréc.', width: 96, align: 'right' as const },
+      { label: 'Net N', width: 88, align: 'right' as const },
+      { label: 'Net N-1', width: 88, align: 'right' as const },
     ];
 
     let y = this.tableHeader(doc, cols);
@@ -359,6 +362,7 @@ export class ReportsPdfService {
       [
         '',
         'TOTAL GÉNÉRAL ACTIF',
+        '',
         '',
         '',
         this.fmtAmt(report.totals.actif),
@@ -383,6 +387,7 @@ export class ReportsPdfService {
       [
         '',
         'TOTAL GÉNÉRAL PASSIF',
+        '',
         '',
         '',
         this.fmtAmt(report.totals.passif),
@@ -427,7 +432,11 @@ export class ReportsPdfService {
    */
   private bsMasseRows(
     doc: PDFKit.PDFDocument,
-    cols: Array<{ label: string; width: number; align?: 'right' }>,
+    cols: Array<{
+      label: string;
+      width: number;
+      align?: 'right' | 'center';
+    }>,
     masse: BilanMasse,
     y: number,
     side: 'ACTIF' | 'PASSIF',
@@ -442,7 +451,7 @@ export class ReportsPdfService {
     y = this.tableRow(
       doc,
       cols,
-      [masse.code, masse.label.toUpperCase(), '', '', '', ''],
+      [masse.code, masse.label.toUpperCase(), '', '', '', '', ''],
       y,
       true,
     );
@@ -456,7 +465,7 @@ export class ReportsPdfService {
       y = this.tableRow(
         doc,
         cols,
-        ['', `  ${rubrique.label}`, '', '', '', ''],
+        ['', `  ${rubrique.label}`, '', '', '', '', ''],
         y,
         true,
       );
@@ -484,6 +493,7 @@ export class ReportsPdfService {
           `  Sous-total ${rubrique.label}`,
           '',
           '',
+          '',
           this.fmtAmt(rubrique.subtotal),
           rubrique.subtotalPrevious !== undefined
             ? this.fmtAmt(rubrique.subtotalPrevious)
@@ -507,6 +517,7 @@ export class ReportsPdfService {
         `TOTAL ${masse.label.toUpperCase()}`,
         '',
         '',
+        '',
         this.fmtAmt(masse.total),
         masse.totalPrevious !== undefined ? this.fmtAmt(masse.totalPrevious) : '',
       ],
@@ -527,15 +538,16 @@ export class ReportsPdfService {
   private posteValues(poste: BilanPoste, side: 'ACTIF' | 'PASSIF'): string[] {
     const code = poste.code;
     const label = `  ${poste.label}`;
+    const note = poste.note ?? '';
     const netN = this.fmtAmt(poste.net);
     const netN1 =
       poste.netPrevious !== undefined ? this.fmtAmt(poste.netPrevious) : '';
     if (side === 'PASSIF') {
-      return [code, label, '', '', netN, netN1];
+      return [code, label, note, '', '', netN, netN1];
     }
     const brut = poste.brut !== undefined ? this.fmtAmt(poste.brut) : '';
     const ded = poste.deduction !== undefined ? this.fmtAmt(poste.deduction) : '';
-    return [code, label, brut, ded, netN, netN1];
+    return [code, label, note, brut, ded, netN, netN1];
   }
 
   // ─── Internal helpers ────────────────────────────────────────────

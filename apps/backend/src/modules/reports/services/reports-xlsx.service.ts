@@ -214,20 +214,23 @@ export class ReportsXlsxService {
 
   // ─── Balance Sheet (W5.2 volet 2 — contexture normalisée DGI) ────
   /**
-   * Bilan XLSX — contexture normalisée DGI à 6 colonnes
-   * `Réf | Libellé | Brut N | Amort. & dépréc. | Net N | Net N-1`.
+   * Bilan XLSX — contexture normalisée DGI à 7 colonnes
+   * `Réf | Libellé | Note | Brut N | Amort. & dépréc. | Net N | Net N-1`.
    *
    * Doctrine : SYSCOHADA AUDCIF, Tome 3, p. 32-34 (imprimé normalisé).
+   * La colonne « Note » est insérée entre Libellé et Brut N pour
+   * pointer vers l'annexe correspondante (cf. champ `note` du
+   * référentiel `BILAN_POSTES`).
    *
    * Reproduit la cascade `BilanMasse → BilanRubrique → BilanPoste` issue
    * de `actifMasses` / `passifMasses` (source de vérité W2.1). Côté ACTIF
-   * les 6 colonnes sont remplies (Brut + Amort + Net + N-1). Côté PASSIF
-   * Brut / Amort restent vides — par doctrine OHADA les capitaux propres
-   * et dettes n'ont pas d'amortissements opposants.
+   * les 7 colonnes sont remplies (Note + Brut + Amort + Net + N-1).
+   * Côté PASSIF Brut / Amort restent vides — par doctrine OHADA les
+   * capitaux propres et dettes n'ont pas d'amortissements opposants.
    *
    * Format numérique : `# ##0,00;(# ##0,00);"";@` (parenthèses négatives,
    * cellule vide pour 0 — convention DGI). Bordures sur en-tête et lignes
-   * de totaux. Largeurs : Réf 8, Libellé 50, montants 16 chacun.
+   * de totaux. Largeurs : Réf 8, Libellé 50, Note 6 (centré), montants 16.
    */
   balanceSheetXlsx(report: BalanceSheetReport, orgName: string): Buffer {
     const rows: unknown[][] = [];
@@ -244,6 +247,7 @@ export class ReportsXlsxService {
     const header: unknown[] = [
       'Réf.',
       'Libellé',
+      'Note',
       'Brut N',
       'Amort. & dépréc.',
       'Net N',
@@ -256,9 +260,9 @@ export class ReportsXlsxService {
     const numericRowIndexes: number[] = [];
 
     const pushMasseRows = (masse: BilanMasse, side: 'ACTIF' | 'PASSIF'): void => {
-      rows.push([masse.code, masse.label.toUpperCase(), '', '', '', '']);
+      rows.push([masse.code, masse.label.toUpperCase(), '', '', '', '', '']);
       for (const rubrique of masse.rubriques) {
-        rows.push(['', `  ${rubrique.label}`, '', '', '', '']);
+        rows.push(['', `  ${rubrique.label}`, '', '', '', '', '']);
         for (const poste of rubrique.postes) {
           const values = this.posteRowXlsx(poste, side);
           numericRowIndexes.push(rows.length);
@@ -269,6 +273,7 @@ export class ReportsXlsxService {
         rows.push([
           '',
           `  Sous-total ${rubrique.label}`,
+          '',
           '',
           '',
           this.num(rubrique.subtotal),
@@ -282,12 +287,13 @@ export class ReportsXlsxService {
         `TOTAL ${masse.label.toUpperCase()}`,
         '',
         '',
+        '',
         this.num(masse.total),
         masse.totalPrevious !== undefined ? this.num(masse.totalPrevious) : '',
       ]);
     };
 
-    rows.push(['', 'ACTIF', '', '', '', '']);
+    rows.push(['', 'ACTIF', '', '', '', '', '']);
     for (const masse of report.actifMasses) {
       pushMasseRows(masse, 'ACTIF');
     }
@@ -297,12 +303,13 @@ export class ReportsXlsxService {
       'TOTAL GÉNÉRAL ACTIF',
       '',
       '',
+      '',
       this.num(report.totals.actif),
       hasComp ? this.num(report.previous.totalActif) : '',
     ]);
 
     rows.push([]);
-    rows.push(['', 'PASSIF', '', '', '', '']);
+    rows.push(['', 'PASSIF', '', '', '', '', '']);
     for (const masse of report.passifMasses) {
       pushMasseRows(masse, 'PASSIF');
     }
@@ -312,18 +319,28 @@ export class ReportsXlsxService {
       'TOTAL GÉNÉRAL PASSIF',
       '',
       '',
+      '',
       this.num(report.totals.passif),
       hasComp ? this.num(report.previous.totalPassif) : '',
     ]);
 
     rows.push([]);
     numericRowIndexes.push(rows.length);
-    rows.push(['', "Écart Actif − Passif", '', '', this.num(report.totals.difference), '']);
+    rows.push([
+      '',
+      "Écart Actif − Passif",
+      '',
+      '',
+      '',
+      this.num(report.totals.difference),
+      '',
+    ]);
     if (report.netResultIncorporated !== null) {
       numericRowIndexes.push(rows.length);
       rows.push([
         '',
         "Résultat de l'exercice incorporé dans les capitaux propres",
+        '',
         '',
         '',
         this.num(report.netResultIncorporated),
@@ -333,9 +350,9 @@ export class ReportsXlsxService {
 
     return this.buildWorkbookFormatted(rows, 'Bilan', {
       headerRowIndex,
-      numericColIndexes: [2, 3, 4, 5],
+      numericColIndexes: [3, 4, 5, 6],
       numericRowIndexes,
-      colWidths: [8, 50, 16, 16, 16, 16],
+      colWidths: [8, 50, 6, 16, 16, 16, 16],
     });
   }
 
@@ -348,14 +365,15 @@ export class ReportsXlsxService {
   private posteRowXlsx(poste: BilanPoste, side: 'ACTIF' | 'PASSIF'): unknown[] {
     const code = poste.code;
     const label = `  ${poste.label}`;
+    const note = poste.note ?? '';
     const net = this.num(poste.net);
     const netPrev = poste.netPrevious !== undefined ? this.num(poste.netPrevious) : '';
     if (side === 'PASSIF') {
-      return [code, label, '', '', net, netPrev];
+      return [code, label, note, '', '', net, netPrev];
     }
     const brut = poste.brut !== undefined ? this.num(poste.brut) : '';
     const ded = poste.deduction !== undefined ? this.num(poste.deduction) : '';
-    return [code, label, brut, ded, net, netPrev];
+    return [code, label, note, brut, ded, net, netPrev];
   }
 
   // ─── Comparative balance N / N-1 ─────────────────────────────────

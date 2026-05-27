@@ -739,6 +739,16 @@ function BilanMasseBlock({
                     <td className="px-4 py-1 font-mono text-xs text-ink-mute">{p.code}</td>
                     <td className="px-2 py-1 text-xs text-ink-soft">{p.label}</td>
                     <td
+                      className="px-2 py-1 text-center font-mono text-2xs tabular-nums text-ink-mute"
+                      title={
+                        p.note !== undefined
+                          ? `Voir Note ${p.note} en annexe`
+                          : undefined
+                      }
+                    >
+                      {p.note ?? ''}
+                    </td>
+                    <td
                       className={cn(
                         'px-4 py-1 text-right font-mono tabular-nums',
                         isZero ? 'text-ink-mute' : 'text-ink',
