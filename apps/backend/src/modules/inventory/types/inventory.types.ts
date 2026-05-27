@@ -71,3 +71,14 @@ export const STOCK_ITEM_STATUSES: ReadonlyArray<StockItemStatus> = ['active', 'a
 
 /** Validation regex pour le code interne SKU. */
 export const STOCK_ITEM_CODE_PATTERN = /^[A-Z0-9-]{1,32}$/;
+
+/**
+ * Méthode de valorisation (W4.2).
+ *  - `cmp`  : Coût Moyen Pondéré (défaut SYSCOHADA, méthode historique).
+ *  - `fifo` : First In, First Out — queue de lots, sortie au prix du lot
+ *            le plus ancien encore disponible. Autorisé par SYSCOHADA
+ *            comme alternative pour les biens identifiables au lot.
+ */
+export type ValuationMethod = 'cmp' | 'fifo';
+
+export const VALUATION_METHODS: ReadonlyArray<ValuationMethod> = ['cmp', 'fifo'];

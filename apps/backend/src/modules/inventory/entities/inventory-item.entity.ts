@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 
 import { OrganizationEntity } from '../../organizations/entities/organization.entity';
-import type { StockFamily, StockItemStatus } from '../types/inventory.types';
+import type { StockFamily, StockItemStatus, ValuationMethod } from '../types/inventory.types';
 
 /**
  * `inventory_items` row — voir migration 0066.
@@ -74,6 +74,21 @@ export class InventoryItemEntity {
 
   @Column({ type: 'text', default: 'active' })
   status!: StockItemStatus;
+
+  /**
+   * Méthode de valorisation (W4.2). 'cmp' = CMUP (défaut historique),
+   * 'fifo' = First In First Out via la table `inventory_lots`.
+   */
+  @Column({ name: 'valuation_method', type: 'text', default: 'cmp' })
+  valuationMethod!: ValuationMethod;
+
+  /**
+   * Compte comptable de stock (311/321/331/...) que cet item alimente
+   * lors de la génération automatique d'écriture (W4.2). NULL = pas
+   * d'écriture auto pour cet item (le mouvement passe quand même).
+   */
+  @Column({ name: 'account_code', type: 'text', nullable: true })
+  accountCode!: string | null;
 
   @Column({ name: 'created_by_id', type: 'uuid', nullable: true })
   createdById!: string | null;

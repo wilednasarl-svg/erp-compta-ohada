@@ -248,6 +248,9 @@ describe('HTTP status mapping', () => {
       LEASE_INSTALLMENT_NOT_FOUND: 404,
       LEASE_INSTALLMENT_ALREADY_PAID: 409,
       LEASE_IMPLICIT_RATE_CALCULATION_FAILED: 422,
+      // W4.2 — Méthode FIFO sur stocks.
+      INVENTORY_FIFO_INSUFFICIENT_STOCK: 422,
+      INVENTORY_LOT_NOT_FOUND: 404,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
