@@ -11,7 +11,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -27,6 +32,16 @@ import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { ConvertAmountQueryDto } from '../dto/convert-amount-query.dto';
 import { CreateExchangeRateDto } from '../dto/create-exchange-rate.dto';
 import { ListRatesQueryDto } from '../dto/list-rates-query.dto';
+import {
+  ExchangeRateEnvelopeResponse,
+  FxConversionEnvelopeResponse,
+  ListExchangeRatesResponse,
+} from '../dto/responses';
+import {
+  toExchangeRateEnvelope,
+  toFxConversionEnvelope,
+  toListExchangeRates,
+} from '../mappers/multi-currency-response.mapper';
 import { ExchangeRatesService } from '../services/exchange-rates.service';
 
 @ApiTags('Exchange Rates')
@@ -39,26 +54,28 @@ export class ExchangeRatesController {
   @Get()
   @RequirePermission('fx.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListExchangeRatesResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Query() query: ListRatesQueryDto,
-  ) {
+  ): Promise<ListExchangeRatesResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const items = await this.rates.list(asTenantId(tokenOrgId), query);
-    return { rates: items };
+    return toListExchangeRates(items);
   }
 
   @Post()
   @RequirePermission('fx.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: ExchangeRateEnvelopeResponse })
   async post(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: CreateExchangeRateDto,
     @Req() _req: Request,
-  ) {
+  ): Promise<ExchangeRateEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const rate = await this.rates.postRate(asTenantId(tokenOrgId), {
       fromCurrencyCode: body.fromCurrencyCode,
@@ -69,17 +86,18 @@ export class ExchangeRatesController {
       sourceRef: body.sourceRef ?? null,
       actorId: actorUserId ?? null,
     });
-    return { rate };
+    return toExchangeRateEnvelope(rate);
   }
 
   @Get('convert')
   @RequirePermission('fx.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: FxConversionEnvelopeResponse })
   async convert(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Query() query: ConvertAmountQueryDto,
-  ) {
+  ): Promise<FxConversionEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const result = await this.rates.convert(asTenantId(tokenOrgId), {
       amount: query.amount,
@@ -87,7 +105,7 @@ export class ExchangeRatesController {
       toCurrencyCode: query.toCurrencyCode,
       asOfDate: query.asOfDate,
     });
-    return { conversion: result };
+    return toFxConversionEnvelope(result);
   }
 
   private assertOrgMatch(

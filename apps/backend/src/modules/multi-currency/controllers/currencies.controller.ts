@@ -11,7 +11,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -23,7 +28,15 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateCurrencyDto } from '../dto/create-currency.dto';
+import {
+  CurrencyEnvelopeResponse,
+  ListCurrenciesResponse,
+} from '../dto/responses';
 import { UpdateCurrencyDto } from '../dto/update-currency.dto';
+import {
+  toCurrencyEnvelope,
+  toListCurrencies,
+} from '../mappers/multi-currency-response.mapper';
 import { CurrenciesService } from '../services/currencies.service';
 
 @ApiTags('Currencies')
@@ -36,43 +49,46 @@ export class CurrenciesController {
   @Get()
   @RequirePermission('fx.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListCurrenciesResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Query('activeOnly') activeOnly?: string,
-  ) {
+  ): Promise<ListCurrenciesResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const items = await this.currencies.listForOrg(asTenantId(tokenOrgId), {
       activeOnly: activeOnly === 'true',
     });
-    return { currencies: items };
+    return toListCurrencies(items);
   }
 
   @Post()
   @RequirePermission('fx.write')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: CurrencyEnvelopeResponse })
   async create(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Body() body: CreateCurrencyDto,
-  ) {
+  ): Promise<CurrencyEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const currency = await this.currencies.create(asTenantId(tokenOrgId), body);
-    return { currency };
+    return toCurrencyEnvelope(currency);
   }
 
   @Patch(':currencyId')
   @RequirePermission('fx.write')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: CurrencyEnvelopeResponse })
   async update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('currencyId', new ParseUUIDPipe({ version: '4' })) currencyId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @Body() body: UpdateCurrencyDto,
-  ) {
+  ): Promise<CurrencyEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const currency = await this.currencies.update(currencyId, asTenantId(tokenOrgId), body);
-    return { currency };
+    return toCurrencyEnvelope(currency);
   }
 
   private assertOrgMatch(
