@@ -8,8 +8,10 @@ import { RbacModule } from '../rbac/rbac.module';
 import { InventoryItemsController } from './controllers/inventory-items.controller';
 import { InventoryMovementsController } from './controllers/inventory-movements.controller';
 import { InventoryItemEntity } from './entities/inventory-item.entity';
+import { InventoryLotEntity } from './entities/inventory-lot.entity';
 import { InventoryMovementEntity } from './entities/inventory-movement.entity';
 import { InventoryItemRepository } from './repositories/inventory-item.repository';
+import { InventoryLotsRepository } from './repositories/inventory-lot.repository';
 import { InventoryMovementRepository } from './repositories/inventory-movement.repository';
 import { InventoryItemsService } from './services/inventory-items.service';
 import { InventoryMovementsService } from './services/inventory-movements.service';
@@ -34,7 +36,7 @@ import { InventoryMovementsService } from './services/inventory-movements.servic
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([InventoryItemEntity, InventoryMovementEntity]),
+    TypeOrmModule.forFeature([InventoryItemEntity, InventoryMovementEntity, InventoryLotEntity]),
     AuthModule,
     RbacModule,
     // TenantGuard (consommé par les controllers via @UseGuards) dépend
@@ -52,6 +54,7 @@ import { InventoryMovementsService } from './services/inventory-movements.servic
   providers: [
     InventoryItemRepository,
     InventoryMovementRepository,
+    InventoryLotsRepository,
     InventoryItemsService,
     InventoryMovementsService,
   ],
