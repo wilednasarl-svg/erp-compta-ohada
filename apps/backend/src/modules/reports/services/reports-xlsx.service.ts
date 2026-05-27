@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 
 import { PL_POSTES } from './postes';
+import type { CashFlowReport } from './cash-flow.service';
 import type {
   AgingBalanceReport,
   AnnexeReport,
   CashTrendReport,
-  TftReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
   MultiYearBalanceReport,
@@ -541,11 +541,12 @@ export class ReportsXlsxService {
    * `TftReport` n'expose pas N-1 ; la colonne reste vide en attendant
    * `compareWith` sur `getTft`. Format numérique : parenthèses négatives.
    */
-  tftXlsx(report: TftReport, orgName: string): Buffer {
+  tftXlsx(report: CashFlowReport, orgName: string): Buffer {
     const rows: unknown[][] = [];
+    const prev = report.previous;
     rows.push([orgName]);
     rows.push([
-      `Tableau des Flux de Trésorerie (TFT) — SYSCOHADA AUDCIF — Du ${report.fromDate} au ${report.toDate} — méthode indirecte — Devise : XOF`,
+      `Tableau des Flux de Trésorerie (TFT) — SYSCOHADA AUDCIF (Tome 3 p. 34) — Du ${report.fromDate} au ${report.toDate} — Devise : XOF`,
     ]);
     rows.push([]);
     const header: unknown[] = ['Réf.', 'Libellé', 'Montant N', 'Montant N-1'];
@@ -553,57 +554,65 @@ export class ReportsXlsxService {
     rows.push(header);
     const numericRowIndexes: number[] = [];
 
-    const pushSection = (s: TftReport['fluxExploitation'], title: string) => {
-      rows.push(['', title, '', '']);
-      rows.push([s.code, s.label, '', '']);
-      for (const ln of s.lines) {
+    // ZA — ouverture
+    numericRowIndexes.push(rows.length);
+    rows.push(['ZA', "Trésorerie nette au 1er janvier (ouverture)",
+      this.num(report.openingCash),
+      prev !== undefined ? this.num(prev.openingCash) : '']);
+    rows.push([]);
+
+    const pushSection = (
+      section: CashFlowReport['operatingFlows'],
+      sectionTitle: string,
+      prevSubtotal?: string,
+    ) => {
+      rows.push(['', sectionTitle, '', '']);
+      for (const p of section.postes) {
         numericRowIndexes.push(rows.length);
-        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount), '']);
+        rows.push([p.code, `  ${p.label}`, this.num(p.amount), '']);
       }
       numericRowIndexes.push(rows.length);
-      rows.push(['', `  Sous-total ${s.code}`, this.num(s.total), '']);
+      rows.push([section.code, section.label,
+        this.num(section.subtotal),
+        prevSubtotal !== undefined ? this.num(prevSubtotal) : '']);
       rows.push([]);
     };
-    pushSection(report.fluxExploitation, 'ACTIVITÉS OPÉRATIONNELLES (ZA)');
-    pushSection(report.fluxInvestissement, "OPÉRATIONS D'INVESTISSEMENT (ZB)");
-    pushSection(report.fluxFinancement, 'OPÉRATIONS DE FINANCEMENT (ZC)');
 
-    numericRowIndexes.push(rows.length);
-    rows.push(['ZD', "Trésorerie nette à l'ouverture", this.num(report.tresorerieOuverture), '']);
-    numericRowIndexes.push(rows.length);
-    rows.push(['ZG', 'Trésorerie nette à la clôture', this.num(report.tresorerieCloture), '']);
-    numericRowIndexes.push(rows.length);
-    rows.push([
-      'ZH',
-      'Variation totale (ZA + ZB + ZC = ZG − ZD)',
-      this.num(report.variationTresorerie),
-      '',
-    ]);
+    pushSection(report.operatingFlows,
+      'ACTIVITÉS OPÉRATIONNELLES (flux FA à FE → ZB)',
+      prev?.operatingFlow);
+    pushSection(report.investingFlows,
+      "OPÉRATIONS D'INVESTISSEMENT (flux FF à FJ → ZC)",
+      prev?.investingFlow);
+    pushSection(report.financingFlowsEquity,
+      'FINANCEMENT — CAPITAUX PROPRES (flux FK à FN → ZD)',
+      prev?.financingFlowEquity);
+    pushSection(report.financingFlowsDebt,
+      'FINANCEMENT — CAPITAUX ÉTRANGERS (flux FO à FQ → ZE)',
+      prev?.financingFlowDebt);
 
-    // Cohérence
-    const za = parseFloat(report.fluxExploitation.total);
-    const zb = parseFloat(report.fluxInvestissement.total);
-    const zc = parseFloat(report.fluxFinancement.total);
-    const zd = parseFloat(report.tresorerieOuverture);
-    const zg = parseFloat(report.tresorerieCloture);
-    const ecart = Math.abs(za + zb + zc - (zg - zd));
+    // Pied ZF / ZG / ZH
+    numericRowIndexes.push(rows.length);
+    rows.push(['ZF', 'Flux de financement total (ZD + ZE)',
+      this.num(report.financingFlowsTotal),
+      prev !== undefined ? this.num(prev.financingFlowTotal) : '']);
+    numericRowIndexes.push(rows.length);
+    rows.push(['ZG', 'VARIATION DE LA TRÉSORERIE NETTE DE LA PÉRIODE (ZB + ZC + ZF)',
+      this.num(report.netCashVariation),
+      prev !== undefined ? this.num(prev.netCashVariation) : '']);
+    numericRowIndexes.push(rows.length);
+    rows.push(['ZH', 'Trésorerie nette au 31 décembre (ZA + ZG)',
+      this.num(report.closingCash),
+      prev !== undefined ? this.num(prev.closingCash) : '']);
+
+    // Contrôle de cohérence
+    const ecart = Math.abs(parseFloat(report.coherenceCheck));
     if (ecart > 0.005) {
       rows.push([]);
       numericRowIndexes.push(rows.length);
-      rows.push([
-        '',
-        'Écart de cohérence (Σ flux − (ZG − ZD))',
-        this.num((za + zb + zc - (zg - zd)).toFixed(2)),
-        '',
-      ]);
-    }
-
-    if (report.methodologyNotes.length > 0) {
-      rows.push([]);
-      rows.push(['', 'NOTES MÉTHODOLOGIQUES', '', '']);
-      for (const n of report.methodologyNotes) {
-        rows.push(['', n, '', '']);
-      }
+      rows.push(['',
+        'Contrôle de cohérence (ZH − trésorerie comptes classe 5)',
+        this.num(report.coherenceCheck), '']);
     }
 
     return this.buildWorkbookFormatted(rows, 'TFT', {

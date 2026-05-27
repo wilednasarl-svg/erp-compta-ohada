@@ -6,8 +6,8 @@ import type {
   BilanMasse,
   BilanPoste,
   ProfitLossReport,
-  TftReport,
 } from '../services/reports.service';
+import type { CashFlowReport } from '../services/cash-flow.service';
 
 /**
  * Tests W5.2 — Bilan PDF contexture normalisée DGI à 4 colonnes
@@ -275,37 +275,44 @@ const fakeProfitLoss = (): ProfitLossReport => ({
   resultat: '2000000.00',
 });
 
-const fakeTft = (): TftReport => ({
+const fakeCashFlow = (): CashFlowReport => ({
   fromDate: '2025-01-01',
   toDate: '2025-12-31',
-  fluxExploitation: {
-    code: 'ZA',
-    label: 'Flux de trésorerie liés aux activités opérationnelles',
-    total: '3000000.00',
-    lines: [
-      { code: 'FA', label: 'CAFG' , amount: '2500000.00' },
+  openingCash: '1000000.00',
+  operatingFlows: {
+    code: 'ZB',
+    label: 'Flux de trésorerie provenant des activités opérationnelles',
+    subtotal: '3000000.00',
+    postes: [
+      { code: 'FA', label: 'CAFG', amount: '2500000.00' },
       { code: 'FB', label: 'Variation BFR', amount: '500000.00' },
     ],
   },
-  fluxInvestissement: {
-    code: 'ZB',
-    label: "Flux liés aux opérations d'investissement",
-    total: '-1500000.00',
-    lines: [
-      { code: 'FF', label: "Acquisitions d'immobilisations", amount: '-2000000.00' },
-      { code: 'FG', label: "Cessions d'immobilisations", amount: '500000.00' },
+  investingFlows: {
+    code: 'ZC',
+    label: "Flux provenant des activités d'investissement",
+    subtotal: '-1500000.00',
+    postes: [
+      { code: 'FF', label: "Décaissements liés aux acquisitions d'immobilisations incorporelles", amount: '-2000000.00' },
+      { code: 'FG', label: "Encaissements liés aux cessions d'immobilisations incorporelles et corporelles", amount: '500000.00' },
     ],
   },
-  fluxFinancement: {
-    code: 'ZC',
-    label: 'Flux liés aux opérations de financement',
-    total: '500000.00',
-    lines: [{ code: 'FK', label: 'Augmentation de capital', amount: '500000.00' }],
+  financingFlowsEquity: {
+    code: 'ZD',
+    label: 'Flux de trésorerie provenant des capitaux propres',
+    subtotal: '500000.00',
+    postes: [{ code: 'FK', label: 'Augmentation de capital par apports nouveaux', amount: '500000.00' }],
   },
-  variationTresorerie: '2000000.00',
-  tresorerieOuverture: '1000000.00',
-  tresorerieCloture: '3000000.00',
-  methodologyNotes: ['Note méthodologique de test pour cohérence ZH = ZG − ZD.'],
+  financingFlowsDebt: {
+    code: 'ZE',
+    label: 'Flux de trésorerie provenant des capitaux étrangers',
+    subtotal: '0.00',
+    postes: [],
+  },
+  financingFlowsTotal: '500000.00',
+  netCashVariation: '2000000.00',
+  closingCash: '3000000.00',
+  coherenceCheck: '0.00',
 });
 
 describe('ReportsPdfService — Compte de Résultat W5.2 volet 2', () => {
@@ -372,7 +379,7 @@ describe('ReportsPdfService — TFT W5.2 volet 2', () => {
   });
 
   it('produit un buffer PDF non vide pour le TFT', async () => {
-    const buf = await service.tftPdf(fakeTft(), 'ACME SARL');
+    const buf = await service.tftPdf(fakeCashFlow(), 'ACME SARL');
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.slice(0, 5).toString('ascii')).toBe('%PDF-');
@@ -381,7 +388,7 @@ describe('ReportsPdfService — TFT W5.2 volet 2', () => {
   it('contient les 3 sections ZA / ZB / ZC + pied ZD / ZG / ZH', async () => {
     const cap = captureTextCalls();
     try {
-      await service.tftPdf(fakeTft(), 'ACME SARL');
+      await service.tftPdf(fakeCashFlow(), 'ACME SARL');
     } finally {
       cap.restore();
     }
@@ -394,7 +401,7 @@ describe('ReportsPdfService — TFT W5.2 volet 2', () => {
   it('indique la méthode indirecte et la devise XOF', async () => {
     const cap = captureTextCalls();
     try {
-      await service.tftPdf(fakeTft(), 'ACME SARL');
+      await service.tftPdf(fakeCashFlow(), 'ACME SARL');
     } finally {
       cap.restore();
     }

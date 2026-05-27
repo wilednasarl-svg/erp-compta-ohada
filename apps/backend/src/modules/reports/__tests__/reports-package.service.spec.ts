@@ -14,12 +14,12 @@ import { NotImplementedError } from '../services/notes-annexes/types';
 import { ReportsPackageService } from '../services/reports-package.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
 import type { ReportsService } from '../services/reports.service';
-import { ReportsXlsxService } from '../services/reports-xlsx.service';
 import type {
   BalanceSheetReport,
   ProfitLossReport,
-  TftReport,
 } from '../services/reports.service';
+import type { CashFlowService, CashFlowReport } from '../services/cash-flow.service';
+import { ReportsXlsxService } from '../services/reports-xlsx.service';
 import type { DsfIdentificationBundle } from '../types/dsf-profile.types';
 
 /* ────────────────────────────────────────────────────────────────────
@@ -52,18 +52,20 @@ function buildProfitLoss(): ProfitLossReport {
   } as unknown as ProfitLossReport;
 }
 
-function buildTft(): TftReport {
+function buildTft(): CashFlowReport {
   return {
     fromDate: '2026-01-01',
     toDate: '2026-12-31',
-    fluxExploitation: { code: 'ZA', label: 'Exploitation', lines: [], total: '0' },
-    fluxInvestissement: { code: 'ZB', label: 'Investissement', lines: [], total: '0' },
-    fluxFinancement: { code: 'ZC', label: 'Financement', lines: [], total: '0' },
-    tresorerieOuverture: '0',
-    tresorerieCloture: '0',
-    variationTresorerie: '0',
-    methodologyNotes: [],
-  } as unknown as TftReport;
+    openingCash: '0',
+    operatingFlows: { code: 'ZB', label: 'Flux de trésorerie provenant des activités opérationnelles', postes: [], subtotal: '0' },
+    investingFlows: { code: 'ZC', label: 'Flux de trésorerie provenant des activités d\'investissement', postes: [], subtotal: '0' },
+    financingFlowsEquity: { code: 'ZD', label: 'Flux de trésorerie provenant du financement par les capitaux propres', postes: [], subtotal: '0' },
+    financingFlowsDebt: { code: 'ZE', label: 'Flux de trésorerie provenant du financement par les capitaux étrangers', postes: [], subtotal: '0' },
+    financingFlowsTotal: '0',
+    netCashVariation: '0',
+    closingCash: '0',
+    coherenceCheck: '0',
+  } as unknown as CashFlowReport;
 }
 
 function buildFichesBundle(): DsfIdentificationBundle {
@@ -168,6 +170,9 @@ function makeService(opts: {
   } as unknown as ReportsService;
 
   const xlsx = new ReportsXlsxService();
+  const cashFlow = {
+    getCashFlow: jest.fn().mockResolvedValue(buildTft()),
+  } as unknown as CashFlowService;
   const pdf = new ReportsPdfService();
   const dsfFichesPdf = new DsfFichesPdfService();
 
@@ -187,6 +192,7 @@ function makeService(opts: {
 
   return new ReportsPackageService(
     reports,
+    cashFlow,
     xlsx,
     pdf,
     dsfFichesPdf,

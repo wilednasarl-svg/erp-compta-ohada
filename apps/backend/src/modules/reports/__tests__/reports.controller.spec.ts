@@ -15,6 +15,7 @@ import type {
   AnnexeNoteDetailReport,
   AgingBalanceReport,
 } from '../services/reports.service';
+import type { CashFlowService } from '../services/cash-flow.service';
 import type { ReportsPackageService } from '../services/reports-package.service';
 import type { ReportsPdfService } from '../services/reports-pdf.service';
 import type { ReportsXlsxService } from '../services/reports-xlsx.service';
@@ -37,16 +38,18 @@ function buildHarness() {
   };
   const pdf = { sigPdf: jest.fn(), agingBalancePdf: jest.fn() };
   const xlsx = { sigXlsx: jest.fn() };
+  const cashFlow = { getCashFlow: jest.fn() };
   const pkg = { buildAnnualPackage: jest.fn() };
   const dsfValidator = { validate: jest.fn() };
   const controller = new ReportsController(
     reports as unknown as ReportsService,
+    cashFlow as unknown as CashFlowService,
     pdf as unknown as ReportsPdfService,
     xlsx as unknown as ReportsXlsxService,
     pkg as unknown as ReportsPackageService,
     dsfValidator as unknown as import('../services/dsf-validator.service').DsfValidatorService,
   );
-  return { controller, reports, pdf, xlsx, pkg, dsfValidator };
+  return { controller, reports, pdf, xlsx, pkg, dsfValidator, cashFlow };
 }
 
 function buildRes(): Response {
@@ -276,7 +279,7 @@ describe('ReportsController.annualPackage', () => {
 describe('ReportsController.cashTrend + tft + financialRatios', () => {
   it.each([
     ['cashTrend', 'getCashTrend', () => Object.assign(new CashTrendQueryDto(), { fromMonth: '2026-01', toMonth: '2026-12' })],
-    ['tft', 'getTft', () => Object.assign(new PeriodQueryDto(), { fromDate: '2026-01-01', toDate: '2026-12-31' })],
+    ['tft', 'getCashFlow', () => Object.assign(new PeriodQueryDto(), { fromDate: '2026-01-01', toDate: '2026-12-31' })],
     [
       'financialRatios',
       'getFinancialRatios',
@@ -284,11 +287,12 @@ describe('ReportsController.cashTrend + tft + financialRatios', () => {
     ],
   ])('controller.%s calls reports.%s and wraps result', async (method, serviceMethod, queryBuilder) => {
     const h = buildHarness();
-    (h.reports as Record<string, jest.Mock>)[serviceMethod].mockResolvedValue({ stub: true });
     const q = queryBuilder();
+    const serviceMock = (h.reports as Record<string, jest.Mock>)[serviceMethod] || (h.cashFlow as Record<string, jest.Mock>)[serviceMethod];
+    serviceMock.mockResolvedValue({ stub: true });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (h.controller as any)[method](ORG_ID, q, ORG);
-    expect((h.reports as Record<string, jest.Mock>)[serviceMethod]).toHaveBeenCalled();
+    expect(serviceMock).toHaveBeenCalled();
     expect(result).toEqual({ report: { stub: true } });
   });
 });

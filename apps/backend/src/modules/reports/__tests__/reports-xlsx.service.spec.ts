@@ -6,8 +6,8 @@ import type {
   BilanMasse,
   BilanPoste,
   ProfitLossReport,
-  TftReport,
 } from '../services/reports.service';
+import type { CashFlowReport } from '../services/cash-flow.service';
 
 /**
  * Tests W5.2 volet 2 — XLSX (Bilan + CR + TFT) refondus à la contexture
@@ -131,31 +131,38 @@ const fakeProfitLoss = (): ProfitLossReport => ({
   resultat: '3500000.00',
 });
 
-const fakeTft = (): TftReport => ({
+const fakeCashFlow = (): CashFlowReport => ({
   fromDate: '2025-01-01',
   toDate: '2025-12-31',
-  fluxExploitation: {
-    code: 'ZA',
-    label: 'Flux opérationnels',
-    total: '3000000.00',
-    lines: [{ code: 'FA', label: 'CAFG', amount: '3000000.00' }],
-  },
-  fluxInvestissement: {
+  openingCash: '1000000.00',
+  operatingFlows: {
     code: 'ZB',
-    label: "Flux d'investissement",
-    total: '-1500000.00',
-    lines: [{ code: 'FF', label: "Acquisitions d'immo", amount: '-1500000.00' }],
+    label: 'Flux opérationnels',
+    subtotal: '3000000.00',
+    postes: [{ code: 'FA', label: 'CAFG', amount: '3000000.00' }],
   },
-  fluxFinancement: {
+  investingFlows: {
     code: 'ZC',
-    label: 'Flux de financement',
-    total: '500000.00',
-    lines: [{ code: 'FK', label: 'Augmentation de capital', amount: '500000.00' }],
+    label: "Flux d'investissement",
+    subtotal: '-1500000.00',
+    postes: [{ code: 'FF', label: "Acquisitions d'immo", amount: '-1500000.00' }],
   },
-  variationTresorerie: '2000000.00',
-  tresorerieOuverture: '1000000.00',
-  tresorerieCloture: '3000000.00',
-  methodologyNotes: [],
+  financingFlowsEquity: {
+    code: 'ZD',
+    label: 'Flux de financement',
+    subtotal: '500000.00',
+    postes: [{ code: 'FK', label: 'Augmentation de capital', amount: '500000.00' }],
+  },
+  financingFlowsDebt: {
+    code: 'ZE',
+    label: 'Dettes',
+    subtotal: '0.00',
+    postes: [],
+  },
+  financingFlowsTotal: '500000.00',
+  netCashVariation: '2000000.00',
+  closingCash: '3000000.00',
+  coherenceCheck: '0.00',
 });
 
 /** Extrait les chaînes texte de toutes les cellules d'une feuille. */
@@ -240,12 +247,12 @@ describe('ReportsXlsxService — TFT W5.2 volet 2', () => {
   });
 
   it('produit un buffer XLSX ≥ 1 KB pour le TFT', () => {
-    const buf = service.tftXlsx(fakeTft(), 'ACME SARL');
+    const buf = service.tftXlsx(fakeCashFlow(), 'ACME SARL');
     expect(buf.length).toBeGreaterThan(1024);
   });
 
   it('contient les 3 sections ZA / ZB / ZC + pied ZD / ZG / ZH', () => {
-    const buf = service.tftXlsx(fakeTft(), 'ACME SARL');
+    const buf = service.tftXlsx(fakeCashFlow(), 'ACME SARL');
     const wb = XLSX.read(buf, { type: 'buffer' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const joined = sheetStrings(sheet).join('||');

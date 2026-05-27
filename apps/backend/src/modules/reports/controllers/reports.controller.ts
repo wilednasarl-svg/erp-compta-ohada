@@ -44,7 +44,6 @@ import {
   type AnnexeReport,
   type CashTrendReport,
   type ImportDiagnosticReport,
-  type TftReport,
   type ComparativeBalanceReport,
   type MarginByAxisReport,
   type MultiYearBalanceReport,
@@ -54,6 +53,10 @@ import {
   type SigReport,
   type TrialBalanceReport,
 } from '../services/reports.service';
+import {
+  CashFlowService,
+  type CashFlowReport,
+} from '../services/cash-flow.service';
 import {
   DsfValidatorService,
   type DsfValidationReport,
@@ -109,6 +112,7 @@ import {
 export class ReportsController {
   constructor(
     private readonly reports: ReportsService,
+    private readonly cashFlow: CashFlowService,
     private readonly pdf: ReportsPdfService,
     private readonly xlsx: ReportsXlsxService,
     private readonly packageBuilder: ReportsPackageService,
@@ -465,14 +469,14 @@ export class ReportsController {
   @Get('tft')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3' })
+  @ApiOperation({ summary: 'TFT (Tableau Flux Trésorerie — doctrine Tome 3 p.34) — OHADA SYSCOHADA' })
   @ApiOkResponse({ type: TftReportEnvelope })
   async tft(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Query() query: PeriodQueryDto,
     @CurrentOrg() org: CurrentOrgContext,
-  ): Promise<{ report: TftReport }> {
-    const report = await this.reports.getTft(asTenantId(org.id), {
+  ): Promise<{ report: CashFlowReport }> {
+    const report = await this.cashFlow.getCashFlow(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
     });
@@ -569,7 +573,7 @@ export class ReportsController {
 
   @Get('tft.xlsx')
   @RequirePermission('journals.reports')
-  @ApiOperation({ summary: 'Export Excel — TFT OHADA (méthode indirecte)' })
+  @ApiOperation({ summary: 'Export Excel — TFT OHADA (doctrine Tome 3, ZA-ZH)' })
   @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
   async tftXlsx(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
@@ -577,7 +581,7 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const report = await this.reports.getTft(asTenantId(org.id), {
+    const report = await this.cashFlow.getCashFlow(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
     });
@@ -950,7 +954,7 @@ export class ReportsController {
 
   @Get('tft.pdf')
   @RequirePermission('journals.reports')
-  @ApiOperation({ summary: 'Export PDF — TFT' })
+  @ApiOperation({ summary: 'Export PDF — TFT (Tome 3 p.34, 5 colonnes DGI)' })
   @ApiProduces('application/pdf')
   async tftPdf(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
@@ -958,7 +962,7 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const report = await this.reports.getTft(asTenantId(org.id), {
+    const report = await this.cashFlow.getCashFlow(asTenantId(org.id), {
       fromDate: query.fromDate,
       toDate: query.toDate,
     });

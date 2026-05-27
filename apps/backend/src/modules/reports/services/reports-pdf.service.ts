@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 
 import { PL_POSTES } from './postes';
+import type { CashFlowReport } from './cash-flow.service';
 import type {
   AgingBalanceReport,
   BalanceSheetReport,
@@ -14,7 +15,6 @@ import type {
   ProfitLossAccountLine,
   ProfitLossReport,
   SigReport,
-  TftReport,
   TrialBalanceReport,
 } from './reports.service';
 
@@ -814,7 +814,7 @@ export class ReportsPdfService {
    * reste vide pour cette release (TODO : compareWith côté `getTft`).
    * Devise : XOF. Négatifs entre parenthèses.
    */
-  async tftPdf(report: TftReport, orgName: string): Promise<Buffer> {
+  async tftPdf(report: CashFlowReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
     this.header(
       doc,
@@ -831,96 +831,76 @@ export class ReportsPdfService {
     ];
     let y = this.tableHeader(doc, cols);
 
-    const renderSection = (s: TftReport['fluxExploitation'], title: string): void => {
-      if (y > doc.page.height - 80) {
-        doc.addPage();
-        y = this.tableHeader(doc, cols);
+    const prev = report.previous;
+
+    // Helper : rend une section (postes + sous-total Z)
+    const renderSection = (
+      section: CashFlowReport['operatingFlows'],
+      sectionTitle: string,
+      prevSubtotal?: string,
+    ): void => {
+      if (y > doc.page.height - 80) { doc.addPage(); y = this.tableHeader(doc, cols); }
+      y = this.sectionTitle(doc, sectionTitle, y);
+      for (const p of section.postes) {
+        if (y > doc.page.height - 60) { doc.addPage(); y = this.tableHeader(doc, cols); }
+        y = this.tableRow(doc, cols,
+          [p.code, `  ${p.label}`, '', this.fmtPar(p.amount), ''], y);
       }
-      y = this.sectionTitle(doc, title, y);
-      y = this.tableRow(doc, cols, [s.code, s.label, '', '', ''], y, true);
-      for (const ln of s.lines) {
-        if (y > doc.page.height - 60) {
-          doc.addPage();
-          y = this.tableHeader(doc, cols);
-        }
-        y = this.tableRow(
-          doc,
-          cols,
-          [ln.code, `  ${ln.label}`, ln.note ?? '', this.fmtPar(ln.amount), ''],
-          y,
-        );
-      }
-      y = this.tableRow(
-        doc,
-        cols,
-        ['', `  Sous-total ${s.code}`, '', this.fmtPar(s.total), ''],
-        y,
-        true,
-      );
+      y = this.tableRow(doc, cols,
+        [section.code, section.label, '',
+          this.fmtPar(section.subtotal),
+          prevSubtotal !== undefined ? this.fmtPar(prevSubtotal) : ''],
+        y, true);
     };
 
-    renderSection(report.fluxExploitation, 'ACTIVITÉS OPÉRATIONNELLES (ZA)');
-    renderSection(report.fluxInvestissement, "OPÉRATIONS D'INVESTISSEMENT (ZB)");
-    renderSection(report.fluxFinancement, 'OPÉRATIONS DE FINANCEMENT (ZC)');
+    // ZA — ouverture
+    y = this.tableRow(doc, cols,
+      ['ZA', "Trésorerie nette au 1er janvier (ouverture)", '',
+        this.fmtPar(report.openingCash),
+        prev !== undefined ? this.fmtPar(prev.openingCash) : ''],
+      y, true);
 
-    // ── Pied normalisé DGI : ZD / ZG / ZH ──
-    if (y > doc.page.height - 100) {
-      doc.addPage();
-      y = this.tableHeader(doc, cols);
-    }
+    renderSection(report.operatingFlows,
+      'ACTIVITÉS OPÉRATIONNELLES (flux FA à FE → ZB)',
+      prev?.operatingFlow);
+    renderSection(report.investingFlows,
+      "OPÉRATIONS D'INVESTISSEMENT (flux FF à FJ → ZC)",
+      prev?.investingFlow);
+    renderSection(report.financingFlowsEquity,
+      'FINANCEMENT — CAPITAUX PROPRES (flux FK à FN → ZD)',
+      prev?.financingFlowEquity);
+    renderSection(report.financingFlowsDebt,
+      'FINANCEMENT — CAPITAUX ÉTRANGERS (flux FO à FQ → ZE)',
+      prev?.financingFlowDebt);
+
+    // ── Pied normalisé ZF / ZG / ZH ──
+    if (y > doc.page.height - 120) { doc.addPage(); y = this.tableHeader(doc, cols); }
     y += 6;
-    y = this.tableRow(
-      doc,
-      cols,
-      ['ZD', "Trésorerie nette à l'ouverture", '', this.fmtPar(report.tresorerieOuverture), ''],
-      y,
-      true,
-    );
-    y = this.tableRow(
-      doc,
-      cols,
-      ['ZG', 'Trésorerie nette à la clôture', '', this.fmtPar(report.tresorerieCloture), ''],
-      y,
-      true,
-    );
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        'ZH',
-        'Variation totale de trésorerie (ZA + ZB + ZC = ZG − ZD)',
-        '',
-        this.fmtPar(report.variationTresorerie),
-        '',
-      ],
-      y,
-      true,
-    );
+    y = this.tableRow(doc, cols,
+      ['ZF', 'Flux de financement total (ZD + ZE)', '',
+        this.fmtPar(report.financingFlowsTotal),
+        prev !== undefined ? this.fmtPar(prev.financingFlowTotal) : ''],
+      y, true);
+    y = this.tableRow(doc, cols,
+      ['ZG', 'VARIATION DE LA TRÉSORERIE NETTE DE LA PÉRIODE (ZB + ZC + ZF)', '',
+        this.fmtPar(report.netCashVariation),
+        prev !== undefined ? this.fmtPar(prev.netCashVariation) : ''],
+      y, true);
+    y = this.tableRow(doc, cols,
+      ['ZH', 'Trésorerie nette au 31 décembre (ZA + ZG)', '',
+        this.fmtPar(report.closingCash),
+        prev !== undefined ? this.fmtPar(prev.closingCash) : ''],
+      y, true);
 
-    // ── Contrôle de cohérence (écart ZH − (ZG − ZD)) ──
-    const za = parseFloat(report.fluxExploitation.total);
-    const zb = parseFloat(report.fluxInvestissement.total);
-    const zc = parseFloat(report.fluxFinancement.total);
-    const zd = parseFloat(report.tresorerieOuverture);
-    const zg = parseFloat(report.tresorerieCloture);
-    const sumFlux = za + zb + zc;
-    const variationCheck = zg - zd;
-    const ecart = Math.abs(sumFlux - variationCheck);
-    if (ecart > 0.005 || report.methodologyNotes.length > 0) {
+    // ── Contrôle de cohérence ──
+    const ecart = Math.abs(parseFloat(report.coherenceCheck));
+    if (ecart > 0.005) {
       y += 6;
       doc.font('Helvetica-Oblique').fontSize(7).fillColor('#555555');
-      if (ecart > 0.005) {
-        doc.text(
-          `Écart de cohérence (Σ flux − (ZG − ZD)) : ${this.fmtPar((sumFlux - variationCheck).toFixed(2))} FCFA`,
-          ReportsPdfService.MARGIN,
-          y,
-        );
-        y += ReportsPdfService.LINE_HEIGHT;
-      }
-      for (const note of report.methodologyNotes.slice(0, 3)) {
-        doc.text(`• ${note}`, ReportsPdfService.MARGIN, y);
-        y += ReportsPdfService.LINE_HEIGHT;
-      }
+      doc.text(
+        `Contrôle de cohérence (ZH − trésorerie comptes classe 5) : ${this.fmtPar(report.coherenceCheck)} FCFA`,
+        ReportsPdfService.MARGIN, y,
+      );
       doc.fillColor('#000000');
     }
 

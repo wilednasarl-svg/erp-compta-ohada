@@ -14,6 +14,7 @@ import type { NoteContent } from './notes-annexes/types';
 import { ReportsPdfService } from './reports-pdf.service';
 import { ReportsService } from './reports.service';
 import { ReportsXlsxService } from './reports-xlsx.service';
+import { CashFlowService } from './cash-flow.service';
 import type {
   CoverPageData,
   DirectorsFicheData,
@@ -45,6 +46,7 @@ import type {
 export class ReportsPackageService {
   constructor(
     private readonly reports: ReportsService,
+    private readonly cashFlow: CashFlowService,
     private readonly xlsx: ReportsXlsxService,
     private readonly pdf: ReportsPdfService,
     private readonly dsfFichesPdf: DsfFichesPdfService,
@@ -121,7 +123,7 @@ export class ReportsPackageService {
         return this.xlsx.financialRatiosXlsx(r, query.orgName);
       }),
       this.safeBuild('08-tft.xlsx', async () => {
-        const r = await this.reports.getTft(organizationId, {
+        const r = await this.cashFlow.getCashFlow(organizationId, {
           fromDate: query.fromDate,
           toDate: query.toDate,
         });
@@ -283,14 +285,14 @@ export class ReportsPackageService {
         return this.xlsx.profitLossXlsx(r, options.orgName);
       }),
       this.safeBuild('12-tft.pdf', async () => {
-        const r = await this.reports.getTft(organizationId, {
+        const r = await this.cashFlow.getCashFlow(organizationId, {
           fromDate: options.fromDate,
           toDate: options.toDate,
         });
         return this.pdf.tftPdf(r, options.orgName);
       }),
       this.safeBuild('12-tft.xlsx', async () => {
-        const r = await this.reports.getTft(organizationId, {
+        const r = await this.cashFlow.getCashFlow(organizationId, {
           fromDate: options.fromDate,
           toDate: options.toDate,
         });
