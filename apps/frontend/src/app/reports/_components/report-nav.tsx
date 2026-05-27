@@ -114,13 +114,13 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
         mode: 'profit-loss',
         label: 'Compte de résultat',
         icon: PieChart,
-        hint: 'Charges, produits et résultat de l’exercice — vue classique pour la liasse fiscale.',
+        hint: "Charges, produits et résultat de l’exercice — vue classique pour la liasse fiscale.",
       },
       {
         mode: 'sig',
         label: 'SIG',
         icon: TrendingUp,
-        hint: 'Soldes intermédiaires de gestion, du chiffre d’affaires au résultat net.',
+        hint: "Soldes intermédiaires de gestion, du chiffre d’affaires au résultat net.",
       },
       {
         mode: 'tft',
@@ -174,9 +174,9 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
       },
       {
         mode: ‘import-diagnostic’,
-        label: ‘Diagnostic d’import’,
+        label: "Diagnostic d’import",
         icon: Stethoscope,
-        hint: ‘Anomalies sur les écritures issues d’un import récent.’,
+        hint: "Anomalies sur les écritures issues d’un import récent.",
       },
     ],
   },
