@@ -15,7 +15,6 @@ import type {
   MultiYearBalanceReport,
   ProfitLossReport,
   SigReport,
-  TafireReport,
   TftReport,
   TrialBalanceReport,
 } from '../../services/reports.service';
@@ -54,11 +53,6 @@ export class SigReportEnvelope {
 export class BalanceSheetReportEnvelope {
   @ApiProperty({ type: 'object', description: 'Bilan OHADA' })
   report!: BalanceSheetReport;
-}
-
-export class TafireReportEnvelope {
-  @ApiProperty({ type: 'object', description: 'TAFIRE OHADA' })
-  report!: TafireReport;
 }
 
 export class TftReportEnvelope {

@@ -67,7 +67,6 @@ import type {
   ProfitLossLine,
   ProfitLossReport,
   SigReport,
-  TafireReport,
   TftReport,
   TrialBalanceReport,
 } from '@/types/reports';
@@ -98,9 +97,6 @@ interface MultiYearBalanceEnvelope {
 }
 interface AgingBalanceEnvelope {
   readonly report: AgingBalanceReport;
-}
-interface TafireEnvelope {
-  readonly report: TafireReport;
 }
 interface TftEnvelope {
   readonly report: TftReport;
@@ -212,8 +208,6 @@ export default function ReportsPage() {
           <CashTrendPanel orgId={orgId} />
         ) : mode === 'aging-balance' ? (
           <AgingBalancePanel orgId={orgId} />
-        ) : mode === 'tafire' ? (
-          <TafirePanel orgId={orgId} />
         ) : mode === 'tft' ? (
           <TftPanel orgId={orgId} />
         ) : mode === 'annexe' ? (
@@ -3868,174 +3862,6 @@ function formatRatioValue(ratio: FinancialRatio): { value: string; unit: string 
   return { value: formatted, unit: null };
 }
 
-// ─── TAFIRE ────────────────────────────────────────────────────────────
-
-function TafirePanel({ orgId }: { readonly orgId: string }) {
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
-  const [submitted, setSubmitted] = useState<{ fromDate: string; toDate: string } | null>(null);
-
-  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
-    new URLSearchParams({ fromDate: s.fromDate, toDate: s.toDate });
-
-  const query = useQuery<TafireReport, ApiError>({
-    queryKey: ['reports', 'tafire', orgId, submitted],
-    queryFn: async () => {
-      if (submitted === null) throw new Error('not submitted');
-      const data = await api.get<TafireEnvelope>(
-        `/organizations/${orgId}/reports/tafire?${buildParams(submitted).toString()}`,
-      );
-      return data.report;
-    },
-    enabled: orgId !== '' && submitted !== null,
-  });
-
-  const downloadXlsx = (): void => {
-    if (submitted === null) return;
-    void api.download(
-      `/organizations/${orgId}/reports/tafire.xlsx?${buildParams(submitted).toString()}`,
-      'tafire.xlsx',
-    );
-  };
-
-  return (
-    <Card className="border-line bg-paper shadow-none">
-      <CardHeader className="border-b border-line">
-        <CardTitle className="font-display text-2xl font-medium tracking-tight">TAFIRE — Tableau Financier des Ressources et Emplois</CardTitle>
-        <CardDescription>
-          État OHADA obligatoire pour les grandes entreprises (Vol. 3 SYSCOHADA AUDCIF).
-          EMPLOIS : investissements + variation BFR + remboursements dettes.
-          RESSOURCES : CAF + cessions + augmentations capitaux/dettes. CAF calculée
-          automatiquement à partir du SIG.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <form
-          className="grid gap-3 sm:grid-cols-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSubmitted({ fromDate, toDate });
-          }}
-        >
-          <div className="space-y-1">
-            <Label htmlFor="taf-from">Du</Label>
-            <Input
-              id="taf-from"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="taf-to">Au</Label>
-            <Input
-              id="taf-to"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex items-end gap-2">
-            <Button type="submit" disabled={query.isFetching}>
-              {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Générer
-            </Button>
-            {query.data !== undefined ? (
-              <Button type="button" variant="outline" onClick={downloadXlsx}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-            ) : null}
-          </div>
-        </form>
-
-        {query.isError ? <FormError error={query.error} /> : null}
-
-        {query.data !== undefined ? <TafireTable report={query.data} /> : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TafireTable({ report }: { readonly report: TafireReport }) {
-  const sumOf = (sections: ReadonlyArray<{ readonly total: string }>): string =>
-    sections.reduce((s, sec) => s + Number(sec.total), 0).toFixed(2);
-  const totalEmplois = sumOf(report.emplois);
-  const totalRessources = sumOf(report.ressources);
-  const equilibre = Number(totalEmplois) === Number(totalRessources);
-
-  return (
-    <div className="space-y-8">
-      {/* Bandeau récap : période + ∑ Emplois + ∑ Ressources +
-          équilibre/variation. Le TAFIRE doit s'équilibrer (Σemplois =
-          Σressources + variation tréso) — un déséquilibre en mode strict
-          révèle une donnée manquante. */}
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
-        <div className="bg-paper px-4 py-3">
-          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
-          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
-            {formatShortDate(report.fromDate)} → {formatShortDate(report.toDate)}
-          </p>
-        </div>
-        <div className="bg-paper px-4 py-3">
-          <p className="text-2xs uppercase tracking-wider text-critical-ink">∑ Emplois</p>
-          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-critical-ink">
-            {fmt(totalEmplois)}
-          </p>
-        </div>
-        <div className="bg-paper px-4 py-3">
-          <p className="text-2xs uppercase tracking-wider text-accent-ink">∑ Ressources</p>
-          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-accent-ink">
-            {fmt(totalRessources)}
-          </p>
-        </div>
-        <div
-          className={cn(
-            'px-4 py-3',
-            equilibre ? 'bg-accent-soft/60' : 'bg-warn-soft',
-          )}
-        >
-          <p
-            className={cn(
-              'text-2xs uppercase tracking-wider',
-              equilibre ? 'text-accent-ink' : 'text-warn-ink',
-            )}
-          >
-            Variation trésorerie
-          </p>
-          <p
-            className={cn(
-              'mt-0.5 font-mono text-xl font-medium tabular-nums',
-              equilibre ? 'text-accent-ink' : 'text-warn-ink',
-            )}
-          >
-            {fmt(report.variationTresorerie)}
-          </p>
-        </div>
-      </div>
-
-      <OhadaStatementBlock
-        title="Emplois"
-        subtitle="Investissements et remboursements"
-        sections={report.emplois}
-        accent="critical"
-      />
-      <OhadaStatementBlock
-        title="Ressources"
-        subtitle="CAFG, cessions, augmentations de dettes"
-        sections={report.ressources}
-        accent="accent"
-      />
-
-      {report.methodologyNotes.length > 0 ? (
-        <MethodologyDetails notes={report.methodologyNotes} />
-      ) : null}
-    </div>
-  );
-}
-
 // ─── TFT ───────────────────────────────────────────────────────────────
 
 function TftPanel({ orgId }: { readonly orgId: string }) {
@@ -4521,8 +4347,8 @@ function AnnexeNoteDetailInline({
 // ─── Bloc réutilisable de section OHADA ────────────────────────────────
 
 /**
- * Bloc d'état OHADA — utilisé par TFT (3 catégories de flux) et
- * TAFIRE (Emplois / Ressources). Chaque section a son code OHADA,
+ * Bloc d'état OHADA — utilisé par TFT (3 catégories de flux).
+ * Chaque section a son code OHADA,
  * son label, ses lignes détaillées et son total.
  *
  * `accent` colore le marqueur visuel (puce + bordure du total) selon

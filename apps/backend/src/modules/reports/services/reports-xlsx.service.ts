@@ -6,7 +6,6 @@ import type {
   AgingBalanceReport,
   AnnexeReport,
   CashTrendReport,
-  TafireReport,
   TftReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
@@ -526,40 +525,6 @@ export class ReportsXlsxService {
     ]);
 
     return this.buildWorkbook(rows, 'Balance comparative');
-  }
-
-  // ─── TAFIRE ──────────────────────────────────────────────────────
-  tafireXlsx(report: TafireReport, orgName: string): Buffer {
-    const rows: unknown[][] = [];
-    rows.push([orgName]);
-    rows.push([`TAFIRE — Du ${report.fromDate} au ${report.toDate}`]);
-    rows.push([]);
-    rows.push(['Réf.', 'Libellé', 'Montant']);
-    rows.push(['', 'EMPLOIS']);
-    for (const s of report.emplois) {
-      rows.push([s.code, s.label, '']);
-      for (const ln of s.lines) {
-        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount)]);
-      }
-      rows.push(['', `  TOTAL ${s.label}`, this.num(s.total)]);
-    }
-    rows.push([]);
-    rows.push(['', 'RESSOURCES']);
-    for (const s of report.ressources) {
-      rows.push([s.code, s.label, '']);
-      for (const ln of s.lines) {
-        rows.push([ln.code, `  ${ln.label}`, this.num(ln.amount)]);
-      }
-      rows.push(['', `  TOTAL ${s.label}`, this.num(s.total)]);
-    }
-    rows.push([]);
-    rows.push(['', 'Variation de trésorerie', this.num(report.variationTresorerie)]);
-    rows.push([]);
-    rows.push(['', 'NOTES MÉTHODOLOGIQUES']);
-    for (const n of report.methodologyNotes) {
-      rows.push(['', n, '']);
-    }
-    return this.buildWorkbook(rows, 'TAFIRE');
   }
 
   // ─── TFT (W5.2 volet 2 — contexture normalisée DGI) ──────────────

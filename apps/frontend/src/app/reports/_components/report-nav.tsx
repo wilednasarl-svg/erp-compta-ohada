@@ -9,7 +9,6 @@ import {
   FileText,
   GitBranch,
   History,
-  Landmark,
   Layers,
   PieChart,
   Scale,
@@ -46,7 +45,6 @@ export type ReportMode =
   | 'ratios'
   | 'cash-trend'
   | 'aging-balance'
-  | 'tafire'
   | 'tft'
   | 'annexe'
   | 'margin-by-axis'
@@ -121,12 +119,6 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
         label: 'SIG',
         icon: TrendingUp,
         hint: 'Soldes intermédiaires de gestion, du chiffre d’affaires au résultat net.',
-      },
-      {
-        mode: 'tafire',
-        label: 'TAFIRE',
-        icon: Landmark,
-        hint: 'Tableau financier des ressources et emplois.',
       },
       {
         mode: 'tft',

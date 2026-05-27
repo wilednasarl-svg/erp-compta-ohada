@@ -49,15 +49,6 @@ export interface OhadaStatementSection {
   readonly total: string;
 }
 
-export interface TafireReport {
-  readonly fromDate: string;
-  readonly toDate: string;
-  readonly emplois: ReadonlyArray<OhadaStatementSection>;
-  readonly ressources: ReadonlyArray<OhadaStatementSection>;
-  readonly variationTresorerie: string;
-  readonly methodologyNotes: ReadonlyArray<string>;
-}
-
 export interface TftReport {
   readonly fromDate: string;
   readonly toDate: string;

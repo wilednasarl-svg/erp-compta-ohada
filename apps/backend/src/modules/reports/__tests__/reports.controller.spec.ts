@@ -31,7 +31,6 @@ function buildHarness() {
     getFinancialRatios: jest.fn(),
     getAgingBalance: jest.fn(),
     getCashTrend: jest.fn(),
-    getTafire: jest.fn(),
     getTft: jest.fn(),
     getAnnexe: jest.fn(),
     getAnnexeNoteDetail: jest.fn(),
@@ -274,10 +273,9 @@ describe('ReportsController.annualPackage', () => {
   });
 });
 
-describe('ReportsController.cashTrend + tafire + tft + financialRatios', () => {
+describe('ReportsController.cashTrend + tft + financialRatios', () => {
   it.each([
     ['cashTrend', 'getCashTrend', () => Object.assign(new CashTrendQueryDto(), { fromMonth: '2026-01', toMonth: '2026-12' })],
-    ['tafire', 'getTafire', () => Object.assign(new PeriodQueryDto(), { fromDate: '2026-01-01', toDate: '2026-12-31' })],
     ['tft', 'getTft', () => Object.assign(new PeriodQueryDto(), { fromDate: '2026-01-01', toDate: '2026-12-31' })],
     [
       'financialRatios',

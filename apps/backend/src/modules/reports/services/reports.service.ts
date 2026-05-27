@@ -508,7 +508,7 @@ export interface AgingBalanceReport {
   readonly grandTotal: string;
 }
 
-// ─── TAFIRE / TFT / Annexes (états OHADA composés) ──────────────────
+// ─── TFT / Annexes (états OHADA composés) ───────────────────────────
 
 export interface OhadaStatementLine {
   readonly code: string;
@@ -522,16 +522,6 @@ export interface OhadaStatementSection {
   readonly label: string;
   readonly lines: readonly OhadaStatementLine[];
   readonly total: string;
-}
-
-export interface TafireReport {
-  readonly fromDate: string;
-  readonly toDate: string;
-  readonly emplois: readonly OhadaStatementSection[];
-  readonly ressources: readonly OhadaStatementSection[];
-  readonly variationTresorerie: string;
-  /** Notes méthodologiques sur ce qui est calculé vs encore manuel. */
-  readonly methodologyNotes: readonly string[];
 }
 
 export interface TftReport {
@@ -1558,224 +1548,6 @@ export class ReportsService {
   }
 
   /**
-   * TAFIRE (Tableau Financier des Ressources et des Emplois) OHADA.
-   *
-   * État obligatoire pour les grandes entreprises sous SYSCOHADA AUDCIF.
-   * Compare deux bilans (N et N-1) et le compte de résultat pour
-   * identifier les EMPLOIS (acquisitions immobilisations, remboursements
-   * de dettes, distribution de dividendes) et les RESSOURCES (CAF,
-   * cessions, augmentation de capital, nouvelles dettes financières).
-   *
-   * Scope livré (V1) :
-   *   - Calcul automatique de la CAF (Capacité d'Autofinancement) à
-   *     partir du SIG : CAF = EBE + Autres produits − Autres charges
-   *     + Reprises provisions − Dotations financières
-   *   - Variations du bilan N vs N-1 sur les grandes masses :
-   *     immobilisations, dettes financières, capital
-   *   - Variation BFR exploitation
-   *   - Variation trésorerie nette
-   *
-   * Affinement futur :
-   *   - Distinguer acquisitions vs cessions d'immobilisations
-   *   - Détailler les dividendes versés (compte 1060 → 471)
-   *   - Cession de titres immobilisés (compte 82)
-   */
-  async getTafire(
-    organizationId: TenantId,
-    query: { fromDate: string; toDate: string },
-  ): Promise<TafireReport> {
-    assertTenantId(organizationId);
-    this.assertDateRange(query.fromDate, query.toDate);
-
-    const [bilanN, bilanNm1, sig] = await Promise.all([
-      this.getBalanceSheet(organizationId, {
-        asAtDate: query.toDate,
-        fiscalYearStartDate: query.fromDate,
-      }),
-      this.getBalanceSheet(organizationId, {
-        asAtDate: ReportsService.previousDayIso(query.fromDate),
-        fiscalYearStartDate: ReportsService.previousFiscalYearStart(query.fromDate),
-      }),
-      this.getSig(organizationId, { fromDate: query.fromDate, toDate: query.toDate }),
-    ]);
-
-    const sectionTotal = (
-      sections: BalanceSheetReport['actif']['sections'],
-      key: string,
-    ): number => Number(sections.find((s) => s.key === key)?.total ?? '0');
-
-    const immoN = sectionTotal(bilanN.actif.sections, 'IMMOBILISE');
-    const immoNm1 = sectionTotal(bilanNm1.actif.sections, 'IMMOBILISE');
-    const variationImmo = immoN - immoNm1;
-    const dettesFinN = sectionTotal(bilanN.passif.sections, 'DETTES_FINANCIERES');
-    const dettesFinNm1 = sectionTotal(bilanNm1.passif.sections, 'DETTES_FINANCIERES');
-    const variationDettesFin = dettesFinN - dettesFinNm1;
-    const capN = sectionTotal(bilanN.passif.sections, 'CAPITAUX_PROPRES');
-    const capNm1 = sectionTotal(bilanNm1.passif.sections, 'CAPITAUX_PROPRES');
-    const variationCapitaux = capN - capNm1;
-
-    const circN = sectionTotal(bilanN.actif.sections, 'CIRCULANT');
-    const circNm1 = sectionTotal(bilanNm1.actif.sections, 'CIRCULANT');
-    const passifCircN = sectionTotal(bilanN.passif.sections, 'PASSIF_CIRCULANT');
-    const passifCircNm1 = sectionTotal(bilanNm1.passif.sections, 'PASSIF_CIRCULANT');
-    const variationBfr = circN - circNm1 - (passifCircN - passifCircNm1);
-
-    const tresoN =
-      sectionTotal(bilanN.actif.sections, 'TRESORERIE_ACTIF') -
-      sectionTotal(bilanN.passif.sections, 'TRESORERIE_PASSIF');
-    const tresoNm1 =
-      sectionTotal(bilanNm1.actif.sections, 'TRESORERIE_ACTIF') -
-      sectionTotal(bilanNm1.passif.sections, 'TRESORERIE_PASSIF');
-    const variationTreso = tresoN - tresoNm1;
-
-    // CAF = EBE (XD) + reprises (TJ) - dotations (RL) - frais financiers (RM) + revenus financiers (TK+TL+TM) - impôts (RS) - participation (RQ)
-    const sigSolde = (code: string): number =>
-      Number(sig.soldes.find((s) => s.code === code)?.amount ?? '0');
-    const ebe = sigSolde('XD');
-    const sigPoste = (postes: SyscohadaPosteAmount[], code: string): number => {
-      const found = postes.find((p) => p.code === code);
-      return found ? Number(found.amount) : 0;
-    };
-    const reprises = sigPoste([...sig.produits], 'TJ');
-    const dotations = sigPoste([...sig.charges], 'RL');
-    const fraisFin = sigPoste([...sig.charges], 'RM');
-    const revFin =
-      sigPoste([...sig.produits], 'TK') +
-      sigPoste([...sig.produits], 'TL') +
-      sigPoste([...sig.produits], 'TM');
-    const impots = sigPoste([...sig.charges], 'RS');
-    const participation = sigPoste([...sig.charges], 'RQ');
-    const caf = ebe + reprises - dotations - fraisFin + revFin - impots - participation;
-
-    // Détail cessions / acquisitions d'immobilisations (Vol. 3, p. 267).
-    // Cessions identifiées par les postes 82 (produits) et 81 (valeurs
-    // comptables) du SIG — déjà mappés dans syscohada-postes.ts.
-    const produitsCessions = sigPoste([...sig.produits], 'TN'); // compte 82
-    const valeursCessions = sigPoste([...sig.charges], 'RO'); // compte 81
-    // Acquisitions = ΔImmoNet + dotations (les sorties amortissements
-    // diminuent l'immo net) + VCessions (les cessions sortent l'immo).
-    // C'est une estimation : si l'entité fait des réévaluations ou des
-    // sorties pour autres raisons, l'écart est porté dans la note méthodo.
-    const acquisitionsEstimees = variationImmo + dotations + valeursCessions;
-
-    // Dividendes versés : approximation = RN N-1 réintégré au CAF − ce
-    // que la variation des capitaux propres absorbe (hors RN courant).
-    // Bonne approche : capN − capNm1 − (RN_N) − apports nouveaux ≈
-    // − dividendes − rachats actions. Ici on ne distingue pas, on
-    // marque comme "Variation capitaux propres hors résultat".
-    const rnN = sigSolde('XI');
-    const variationCapHorsResultat = variationCapitaux - rnN;
-    const dividendesEstimes = Math.max(-variationCapHorsResultat, 0);
-    const apportsNouveauxEstimes = Math.max(variationCapHorsResultat, 0);
-
-    const emplois: OhadaStatementSection[] = [
-      {
-        code: 'E.I',
-        label: "Acquisitions d'immobilisations",
-        lines: [
-          {
-            code: 'EI.1',
-            label: 'Acquisitions estimées (ΔImmoNet + dotations + valeurs cessions)',
-            amount: Math.max(acquisitionsEstimees, 0).toFixed(2),
-            note: 'Estimation — pour précision exacte voir tableau des immobilisations (Note 3A)',
-          },
-        ],
-        total: Math.max(acquisitionsEstimees, 0).toFixed(2),
-      },
-      {
-        code: 'E.II',
-        label: 'Variation du Besoin en Fonds de Roulement (BFR)',
-        lines: [
-          {
-            code: 'EII.1',
-            label: 'Variation BFR exploitation',
-            amount: Math.max(variationBfr, 0).toFixed(2),
-          },
-        ],
-        total: Math.max(variationBfr, 0).toFixed(2),
-      },
-      {
-        code: 'E.III',
-        label: 'Emplois financiers contraints',
-        lines: [
-          {
-            code: 'EIII.1',
-            label: 'Remboursement de dettes financières',
-            amount: Math.max(-variationDettesFin, 0).toFixed(2),
-          },
-          {
-            code: 'EIII.2',
-            label: 'Dividendes versés (estimés)',
-            amount: dividendesEstimes.toFixed(2),
-            note: 'Approximation = baisse des capitaux propres hors RN courant',
-          },
-        ],
-        total: (Math.max(-variationDettesFin, 0) + dividendesEstimes).toFixed(2),
-      },
-    ];
-    const ressources: OhadaStatementSection[] = [
-      {
-        code: 'R.I',
-        label: "Capacité d'autofinancement (CAF)",
-        lines: [
-          { code: 'RI.1', label: "CAF de l'exercice", amount: caf.toFixed(2) },
-        ],
-        total: caf.toFixed(2),
-      },
-      {
-        code: 'R.II',
-        label: "Cessions d'immobilisations",
-        lines: [
-          {
-            code: 'RII.1',
-            label: "Produits de cession d'immobilisations (poste TN, compte 82)",
-            amount: produitsCessions.toFixed(2),
-          },
-          {
-            code: 'RII.2',
-            label: 'Valeur comptable nette cédée (poste RO, compte 81)',
-            amount: valeursCessions.toFixed(2),
-            note: 'Pour information — entre dans le calcul des acquisitions',
-          },
-        ],
-        total: produitsCessions.toFixed(2),
-      },
-      {
-        code: 'R.III',
-        label: 'Augmentation des capitaux propres et dettes financières',
-        lines: [
-          {
-            code: 'RIII.1',
-            label: 'Apports nouveaux en capitaux propres (estimés)',
-            amount: apportsNouveauxEstimes.toFixed(2),
-          },
-          {
-            code: 'RIII.2',
-            label: 'Nouvelles dettes financières',
-            amount: Math.max(variationDettesFin, 0).toFixed(2),
-          },
-        ],
-        total: (apportsNouveauxEstimes + Math.max(variationDettesFin, 0)).toFixed(2),
-      },
-    ];
-
-    return {
-      fromDate: query.fromDate,
-      toDate: query.toDate,
-      emplois,
-      ressources,
-      variationTresorerie: variationTreso.toFixed(2),
-      methodologyNotes: [
-        'CAF calculée à partir du SIG : EBE + reprises − dotations − frais financiers + revenus financiers − impôts − participation.',
-        "Cessions = poste TN (compte 82, produits cessions). Acquisitions estimées = ΔImmoNet + dotations + valeurs comptables cédées (poste RO, compte 81). Pour précision exacte, croiser avec le tableau des immobilisations (Note 3A).",
-        'Variation BFR = (Actif circulant N − N-1) − (Passif circulant N − N-1).',
-        'Dividendes et apports nouveaux : approximations basées sur la variation des capitaux propres hors résultat net courant. Pour précision, lire les comptes 1060/1061/1062 séparément.',
-        "Variation de trésorerie nette ≈ Total Ressources − Total Emplois (réconciliation auto).",
-      ],
-    };
-  }
-
-  /**
    * TFT (Tableau de Flux de Trésorerie) OHADA — méthode indirecte.
    *
    * Partition les flux en 3 catégories selon Vol. 3 :
@@ -1916,7 +1688,7 @@ export class ReportsService {
       tresorerieCloture: tresoN.toFixed(2),
       methodologyNotes: [
         'Méthode indirecte : partir du résultat net + ajustements non-cash + variation BFR.',
-        "Flux investissement = variation nette de l'actif immobilisé (acquisitions − cessions). Pour le détail acquisitions vs cessions, voir TAFIRE.",
+        "Flux investissement = variation nette de l'actif immobilisé (acquisitions − cessions).",
         "Flux financement = variation dettes financières + variation capitaux propres hors RN (apports nouveaux − dividendes − rachats actions).",
         "Réconciliation : Tresoreire fin = Tresoreire debut + Total flux. Ecart attendu = 0.",
       ],

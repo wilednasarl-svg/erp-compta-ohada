@@ -31,7 +31,6 @@ import type {
  *   04-bilan-officiel.xlsx
  *   05-sig.xlsx
  *   06-ratios-financiers.xlsx
- *   07-tafire.xlsx
  *   08-tft.xlsx
  *   09-annexe.xlsx
  *   10-balance-agee-clients.xlsx
@@ -120,13 +119,6 @@ export class ReportsPackageService {
           fiscalYearStartDate: fyStart,
         });
         return this.xlsx.financialRatiosXlsx(r, query.orgName);
-      }),
-      this.safeBuild('07-tafire.xlsx', async () => {
-        const r = await this.reports.getTafire(organizationId, {
-          fromDate: query.fromDate,
-          toDate: query.toDate,
-        });
-        return this.xlsx.tafireXlsx(r, query.orgName);
       }),
       this.safeBuild('08-tft.xlsx', async () => {
         const r = await this.reports.getTft(organizationId, {

@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, Matches } from 'class-validator';
 
 /**
- * DTO de période simple `fromDate` + `toDate` réutilisé par TAFIRE et TFT.
+ * DTO de période simple `fromDate` + `toDate` réutilisé par le TFT.
  */
 export class PeriodQueryDto {
   @ApiProperty({ example: '2026-01-01' })

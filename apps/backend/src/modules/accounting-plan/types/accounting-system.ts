@@ -5,7 +5,7 @@
  *
  * - `NORMAL`   — Système Normal. PME et grandes entreprises. Plan
  *                comptable complet (~800 comptes), états financiers
- *                complets (Bilan, Compte de résultat, TAFIRE, Notes
+ *                complets (Bilan, Compte de résultat, TFT, Notes
  *                annexes), comptabilité d'engagement.
  * - `MINIMAL`  — Système Minimal de Trésorerie (SMT). Très petites
  *                entités sous certains seuils de chiffre d'affaires

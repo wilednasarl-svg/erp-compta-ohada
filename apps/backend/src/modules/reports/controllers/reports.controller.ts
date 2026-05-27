@@ -44,7 +44,6 @@ import {
   type AnnexeReport,
   type CashTrendReport,
   type ImportDiagnosticReport,
-  type TafireReport,
   type TftReport,
   type ComparativeBalanceReport,
   type MarginByAxisReport,
@@ -78,7 +77,6 @@ import {
   MultiYearBalanceReportEnvelope,
   ProfitLossReportEnvelope,
   SigReportEnvelope,
-  TafireReportEnvelope,
   TftReportEnvelope,
   TrialBalanceReportEnvelope,
 } from '../dto/responses';
@@ -176,7 +174,7 @@ export class ReportsController {
   @Get('annual-package.zip')
   @RequirePermission('journals.reports')
   @ApiOperation({
-    summary: 'Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TAFIRE + TFT + Annexe + Aging clients/fournisseurs)',
+    summary: 'Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TFT + Annexe + Aging clients/fournisseurs)',
   })
   @ApiProduces('application/zip')
   async annualPackage(
@@ -424,23 +422,6 @@ export class ReportsController {
     return { report };
   }
 
-  @Get('tafire')
-  @RequirePermission('journals.reports')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'TAFIRE (Tableau Financier Ressources/Emplois) — OHADA Vol. 3' })
-  @ApiOkResponse({ type: TafireReportEnvelope })
-  async tafire(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
-    @Query() query: PeriodQueryDto,
-    @CurrentOrg() org: CurrentOrgContext,
-  ): Promise<{ report: TafireReport }> {
-    const report = await this.reports.getTafire(asTenantId(org.id), {
-      fromDate: query.fromDate,
-      toDate: query.toDate,
-    });
-    return { report };
-  }
-
   @Get('import-diagnostic/:sessionId')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
@@ -584,29 +565,6 @@ export class ReportsController {
       bucketBoundaries: query.bucketBoundaries,
     });
     return { report };
-  }
-
-  @Get('tafire.xlsx')
-  @RequirePermission('journals.reports')
-  @ApiOperation({ summary: 'Export Excel — TAFIRE OHADA' })
-  @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-  async tafireXlsx(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
-    @Query() query: PeriodQueryDto,
-    @CurrentOrg() org: CurrentOrgContext,
-    @Res() res: Response,
-  ): Promise<void> {
-    const report = await this.reports.getTafire(asTenantId(org.id), {
-      fromDate: query.fromDate,
-      toDate: query.toDate,
-    });
-    const buffer = this.xlsx.tafireXlsx(report, org.name);
-    this.sendFile(
-      res,
-      buffer,
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      this.filename(org.name, 'tafire', query.fromDate, query.toDate, 'xlsx'),
-    );
   }
 
   @Get('tft.xlsx')
@@ -987,29 +945,6 @@ export class ReportsController {
       buffer,
       'application/pdf',
       this.filename(org.name, 'tresorerie-glissante', query.fromMonth, query.toMonth, 'pdf'),
-    );
-  }
-
-  @Get('tafire.pdf')
-  @RequirePermission('journals.reports')
-  @ApiOperation({ summary: 'Export PDF — TAFIRE' })
-  @ApiProduces('application/pdf')
-  async tafirePdf(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
-    @Query() query: PeriodQueryDto,
-    @CurrentOrg() org: CurrentOrgContext,
-    @Res() res: Response,
-  ): Promise<void> {
-    const report = await this.reports.getTafire(asTenantId(org.id), {
-      fromDate: query.fromDate,
-      toDate: query.toDate,
-    });
-    const buffer = await this.pdf.tafirePdf(report, org.name);
-    this.sendFile(
-      res,
-      buffer,
-      'application/pdf',
-      this.filename(org.name, 'tafire', query.fromDate, query.toDate, 'pdf'),
     );
   }
 

@@ -14,7 +14,6 @@ import type {
   ProfitLossAccountLine,
   ProfitLossReport,
   SigReport,
-  TafireReport,
   TftReport,
   TrialBalanceReport,
 } from './reports.service';
@@ -786,41 +785,6 @@ export class ReportsPdfService {
     y = this.tableRow(doc, cols, ['', 'Trésorerie actuelle', '', '', this.fmtAmt(report.currentNetCash), ''], y, true);
     y = this.tableRow(doc, cols, ['', 'Trésorerie min', '', '', this.fmtAmt(report.minNetCash), ''], y, true);
     y = this.tableRow(doc, cols, ['', 'Trésorerie max', '', '', this.fmtAmt(report.maxNetCash), ''], y, true);
-    this.footer(doc);
-    return this.finalize(doc);
-  }
-
-  // ─── TAFIRE ──────────────────────────────────────────────────────
-  async tafirePdf(report: TafireReport, orgName: string): Promise<Buffer> {
-    const doc = this.createDoc();
-    this.header(doc, orgName, 'TAFIRE', `Du ${report.fromDate} au ${report.toDate}`);
-    const cols = [
-      { label: 'Réf.', width: 60 },
-      { label: 'Libellé', width: 520 },
-      { label: 'Montant', width: 120, align: 'right' as const },
-    ];
-    let y = this.tableHeader(doc, cols);
-    const renderSection = (title: string, sections: TafireReport['emplois']): void => {
-      y = this.sectionTitle(doc, title, y);
-      for (const s of sections) {
-        y = this.tableRow(doc, cols, [s.code, s.label, ''], y, true);
-        for (const ln of s.lines) {
-          if (y > doc.page.height - 60) {
-            doc.addPage();
-            y = this.tableHeader(doc, cols);
-          }
-          y = this.tableRow(doc, cols, [ln.code, `  ${ln.label}`, this.fmtAmt(ln.amount)], y);
-        }
-        y = this.tableRow(doc, cols, ['', `  Total ${s.label}`, this.fmtAmt(s.total)], y, true);
-        if (y > doc.page.height - 60) {
-          doc.addPage();
-          y = this.tableHeader(doc, cols);
-        }
-      }
-    };
-    renderSection('EMPLOIS', report.emplois);
-    renderSection('RESSOURCES', report.ressources);
-    y = this.tableRow(doc, cols, ['', 'Variation de trésorerie', this.fmtAmt(report.variationTresorerie)], y, true);
     this.footer(doc);
     return this.finalize(doc);
   }

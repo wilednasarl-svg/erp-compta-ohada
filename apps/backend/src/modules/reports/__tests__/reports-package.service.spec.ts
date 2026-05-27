@@ -163,7 +163,6 @@ function makeService(opts: {
     getComparativeBalance: jest.fn(),
     getSig: jest.fn(),
     getFinancialRatios: jest.fn(),
-    getTafire: jest.fn(),
     getAnnexe: jest.fn(),
     getAgingBalance: jest.fn(),
   } as unknown as ReportsService;
