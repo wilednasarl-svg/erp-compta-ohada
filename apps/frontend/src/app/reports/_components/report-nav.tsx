@@ -11,6 +11,8 @@ import {
   History,
   Landmark,
   Layers,
+  PieChart,
+  Scale,
   Stethoscope,
   TrendingUp,
   Wallet,
@@ -35,6 +37,8 @@ import { cn } from '@/lib/utils';
  */
 
 export type ReportMode =
+  | 'balance-sheet'
+  | 'profit-loss'
   | 'trial-balance'
   | 'comparative-balance'
   | 'multi-year-balance'
@@ -100,6 +104,18 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
     title: 'États OHADA',
     subtitle: 'Livrables réglementaires SYSCOHADA-AUDCIF',
     items: [
+      {
+        mode: 'balance-sheet',
+        label: 'Bilan',
+        icon: Scale,
+        hint: 'Actif et passif à une date — patrimoine et financement, hiérarchie DSF (35 postes lettrés).',
+      },
+      {
+        mode: 'profit-loss',
+        label: 'Compte de résultat',
+        icon: PieChart,
+        hint: 'Charges, produits et résultat de l’exercice — vue classique pour la liasse fiscale.',
+      },
       {
         mode: 'sig',
         label: 'SIG',

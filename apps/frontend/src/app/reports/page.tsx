@@ -17,6 +17,8 @@ import {
   Layers,
   Loader2,
   Package,
+  PieChart,
+  Scale,
   Stethoscope,
   TrendingUp,
   Wallet,
@@ -49,6 +51,8 @@ import type {
   AnalyticAxisSummary,
   AnnexeNoteDetailReport,
   AnnexeReport,
+  BalanceSheetReport,
+  BilanMasse,
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatio,
@@ -60,6 +64,8 @@ import type {
   ImportSessionSummary,
   MarginByAxisReport,
   MultiYearBalanceReport,
+  ProfitLossLine,
+  ProfitLossReport,
   SigReport,
   TafireReport,
   TftReport,
@@ -113,6 +119,12 @@ interface ImportDiagnosticEnvelope {
 }
 interface ImportSessionsEnvelope {
   readonly sessions: ReadonlyArray<ImportSessionSummary>;
+}
+interface BalanceSheetEnvelope {
+  readonly report: BalanceSheetReport;
+}
+interface ProfitLossEnvelope {
+  readonly report: ProfitLossReport;
 }
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
@@ -182,7 +194,11 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {mode === 'trial-balance' ? (
+        {mode === 'balance-sheet' ? (
+          <BalanceSheetPanel orgId={orgId} />
+        ) : mode === 'profit-loss' ? (
+          <ProfitLossPanel orgId={orgId} />
+        ) : mode === 'trial-balance' ? (
           <TrialBalancePanel orgId={orgId} />
         ) : mode === 'comparative-balance' ? (
           <ComparativeBalancePanel orgId={orgId} />
@@ -293,6 +309,743 @@ function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
         Annuler
       </Button>
     </div>
+  );
+}
+
+// ─── Bilan OHADA (SYSCOHADA AUDCIF) ────────────────────────────────────
+
+/**
+ * Bilan = photographie à une date donnée du patrimoine (actif) et de
+ * son financement (passif). Le backend renvoie la hiérarchie W2.1
+ * conforme DSF : 35 postes lettrés AD-BZ (actif) et CA-DZ (passif)
+ * groupés en rubriques puis en masses.
+ *
+ * Le résultat net de l'exercice est automatiquement incorporé aux
+ * capitaux propres quand `fiscalYearStartDate` est fourni — sans
+ * cela, le bilan reste déséquilibré (différence = résultat net).
+ */
+function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
+  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
+  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [compareAsAtDate, setCompareAsAtDate] = useState<string>(previousYearEndIso());
+  const [compareFiscalYearStartDate, setCompareFiscalYearStartDate] = useState<string>(
+    previousYearStartIso(),
+  );
+  const [compareEnabled, setCompareEnabled] = useState<boolean>(true);
+  const [submitted, setSubmitted] = useState<{
+    asAtDate: string;
+    fiscalYearStartDate: string;
+    compareAsAtDate?: string;
+    compareFiscalYearStartDate?: string;
+  } | null>(null);
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams => {
+    const p = new URLSearchParams({
+      asAtDate: s.asAtDate,
+      fiscalYearStartDate: s.fiscalYearStartDate,
+    });
+    if (s.compareAsAtDate !== undefined) {
+      p.set('compareAsAtDate', s.compareAsAtDate);
+    }
+    if (s.compareFiscalYearStartDate !== undefined) {
+      p.set('compareFiscalYearStartDate', s.compareFiscalYearStartDate);
+    }
+    return p;
+  };
+
+  const query = useQuery<BalanceSheetReport, ApiError>({
+    queryKey: ['reports', 'balance-sheet', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<BalanceSheetEnvelope>(
+        `/organizations/${orgId}/reports/balance-sheet?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const downloadXlsx = (): void => {
+    if (submitted === null) return;
+    void api.download(
+      `/organizations/${orgId}/reports/balance-sheet.xlsx?${buildParams(submitted).toString()}`,
+      'bilan.xlsx',
+    );
+  };
+
+  const downloadPdf = (): void => {
+    if (submitted === null) return;
+    void api.download(
+      `/organizations/${orgId}/reports/balance-sheet.pdf?${buildParams(submitted).toString()}`,
+      'bilan.pdf',
+    );
+  };
+
+  return (
+    <Card className="border-line bg-paper shadow-none">
+      <CardHeader className="border-b border-line">
+        <CardTitle className="font-display text-2xl font-medium tracking-tight">
+          Bilan
+        </CardTitle>
+        <CardDescription className="text-ink-soft">
+          Patrimoine et financement à une date donnée, conforme SYSCOHADA AUDCIF (hiérarchie
+          DSF : 35 postes lettrés). Le résultat net de l&apos;exercice est incorporé aux
+          capitaux propres pour assurer l&apos;équilibre Actif = Passif.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6 pt-6">
+        <form
+          className="grid gap-5 lg:grid-cols-[auto_1fr_auto] lg:items-end"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({
+              asAtDate,
+              fiscalYearStartDate,
+              ...(compareEnabled
+                ? {
+                    compareAsAtDate,
+                    compareFiscalYearStartDate,
+                  }
+                : {}),
+            });
+          }}
+        >
+          <FilterGroup title="Arrêté" subtitle="Date de photographie et exercice">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="bs-fy" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Début exercice
+                </Label>
+                <Input
+                  id="bs-fy"
+                  type="date"
+                  value={fiscalYearStartDate}
+                  onChange={(e) => setFiscalYearStartDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="bs-at" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Arrêté au
+                </Label>
+                <Input
+                  id="bs-at"
+                  type="date"
+                  value={asAtDate}
+                  onChange={(e) => setAsAtDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+          </FilterGroup>
+
+          <FilterGroup title="Comparaison N-1" subtitle="Exercice précédent">
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex h-9 cursor-pointer items-center gap-2 self-end whitespace-nowrap rounded-sm border border-line-strong bg-paper px-3 text-sm text-ink-soft transition-colors hover:bg-sunk has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:checked]:text-accent-ink">
+                <input
+                  type="checkbox"
+                  checked={compareEnabled}
+                  onChange={(e) => setCompareEnabled(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-accent"
+                />
+                Activer
+              </label>
+              <div className="space-y-1">
+                <Label
+                  htmlFor="bs-cmp-fy"
+                  className="text-2xs uppercase tracking-wider text-ink-soft"
+                >
+                  Début N-1
+                </Label>
+                <Input
+                  id="bs-cmp-fy"
+                  type="date"
+                  value={compareFiscalYearStartDate}
+                  onChange={(e) => setCompareFiscalYearStartDate(e.target.value)}
+                  disabled={!compareEnabled}
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label
+                  htmlFor="bs-cmp-at"
+                  className="text-2xs uppercase tracking-wider text-ink-soft"
+                >
+                  Arrêté N-1
+                </Label>
+                <Input
+                  id="bs-cmp-at"
+                  type="date"
+                  value={compareAsAtDate}
+                  onChange={(e) => setCompareAsAtDate(e.target.value)}
+                  disabled={!compareEnabled}
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+          </FilterGroup>
+
+          <div className="flex flex-col items-stretch gap-1 lg:items-end">
+            <span className="select-none text-2xs uppercase tracking-wider text-transparent">
+              .
+            </span>
+            <div className="flex flex-wrap items-end gap-2">
+              <Button type="submit" disabled={query.isFetching} className="h-9">
+                {query.isFetching ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Scale className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                )}
+                Générer le bilan
+              </Button>
+              {query.data !== undefined && (
+                <>
+                  <Button type="button" variant="outline" onClick={downloadXlsx}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    XLSX
+                  </Button>
+                  <Button type="button" variant="outline" onClick={downloadPdf}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    PDF
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? (
+          <BalanceSheetView report={query.data} />
+        ) : submitted === null ? (
+          <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+            <p className="text-sm text-ink-soft">
+              Choisir la date d&apos;arrêté puis cliquer sur{' '}
+              <span className="font-medium text-ink">Générer le bilan</span>.
+            </p>
+            <p className="mt-1 text-xs text-ink-mute">
+              Par défaut, arrêté au jour J avec exercice ouvert au 1<sup>er</sup> janvier,
+              comparé à l&apos;exercice précédent.
+            </p>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
+  const differenceNum = Number(report.totals.difference);
+  // Seuil de 1 FCFA pour la tolérance d'arrondi (5 décimales backend).
+  // En dessous on considère que l'équilibre est respecté.
+  const isBalanced = Math.abs(differenceNum) < 1;
+  const hasComp = report.previous !== undefined;
+
+  return (
+    <div className="space-y-6">
+      {/* Bandeau récap : la signature du bilan en 4 chiffres. L'équilibre
+          Actif=Passif est LE contrôle visuel d'un bilan OHADA — un écart
+          ≠ 0 signifie un problème (résultat non incorporé, comptes hors
+          plan, écriture déséquilibrée). */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Arrêté au</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.asAtDate)}
+          </p>
+          {hasComp && report.previous && (
+            <p className="mt-0.5 font-mono text-2xs tabular-nums text-ink-mute">
+              vs {formatShortDate(report.previous.asAtDate)}
+            </p>
+          )}
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Total Actif</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+            {fmt(report.totals.actif)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Total Passif</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+            {fmt(report.totals.passif)}
+          </p>
+        </div>
+        <div
+          className={cn('px-4 py-3', isBalanced ? 'bg-accent-soft/60' : 'bg-critical-soft')}
+        >
+          <p
+            className={cn(
+              'text-2xs uppercase tracking-wider',
+              isBalanced ? 'text-accent-ink' : 'text-critical-ink',
+            )}
+          >
+            Équilibre Actif − Passif
+          </p>
+          <p
+            className={cn(
+              'mt-0.5 inline-flex items-center gap-1.5 font-mono text-xl font-medium tabular-nums',
+              isBalanced ? 'text-accent-ink' : 'text-critical-ink',
+            )}
+          >
+            {isBalanced ? (
+              <>
+                <CheckCircle2 className="h-5 w-5" />
+                0,00
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-5 w-5" />
+                {fmt(report.totals.difference)}
+              </>
+            )}
+          </p>
+          {report.netResultIncorporated !== null && (
+            <p className="mt-0.5 text-2xs text-accent-ink/80">
+              Résultat net incorporé : {fmt(report.netResultIncorporated)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Layout classique du Bilan : Actif à gauche, Passif à droite,
+          en miroir comme une liasse fiscale imprimée. Sur mobile, stack
+          vertical (lg:grid-cols-2). */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <BilanColumn title="Actif" subtitle="Patrimoine — emplois durables et circulants" masses={report.actifMasses} hasComp={hasComp} tone="info" />
+        <BilanColumn title="Passif" subtitle="Financement — capitaux propres et dettes" masses={report.passifMasses} hasComp={hasComp} tone="accent" />
+      </div>
+
+      {report.unclassified.length > 0 && (
+        <section className="rounded-md border border-warn/30 bg-warn-soft/60 p-4">
+          <header className="flex items-baseline gap-2 border-b border-warn/30 pb-2">
+            <AlertTriangle className="h-4 w-4 self-center text-warn" strokeWidth={1.5} />
+            <h4 className="font-display text-base font-medium tracking-tight text-warn-ink">
+              Comptes hors référentiel
+            </h4>
+            <span className="font-mono text-xs tabular-nums text-warn-ink/80">
+              {report.unclassified.length}
+            </span>
+          </header>
+          <p className="mt-2 text-xs text-warn-ink/90">
+            Ces comptes du plan comptable n&apos;ont matché aucun poste lettré SYSCOHADA. Ils
+            ne figurent pas dans le bilan officiel — vérifier que leurs codes sont conformes
+            au PCG OHADA.
+          </p>
+          <ul className="mt-2 space-y-1 text-xs">
+            {report.unclassified.slice(0, 10).map((p) => (
+              <li key={p.code} className="flex justify-between gap-2">
+                <span className="font-mono text-warn-ink">
+                  {p.code} · {p.label}
+                </span>
+                <span className="font-mono tabular-nums text-warn-ink">{fmt(p.net)}</span>
+              </li>
+            ))}
+            {report.unclassified.length > 10 && (
+              <li className="text-warn-ink/70">
+                … et {report.unclassified.length - 10} autres
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Colonne d'un côté du bilan (Actif ou Passif). Empile les masses
+ * (sous-totaux lettrés AZ, CP, DZ…) en cartes, chaque masse expose
+ * ses rubriques et leurs postes lettrés détaillés.
+ */
+function BilanColumn({
+  title,
+  subtitle,
+  masses,
+  hasComp,
+  tone,
+}: {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly masses: ReadonlyArray<BilanMasse>;
+  readonly hasComp: boolean;
+  readonly tone: 'info' | 'accent';
+}) {
+  const toneClasses = {
+    info: { dot: 'bg-info', headerText: 'text-info-ink' },
+    accent: { dot: 'bg-accent', headerText: 'text-accent-ink' },
+  };
+  const t = toneClasses[tone];
+  return (
+    <section>
+      <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
+        <span aria-hidden className={cn('h-2 w-2 self-center rounded-full', t.dot)} />
+        <h3 className={cn('font-display text-xl font-medium tracking-tight', t.headerText)}>
+          {title}
+        </h3>
+        <p className="ml-2 text-xs text-ink-soft">{subtitle}</p>
+      </header>
+      <div className="space-y-4">
+        {masses.map((m) => (
+          <BilanMasseBlock key={m.code} masse={m} hasComp={hasComp} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BilanMasseBlock({
+  masse,
+  hasComp,
+}: {
+  readonly masse: BilanMasse;
+  readonly hasComp: boolean;
+}) {
+  const variationPct =
+    hasComp && masse.totalPrevious !== undefined && Number(masse.totalPrevious) !== 0
+      ? (((Number(masse.total) - Number(masse.totalPrevious)) / Math.abs(Number(masse.totalPrevious))) * 100).toFixed(1)
+      : null;
+  return (
+    <article className="overflow-hidden rounded-md border border-line">
+      {/* Header de masse : code + label + total. C'est le sous-total
+          lettré (AZ, CP, DZ...) qui apparaît dans la DSF. */}
+      <header className="flex items-baseline gap-3 border-b border-line bg-sunk/60 px-4 py-2.5">
+        <span className="font-mono text-xs font-semibold tabular-nums text-ink">
+          {masse.code}
+        </span>
+        <span className="flex-1 truncate text-sm font-medium text-ink">{masse.label}</span>
+        <span className="font-mono text-base font-medium tabular-nums text-ink">
+          {fmt(masse.total)}
+        </span>
+        {variationPct !== null && (
+          <VariationMicroChip percent={variationPct} />
+        )}
+      </header>
+      {masse.rubriques.map((r) => (
+        <div key={r.label} className="border-t border-line">
+          <div className="flex items-baseline gap-3 bg-paper px-4 py-1.5">
+            <span className="flex-1 truncate text-xs font-medium uppercase tracking-wider text-ink-soft">
+              {r.label}
+            </span>
+            <span className="font-mono text-xs font-medium tabular-nums text-ink-soft">
+              {fmt(r.subtotal)}
+            </span>
+          </div>
+          <table className="w-full text-sm">
+            <tbody>
+              {r.postes.map((p) => {
+                const net = Number(p.net);
+                const isZero = !Number.isFinite(net) || net === 0;
+                return (
+                  <tr key={p.code} className="border-t border-line">
+                    <td className="px-4 py-1 font-mono text-xs text-ink-mute">{p.code}</td>
+                    <td className="px-2 py-1 text-xs text-ink-soft">{p.label}</td>
+                    <td
+                      className={cn(
+                        'px-4 py-1 text-right font-mono tabular-nums',
+                        isZero ? 'text-ink-mute' : 'text-ink',
+                      )}
+                    >
+                      {isZero ? '—' : fmt(p.net)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </article>
+  );
+}
+
+/**
+ * Mini-chip de variation % utilisée dans les masses du Bilan. Plus
+ * compact que <VariationChip /> qui a besoin de la variation absolue.
+ * Ici on n'affiche que le %, le contexte (masse → masse N-1) rend la
+ * lecture immédiate.
+ */
+function VariationMicroChip({ percent }: { readonly percent: string }) {
+  const n = Number(percent);
+  const isUp = Number.isFinite(n) && n > 0;
+  const isDown = Number.isFinite(n) && n < 0;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-0.5 rounded-xs border px-1.5 py-0.5 font-mono text-2xs tabular-nums',
+        isUp
+          ? 'border-accent/30 bg-accent-soft text-accent-ink'
+          : isDown
+            ? 'border-critical/30 bg-critical-soft text-critical-ink'
+            : 'border-line-strong bg-sunk text-ink-mute',
+      )}
+    >
+      <span aria-hidden>{isUp ? '▲' : isDown ? '▼' : '·'}</span>
+      {percent}%
+    </span>
+  );
+}
+
+// ─── Compte de Résultat OHADA ──────────────────────────────────────────
+
+/**
+ * Compte de Résultat = présentation classique charges/produits sur
+ * une période. Différent du SIG (qui décompose la cascade XA-XI) :
+ * ici on a 2 colonnes côte à côte avec totaux et résultat net.
+ */
+function ProfitLossPanel({ orgId }: { readonly orgId: string }) {
+  const [fromDate, setFromDate] = useState<string>(yearStartIso());
+  const [toDate, setToDate] = useState<string>(todayIso());
+  const [submitted, setSubmitted] = useState<{ fromDate: string; toDate: string } | null>(null);
+
+  const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
+    new URLSearchParams({ fromDate: s.fromDate, toDate: s.toDate });
+
+  const query = useQuery<ProfitLossReport, ApiError>({
+    queryKey: ['reports', 'profit-loss', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const data = await api.get<ProfitLossEnvelope>(
+        `/organizations/${orgId}/reports/profit-loss?${buildParams(submitted).toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  return (
+    <Card className="border-line bg-paper shadow-none">
+      <CardHeader className="border-b border-line">
+        <CardTitle className="font-display text-2xl font-medium tracking-tight">
+          Compte de résultat
+        </CardTitle>
+        <CardDescription className="text-ink-soft">
+          Charges et produits de l&apos;exercice, présentation classique de la liasse fiscale.
+          Le résultat net (produits − charges) est repris dans le bilan via le solde des
+          capitaux propres.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6 pt-6">
+        <form
+          className="grid gap-5 lg:grid-cols-[auto_auto_1fr] lg:items-end"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ fromDate, toDate });
+          }}
+        >
+          <FilterGroup title="Période" subtitle="Exercice à analyser">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="pl-from" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Du
+                </Label>
+                <Input
+                  id="pl-from"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="pl-to" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Au
+                </Label>
+                <Input
+                  id="pl-to"
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+          </FilterGroup>
+
+          <div className="flex flex-col items-stretch gap-1 lg:items-end">
+            <span className="select-none text-2xs uppercase tracking-wider text-transparent">
+              .
+            </span>
+            <Button type="submit" disabled={query.isFetching} className="h-9">
+              {query.isFetching ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <PieChart className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              )}
+              Générer le compte de résultat
+            </Button>
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {query.data !== undefined ? <ProfitLossView report={query.data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProfitLossView({ report }: { readonly report: ProfitLossReport }) {
+  const resultatNum = Number(report.resultat);
+  const isBenefice = Number.isFinite(resultatNum) && resultatNum > 0;
+  const isPerte = Number.isFinite(resultatNum) && resultatNum < 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Bandeau récap : période + ∑ produits + ∑ charges + résultat
+          net (signed, bascule accent-soft / critical-soft selon
+          bénéfice/perte). */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.fromDate)} → {formatShortDate(report.toDate)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-accent-ink">∑ Produits</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-accent-ink">
+            {fmt(report.totalProduits)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-critical-ink">∑ Charges</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-critical-ink">
+            {fmt(report.totalCharges)}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'px-4 py-3',
+            isBenefice
+              ? 'bg-accent-soft/60'
+              : isPerte
+                ? 'bg-critical-soft'
+                : 'bg-sunk/60',
+          )}
+        >
+          <p
+            className={cn(
+              'text-2xs uppercase tracking-wider',
+              isBenefice
+                ? 'text-accent-ink'
+                : isPerte
+                  ? 'text-critical-ink'
+                  : 'text-ink-mute',
+            )}
+          >
+            {isBenefice ? '▲ Bénéfice' : isPerte ? '▼ Perte' : '· Résultat'}
+          </p>
+          <p
+            className={cn(
+              'mt-0.5 font-mono text-xl font-medium tabular-nums',
+              isBenefice
+                ? 'text-accent-ink'
+                : isPerte
+                  ? 'text-critical-ink'
+                  : 'text-ink-soft',
+            )}
+          >
+            {fmt(report.resultat)}
+          </p>
+        </div>
+      </div>
+
+      {/* Layout classique : Charges à gauche, Produits à droite. En
+          comptabilité OHADA c'est l'inverse de la convention française
+          (produits à droite), mais on garde la disposition canonique :
+          charges = ce qui sort, produits = ce qui entre. */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ProfitLossColumn title="Charges" subtitle="Consommations et coûts de l'exercice" lines={report.charges} total={report.totalCharges} tone="critical" />
+        <ProfitLossColumn title="Produits" subtitle="Ventes, prestations et autres recettes" lines={report.produits} total={report.totalProduits} tone="accent" />
+      </div>
+    </div>
+  );
+}
+
+function ProfitLossColumn({
+  title,
+  subtitle,
+  lines,
+  total,
+  tone,
+}: {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly lines: ReadonlyArray<ProfitLossLine>;
+  readonly total: string;
+  readonly tone: 'critical' | 'accent';
+}) {
+  const toneClasses = {
+    critical: {
+      dot: 'bg-critical',
+      headerText: 'text-critical-ink',
+      totalRow: 'border-l-2 border-critical/40 bg-critical-soft/40 text-critical-ink',
+    },
+    accent: {
+      dot: 'bg-accent',
+      headerText: 'text-accent-ink',
+      totalRow: 'border-l-2 border-accent/40 bg-accent-soft/40 text-accent-ink',
+    },
+  };
+  const t = toneClasses[tone];
+  return (
+    <section>
+      <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
+        <span aria-hidden className={cn('h-2 w-2 self-center rounded-full', t.dot)} />
+        <h4 className={cn('font-display text-base font-medium tracking-tight', t.headerText)}>
+          {title}
+        </h4>
+        <p className="ml-2 text-xs text-ink-soft">{subtitle}</p>
+      </header>
+      <div className="overflow-hidden rounded-md border border-line">
+        <table className="w-full text-sm">
+          <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Réf.</th>
+              <th className="px-3 py-2 text-left font-medium">Libellé</th>
+              <th className="px-3 py-2 text-right font-medium">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line) => {
+              const num = Number(line.amount);
+              const isZero = !Number.isFinite(num) || num === 0;
+              return (
+                <tr key={line.code} className="border-t border-line">
+                  <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">{line.code}</td>
+                  <td className="px-3 py-1.5 text-xs text-ink">{line.label}</td>
+                  <td
+                    className={cn(
+                      'px-3 py-1.5 text-right font-mono tabular-nums',
+                      isZero ? 'text-ink-mute' : 'text-ink',
+                    )}
+                  >
+                    {isZero ? '—' : fmt(line.amount)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className={cn('border-t-2 font-medium', t.totalRow)}>
+              <td className="px-3 py-2.5"></td>
+              <td className="px-3 py-2.5 text-right text-2xs uppercase tracking-wider">
+                Total {title.toLowerCase()}
+              </td>
+              <td className="px-3 py-2.5 text-right font-mono text-base tabular-nums">
+                {fmt(total)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
   );
 }
 

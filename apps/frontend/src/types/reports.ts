@@ -395,3 +395,97 @@ export interface GeneralLedgerReport {
     readonly endingCredit: string;
   };
 }
+
+// ─── Bilan OHADA (SYSCOHADA AUDCIF) ────────────────────────────────────
+//
+// Hiérarchie officielle 3 niveaux conforme DSF :
+//   masse → rubrique → poste lettré (35 postes AD-BZ actif, CA-DZ passif)
+
+export interface BilanPoste {
+  readonly code: string;
+  readonly label: string;
+  readonly side: 'ACTIF' | 'PASSIF';
+  readonly net: string;
+  readonly brut?: string;
+  readonly deduction?: string;
+  readonly netPrevious?: string;
+  readonly netChange?: string;
+}
+
+export interface BilanRubrique {
+  readonly label: string;
+  readonly postes: ReadonlyArray<BilanPoste>;
+  readonly subtotal: string;
+  readonly subtotalPrevious?: string;
+}
+
+export interface BilanMasse {
+  readonly code: string;
+  readonly label: string;
+  readonly rubriques: ReadonlyArray<BilanRubrique>;
+  readonly total: string;
+  readonly totalPrevious?: string;
+}
+
+export interface BalanceSheetPreviousSummary {
+  readonly asAtDate: string;
+  readonly totalActif: string;
+  readonly totalPassif: string;
+  readonly difference: string;
+}
+
+export interface BalanceSheetReport {
+  readonly asAtDate: string;
+  readonly actifMasses: ReadonlyArray<BilanMasse>;
+  readonly passifMasses: ReadonlyArray<BilanMasse>;
+  readonly unclassified: ReadonlyArray<BilanPoste>;
+  readonly totals: {
+    readonly actif: string;
+    readonly passif: string;
+    /** actif − passif. Doit être ~0 sur un bilan équilibré. */
+    readonly difference: string;
+  };
+  readonly netResultIncorporated: string | null;
+  /** Alias historique de `totals.difference`. */
+  readonly difference: string;
+  readonly previous?: BalanceSheetPreviousSummary;
+}
+
+// ─── Compte de Résultat OHADA (présentation charges/produits) ─────────
+
+export interface ProfitLossAccountLine {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly amount: string;
+}
+
+export interface ProfitLossLine {
+  readonly code: string;
+  readonly label: string;
+  readonly amount: string;
+  readonly previousAmount?: string;
+  readonly variation?: string;
+  readonly variationPercent?: string | null;
+  readonly accounts: ReadonlyArray<ProfitLossAccountLine>;
+}
+
+export interface ProfitLossPreviousSummary {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly totalCharges: string;
+  readonly totalProduits: string;
+  readonly resultat: string;
+}
+
+export interface ProfitLossReport {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly charges: ReadonlyArray<ProfitLossLine>;
+  readonly produits: ReadonlyArray<ProfitLossLine>;
+  readonly totalCharges: string;
+  readonly totalProduits: string;
+  /** produits − charges. Positive = bénéfice, negative = perte. */
+  readonly resultat: string;
+  readonly previous?: ProfitLossPreviousSummary;
+}
