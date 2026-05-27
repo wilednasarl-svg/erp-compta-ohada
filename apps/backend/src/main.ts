@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { json, urlencoded } from 'express';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
@@ -12,11 +13,16 @@ import { ResponseEnvelopeInterceptor } from './common/interceptors/response-enve
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    // Buffer logs until the pino-backed Logger is installed below, so
-    // bootstrap lines flow through the same redaction pipeline as the
-    // rest of the application.
     bufferLogs: true,
+    // Disable the default 100kb body-parser so we can configure our own
+    // limit below. The from-balance endpoint receives large payloads
+    // (balance with 20k+ accounts can exceed 1.5MB).
+    bodyParser: false,
   });
+
+  // 10MB covers the largest realistic balance file (30k accounts × ~80B/row ≈ 2.4MB).
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   // Swap Nest's default text logger for the pino-backed one wired by
   // `LoggerModule` (BE-BOOT-09). Every framework log now ships as

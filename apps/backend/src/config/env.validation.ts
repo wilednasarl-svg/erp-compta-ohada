@@ -82,13 +82,26 @@ export const envSchema = z.object({
   IMPORT_STORAGE_DIR: z.string().min(1).default('./uploads'),
   IMPORT_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(25),
 
-  // Module 10 — Document engine (vague 1).
-  // Default driver writes to the local filesystem rooted at
-  // `DOC_STORAGE_DIR`; storage keys are content-addressed
-  // (`<orgId>/<yyyy>/<mm>/<sha256>.<ext>`) so a future S3/Supabase
-  // adapter can keep the same key shape and migrate by rsync.
+  // Module 10 — Document engine.
+  // Set DOC_STORAGE_DRIVER=supabase in production to persist files in
+  // Supabase Storage instead of the local filesystem (Railway ephemeral).
+  DOC_STORAGE_DRIVER: z.enum(['local', 'supabase']).default('local'),
   DOC_STORAGE_DIR: z.string().min(1).default('./uploads/documents'),
   DOC_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(50),
+
+  // Supabase Storage — required when DOC_STORAGE_DRIVER=supabase.
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).default('documents'),
+}).superRefine((data, ctx) => {
+  if (data.DOC_STORAGE_DRIVER === 'supabase') {
+    if (!data.SUPABASE_URL) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SUPABASE_URL'], message: 'required when DOC_STORAGE_DRIVER=supabase' });
+    }
+    if (!data.SUPABASE_SERVICE_ROLE_KEY) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SUPABASE_SERVICE_ROLE_KEY'], message: 'required when DOC_STORAGE_DRIVER=supabase' });
+    }
+  }
 });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;

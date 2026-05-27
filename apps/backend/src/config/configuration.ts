@@ -34,6 +34,10 @@ export interface AppConfig {
   documents: {
     storageDir: string;
     maxFileSizeBytes: number;
+    storageDriver: 'local' | 'supabase';
+    supabaseUrl?: string;
+    supabaseServiceRoleKey?: string;
+    supabaseStorageBucket: string;
   };
 }
 
@@ -82,6 +86,10 @@ export function configuration(): AppConfig {
     documents: {
       storageDir: env.DOC_STORAGE_DIR,
       maxFileSizeBytes: env.DOC_MAX_FILE_SIZE_MB * 1024 * 1024,
+      storageDriver: env.DOC_STORAGE_DRIVER,
+      supabaseUrl: env.SUPABASE_URL,
+      supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+      supabaseStorageBucket: env.SUPABASE_STORAGE_BUCKET,
     },
   };
 }

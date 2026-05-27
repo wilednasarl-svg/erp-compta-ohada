@@ -22,6 +22,11 @@ import { DOCUMENT_STORAGE } from './services/document-storage.interface';
 import { DocumentsService } from './services/documents.service';
 import { NullOcrProvider } from './services/null-ocr-provider';
 import { OCR_PROVIDER, type OcrProvider } from './services/ocr-provider';
+import {
+  SUPABASE_STORAGE_CONFIG,
+  SupabaseDocumentStorage,
+  type SupabaseStorageConfig,
+} from './services/supabase-document-storage.service';
 import { TesseractOcrProvider } from './services/tesseract-ocr-provider';
 
 /**
@@ -92,8 +97,33 @@ import { TesseractOcrProvider } from './services/tesseract-ocr-provider';
       },
     },
     {
+      provide: SUPABASE_STORAGE_CONFIG,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService): SupabaseStorageConfig => {
+        const docConfig = config.get<AppConfig['documents']>('documents');
+        if (docConfig === undefined) {
+          throw new Error('AppConfig.documents missing — configuration() not loaded');
+        }
+        return {
+          supabaseUrl: docConfig.supabaseUrl ?? '',
+          serviceRoleKey: docConfig.supabaseServiceRoleKey ?? '',
+          bucket: docConfig.supabaseStorageBucket,
+        };
+      },
+    },
+    LocalFilesystemDocumentStorage,
+    SupabaseDocumentStorage,
+    {
       provide: DOCUMENT_STORAGE,
-      useClass: LocalFilesystemDocumentStorage,
+      inject: [ConfigService, LocalFilesystemDocumentStorage, SupabaseDocumentStorage],
+      useFactory: (
+        config: ConfigService,
+        local: LocalFilesystemDocumentStorage,
+        supabase: SupabaseDocumentStorage,
+      ) => {
+        const docConfig = config.get<AppConfig['documents']>('documents');
+        return docConfig?.storageDriver === 'supabase' ? supabase : local;
+      },
     },
     // Module 10 wave 2 — OcrProvider binding. Tesseract when
     // `OCR_ENABLED=true`, no-op (`NullOcrProvider`) otherwise.
