@@ -37,16 +37,24 @@ export interface SupabaseStorageConfig {
 @Injectable()
 export class SupabaseDocumentStorage implements DocumentStorage {
   private readonly logger = new Logger(SupabaseDocumentStorage.name);
-  private readonly client: SupabaseClient;
+  private readonly config: SupabaseStorageConfig;
   private readonly bucket: string;
+  private _client: SupabaseClient | null = null;
 
   constructor(
     @Inject(SUPABASE_STORAGE_CONFIG) config: SupabaseStorageConfig,
   ) {
+    this.config = config;
     this.bucket = config.bucket;
-    this.client = createClient(config.supabaseUrl, config.serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+  }
+
+  private get client(): SupabaseClient {
+    if (!this._client) {
+      this._client = createClient(this.config.supabaseUrl, this.config.serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+    }
+    return this._client;
   }
 
   async save(input: SaveDocumentInput): Promise<SaveDocumentResult> {
