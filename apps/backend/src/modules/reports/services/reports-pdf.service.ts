@@ -357,104 +357,251 @@ export class ReportsPdfService {
    */
   async balanceSheetPdf(report: BalanceSheetReport, orgName: string): Promise<Buffer> {
     const doc = this.createDoc();
+    const M = ReportsPdfService.MARGIN;
+    const pageW = doc.page.width;
+    const contentW = pageW - M * 2;
     const hasComparison = report.previous !== undefined;
 
-    this.header(
-      doc,
-      orgName,
-      'Bilan OHADA – SYSCOHADA AUDCIF (contexture normalisée DGI)',
-      `Au ${report.asAtDate}` +
-        (hasComparison ? ` (comparaison N-1 : ${report.previous.asAtDate})` : '') +
-        ' — Devise : XOF',
-    );
-
-    // Colonnes ACTIF (4 colonnes montant + Note) — utilisées aussi pour
-    // le PASSIF, où les colonnes Brut / Amort restent vides (sans objet
-    // pour les capitaux propres et les dettes). La colonne « Note » est
-    // insérée entre Libellé et Brut N conformément à la doctrine Tome 3
-    // p. 32 (renvoie vers l'annexe correspondante).
-    const cols = [
-      { label: 'Réf.', width: 36 },
-      { label: 'Libellé', width: 214 },
-      { label: 'Note', width: 30, align: 'center' as const },
-      { label: 'Brut N', width: 88, align: 'right' as const },
-      { label: 'Amort. & dépréc.', width: 96, align: 'right' as const },
-      { label: 'Net N', width: 88, align: 'right' as const },
-      { label: 'Net N-1', width: 88, align: 'right' as const },
-    ];
-
-    let y = this.tableHeader(doc, cols);
-
-    // ── ACTIF — 4 colonnes pleines (Brut / Amort / Net N / Net N-1) ──
-    y = this.sectionTitle(doc, 'ACTIF', y);
-    for (const masse of report.actifMasses) {
-      y = this.bsMasseRows(doc, cols, masse, y, 'ACTIF');
+    // ── Bandeau d'en-tête coloré ──────────────────────────────────────
+    doc.rect(0, 0, pageW, 62).fill('#1e3a5f');
+    doc.fontSize(7).fillColor('#93c5fd').font('Helvetica')
+      .text('SYSCOHADA · AUDCIF · Bilan consolidé', M, 10);
+    doc.fontSize(13).fillColor('#ffffff').font('Helvetica-Bold')
+      .text(orgName.toUpperCase(), M, 22, { width: contentW * 0.55 });
+    doc.fontSize(11).fillColor('#e0f2fe').font('Helvetica-Bold')
+      .text(`BILAN  —  AU ${report.asAtDate}`, M + contentW * 0.55, 18, {
+        width: contentW * 0.45, align: 'right',
+      });
+    if (hasComparison) {
+      doc.fontSize(8).fillColor('#93c5fd').font('Helvetica')
+        .text(`Comparaison N-1 : ${report.previous.asAtDate}`, M + contentW * 0.55, 36, {
+          width: contentW * 0.45, align: 'right',
+        });
     }
+    doc.fillColor('#000000');
+    let y = 72;
 
-    // Total général ACTIF (masse racine BZ déjà rendue ci-dessus, on
-    // ajoute un rappel synthétique pour faciliter la lecture).
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        '',
-        'TOTAL GÉNÉRAL ACTIF',
-        '',
-        '',
-        '',
-        this.fmtAmt(report.totals.actif),
-        hasComparison ? this.fmtAmt(report.previous.totalActif) : '',
-      ],
-      y,
-      true,
+    // ── Définition colonnes ──────────────────────────────────────────
+    const cols = [
+      { label: 'Réf.', width: 34, align: 'left' as const },
+      { label: 'Libellé du poste', width: 210, align: 'left' as const },
+      { label: 'Note', width: 28, align: 'center' as const },
+      { label: 'Brut N', width: 85, align: 'right' as const },
+      { label: 'Amort. & dépréc.', width: 92, align: 'right' as const },
+      { label: 'Net N', width: 85, align: 'right' as const },
+      ...(hasComparison ? [{ label: 'Net N-1', width: 85, align: 'right' as const }] : []),
+    ];
+    const tableW = cols.reduce((s, c) => s + c.width, 0) + (cols.length - 1) * ReportsPdfService.COL_GAP;
+
+    // ── Section ACTIF ─────────────────────────────────────────────────
+    y = this.bilanSectionBand(doc, 'ACTIF', '#1e40af', '#dbeafe', M, y, tableW);
+    y = this.bilanColHeaders(doc, cols, M, y, tableW);
+    for (const masse of report.actifMasses) {
+      y = this.bilanMasseRows(doc, cols, masse, y, 'ACTIF', tableW);
+    }
+    y = this.bilanGrandTotal(
+      doc, cols, 'BZ', 'TOTAL GÉNÉRAL ACTIF', '#dbeafe', '#1e40af',
+      report.totals.actif,
+      hasComparison ? report.previous.totalActif : undefined,
+      M, y, tableW,
     );
 
-    // ── PASSIF — 2 colonnes utiles (Brut / Amort vides par doctrine) ──
+    // ── Section PASSIF ────────────────────────────────────────────────
     if (y > doc.page.height - 120) {
       doc.addPage();
-      y = this.tableHeader(doc, cols);
+      y = M;
     }
-    y = this.sectionTitle(doc, 'PASSIF', y + 10);
+    y += 10;
+    y = this.bilanSectionBand(doc, 'PASSIF', '#065f46', '#d1fae5', M, y, tableW);
+    y = this.bilanColHeaders(doc, cols, M, y, tableW);
     for (const masse of report.passifMasses) {
-      y = this.bsMasseRows(doc, cols, masse, y, 'PASSIF');
+      y = this.bilanMasseRows(doc, cols, masse, y, 'PASSIF', tableW);
     }
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        '',
-        'TOTAL GÉNÉRAL PASSIF',
-        '',
-        '',
-        '',
-        this.fmtAmt(report.totals.passif),
-        hasComparison ? this.fmtAmt(report.previous.totalPassif) : '',
-      ],
-      y,
-      true,
+    y = this.bilanGrandTotal(
+      doc, cols, 'DZ', 'TOTAL GÉNÉRAL PASSIF', '#d1fae5', '#065f46',
+      report.totals.passif,
+      hasComparison ? report.previous.totalPassif : undefined,
+      M, y, tableW,
     );
 
-    // ── Pied : équilibre + résultat incorporé ──
-    y += 8;
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(ReportsPdfService.FONT_SIZE_TABLE)
+    // ── Indicateur d'équilibre ────────────────────────────────────────
+    y += 10;
+    const diff = Math.abs(Number(report.totals.difference));
+    const isBalanced = diff < 1;
+    const balBg = isBalanced ? '#d1fae5' : '#fee2e2';
+    const balFg = isBalanced ? '#065f46' : '#991b1b';
+    doc.rect(M, y, tableW, 20).fill(balBg);
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(balFg)
       .text(
-        `Écart Actif − Passif : ${this.fmtAmt(report.totals.difference)}`,
-        ReportsPdfService.MARGIN,
-        y,
+        isBalanced
+          ? `Equilibre verifie  —  Actif = Passif = ${this.fmtAmt(report.totals.actif)}`
+          : `Ecart Actif - Passif : ${this.fmtAmt(report.totals.difference)}  (verifier les ecritures)`,
+        M + 8, y + 6,
       );
     if (report.netResultIncorporated !== null) {
-      y += ReportsPdfService.LINE_HEIGHT;
-      doc.text(
-        `Résultat de l'exercice incorporé dans les capitaux propres : ${this.fmtAmt(report.netResultIncorporated)}`,
-        ReportsPdfService.MARGIN,
-        y,
-      );
+      y += 24;
+      doc.font('Helvetica').fontSize(7).fillColor('#555555')
+        .text(
+          `Resultat de l'exercice incorpore dans les capitaux propres : ${this.fmtAmt(report.netResultIncorporated)}`,
+          M, y,
+        );
     }
+    doc.fillColor('#000000');
 
     this.footer(doc);
     return this.finalize(doc);
+  }
+
+  private bilanSectionBand(
+    doc: PDFKit.PDFDocument,
+    title: string,
+    bgDark: string,
+    _bgLight: string,
+    x: number,
+    y: number,
+    w: number,
+  ): number {
+    doc.rect(x, y, w, 18).fill(bgDark);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff')
+      .text(title, x + 8, y + 5);
+    doc.fillColor('#000000');
+    return y + 22;
+  }
+
+  private bilanColHeaders(
+    doc: PDFKit.PDFDocument,
+    cols: Array<{ label: string; width: number; align: 'left' | 'right' | 'center' }>,
+    x: number,
+    y: number,
+    w: number,
+  ): number {
+    doc.rect(x, y, w, 14).fill('#e2e8f0');
+    doc.font('Helvetica-Bold').fontSize(7).fillColor('#374151');
+    let cx = x;
+    for (const col of cols) {
+      doc.text(col.label, cx, y + 3, { width: col.width, align: col.align });
+      cx += col.width + ReportsPdfService.COL_GAP;
+    }
+    doc.fillColor('#000000');
+    return y + 17;
+  }
+
+  private bilanMasseRows(
+    doc: PDFKit.PDFDocument,
+    cols: Array<{ label: string; width: number; align: 'left' | 'right' | 'center' }>,
+    masse: BilanMasse,
+    y: number,
+    side: 'ACTIF' | 'PASSIF',
+    tableW: number,
+  ): number {
+    const M = ReportsPdfService.MARGIN;
+    const LH = ReportsPdfService.LINE_HEIGHT;
+
+    if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+
+    // En-tête masse — fond légèrement grisé
+    doc.rect(M, y, tableW, LH).fill('#f8fafc');
+    doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE).fillColor('#111111')
+      .text(masse.code, M + 2, y + 2);
+    doc.text(masse.label.toUpperCase(), M + 2 + cols[0]!.width + ReportsPdfService.COL_GAP, y + 2, {
+      width: cols[1]!.width,
+    });
+    doc.fillColor('#000000');
+    y += LH;
+
+    for (const rubrique of masse.rubriques) {
+      if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+
+      // Titre rubrique — italique indentée
+      doc.font('Helvetica-Oblique').fontSize(7).fillColor('#555555')
+        .text(`  ${rubrique.label}`, M + 2 + cols[0]!.width + ReportsPdfService.COL_GAP, y + 1, {
+          width: cols[1]!.width,
+        });
+      doc.fillColor('#000000');
+      y += LH - 2;
+
+      let rowIdx = 0;
+      for (const poste of rubrique.postes) {
+        if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+        // Alternance de fond blanc / très léger gris
+        if (rowIdx % 2 === 1) doc.rect(M, y, tableW, LH).fill('#f9fafb');
+        rowIdx++;
+        doc.font('Helvetica').fontSize(ReportsPdfService.FONT_SIZE_TABLE).fillColor('#111111');
+        const vals = this.posteValues(poste, side);
+        let cx = M;
+        for (let i = 0; i < cols.length; i++) {
+          const col = cols[i]!;
+          doc.text(vals[i] ?? '', cx, y + 2, { width: col.width, align: col.align });
+          cx += col.width + ReportsPdfService.COL_GAP;
+        }
+        doc.fillColor('#000000');
+        y += LH;
+      }
+
+      // Ligne de séparation fine
+      doc.moveTo(M, y).lineTo(M + tableW, y).lineWidth(0.3).strokeColor('#cccccc').stroke();
+
+      // Sous-total rubrique
+      if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+      doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE).fillColor('#333333');
+      let cx = M;
+      const stVals = ['', `  Sous-total ${rubrique.label}`, '', '', '', this.fmtAmt(rubrique.subtotal), rubrique.subtotalPrevious !== undefined ? this.fmtAmt(rubrique.subtotalPrevious) : ''];
+      for (let i = 0; i < cols.length; i++) {
+        const col = cols[i]!;
+        doc.text(stVals[i] ?? '', cx, y + 2, { width: col.width, align: col.align });
+        cx += col.width + ReportsPdfService.COL_GAP;
+      }
+      doc.fillColor('#000000');
+      y += LH;
+    }
+
+    // Total de masse
+    if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+    doc.rect(M, y, tableW, LH + 2).fill('#e2e8f0');
+    doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE).fillColor('#111111');
+    let cx = M;
+    const totalVals = [masse.code, `TOTAL ${masse.label.toUpperCase()}`, '', '', '', this.fmtAmt(masse.total), masse.totalPrevious !== undefined ? this.fmtAmt(masse.totalPrevious) : ''];
+    for (let i = 0; i < cols.length; i++) {
+      const col = cols[i]!;
+      doc.text(totalVals[i] ?? '', cx, y + 3, { width: col.width, align: col.align });
+      cx += col.width + ReportsPdfService.COL_GAP;
+    }
+    doc.fillColor('#000000');
+    return y + LH + 4;
+  }
+
+  private bilanGrandTotal(
+    doc: PDFKit.PDFDocument,
+    cols: Array<{ label: string; width: number; align: 'left' | 'right' | 'center' }>,
+    ref: string,
+    label: string,
+    bg: string,
+    fg: string,
+    total: string | number,
+    totalPrev: string | number | undefined,
+    x: number,
+    y: number,
+    w: number,
+  ): number {
+    if (y > doc.page.height - 40) { doc.addPage(); y = ReportsPdfService.MARGIN; }
+    const LH = ReportsPdfService.LINE_HEIGHT + 4;
+    doc.rect(x, y, w, LH).fill(bg);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(fg);
+    let cx = x;
+    const netCol = cols.findIndex((c) => c.label.startsWith('Net N') && !c.label.includes('N-1'));
+    const prevCol = cols.findIndex((c) => c.label.includes('N-1'));
+    for (let i = 0; i < cols.length; i++) {
+      const col = cols[i]!;
+      let val = '';
+      if (i === 0) val = ref;
+      else if (i === 1) val = label;
+      else if (i === netCol) val = this.fmtAmt(total);
+      else if (i === prevCol && totalPrev !== undefined) val = this.fmtAmt(totalPrev);
+      doc.text(val, cx, y + 4, { width: col.width, align: col.align });
+      cx += col.width + ReportsPdfService.COL_GAP;
+    }
+    doc.fillColor('#000000');
+    return y + LH + 4;
   }
 
   /**
@@ -464,107 +611,6 @@ export class ReportsPdfService {
    *
    * Pour le côté ACTIF : affiche Brut + Amort & dépréc. + Net N + Net N-1.
    * Pour le côté PASSIF : Brut / Amort restent vides (les capitaux
-   * propres et dettes n'ont pas d'amortissements opposants par
-   * doctrine OHADA).
-   */
-  private bsMasseRows(
-    doc: PDFKit.PDFDocument,
-    cols: Array<{
-      label: string;
-      width: number;
-      align?: 'right' | 'center';
-    }>,
-    masse: BilanMasse,
-    y: number,
-    side: 'ACTIF' | 'PASSIF',
-  ): number {
-    if (y > doc.page.height - 60) {
-      doc.addPage();
-      y = this.tableHeader(doc, cols);
-    }
-
-    // Header de la masse (gras, sans montant — celui-ci apparaît en
-    // ligne de total après les rubriques).
-    y = this.tableRow(
-      doc,
-      cols,
-      [masse.code, masse.label.toUpperCase(), '', '', '', '', ''],
-      y,
-      true,
-    );
-
-    for (const rubrique of masse.rubriques) {
-      if (y > doc.page.height - 60) {
-        doc.addPage();
-        y = this.tableHeader(doc, cols);
-      }
-      // Rubrique — étiquette éditoriale (gras, indentée).
-      y = this.tableRow(
-        doc,
-        cols,
-        ['', `  ${rubrique.label}`, '', '', '', '', ''],
-        y,
-        true,
-      );
-
-      // Postes lettrés — par doctrine on AFFICHE même les lignes vides
-      // (contexture normalisée DGI inclut tous les postes, A/N/A possible).
-      for (const poste of rubrique.postes) {
-        if (y > doc.page.height - 60) {
-          doc.addPage();
-          y = this.tableHeader(doc, cols);
-        }
-        y = this.tableRow(doc, cols, this.posteValues(poste, side), y);
-      }
-
-      // Sous-total de rubrique.
-      if (y > doc.page.height - 60) {
-        doc.addPage();
-        y = this.tableHeader(doc, cols);
-      }
-      y = this.tableRow(
-        doc,
-        cols,
-        [
-          '',
-          `  Sous-total ${rubrique.label}`,
-          '',
-          '',
-          '',
-          this.fmtAmt(rubrique.subtotal),
-          rubrique.subtotalPrevious !== undefined
-            ? this.fmtAmt(rubrique.subtotalPrevious)
-            : '',
-        ],
-        y,
-        true,
-      );
-    }
-
-    // Total de masse (ex. AZ, BJ, BT).
-    if (y > doc.page.height - 60) {
-      doc.addPage();
-      y = this.tableHeader(doc, cols);
-    }
-    y = this.tableRow(
-      doc,
-      cols,
-      [
-        masse.code,
-        `TOTAL ${masse.label.toUpperCase()}`,
-        '',
-        '',
-        '',
-        this.fmtAmt(masse.total),
-        masse.totalPrevious !== undefined ? this.fmtAmt(masse.totalPrevious) : '',
-      ],
-      y,
-      true,
-    );
-
-    return y;
-  }
-
   /**
    * Construit les 6 cellules d'une ligne de poste lettré. Côté ACTIF :
    * 4 colonnes montant (Brut / Amort / Net N / Net N-1). Côté PASSIF :

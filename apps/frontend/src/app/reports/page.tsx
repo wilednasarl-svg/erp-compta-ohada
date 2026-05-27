@@ -375,6 +375,14 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
     );
   };
 
+  const downloadPdf = (): void => {
+    if (submitted === null) return;
+    void api.download(
+      `/organizations/${orgId}/reports/balance-sheet.pdf?${buildParams(submitted).toString()}`,
+      'bilan.pdf',
+    );
+  };
+
   return (
     <Card className="border-line bg-paper shadow-none">
       <CardHeader className="border-b border-line">
@@ -500,8 +508,8 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     XLSX
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => window.print()}>
-                    <Printer className="mr-2 h-4 w-4" />
+                  <Button type="button" variant="outline" onClick={downloadPdf}>
+                    <FileText className="mr-2 h-4 w-4" />
                     PDF
                   </Button>
                 </>
