@@ -175,11 +175,13 @@ export default function ReportsPage() {
           </div>
         </header>
 
-        <ReportNav active={mode} onChange={setMode} />
+        <div className="no-print">
+          <ReportNav active={mode} onChange={setMode} />
+        </div>
 
         {/* Légende du rapport actif — donne un repère explicite avant que
             les filtres + tableau ne se déploient en dessous. */}
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line pb-2">
+        <div className="no-print flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line pb-2">
           <p className="text-2xs uppercase tracking-wider text-ink-mute">Vous consultez</p>
           <p className="font-display text-xl font-medium tracking-tight text-ink">
             {activeLabel}
@@ -373,14 +375,6 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
     );
   };
 
-  const downloadPdf = (): void => {
-    if (submitted === null) return;
-    void api.download(
-      `/organizations/${orgId}/reports/balance-sheet.pdf?${buildParams(submitted).toString()}`,
-      'bilan.pdf',
-    );
-  };
-
   return (
     <Card className="border-line bg-paper shadow-none">
       <CardHeader className="border-b border-line">
@@ -395,7 +389,7 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
         <form
-          className="grid gap-5 lg:grid-cols-[auto_1fr_auto] lg:items-end"
+          className="no-print grid gap-5 lg:grid-cols-[auto_1fr_auto] lg:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             setSubmitted({
@@ -506,8 +500,8 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     XLSX
                   </Button>
-                  <Button type="button" variant="outline" onClick={downloadPdf}>
-                    <FileText className="mr-2 h-4 w-4" />
+                  <Button type="button" variant="outline" onClick={() => window.print()}>
+                    <Printer className="mr-2 h-4 w-4" />
                     PDF
                   </Button>
                 </>
