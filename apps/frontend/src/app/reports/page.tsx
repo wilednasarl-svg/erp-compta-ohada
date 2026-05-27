@@ -1255,7 +1255,7 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
               Importer le plan SYSCOHADA
             </Button>
             {importChartMutation.isSuccess ? (
-              <span className="text-xs text-emerald-700">
+              <span className="text-xs text-accent-ink">
                 Importé : {importChartMutation.data.added} ajouté(s),{' '}
                 {importChartMutation.data.skipped} ignoré(s).
               </span>
@@ -1280,59 +1280,151 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
 }
 
 function GeneralLedgerTable({ report }: { readonly report: GeneralLedgerReport }) {
+  const openingDebitNum = Number(report.opening.openingDebit);
+  const openingCreditNum = Number(report.opening.openingCredit);
+  // Solde d'ouverture net signé (D − C). Permet d'afficher un seul chiffre
+  // clair plutôt que « 10000 D / 0 C » qui fait perdre le sens.
+  const openingNet = (openingDebitNum - openingCreditNum).toFixed(2);
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 rounded-md border bg-sunk px-3 py-2 text-sm">
-        <span className="font-mono">{report.accountCode}</span>
-        <span className="font-medium">{report.accountLabel}</span>
-        <span className="ml-auto text-xs text-ink-mute">
-          Solde d&apos;ouverture : <span className="font-mono">{fmt(report.opening.openingDebit)}</span> D /{' '}
-          <span className="font-mono">{fmt(report.opening.openingCredit)}</span> C
-        </span>
+    <div className="space-y-4">
+      {/* Identification du compte + résumé période. La carte d'identité
+          du compte reste en haut, ancrée et toujours visible quand on
+          scrolle dans le détail des écritures. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Compte</p>
+          <p className="mt-0.5 font-mono text-base font-medium tabular-nums text-ink">
+            {report.accountCode}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-ink-soft">{report.accountLabel}</p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.fromDate)} → {formatShortDate(report.toDate)}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-soft">
+            <span className="font-mono tabular-nums">{report.lines.length}</span> ligne
+            {report.lines.length > 1 ? 's' : ''}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Solde ouverture</p>
+          <p
+            className={cn(
+              'mt-0.5 font-mono text-xl font-medium tabular-nums',
+              Number(openingNet) < 0 ? 'text-critical-ink' : 'text-ink',
+            )}
+          >
+            {fmt(openingNet)}
+          </p>
+        </div>
+        <div className="bg-accent-soft/60 px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-accent-ink">Solde clôture</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-accent-ink">
+            {fmt(
+              (
+                Number(report.totals.endingDebit) - Number(report.totals.endingCredit)
+              ).toFixed(2),
+            )}
+          </p>
+        </div>
       </div>
 
       {report.lines.length === 0 ? (
-        <p className="text-sm text-ink-mute">Aucun mouvement sur la période pour ce compte.</p>
+        <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+          <p className="text-sm text-ink-soft">
+            Aucun mouvement sur la période pour ce compte.
+          </p>
+        </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-md border border-line">
           <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-sunk text-left text-2xs uppercase tracking-wider text-ink-mute">
-                <th className="px-2 py-2">Date</th>
-                <th className="px-2 py-2">Journal</th>
-                <th className="px-2 py-2">N°</th>
-                <th className="px-2 py-2">Libellé</th>
-                <th className="px-2 py-2">Lettrage</th>
-                <th className="px-2 py-2 text-right">Débit</th>
-                <th className="px-2 py-2 text-right">Crédit</th>
-                <th className="px-2 py-2 text-right">Solde</th>
+            <thead className="sticky top-0 z-10 bg-sunk text-2xs uppercase tracking-wider text-ink-mute shadow-[0_1px_0_0_oklch(var(--line-strong))]">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Date</th>
+                <th className="px-3 py-2 text-left font-medium">Journal</th>
+                <th className="px-3 py-2 text-right font-medium">N°</th>
+                <th className="px-3 py-2 text-left font-medium">Libellé</th>
+                <th className="px-3 py-2 text-left font-medium">Lettrage</th>
+                <th className="border-l border-line-strong px-3 py-2 text-right font-medium">
+                  Débit
+                </th>
+                <th className="px-3 py-2 text-right font-medium">Crédit</th>
+                <th className="border-l border-line-strong px-3 py-2 text-right font-medium">
+                  Solde
+                </th>
               </tr>
             </thead>
             <tbody>
-              {report.lines.map((line) => (
-                <tr key={line.lineId} className="border-t border-line hover:bg-sunk/40">
-                  <td className="px-2 py-1 whitespace-nowrap">{line.entryDate}</td>
-                  <td className="px-2 py-1 font-mono text-xs">{line.journalCode}</td>
-                  <td className="px-2 py-1 text-right font-mono text-xs">{line.entryNumber}</td>
-                  <td className="px-2 py-1">{line.description ?? '—'}</td>
-                  <td className="px-2 py-1 font-mono text-xs">{line.letteringCode ?? '—'}</td>
-                  <td className="px-2 py-1 text-right font-mono">{fmt(line.debit)}</td>
-                  <td className="px-2 py-1 text-right font-mono">{fmt(line.credit)}</td>
-                  <td className="px-2 py-1 text-right font-mono font-medium">
-                    {fmt(line.runningBalance)}
-                  </td>
-                </tr>
-              ))}
+              {report.lines.map((line) => {
+                const debitNum = Number(line.debit);
+                const creditNum = Number(line.credit);
+                const balanceNum = Number(line.runningBalance);
+                return (
+                  <tr key={line.lineId} className="border-t border-line hover:bg-sunk/40">
+                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs tabular-nums text-ink-soft">
+                      {line.entryDate}
+                    </td>
+                    <td className="px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-ink-soft">
+                      {line.journalCode}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-ink-mute">
+                      {line.entryNumber}
+                    </td>
+                    <td className="px-3 py-1.5 text-ink">{line.description ?? '—'}</td>
+                    <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">
+                      {line.letteringCode ?? (
+                        <span className="text-ink-mute">—</span>
+                      )}
+                    </td>
+                    <td
+                      className={cn(
+                        'border-l border-line px-3 py-1.5 text-right font-mono tabular-nums',
+                        debitNum === 0 ? 'text-ink-mute' : 'text-ink',
+                      )}
+                    >
+                      {debitNum === 0 ? '—' : fmt(line.debit)}
+                    </td>
+                    <td
+                      className={cn(
+                        'px-3 py-1.5 text-right font-mono tabular-nums',
+                        creditNum === 0 ? 'text-ink-mute' : 'text-ink',
+                      )}
+                    >
+                      {creditNum === 0 ? '—' : fmt(line.credit)}
+                    </td>
+                    <td
+                      className={cn(
+                        'border-l border-line px-3 py-1.5 text-right font-mono font-medium tabular-nums',
+                        balanceNum < 0 ? 'text-critical-ink' : 'text-ink',
+                      )}
+                    >
+                      {fmt(line.runningBalance)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
-                <td className="px-2 py-2" colSpan={5}>
+                <td className="px-3 py-2.5 text-2xs uppercase tracking-wider" colSpan={5}>
                   Totaux période
                 </td>
-                <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.periodDebit)}</td>
-                <td className="px-2 py-2 text-right font-mono">{fmt(report.totals.periodCredit)}</td>
-                <td className="px-2 py-2 text-right font-mono">
-                  {fmt(report.totals.endingDebit)} D / {fmt(report.totals.endingCredit)} C
+                <td className="border-l border-accent/30 px-3 py-2.5 text-right font-mono tabular-nums">
+                  {fmt(report.totals.periodDebit)}
+                </td>
+                <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                  {fmt(report.totals.periodCredit)}
+                </td>
+                <td className="border-l border-accent/30 px-3 py-2.5 text-right font-mono font-semibold tabular-nums">
+                  {fmt(
+                    (
+                      Number(report.totals.endingDebit) -
+                      Number(report.totals.endingCredit)
+                    ).toFixed(2),
+                  )}
                 </td>
               </tr>
             </tfoot>
@@ -2439,58 +2531,165 @@ function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
 function AgingBalanceTable({ report }: { readonly report: AgingBalanceReport }) {
   if (report.rows.length === 0) {
     return (
-      <p className="text-sm text-ink-mute">
-        Aucun en-cours {report.side === 'CLIENT' ? 'client' : 'fournisseur'} ouvert à cette date.
-      </p>
+      <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+        <p className="text-sm text-ink-soft">
+          Aucun en-cours {report.side === 'CLIENT' ? 'client' : 'fournisseur'} ouvert à cette date.
+        </p>
+      </div>
     );
   }
   const bucketLabels = (report.rows[0]?.buckets ?? []).map((b) => b.label);
+  const numBuckets = bucketLabels.length;
+
+  // Total des comptes "critiques" : ceux ayant un montant > 0 dans le
+  // dernier bucket (le plus ancien). C'est l'alerte recouvrement.
+  const criticalCount = report.rows.filter(
+    (r) => Number(r.buckets[numBuckets - 1]?.amount ?? '0') > 0,
+  ).length;
+  const criticalTotal = report.rows
+    .filter((r) => Number(r.buckets[numBuckets - 1]?.amount ?? '0') > 0)
+    .reduce((s, r) => s + Number(r.buckets[numBuckets - 1]?.amount ?? '0'), 0)
+    .toFixed(2);
+
+  // Échelle de gris/teinte par bucket — heatmap discrète. Premier
+  // bucket = neutre (à jour), dernier = critical-soft (impayé long).
+  // Les buckets intermédiaires gradient warn → critical. C'est ce qui
+  // permet au comptable de voir le risque de recouvrement en diagonale.
+  const bucketTone = (idx: number, amount: string): string => {
+    const n = Number(amount);
+    if (!Number.isFinite(n) || n === 0) return 'text-ink-mute';
+    if (idx === 0) return 'text-ink';
+    if (idx === numBuckets - 1) return 'bg-critical-soft/40 text-critical-ink font-semibold';
+    if (idx === numBuckets - 2) return 'bg-warn-soft/30 text-warn-ink';
+    return 'text-ink';
+  };
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="bg-sunk text-left text-2xs uppercase tracking-wider text-ink-mute">
-            <th className="px-2 py-2">Compte</th>
-            <th className="px-2 py-2">Intitulé</th>
-            {bucketLabels.map((lab, i) => (
-              <th key={i} className="px-2 py-2 text-right">
-                {lab}
+    <div className="space-y-4">
+      {/* Bandeau récap : côté + date + total + alerte recouvrement. La
+          cellule « En souffrance » bascule en critical-soft dès qu'un
+          compte traîne dans le dernier bucket. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Côté</p>
+          <p className="mt-0.5 text-sm font-medium text-ink">
+            {report.side === 'CLIENT' ? 'Clients' : 'Fournisseurs'}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Arrêté au</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.asAtDate)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Total en-cours</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+            {fmt(report.grandTotal)}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'px-4 py-3',
+            criticalCount > 0 ? 'bg-critical-soft' : 'bg-accent-soft/60',
+          )}
+        >
+          <p
+            className={cn(
+              'text-2xs uppercase tracking-wider',
+              criticalCount > 0 ? 'text-critical-ink' : 'text-accent-ink',
+            )}
+          >
+            {criticalCount > 0 ? '▲ En souffrance' : 'Tout à jour'}
+          </p>
+          <p
+            className={cn(
+              'mt-0.5 font-mono text-xl font-medium tabular-nums',
+              criticalCount > 0 ? 'text-critical-ink' : 'text-accent-ink',
+            )}
+          >
+            {criticalCount > 0 ? fmt(criticalTotal) : '—'}
+          </p>
+          {criticalCount > 0 && (
+            <p className="mt-0.5 text-2xs text-critical-ink/80">
+              <span className="font-mono tabular-nums">{criticalCount}</span> compte
+              {criticalCount > 1 ? 's' : ''} en {bucketLabels[numBuckets - 1]}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-line">
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 z-10 bg-sunk text-2xs uppercase tracking-wider text-ink-mute shadow-[0_1px_0_0_oklch(var(--line-strong))]">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Compte</th>
+              <th className="px-3 py-2 text-left font-medium">Intitulé</th>
+              {bucketLabels.map((lab, i) => (
+                <th
+                  key={i}
+                  className={cn(
+                    'px-3 py-2 text-right font-medium',
+                    i === numBuckets - 1 && 'text-critical-ink',
+                    i === numBuckets - 2 && 'text-warn-ink',
+                  )}
+                >
+                  {lab}
+                </th>
+              ))}
+              <th className="border-l border-line-strong px-3 py-2 text-right font-medium">
+                Total
               </th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((row) => (
+              <tr key={row.accountId} className="border-t border-line hover:bg-sunk/40">
+                <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">
+                  {row.accountCode}
+                </td>
+                <td className="px-3 py-1.5 text-ink">{row.accountLabel}</td>
+                {row.buckets.map((b, i) => {
+                  const num = Number(b.amount);
+                  const isZero = !Number.isFinite(num) || num === 0;
+                  return (
+                    <td
+                      key={i}
+                      className={cn(
+                        'px-3 py-1.5 text-right font-mono tabular-nums',
+                        bucketTone(i, b.amount),
+                      )}
+                    >
+                      {isZero ? '—' : fmt(b.amount)}
+                    </td>
+                  );
+                })}
+                <td className="border-l border-line px-3 py-1.5 text-right font-mono font-semibold tabular-nums text-ink">
+                  {fmt(row.total)}
+                </td>
+              </tr>
             ))}
-            <th className="px-2 py-2 text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {report.rows.map((row) => (
-            <tr key={row.accountId} className="border-t border-line hover:bg-sunk/40">
-              <td className="px-2 py-1 font-mono text-xs">{row.accountCode}</td>
-              <td className="px-2 py-1">{row.accountLabel}</td>
-              {row.buckets.map((b, i) => (
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
+              <td className="px-3 py-2.5 text-2xs uppercase tracking-wider" colSpan={2}>
+                Totaux par tranche
+              </td>
+              {report.bucketTotals.map((t, i) => (
                 <td
                   key={i}
-                  className={`px-2 py-1 text-right font-mono ${i === row.buckets.length - 1 && Number(b.amount) > 0 ? 'text-critical font-semibold' : ''}`}
+                  className="px-3 py-2.5 text-right font-mono tabular-nums"
                 >
-                  {fmt(b.amount)}
+                  {fmt(t)}
                 </td>
               ))}
-              <td className="px-2 py-1 text-right font-mono font-semibold">{fmt(row.total)}</td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-accent/30 bg-accent-soft/40 font-medium text-accent-ink">
-            <td className="px-2 py-2" colSpan={2}>
-              TOTAUX
-            </td>
-            {report.bucketTotals.map((t, i) => (
-              <td key={i} className="px-2 py-2 text-right font-mono">
-                {fmt(t)}
+              <td className="border-l border-accent/30 px-3 py-2.5 text-right font-mono font-semibold tabular-nums">
+                {fmt(report.grandTotal)}
               </td>
-            ))}
-            <td className="px-2 py-2 text-right font-mono">{fmt(report.grandTotal)}</td>
-          </tr>
-        </tfoot>
-      </table>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }
@@ -3010,32 +3209,75 @@ function TafirePanel({ orgId }: { readonly orgId: string }) {
 function TafireTable({ report }: { readonly report: TafireReport }) {
   const sumOf = (sections: ReadonlyArray<{ readonly total: string }>): string =>
     sections.reduce((s, sec) => s + Number(sec.total), 0).toFixed(2);
+  const totalEmplois = sumOf(report.emplois);
+  const totalRessources = sumOf(report.ressources);
+  const equilibre = Number(totalEmplois) === Number(totalRessources);
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Total EMPLOIS" value={sumOf(report.emplois)} />
-        <SummaryCard label="Total RESSOURCES" value={sumOf(report.ressources)} />
-        <SummaryCard label="Variation Trésorerie" value={report.variationTresorerie} />
+    <div className="space-y-8">
+      {/* Bandeau récap : période + ∑ Emplois + ∑ Ressources +
+          équilibre/variation. Le TAFIRE doit s'équilibrer (Σemplois =
+          Σressources + variation tréso) — un déséquilibre en mode strict
+          révèle une donnée manquante. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.fromDate)} → {formatShortDate(report.toDate)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-critical-ink">∑ Emplois</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-critical-ink">
+            {fmt(totalEmplois)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-accent-ink">∑ Ressources</p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-accent-ink">
+            {fmt(totalRessources)}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'px-4 py-3',
+            equilibre ? 'bg-accent-soft/60' : 'bg-warn-soft',
+          )}
+        >
+          <p
+            className={cn(
+              'text-2xs uppercase tracking-wider',
+              equilibre ? 'text-accent-ink' : 'text-warn-ink',
+            )}
+          >
+            Variation trésorerie
+          </p>
+          <p
+            className={cn(
+              'mt-0.5 font-mono text-xl font-medium tabular-nums',
+              equilibre ? 'text-accent-ink' : 'text-warn-ink',
+            )}
+          >
+            {fmt(report.variationTresorerie)}
+          </p>
+        </div>
       </div>
+
       <OhadaStatementBlock
-        title="EMPLOIS"
+        title="Emplois"
+        subtitle="Investissements et remboursements"
         sections={report.emplois}
-        titleClass="text-critical-ink"
+        accent="critical"
       />
       <OhadaStatementBlock
-        title="RESSOURCES"
+        title="Ressources"
+        subtitle="CAFG, cessions, augmentations de dettes"
         sections={report.ressources}
-        titleClass="text-emerald-700"
+        accent="accent"
       />
+
       {report.methodologyNotes.length > 0 ? (
-        <details className="rounded-md border border-line bg-sunk/40 p-3 text-xs text-ink-soft">
-          <summary className="cursor-pointer font-medium">Notes méthodologiques</summary>
-          <ul className="mt-2 list-disc pl-4 space-y-1">
-            {report.methodologyNotes.map((n, i) => (
-              <li key={i}>{n}</li>
-            ))}
-          </ul>
-        </details>
+        <MethodologyDetails notes={report.methodologyNotes} />
       ) : null}
     </div>
   );
@@ -3132,37 +3374,98 @@ function TftPanel({ orgId }: { readonly orgId: string }) {
 }
 
 function TftTable({ report }: { readonly report: TftReport }) {
+  const variationNum = Number(report.variationTresorerie);
+  const isPositive = Number.isFinite(variationNum) && variationNum > 0;
+  const isNegative = Number.isFinite(variationNum) && variationNum < 0;
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Trésorerie ouverture" value={report.tresorerieOuverture} />
-        <SummaryCard label="Variation totale" value={report.variationTresorerie} />
-        <SummaryCard label="Trésorerie clôture" value={report.tresorerieCloture} />
+    <div className="space-y-8">
+      {/* Bandeau récap : la mécanique cash en 3 chiffres clés —
+          ouverture, variation totale (signed), clôture. C'est la
+          ligne de fond du rapport, lue en premier. La variation
+          bascule de couleur (accent-soft / critical-soft) selon
+          le signe pour signaler immédiatement le cash flow net. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">Période</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-ink">
+            {formatShortDate(report.fromDate)} → {formatShortDate(report.toDate)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">
+            Trésorerie ouverture
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+            {fmt(report.tresorerieOuverture)}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'px-4 py-3',
+            isPositive
+              ? 'bg-accent-soft/60'
+              : isNegative
+                ? 'bg-critical-soft'
+                : 'bg-sunk/60',
+          )}
+        >
+          <p
+            className={cn(
+              'text-2xs uppercase tracking-wider',
+              isPositive
+                ? 'text-accent-ink'
+                : isNegative
+                  ? 'text-critical-ink'
+                  : 'text-ink-mute',
+            )}
+          >
+            {isPositive ? '▲' : isNegative ? '▼' : '·'} Variation
+          </p>
+          <p
+            className={cn(
+              'mt-0.5 font-mono text-xl font-medium tabular-nums',
+              isPositive
+                ? 'text-accent-ink'
+                : isNegative
+                  ? 'text-critical-ink'
+                  : 'text-ink-soft',
+            )}
+          >
+            {fmt(report.variationTresorerie)}
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-3">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">
+            Trésorerie clôture
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+            {fmt(report.tresorerieCloture)}
+          </p>
+        </div>
       </div>
+
       <OhadaStatementBlock
         title="Activités d'exploitation"
+        subtitle="Cash généré par l'activité courante"
         sections={[report.fluxExploitation]}
-        titleClass="text-blue-700"
+        accent="info"
       />
       <OhadaStatementBlock
         title="Activités d'investissement"
+        subtitle="Acquisitions et cessions d'immobilisations"
         sections={[report.fluxInvestissement]}
-        titleClass="text-warn-ink"
+        accent="warn"
       />
       <OhadaStatementBlock
         title="Activités de financement"
+        subtitle="Emprunts, remboursements, dividendes, augmentation de capital"
         sections={[report.fluxFinancement]}
-        titleClass="text-purple-700"
+        accent="accent"
       />
+
       {report.methodologyNotes.length > 0 ? (
-        <details className="rounded-md border border-line bg-sunk/40 p-3 text-xs text-ink-soft">
-          <summary className="cursor-pointer font-medium">Notes méthodologiques</summary>
-          <ul className="mt-2 list-disc pl-4 space-y-1">
-            {report.methodologyNotes.map((n, i) => (
-              <li key={i}>{n}</li>
-            ))}
-          </ul>
-        </details>
+        <MethodologyDetails notes={report.methodologyNotes} />
       ) : null}
     </div>
   );
@@ -3464,59 +3767,144 @@ function AnnexeNoteDetailInline({
 
 // ─── Bloc réutilisable de section OHADA ────────────────────────────────
 
+/**
+ * Bloc d'état OHADA — utilisé par TFT (3 catégories de flux) et
+ * TAFIRE (Emplois / Ressources). Chaque section a son code OHADA,
+ * son label, ses lignes détaillées et son total.
+ *
+ * `accent` colore le marqueur visuel (puce + bordure du total) selon
+ * la nature du bloc : `accent` pour ressources/positif, `critical`
+ * pour emplois, `warn` pour investissement, `info` pour exploitation.
+ * Le contenu reste neutre — c'est la sémantique structurelle qui
+ * gagne en couleur, pas la valeur affichée.
+ */
 function OhadaStatementBlock({
   title,
+  subtitle,
   sections,
-  titleClass = '',
+  accent = 'neutral',
 }: {
   readonly title: string;
+  readonly subtitle?: string;
   readonly sections: ReadonlyArray<{
     readonly code: string;
     readonly label: string;
     readonly total: string;
-    readonly lines: ReadonlyArray<{ readonly code: string; readonly label: string; readonly amount: string }>;
+    readonly lines: ReadonlyArray<{
+      readonly code: string;
+      readonly label: string;
+      readonly amount: string;
+    }>;
   }>;
-  readonly titleClass?: string;
+  readonly accent?: 'accent' | 'critical' | 'warn' | 'info' | 'neutral';
 }) {
+  const accentClasses: Record<typeof accent, { dot: string; total: string }> = {
+    accent: {
+      dot: 'bg-accent',
+      total: 'border-l-2 border-accent/40 bg-accent-soft/40 text-accent-ink',
+    },
+    critical: {
+      dot: 'bg-critical',
+      total: 'border-l-2 border-critical/40 bg-critical-soft/40 text-critical-ink',
+    },
+    warn: {
+      dot: 'bg-warn',
+      total: 'border-l-2 border-warn/40 bg-warn-soft/40 text-warn-ink',
+    },
+    info: {
+      dot: 'bg-info',
+      total: 'border-l-2 border-info/40 bg-info-soft/40 text-info-ink',
+    },
+    neutral: {
+      dot: 'bg-ink-mute',
+      total: 'border-l-2 border-line-strong bg-sunk/60 text-ink',
+    },
+  };
+  const tone = accentClasses[accent];
+
   return (
-    <div>
-      <h4 className={`mb-2 text-sm font-semibold uppercase tracking-wide ${titleClass}`}>
-        {title}
-      </h4>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-2xs uppercase tracking-wider text-ink-mute">
-            <th className="px-2 py-1">Réf.</th>
-            <th className="px-2 py-1">Libellé</th>
-            <th className="px-2 py-1 text-right">Montant</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sections.map((section) => (
-            <Fragment key={section.code}>
-              <tr className="border-b bg-sunk">
-                <td className="px-2 py-1 font-mono text-xs font-semibold">{section.code}</td>
-                <td className="px-2 py-1 font-medium" colSpan={2}>
-                  {section.label}
-                </td>
-              </tr>
-              {section.lines.map((line) => (
-                <tr key={line.code} className="border-b">
-                  <td className="px-2 py-1 font-mono text-xs text-ink-mute">{line.code}</td>
-                  <td className="px-2 py-1 pl-6 text-xs">{line.label}</td>
-                  <td className="px-2 py-1 text-right font-mono">{fmt(line.amount)}</td>
+    <section>
+      <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
+        <span aria-hidden className={cn('h-2 w-2 self-center rounded-full', tone.dot)} />
+        <h4 className="font-display text-base font-medium tracking-tight text-ink">{title}</h4>
+        {subtitle && (
+          <p className="ml-2 text-xs text-ink-soft">{subtitle}</p>
+        )}
+      </header>
+      <div className="overflow-hidden rounded-md border border-line">
+        <table className="w-full text-sm">
+          <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium">Réf.</th>
+              <th className="px-3 py-2 text-left font-medium">Libellé</th>
+              <th className="px-3 py-2 text-right font-medium">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sections.map((section) => (
+              <Fragment key={section.code}>
+                <tr className="border-t border-line bg-sunk/40">
+                  <td className="px-3 py-1.5 font-mono text-xs font-semibold text-ink">
+                    {section.code}
+                  </td>
+                  <td className="px-3 py-1.5 font-medium text-ink" colSpan={2}>
+                    {section.label}
+                  </td>
                 </tr>
-              ))}
-              <tr className="border-b font-semibold">
-                <td className="px-2 py-1"></td>
-                <td className="px-2 py-1 text-right text-xs">Total {section.label}</td>
-                <td className="px-2 py-1 text-right font-mono">{fmt(section.total)}</td>
-              </tr>
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                {section.lines.map((line) => {
+                  const num = Number(line.amount);
+                  const isZero = !Number.isFinite(num) || num === 0;
+                  return (
+                    <tr key={line.code} className="border-t border-line">
+                      <td className="px-3 py-1.5 font-mono text-xs text-ink-mute">{line.code}</td>
+                      <td className="px-3 py-1.5 pl-8 text-xs text-ink-soft">{line.label}</td>
+                      <td
+                        className={cn(
+                          'px-3 py-1.5 text-right font-mono tabular-nums',
+                          isZero ? 'text-ink-mute' : 'text-ink',
+                        )}
+                      >
+                        {isZero ? '—' : fmt(line.amount)}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className={cn('border-t border-line font-medium', tone.total)}>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2 text-right text-2xs uppercase tracking-wider">
+                    Total {section.label}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-base tabular-nums">
+                    {fmt(section.total)}
+                  </td>
+                </tr>
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Repli méthodologique : panneau <details> qui contient les notes
+ * explicatives sur le calcul. Repli par défaut — ne consomme pas la
+ * lecture diagonale, mais reste accessible pour le réviseur OHADA.
+ */
+function MethodologyDetails({ notes }: { readonly notes: ReadonlyArray<string> }) {
+  return (
+    <details className="rounded-md border border-line bg-sunk/40 p-3 text-xs text-ink-soft">
+      <summary className="cursor-pointer font-medium text-ink">
+        <Info className="mr-1.5 inline h-3.5 w-3.5" strokeWidth={1.5} />
+        Notes méthodologiques ({notes.length})
+      </summary>
+      <ul className="mt-2 list-disc space-y-1 pl-4">
+        {notes.map((n, i) => (
+          <li key={i}>{n}</li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -3654,46 +4042,113 @@ function formatSessionLabel(s: ImportSessionSummary): string {
 
 function VerdictBanner({ report }: { readonly report: ImportDiagnosticReport }) {
   const { verdict, totals } = report;
+
+  // Mapping verdict → palette sémantique. « conforme » = accent (vert),
+  // « à corriger » = warn (ambré), autre (rejeté) = critical (rouge).
+  // Le verdict est l'élément le plus visible, ses tokens reflètent
+  // l'urgence d'action.
   const palette =
     verdict.status === 'conforme'
-      ? { bg: 'bg-accent-soft', border: 'border-accent/40', text: 'text-accent-ink', icon: CheckCircle2, iconColor: 'text-accent' }
+      ? {
+          headerBg: 'bg-accent-soft',
+          headerText: 'text-accent-ink',
+          icon: CheckCircle2,
+          iconColor: 'text-accent',
+        }
       : verdict.status === 'à corriger'
-      ? { bg: 'bg-warn-soft', border: 'border-warn/40', text: 'text-warn-ink', icon: AlertTriangle, iconColor: 'text-warn' }
-      : { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', icon: XCircle, iconColor: 'text-rose-600' };
+        ? {
+            headerBg: 'bg-warn-soft',
+            headerText: 'text-warn-ink',
+            icon: AlertTriangle,
+            iconColor: 'text-warn',
+          }
+        : {
+            headerBg: 'bg-critical-soft',
+            headerText: 'text-critical-ink',
+            icon: XCircle,
+            iconColor: 'text-critical',
+          };
   const Icon = palette.icon;
+
   return (
-    <div className={`rounded-lg border ${palette.border} ${palette.bg} p-4`}>
-      <div className="flex items-start gap-3">
-        <Icon className={`h-6 w-6 ${palette.iconColor} flex-shrink-0 mt-0.5`} />
-        <div className={`${palette.text} flex-1`}>
-          <div className="flex flex-wrap items-baseline gap-3">
-            <span className="text-lg font-semibold capitalize">{verdict.status}</span>
-            <span className="text-sm">
-              {verdict.criticalCount} critique{verdict.criticalCount > 1 ? 's' : ''} ·{' '}
-              {verdict.warningCount} avertissement{verdict.warningCount > 1 ? 's' : ''} ·{' '}
-              {verdict.infoCount} info
-            </span>
+    <section className="overflow-hidden rounded-md border border-line">
+      {/* Bandeau verdict : statut + résumé textuel d'action. C'est le
+          premier signal — vert/ambre/rouge selon canCommit. */}
+      <header className={cn('flex items-start gap-3 px-5 py-4', palette.headerBg)}>
+        <Icon className={cn('h-6 w-6 shrink-0', palette.iconColor)} strokeWidth={1.5} />
+        <div className={cn('flex-1 min-w-0', palette.headerText)}>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <p className="font-display text-xl font-medium tracking-tight capitalize">
+              {verdict.status}
+            </p>
+            <p className="text-xs">
+              <span className="font-mono tabular-nums">{verdict.criticalCount}</span> critique
+              {verdict.criticalCount > 1 ? 's' : ''} ·{' '}
+              <span className="font-mono tabular-nums">{verdict.warningCount}</span>{' '}
+              avertissement{verdict.warningCount > 1 ? 's' : ''} ·{' '}
+              <span className="font-mono tabular-nums">{verdict.infoCount}</span> info
+            </p>
           </div>
-          <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-            <div>
-              <span className="font-medium">Total débit&nbsp;:</span> {fmt(totals.totalDebit)} FCFA
-            </div>
-            <div>
-              <span className="font-medium">Total crédit&nbsp;:</span> {fmt(totals.totalCredit)} FCFA
-            </div>
-            <div className={totals.isBalanced ? '' : 'font-semibold'}>
-              <span className="font-medium">Écart&nbsp;:</span>{' '}
-              {totals.isBalanced ? '0,00 (équilibré ✓)' : `${fmt(totals.balanceDelta)} FCFA`}
-            </div>
-          </div>
-          <div className="mt-2 text-xs">
+          <p className="mt-1.5 text-sm leading-snug">
             {verdict.canCommit
-              ? '✓ Cette session peut être committée. Les avertissements méritent un coup d\'œil mais ne bloquent pas.'
-              : '⚠ Cette session ne peut PAS être committée en l\'état. Corriger les anomalies critiques ci-dessous.'}
-          </div>
+              ? 'Cette session peut être committée. Les avertissements méritent un coup d’œil mais ne bloquent pas.'
+              : 'Cette session ne peut PAS être committée en l’état. Corriger les anomalies critiques ci-dessous avant de réessayer.'}
+          </p>
+        </div>
+      </header>
+
+      {/* Bande de totaux : Débit / Crédit / Écart (équilibre). Sépare
+          par lignes pixel pour éviter d'imbriquer trop de cards. */}
+      <div className="grid grid-cols-1 gap-px bg-line sm:grid-cols-3">
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">∑ Débit</p>
+          <p className="mt-0.5 font-mono text-lg font-medium tabular-nums text-ink">
+            {fmt(totals.totalDebit)}{' '}
+            <span className="text-xs font-normal text-ink-mute">FCFA</span>
+          </p>
+        </div>
+        <div className="bg-paper px-4 py-2.5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">∑ Crédit</p>
+          <p className="mt-0.5 font-mono text-lg font-medium tabular-nums text-ink">
+            {fmt(totals.totalCredit)}{' '}
+            <span className="text-xs font-normal text-ink-mute">FCFA</span>
+          </p>
+        </div>
+        <div
+          className={cn(
+            'px-4 py-2.5',
+            totals.isBalanced ? 'bg-accent-soft/60' : 'bg-critical-soft',
+          )}
+        >
+          <p
+            className={cn(
+              'text-2xs uppercase tracking-wider',
+              totals.isBalanced ? 'text-accent-ink' : 'text-critical-ink',
+            )}
+          >
+            {totals.isBalanced ? 'Équilibré' : 'Écart D-C'}
+          </p>
+          <p
+            className={cn(
+              'mt-0.5 font-mono text-lg font-medium tabular-nums',
+              totals.isBalanced ? 'text-accent-ink' : 'text-critical-ink',
+            )}
+          >
+            {totals.isBalanced ? (
+              <>
+                <CheckCircle2 className="mr-1 inline h-4 w-4" />
+                0,00
+              </>
+            ) : (
+              <>
+                {fmt(totals.balanceDelta)}{' '}
+                <span className="text-xs font-normal">FCFA</span>
+              </>
+            )}
+          </p>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -3709,7 +4164,7 @@ function ImportTrialBalanceTable({ report }: { readonly report: ImportDiagnostic
     <div>
       <h3 className="mb-2 font-semibold">Balance des comptes (prévisionnelle)</h3>
       <div className="overflow-x-auto rounded border border-line">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <table className="min-w-full divide-y divide-line text-sm">
           <thead className="bg-sunk">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Compte</th>
@@ -3721,7 +4176,7 @@ function ImportTrialBalanceTable({ report }: { readonly report: ImportDiagnostic
               <th className="px-3 py-2 text-left font-medium">Statut</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
+          <tbody className="divide-y divide-line bg-paper">
             {report.trialBalance.map((row) => (
               <tr key={row.accountCode}>
                 <td className="px-3 py-2 font-mono">{row.accountCode}</td>
@@ -3734,7 +4189,7 @@ function ImportTrialBalanceTable({ report }: { readonly report: ImportDiagnostic
                 </td>
                 <td className="px-3 py-2">
                   {row.accountExists ? (
-                    <Badge variant="outline" className="border-accent/40 text-emerald-700">
+                    <Badge variant="outline" className="border-accent/40 text-accent-ink">
                       existant
                     </Badge>
                   ) : row.autoProvisionable ? (
@@ -3742,7 +4197,7 @@ function ImportTrialBalanceTable({ report }: { readonly report: ImportDiagnostic
                       auto-créé au commit
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="border-rose-300 text-rose-700">
+                    <Badge variant="outline" className="border-critical/40 text-critical-ink">
                       inconnu
                     </Badge>
                   )}
@@ -3821,7 +4276,7 @@ function AnomalyGroupList({
 }) {
   const palette =
     severity === 'critical'
-      ? { border: 'border-rose-200', bg: 'bg-rose-50', icon: XCircle, iconColor: 'text-rose-600' }
+      ? { border: 'border-critical/30', bg: 'bg-critical-soft', icon: XCircle, iconColor: 'text-critical' }
       : severity === 'warning'
       ? { border: 'border-warn/30', bg: 'bg-warn-soft', icon: AlertTriangle, iconColor: 'text-warn' }
       : { border: 'border-line', bg: 'bg-sunk', icon: Info, iconColor: 'text-ink-soft' };
@@ -3886,7 +4341,7 @@ function RemediationPlanCard({
               variant="outline"
               className={
                 item.priority === 1
-                  ? 'border-rose-300 text-rose-700'
+                  ? 'border-critical/40 text-critical-ink'
                   : item.priority === 2
                   ? 'border-warn/40 text-warn-ink'
                   : 'border-line-strong text-ink'
@@ -3901,7 +4356,7 @@ function RemediationPlanCard({
                   · {item.affectedCount} ligne{item.affectedCount > 1 ? 's' : ''}
                 </span>
                 {item.autoFixable && (
-                  <Badge variant="outline" className="ml-2 border-accent/40 text-emerald-700">
+                  <Badge variant="outline" className="ml-2 border-accent/40 text-accent-ink">
                     auto-fix
                   </Badge>
                 )}
