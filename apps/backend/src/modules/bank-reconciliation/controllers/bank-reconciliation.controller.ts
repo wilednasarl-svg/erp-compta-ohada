@@ -11,7 +11,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -26,6 +31,12 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { MatchStatementLineDto } from '../dto/match-statement-line.dto';
+import {
+  ListProposalsResponse,
+  MatchResultResponse,
+  UnmatchResultResponse,
+} from '../dto/responses';
+import { toListProposals } from '../mappers/bank-response.mapper';
 import { BankReconciliationService } from '../services/bank-reconciliation.service';
 
 @ApiTags('BankReconciliation')
@@ -38,19 +49,21 @@ export class BankReconciliationController {
   @Get('bank-accounts/:bankAccountId/proposals')
   @RequirePermission('bank.reconcile')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListProposalsResponse })
   async proposeMatches(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('bankAccountId', new ParseUUIDPipe({ version: '4' })) bankAccountId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ) {
+  ): Promise<ListProposalsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const proposals = await this.service.proposeMatches(bankAccountId, asTenantId(tokenOrgId));
-    return { proposals };
+    return toListProposals(proposals);
   }
 
   @Post('statement-lines/:statementLineId/match')
   @RequirePermission('bank.reconcile')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: MatchResultResponse })
   async match(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('statementLineId', new ParseUUIDPipe({ version: '4' })) statementLineId: string,
@@ -58,7 +71,7 @@ export class BankReconciliationController {
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: MatchStatementLineDto,
     @Req() req: Request,
-  ) {
+  ): Promise<MatchResultResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const result = await this.service.applyMatch(
@@ -81,13 +94,14 @@ export class BankReconciliationController {
   @Delete('matches/:matchId')
   @RequirePermission('bank.reconcile')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: UnmatchResultResponse })
   async unmatch(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('matchId', new ParseUUIDPipe({ version: '4' })) matchId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Req() req: Request,
-  ) {
+  ): Promise<UnmatchResultResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     await this.service.unmatch(

@@ -10,7 +10,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -25,6 +30,14 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateBankAccountDto } from '../dto/create-bank-account.dto';
+import {
+  BankAccountEnvelopeResponse,
+  ListBankAccountsResponse,
+} from '../dto/responses';
+import {
+  toBankAccountEnvelope,
+  toListBankAccounts,
+} from '../mappers/bank-response.mapper';
 import { BankAccountsService } from '../services/bank-accounts.service';
 
 @ApiTags('BankAccounts')
@@ -37,38 +50,41 @@ export class BankAccountsController {
   @Get()
   @RequirePermission('bank.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ListBankAccountsResponse })
   async list(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ) {
+  ): Promise<ListBankAccountsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const accounts = await this.service.listForOrg(asTenantId(tokenOrgId));
-    return { accounts };
+    return toListBankAccounts(accounts);
   }
 
   @Get(':bankAccountId')
   @RequirePermission('bank.read')
   @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: BankAccountEnvelopeResponse })
   async getOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @Param('bankAccountId', new ParseUUIDPipe({ version: '4' })) bankAccountId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
-  ) {
+  ): Promise<BankAccountEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     const account = await this.service.findById(bankAccountId, asTenantId(tokenOrgId));
-    return { account };
+    return toBankAccountEnvelope(account);
   }
 
   @Post()
   @RequirePermission('bank.admin')
   @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: BankAccountEnvelopeResponse })
   async create(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
     @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
     @Body() body: CreateBankAccountDto,
     @Req() req: Request,
-  ) {
+  ): Promise<BankAccountEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
     const account = await this.service.create(
@@ -77,7 +93,7 @@ export class BankAccountsController {
       actorUserId,
       buildAuditRequestContext(req),
     );
-    return { account };
+    return toBankAccountEnvelope(account);
   }
 
   private assertOrgMatch(
