@@ -165,3 +165,22 @@ export interface DashboardConsolidatedSummary {
   };
   readonly organizationsData: ReadonlyArray<ConsolidatedOrganizationData>;
 }
+
+export interface YearComparisonMetrics {
+  readonly revenue: string;
+  readonly expenses: string;
+  readonly netResult: string;
+  readonly cashBalance: string;
+  readonly receivables: string;
+  readonly payables: string;
+}
+
+export interface YearComparisonData {
+  readonly year: number;
+  readonly metrics: YearComparisonMetrics;
+}
+
+export interface DashboardComparisonSummary {
+  readonly yearsData: ReadonlyArray<YearComparisonData>;
+  readonly currency: string;
+}
