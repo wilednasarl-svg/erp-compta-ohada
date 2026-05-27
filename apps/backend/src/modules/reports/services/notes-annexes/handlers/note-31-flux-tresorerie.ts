@@ -1,30 +1,43 @@
 /**
  * Note 31 — Tableau des Flux de Trésorerie (TFT) ventilé.
  *
- * Doctrine SYSCOHADA (Tome 3 — Vol. 3 pages 8-15) : la Note 31 reprend
- * en annexe le TFT calculé par le `CashFlowService` (méthode indirecte)
+ * Doctrine SYSCOHADA Révisé Tome 3 page 34 : la Note 31 reprend en
+ * annexe le TFT calculé par le `CashFlowService` (méthode indirecte)
  * en l'éclatant poste par poste pour traçabilité.
  *
- * Structure du rendu :
- *   1 ligne par poste FA..FQ + sous-totaux (ZA opérationnel,
- *   ZB investissement, ZC financement) + ZD (trésorerie ouverture),
- *   ZG (trésorerie clôture) et ZH (variation totale).
+ * Structure du rendu — strictement conforme à la nomenclature p. 34 :
+ *   ZA                       (trésorerie nette au 1er janvier)
+ *   FA, FB, FC, FD, FE       (postes opérationnels)
+ *   ZB                       (sous-total opérationnel)
+ *   FF, FG, FH, FI, FJ       (postes investissement)
+ *   ZC                       (sous-total investissement)
+ *   FK, FL, FM, FN           (postes financement capitaux propres)
+ *   ZD                       (sous-total financement CP)
+ *   FO, FP, FQ               (postes financement capitaux étrangers)
+ *   ZE                       (sous-total financement CE)
+ *   ZF                       (sous-total financement total = ZD + ZE)
+ *   ZG                       (variation totale = ZB + ZC + ZF)
+ *   ZH                       (trésorerie nette au 31 décembre)
  *
  * Convention `values` :
- *   - `codeRef`          : code SYSCOHADA (FA, ZA, ZD, …)
+ *   - `codeRef`          : code SYSCOHADA (FA..FQ, ZA..ZH)
  *   - `montantN`         : exercice courant (string DECIMAL(15,2))
  *   - `montantPrecedent` : exercice N-1 si comparatif disponible
- *   - `kind`             : 'poste' | 'subtotal' | 'tresorerie' — pour
- *                          que le frontend puisse styliser sans
- *                          re-mapper.
+ *   - `kind`             : 'tresorerie' | 'poste' | 'subtotal' | 'total'
  */
 
-import type { CashFlowReport } from '../../cash-flow.service';
+import type {
+  CashFlowReport,
+  CashFlowSection,
+} from '../../cash-flow.service';
 import type { NoteHandler, NoteRow } from '../types';
 
-const ZD_LABEL = 'Trésorerie nette à l’ouverture';
-const ZG_LABEL = 'Trésorerie nette à la clôture';
-const ZH_LABEL = 'VARIATION DE LA TRÉSORERIE NETTE (ZG − ZD)';
+const ZA_LABEL = 'Trésorerie nette au 1er janvier';
+const ZF_LABEL = 'Flux de trésorerie provenant des activités de financement';
+const ZG_LABEL = 'VARIATION DE LA TRÉSORERIE NETTE DE LA PÉRIODE';
+const ZH_LABEL = 'Trésorerie nette au 31 décembre';
+
+type RowKind = 'tresorerie' | 'poste' | 'subtotal' | 'total';
 
 function row(
   key: string,
@@ -32,7 +45,7 @@ function row(
   codeRef: string,
   montantN: string,
   montantPrecedent: string | null,
-  kind: 'poste' | 'subtotal' | 'tresorerie',
+  kind: RowKind,
   source?: string,
 ): NoteRow {
   const values: Record<string, string> = {
@@ -49,21 +62,54 @@ function row(
   return { key, label, values };
 }
 
-function pickPreviousSubtotal(
+function previousSubtotalFor(
   report: CashFlowReport,
-  sectionCode: 'ZA' | 'ZB' | 'ZC',
+  sectionCode: 'ZB' | 'ZC' | 'ZD' | 'ZE',
 ): string | null {
   if (!report.previous) return null;
-  if (sectionCode === 'ZA') return report.previous.operationalFlow;
-  if (sectionCode === 'ZB') return report.previous.investmentFlow;
-  return report.previous.financingFlow;
+  switch (sectionCode) {
+    case 'ZB':
+      return report.previous.operatingFlow;
+    case 'ZC':
+      return report.previous.investingFlow;
+    case 'ZD':
+      return report.previous.financingFlowEquity;
+    case 'ZE':
+      return report.previous.financingFlowDebt;
+  }
+}
+
+function pushSection(
+  rows: NoteRow[],
+  section: CashFlowSection,
+  previousSubtotal: string | null,
+): void {
+  for (const poste of section.postes) {
+    rows.push(
+      row(
+        poste.code,
+        poste.label,
+        poste.code,
+        poste.amount,
+        null,
+        'poste',
+        poste.source,
+      ),
+    );
+  }
+  rows.push(
+    row(
+      section.code,
+      section.label,
+      section.code,
+      section.subtotal,
+      previousSubtotal,
+      'subtotal',
+    ),
+  );
 }
 
 export const handleN31FluxTresorerie: NoteHandler = async (ctx, deps) => {
-  // Pour l'exercice précédent on demande l'année N-1 sur la même
-  // amplitude que N. Si `CashFlowService` ne dispose pas d'historique,
-  // il renverra simplement `previous: undefined` et le rendu ignorera
-  // la colonne `montantPrecedent`.
   const previousFromDate = previousYearDate(ctx.periodStart);
   const previousToDate = previousYearDate(ctx.periodEnd);
   const report = await deps.cashFlow.getCashFlow(
@@ -76,71 +122,58 @@ export const handleN31FluxTresorerie: NoteHandler = async (ctx, deps) => {
 
   const rows: NoteRow[] = [];
 
-  // ZD — trésorerie ouverture (avant section ZA, comme dans la liasse).
+  // ZA — trésorerie nette à l'ouverture (1er janvier)
   rows.push(
     row(
-      'ZD',
-      ZD_LABEL,
-      'ZD',
+      'ZA',
+      ZA_LABEL,
+      'ZA',
       report.openingCash,
       report.previous?.openingCash ?? null,
       'tresorerie',
     ),
   );
 
-  // Sections ZA, ZB, ZC : on rajoute chaque poste puis le sous-total.
-  for (const section of report.sections) {
-    const sectionCode = section.code as 'ZA' | 'ZB' | 'ZC';
-    for (const poste of section.postes) {
-      rows.push(
-        row(
-          poste.code,
-          poste.label,
-          poste.code,
-          poste.amount,
-          // Pas de comparatif par poste : SYSCOHADA n'oblige que les
-          // sous-totaux et la trésorerie. On laisse `null` pour
-          // signaler "non disponible" au frontend.
-          null,
-          'poste',
-          poste.source,
-        ),
-      );
-    }
-    rows.push(
-      row(
-        sectionCode,
-        section.label,
-        sectionCode,
-        section.subtotal,
-        pickPreviousSubtotal(report, sectionCode),
-        'subtotal',
-      ),
-    );
-  }
+  // Sections ZB (opérationnel), ZC (investissement), ZD (fin. CP), ZE (fin. CE)
+  pushSection(rows, report.operatingFlows, previousSubtotalFor(report, 'ZB'));
+  pushSection(rows, report.investingFlows, previousSubtotalFor(report, 'ZC'));
+  pushSection(rows, report.financingFlowsEquity, previousSubtotalFor(report, 'ZD'));
+  pushSection(rows, report.financingFlowsDebt, previousSubtotalFor(report, 'ZE'));
 
-  // ZG — trésorerie clôture.
+  // ZF — financement total = ZD + ZE
+  rows.push(
+    row(
+      'ZF',
+      ZF_LABEL,
+      'ZF',
+      report.financingFlowsTotal,
+      report.previous?.financingFlowTotal ?? null,
+      'subtotal',
+    ),
+  );
+
+  // ZG — variation totale = ZB + ZC + ZF
   rows.push(
     row(
       'ZG',
       ZG_LABEL,
       'ZG',
-      report.closingCash,
-      report.previous?.closingCash ?? null,
-      'tresorerie',
+      report.netCashVariation,
+      report.previous?.netCashVariation ?? null,
+      'total',
+      `coherenceCheck=${report.coherenceCheck}`,
     ),
   );
 
-  // ZH — variation totale (contrôle de cohérence : doit ≈ ZA+ZB+ZC).
+  // ZH — trésorerie nette à la clôture (31 décembre) = ZA + ZG
   rows.push(
     row(
       'ZH',
       ZH_LABEL,
       'ZH',
-      report.netCashVariation,
-      report.previous?.netCashVariation ?? null,
-      'subtotal',
-      `coherenceCheck=${report.coherenceCheck}`,
+      report.closingCash,
+      report.previous?.closingCash ?? null,
+      'tresorerie',
     ),
   );
 
@@ -148,10 +181,9 @@ export const handleN31FluxTresorerie: NoteHandler = async (ctx, deps) => {
 };
 
 /**
- * Retourne la date "YYYY-MM-DD" un an avant la date donnée (même mois,
- * même jour). Utilisée pour demander à `CashFlowService` le comparatif
- * N-1 sur l'exercice précédent (best effort — si l'org n'a pas
- * d'historique, le service renvoie `previous: undefined`).
+ * Retourne la date "YYYY-MM-DD" un an avant la date donnée. Utilisée
+ * pour demander à `CashFlowService` le comparatif N-1 ; si l'org n'a
+ * pas d'historique, le service renverra `previous: undefined`.
  */
 function previousYearDate(ymd: string): string {
   const d = new Date(`${ymd}T00:00:00.000Z`);

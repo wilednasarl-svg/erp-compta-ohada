@@ -7,3 +7,4 @@
  */
 export * from './bilan-postes';
 export * from './pl-postes';
+export * from './tft-postes';

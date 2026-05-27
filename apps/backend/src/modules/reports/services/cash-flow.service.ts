@@ -5,13 +5,21 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { ReportsRepository } from '../repositories/reports.repository';
 import { ReportsService } from './reports.service';
+import { getTftLabel, TFT_POSTES } from './postes/tft-postes';
 
 /**
- * Tableau des Flux de Trésorerie (TFT) — méthode INDIRECTE
- * conforme SYSCOHADA Révisé (Acte uniforme art. 8, l'un des 4
- * états financiers obligatoires).
+ * Tableau des Flux de Trésorerie (TFT) — méthode INDIRECTE conforme
+ * SYSCOHADA Révisé (Acte uniforme art. 8 ; Vol. 3 page 34).
  *
- * Source : Guide d'application SYSCOHADA Révisé, Vol. 3, pages 8-15.
+ * Nomenclature OFFICIELLE des codes Z (doctrine Tome 3, page 34) :
+ *   - ZA = Trésorerie nette au 1er janvier (ouverture)
+ *   - ZB = Flux opérationnels (somme FA à FE)
+ *   - ZC = Flux d'investissement (somme FF à FJ)
+ *   - ZD = Flux de financement par capitaux propres (somme FK à FN)
+ *   - ZE = Flux de financement par capitaux étrangers (somme FO à FQ)
+ *   - ZF = Flux de financement total (ZD + ZE)
+ *   - ZG = Variation totale de trésorerie (ZB + ZC + ZF)
+ *   - ZH = Trésorerie nette au 31 décembre (ZA + ZG)
  *
  * Architecture en 6 étapes :
  *   0. Pré-requis : balances N et N-1 + SIG N (pour XD = EBE et XF).
@@ -19,10 +27,13 @@ import { ReportsService } from './reports.service';
  *   2. ΔBFR (FB-FE) avec EXCLUSIONS strictes des comptes liés à
  *      l'investissement et au financement (485, 414, 467, 458, 4494,
  *      4751, 404, 481, 482, 4752, 472).
- *   3. ZA = FA + FB + FC + FD + FE (flux opérationnels).
- *   4. ZB = FF + FG + FH + FI + FJ (investissement).
- *   5. ZC = ZD + ZE (financement = capitaux propres + dettes fin.).
- *   6. ZG = trésorerie clôture - ouverture ; contrôle ZH = ZA+ZB+ZC.
+ *   3. ZB = FA + FB + FC + FD + FE.
+ *   4. ZC = FF + FG + FH + FI + FJ.
+ *   5. ZD = FK + FL + FM + FN ; ZE = FO + FP + FQ ; ZF = ZD + ZE.
+ *   6. ZG = ZB + ZC + ZF ; ZH = ZA + ZG ; contrôle ZH ≈ trésorerie nette
+ *      des comptes classe 5 à toDate.
+ *
+ * Le référentiel des libellés et codes est `./postes/tft-postes.ts`.
  */
 
 /** Comptes du grand livre qui sont EXCLUS des variations BFR.
@@ -68,6 +79,9 @@ export const IMMOBILISATION_PREFIXES: ReadonlyArray<string> = [
   '20', '21', '22', '23', '24', '25', '26', '27',
 ];
 
+/** Préfixes d'immobilisations financières (titres, prêts, dépôts).  */
+export const IMMOBILISATION_FIN_PREFIXES: ReadonlyArray<string> = ['26', '27'];
+
 /** Préfixes des dettes financières (emprunts long terme).  */
 export const DETTES_FIN_PREFIXES: ReadonlyArray<string> = ['16', '17', '18'];
 
@@ -86,39 +100,72 @@ export interface CashFlowPoste {
   readonly source?: string;
 }
 
+/**
+ * Une section TFT regroupe des postes de détail et expose un sous-total
+ * de section (ZB, ZC, ZD, ZE selon la nomenclature p. 34).
+ */
 export interface CashFlowSection {
-  readonly code: string; // 'ZA' opérationnel, 'ZB' invest, 'ZC' fin.
+  /** Code du sous-total de section : ZB, ZC, ZD ou ZE.  */
+  readonly code: 'ZB' | 'ZC' | 'ZD' | 'ZE';
   readonly label: string;
   readonly postes: ReadonlyArray<CashFlowPoste>;
   readonly subtotal: string;
 }
 
+/**
+ * Résumé du TFT de la période N-1, utilisé pour la colonne comparatif.
+ * Reprend uniquement les sous-totaux et la trésorerie (la doctrine
+ * n'impose le détail poste par poste qu'en N).
+ */
 export interface CashFlowPreviousSummary {
   readonly fromDate: string;
   readonly toDate: string;
-  readonly openingCash: string;
-  readonly closingCash: string;
-  readonly netCashVariation: string;
-  readonly operationalFlow: string;
-  readonly investmentFlow: string;
-  readonly financingFlow: string;
+  readonly openingCash: string; // ZA
+  readonly closingCash: string; // ZH
+  readonly netCashVariation: string; // ZG
+  readonly operatingFlow: string; // ZB
+  readonly investingFlow: string; // ZC
+  readonly financingFlowEquity: string; // ZD
+  readonly financingFlowDebt: string; // ZE
+  readonly financingFlowTotal: string; // ZF
 }
 
+/**
+ * Rapport TFT conforme doctrine SYSCOHADA Révisé Tome 3 page 34.
+ *
+ * Les codes Z respectent strictement la nomenclature officielle :
+ *   - ZA : ouverture
+ *   - ZB : opérationnel
+ *   - ZC : investissement
+ *   - ZD : financement capitaux propres
+ *   - ZE : financement capitaux étrangers
+ *   - ZF : financement total (= ZD + ZE)
+ *   - ZG : variation totale (= ZB + ZC + ZF)
+ *   - ZH : clôture (= ZA + ZG)
+ */
 export interface CashFlowReport {
   readonly fromDate: string;
   readonly toDate: string;
-  /** ZD = trésorerie nette ouverture (au début de la période). */
+  /** ZA — Trésorerie nette au 1er janvier (ouverture). */
   readonly openingCash: string;
-  /** ZA, ZB, ZC (3 sections SYSCOHADA). */
-  readonly sections: ReadonlyArray<CashFlowSection>;
-  /** ZG = trésorerie nette clôture. */
-  readonly closingCash: string;
-  /** ZH = ZG − ZD. */
+  /** Section ZB : flux opérationnels (FA-FE + sous-total). */
+  readonly operatingFlows: CashFlowSection;
+  /** Section ZC : flux d'investissement (FF-FJ + sous-total). */
+  readonly investingFlows: CashFlowSection;
+  /** Section ZD : flux de financement par capitaux propres (FK-FN). */
+  readonly financingFlowsEquity: CashFlowSection;
+  /** Section ZE : flux de financement par capitaux étrangers (FO-FQ). */
+  readonly financingFlowsDebt: CashFlowSection;
+  /** ZF — sous-total financement total (= ZD + ZE). */
+  readonly financingFlowsTotal: string;
+  /** ZG — variation totale de trésorerie (= ZB + ZC + ZF). */
   readonly netCashVariation: string;
+  /** ZH — Trésorerie nette au 31 décembre (= ZA + ZG). */
+  readonly closingCash: string;
   /**
-   * Écart de cohérence = (ZA + ZB + ZC) − (ZG − ZD).
-   * Doit être ~ 0 sur des données saines. Toute valeur > 1 FCFA
-   * indique un défaut de mapping ou un compte non classé.
+   * Contrôle de cohérence : |ZH − trésorerie nette comptes classe 5
+   * à toDate|. Doit être ~ 0 sur des données saines. Toute valeur > 1
+   * FCFA indique un défaut de mapping ou un compte non classé.
    */
   readonly coherenceCheck: string;
   readonly previous?: CashFlowPreviousSummary;
@@ -165,10 +212,8 @@ export class CashFlowService {
   ) {}
 
   /**
-   * Point d'entrée principal. Charge balances + SIG, calcule le TFT.
-   *
-   * NOTE : le wiring DI dans `ReportsModule` (controller + module)
-   * sera fait en PR follow-up — ne pas le toucher ici.
+   * Point d'entrée principal. Charge balances + SIG, calcule le TFT
+   * conforme à la nomenclature officielle SYSCOHADA Révisé p. 34.
    */
   async getCashFlow(
     organizationId: TenantId,
@@ -202,9 +247,11 @@ export class CashFlowService {
         openingCash: previous.openingCash,
         closingCash: previous.closingCash,
         netCashVariation: previous.netCashVariation,
-        operationalFlow: previous.sections[0]?.subtotal ?? '0.00',
-        investmentFlow: previous.sections[1]?.subtotal ?? '0.00',
-        financingFlow: previous.sections[2]?.subtotal ?? '0.00',
+        operatingFlow: previous.operatingFlows.subtotal,
+        investingFlow: previous.investingFlows.subtotal,
+        financingFlowEquity: previous.financingFlowsEquity.subtotal,
+        financingFlowDebt: previous.financingFlowsDebt.subtotal,
+        financingFlowTotal: previous.financingFlowsTotal,
       },
     };
   }
@@ -227,10 +274,6 @@ export class CashFlowService {
     const signedN = CashFlowService.toSignedBalances(balanceN);
     const signedN1 = CashFlowService.toSignedBalances(balanceN1);
 
-    // Mouvements de période = différence entre cumuls N et N-1 par compte.
-    // (Approximation acceptable : un débit net entre deux dates = la
-    //  variation du cumul débit-crédit. La distinction débit/crédit
-    //  bruts est récupérée via la trial balance quand on en a besoin.)
     const trialN = await this.repo.trialBalance(organizationId, {
       fromDate,
       toDate,
@@ -241,110 +284,96 @@ export class CashFlowService {
       credit: Number(r.periodCredit),
     }));
 
-    // ── Trésorerie ouverture (ZD) et clôture (ZG) ───────────────────
+    // ── ZA / ZH : trésorerie nette à l'ouverture et à la clôture ───
     const openingCash = CashFlowService.netTreasury(signedN1);
-    const closingCash = CashFlowService.netTreasury(signedN);
+    const treasuryAtToDate = CashFlowService.netTreasury(signedN);
 
-    // ── Étape 1 : CAFG (FA) ─────────────────────────────────────────
+    // ── FA — CAFG ──────────────────────────────────────────────────
     const xd = Number(sigN.soldes.find((s) => s.code === 'XD')?.amount ?? '0');
     const xf = Number(sigN.soldes.find((s) => s.code === 'XF')?.amount ?? '0');
-
-    // Comptes spécifiques à la formule CAFG (par poste OHADA ou par n°).
-    // 654 = VNC des immo. cédées (charge HAO côté investissement).
-    // 754 = produits cession immo (côté investissement).
-    // TO  = autres produits HAO (poste SYSCOHADA).
-    // RP  = autres charges HAO.
-    // RQ  = participation des travailleurs.
-    // RS  = impôts sur le résultat.
     const c654 = CashFlowService.sumPeriodForPrefix(movements, '654', 'debit-credit');
     const c754 = CashFlowService.sumPeriodForPrefix(movements, '754', 'credit-debit');
     const to = Number(sigN.produits.find((p) => p.code === 'TO')?.amount ?? '0');
     const rp = Number(sigN.charges.find((c) => c.code === 'RP')?.amount ?? '0');
     const rq = Number(sigN.charges.find((c) => c.code === 'RQ')?.amount ?? '0');
     const rs = Number(sigN.charges.find((c) => c.code === 'RS')?.amount ?? '0');
-
     const fa = xd + c654 - c754 + xf + to + rp + rq + rs;
 
-    // ── Étape 2 : Δ BFR avec exclusions strictes ────────────────────
-    // FB = − Δ stocks (classe 3).
-    // FC = − Δ créances ordinaires (classe 4 débitrice, hors exclusions).
-    // FD = + Δ dettes ordinaires (classe 4 créditrice, hors exclusions).
-    // Convention SYSCOHADA TFT (méthode indirecte) :
-    //   FB = − Δ stocks            (une hausse de stocks consomme du cash)
-    //   FC = − Δ créances actives  (une hausse de créances consomme du cash)
-    //   FD = + Δ dettes ordinaires (une hausse de dettes libère du cash)
-    // Helper deltaSignedByFilter(n1, n) = sumN − sumN1 ; on PRE-PASSE
-    // (n1, n) dans cet ordre puis on prend le signe correct.
-    const fb = -CashFlowService.deltaSignedByFilter(
+    // ── FB-FE — variations BFR (avec exclusions strictes) ──────────
+    // FB = - Δ actif circulant HAO (compte 485 exclu BFR, géré ici à 0
+    //      car déjà capturé dans la section investissement).
+    const fb = 0;
+
+    // FC = - Δ stocks (classe 3 hors 39 dépréciations)
+    const fc = -CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
       (code) => code.startsWith('3') && !code.startsWith('39'),
     );
-    const fc = -CashFlowService.deltaSignedByFilter(
+
+    // FD = - Δ créances ordinaires (classe 4 actif hors exclusions)
+    const fd = -CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
       (code) =>
         code.startsWith('4') &&
         !CashFlowService.isExcludedFromBfr(code) &&
-        // Côté "créances" : net positif (compte débiteur) à au moins
-        // une des deux dates.
-        (CashFlowService.netForCode(signedN, code) >= 0 &&
-          CashFlowService.netForCode(signedN1, code) >= 0),
+        CashFlowService.netForCode(signedN, code) >= 0 &&
+        CashFlowService.netForCode(signedN1, code) >= 0,
     );
-    const fd = CashFlowService.deltaSignedByFilter(
-      signedN1,
-      signedN,
-      (code) =>
-        code.startsWith('4') &&
-        !CashFlowService.isExcludedFromBfr(code) &&
-        // Côté "dettes" : net négatif (compte créditeur). Note : on
-        // attend que la variation des dettes contribue POSITIVEMENT
-        // quand les dettes augmentent (donc when delta du net signed
-        // descend, FD augmente). On inverse donc le signe ici.
-        (CashFlowService.netForCode(signedN, code) < 0 ||
-          CashFlowService.netForCode(signedN1, code) < 0),
-    ) * -1;
-    // FE = somme des variations BFR = FB + FC + FD (présentation
-    // SYSCOHADA séparée pour traçabilité).
-    const fe = fb + fc + fd;
 
-    // ZA = flux opérationnels = FA + variation BFR
-    const za = fa + fe;
+    // FE = + Δ dettes ordinaires (classe 4 passif hors exclusions)
+    const fe =
+      -CashFlowService.deltaSignedByFilter(
+        signedN1,
+        signedN,
+        (code) =>
+          code.startsWith('4') &&
+          !CashFlowService.isExcludedFromBfr(code) &&
+          (CashFlowService.netForCode(signedN, code) < 0 ||
+            CashFlowService.netForCode(signedN1, code) < 0),
+      );
 
-    // ── Étape 3 : Investissement (FF à FJ) ──────────────────────────
-    // FF = - acquisitions (mouvement DÉBIT cumulé sur préfixes immo, hors
-    //      classe 28 amortissements et 29 dépréciations).
-    const acquisitions = CashFlowService.sumDebitForPrefixes(
+    // ZB = FA + FB + FC + FD + FE
+    const zb = fa + fb + fc + fd + fe;
+
+    // ── FF-FJ — flux d'investissement ──────────────────────────────
+    // FF = - acquisitions corporelles/incorporelles (débit cumulé 20-25
+    //      hors 26/27 immo financières, hors 28/29 amort./déprec.)
+    const ffAcquisitions = CashFlowService.sumDebitForPrefixes(
       movements,
-      IMMOBILISATION_PREFIXES,
+      ['20', '21', '22', '23', '24', '25'],
       (code) => !code.startsWith('28') && !code.startsWith('29'),
     );
-    const ff = -acquisitions;
+    const ff = -ffAcquisitions;
 
-    // FG = - charges immobilisées (compte 20).
-    const fg = -CashFlowService.sumPeriodForPrefix(movements, '20', 'debit-credit');
+    // FG = - acquisitions immobilisations financières (débit 26/27)
+    const fgAcquisitions = CashFlowService.sumDebitForPrefixes(
+      movements,
+      IMMOBILISATION_FIN_PREFIXES,
+      (code) => !code.startsWith('28') && !code.startsWith('29'),
+    );
+    const fg = -fgAcquisitions;
 
-    // FH = + encaissements cessions = crédits sur cessions (compte 82, 754)
-    //      moins variations négatives de créances cession (485, 414).
+    // FH = + cessions corporelles/incorporelles (crédit 82, hors part fin.)
     const fh = CashFlowService.sumPeriodForPrefix(movements, '82', 'credit-debit');
 
-    // FI = + encaissements sur 485 (créances cession immo).
-    const fi = CashFlowService.sumPeriodForPrefix(movements, '485', 'credit-debit') +
-      CashFlowService.sumPeriodForPrefix(movements, '414', 'credit-debit');
+    // FI = + cessions immobilisations financières (crédit sur 26/27)
+    const fi = CashFlowService.sumCreditForPrefixes(movements, IMMOBILISATION_FIN_PREFIXES);
 
-    // FJ = + subventions d'investissement reçues (compte 14).
+    // FJ = ± Δ créances sur cessions immobilisations (485, 414)
     const fj = CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
-      (code) => code.startsWith('14'),
+      (code) => code.startsWith('485') || code.startsWith('414'),
     );
 
-    const zb = ff + fg + fh + fi + fj;
+    // ZC = FF + FG + FH + FI + FJ
+    const zc = ff + fg + fh + fi + fj;
 
-    // ── Étape 4 : Financement (FK à FQ) ─────────────────────────────
-    // FK = + Δ capital (souscriptions encaissées) - on prend la variation
-    //      crédit du capital social (10x sauf 106 = écarts réévaluation,
-    //      109 = capital non appelé).
+    // ── FK-FN — flux financement capitaux propres ──────────────────
+    // FK = + augmentations de capital (Δ classe 10 hors 106 écarts réval.
+    //      et 109 capital non appelé)
     const fk = CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
@@ -354,82 +383,98 @@ export class CashFlowService {
         !code.startsWith('109'),
     );
 
-    // FL = - dividendes versés (débit sur compte 465).
-    const fl = -CashFlowService.sumPeriodForPrefix(movements, '465', 'debit-credit');
-
-    // FM = + boni de liquidation / apports (4581/4582).
-    const fm = CashFlowService.deltaSignedByFilter(
+    // FL = + subventions d'investissement reçues (Δ classe 14)
+    const fl = CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
-      (code) => code.startsWith('4581') || code.startsWith('4582'),
+      (code) => code.startsWith('14'),
     );
 
-    // FN = sous-total capitaux propres
-    const fn = fk + fl + fm;
+    // FM = - prélèvements sur le capital (débits 4581/4582 — opérations
+    //      sur capital côté retraits exploitant / boni liquidation négatif)
+    const fm = -CashFlowService.sumDebitForPrefixes(movements, ['4581', '4582']);
 
-    // FO = + nouveaux emprunts (crédit cumulé sur 16-18).
-    const fo = CashFlowService.sumCreditForPrefixes(movements, DETTES_FIN_PREFIXES);
+    // FN = - dividendes versés (débit 465)
+    const fn = -CashFlowService.sumPeriodForPrefix(movements, '465', 'debit-credit');
 
-    // FP = - remboursements emprunts (débit cumulé sur 16-18).
-    const fp = -CashFlowService.sumDebitForPrefixes(movements, DETTES_FIN_PREFIXES);
+    // ZD = FK + FL + FM + FN
+    const zd = fk + fl + fm + fn;
 
-    // FQ = sous-total dettes financières
-    const fq = fo + fp;
+    // ── FO-FQ — flux financement capitaux étrangers ────────────────
+    // FO = + emprunts nouveaux (crédit cumulé sur 16-17)
+    const fo = CashFlowService.sumCreditForPrefixes(movements, ['16', '17']);
 
-    const zc = fn + fq;
+    // FP = + autres dettes financières (crédit cumulé sur 18)
+    const fp = CashFlowService.sumCreditForPrefixes(movements, ['18']);
 
-    // ── Étape 5 : ZH = variation totale, contrôle de cohérence ──────
-    const netCashVariation = closingCash - openingCash;
-    const sumFlows = za + zb + zc;
-    const coherence = sumFlows - netCashVariation;
+    // FQ = - remboursements emprunts (débit cumulé sur 16-18)
+    const fq = -CashFlowService.sumDebitForPrefixes(movements, DETTES_FIN_PREFIXES);
+
+    // ZE = FO + FP + FQ
+    const ze = fo + fp + fq;
+
+    // ── ZF, ZG, ZH ─────────────────────────────────────────────────
+    const zf = zd + ze;
+    const zg = zb + zc + zf;
+    const zh = openingCash + zg;
+
+    // Contrôle : ZH calculé doit ≈ trésorerie nette des comptes classe 5
+    // à toDate. Un écart > 1 FCFA signale un défaut de mapping.
+    const coherence = zh - treasuryAtToDate;
 
     return {
       fromDate,
       toDate,
       openingCash: openingCash.toFixed(2),
-      closingCash: closingCash.toFixed(2),
-      netCashVariation: netCashVariation.toFixed(2),
+      operatingFlows: {
+        code: 'ZB',
+        label: getTftLabel('ZB'),
+        subtotal: zb.toFixed(2),
+        postes: [
+          { code: 'FA', label: getTftLabel('FA'), amount: fa.toFixed(2), source: 'XD + 654 - 754 + XF + TO + RP + RQ + RS' },
+          { code: 'FB', label: getTftLabel('FB'), amount: fb.toFixed(2), source: "actif circulant HAO (compte 485 — traité en section invest.)" },
+          { code: 'FC', label: getTftLabel('FC'), amount: fc.toFixed(2), source: 'classe 3 hors 39' },
+          { code: 'FD', label: getTftLabel('FD'), amount: fd.toFixed(2), source: 'classe 4 actif hors exclusions' },
+          { code: 'FE', label: getTftLabel('FE'), amount: fe.toFixed(2), source: 'classe 4 passif hors exclusions' },
+        ],
+      },
+      investingFlows: {
+        code: 'ZC',
+        label: getTftLabel('ZC'),
+        subtotal: zc.toFixed(2),
+        postes: [
+          { code: 'FF', label: getTftLabel('FF'), amount: ff.toFixed(2), source: 'débits 20-25 hors 28/29' },
+          { code: 'FG', label: getTftLabel('FG'), amount: fg.toFixed(2), source: 'débits 26-27' },
+          { code: 'FH', label: getTftLabel('FH'), amount: fh.toFixed(2), source: 'crédit 82' },
+          { code: 'FI', label: getTftLabel('FI'), amount: fi.toFixed(2), source: 'crédits 26-27' },
+          { code: 'FJ', label: getTftLabel('FJ'), amount: fj.toFixed(2), source: 'Δ 485 + Δ 414' },
+        ],
+      },
+      financingFlowsEquity: {
+        code: 'ZD',
+        label: getTftLabel('ZD'),
+        subtotal: zd.toFixed(2),
+        postes: [
+          { code: 'FK', label: getTftLabel('FK'), amount: fk.toFixed(2), source: 'Δ classe 10 hors 106/109' },
+          { code: 'FL', label: getTftLabel('FL'), amount: fl.toFixed(2), source: 'Δ classe 14' },
+          { code: 'FM', label: getTftLabel('FM'), amount: fm.toFixed(2), source: 'débits 4581/4582' },
+          { code: 'FN', label: getTftLabel('FN'), amount: fn.toFixed(2), source: 'débits 465' },
+        ],
+      },
+      financingFlowsDebt: {
+        code: 'ZE',
+        label: getTftLabel('ZE'),
+        subtotal: ze.toFixed(2),
+        postes: [
+          { code: 'FO', label: getTftLabel('FO'), amount: fo.toFixed(2), source: 'crédits 16-17' },
+          { code: 'FP', label: getTftLabel('FP'), amount: fp.toFixed(2), source: 'crédits 18' },
+          { code: 'FQ', label: getTftLabel('FQ'), amount: fq.toFixed(2), source: 'débits 16-18' },
+        ],
+      },
+      financingFlowsTotal: zf.toFixed(2),
+      netCashVariation: zg.toFixed(2),
+      closingCash: zh.toFixed(2),
       coherenceCheck: coherence.toFixed(2),
-      sections: [
-        {
-          code: 'ZA',
-          label: 'FLUX DE TRÉSORERIE PROVENANT DES ACTIVITÉS OPÉRATIONNELLES',
-          subtotal: za.toFixed(2),
-          postes: [
-            { code: 'FA', label: 'Capacité d\'Autofinancement Globale (CAFG)', amount: fa.toFixed(2), source: 'XD + 654 - 754 + XF + TO + RP + RQ + RS' },
-            { code: 'FB', label: '- Variation des stocks', amount: fb.toFixed(2) },
-            { code: 'FC', label: '- Variation des créances ordinaires', amount: fc.toFixed(2), source: 'classe 4 actif hors exclusions' },
-            { code: 'FD', label: '+ Variation des dettes ordinaires', amount: fd.toFixed(2), source: 'classe 4 passif hors exclusions' },
-            { code: 'FE', label: 'Variation du BFR liée à l\'activité', amount: fe.toFixed(2), source: 'FB + FC + FD' },
-          ],
-        },
-        {
-          code: 'ZB',
-          label: 'FLUX DE TRÉSORERIE PROVENANT DES OPÉRATIONS D\'INVESTISSEMENT',
-          subtotal: zb.toFixed(2),
-          postes: [
-            { code: 'FF', label: '- Acquisitions d\'immobilisations', amount: ff.toFixed(2), source: 'débits 20-27 hors 28/29' },
-            { code: 'FG', label: '- Charges immobilisées', amount: fg.toFixed(2), source: 'classe 20' },
-            { code: 'FH', label: '+ Cessions d\'immobilisations', amount: fh.toFixed(2), source: 'crédit 82' },
-            { code: 'FI', label: '+ Encaissements créances cessions', amount: fi.toFixed(2), source: 'crédits 485, 414' },
-            { code: 'FJ', label: '+ Subventions d\'investissement reçues', amount: fj.toFixed(2), source: 'Δ classe 14' },
-          ],
-        },
-        {
-          code: 'ZC',
-          label: 'FLUX DE TRÉSORERIE PROVENANT DU FINANCEMENT',
-          subtotal: zc.toFixed(2),
-          postes: [
-            { code: 'FK', label: '+ Augmentations de capital', amount: fk.toFixed(2), source: 'Δ classe 10 hors 106/109' },
-            { code: 'FL', label: '- Dividendes versés', amount: fl.toFixed(2), source: 'débits 465' },
-            { code: 'FM', label: '+ Boni de liquidation / apports', amount: fm.toFixed(2), source: 'Δ 4581/4582' },
-            { code: 'FN', label: 'Sous-total capitaux propres', amount: fn.toFixed(2), source: 'FK + FL + FM' },
-            { code: 'FO', label: '+ Nouveaux emprunts', amount: fo.toFixed(2), source: 'crédits 16-18' },
-            { code: 'FP', label: '- Remboursements emprunts', amount: fp.toFixed(2), source: 'débits 16-18' },
-            { code: 'FQ', label: 'Sous-total dettes financières', amount: fq.toFixed(2), source: 'FO + FP' },
-          ],
-        },
-      ],
     };
   }
 
@@ -495,10 +540,6 @@ export class CashFlowService {
   /**
    * Δ = sum(net_signed_N pour comptes matchant le filtre)
    *   − sum(net_signed_N1 pour comptes matchant le filtre).
-   *
-   * Note : on prend l'union des comptes présents dans N et N-1 pour
-   * que la variation soit correcte même si un compte apparaît
-   * pour la première fois (N1 → 0) ou disparaît (N → 0).
    */
   static deltaSignedByFilter(
     n1: ReadonlyArray<SignedAccountBalance>,
@@ -559,6 +600,11 @@ export class CashFlowService {
     const d = new Date(`${ymd}T00:00:00.000Z`);
     d.setUTCDate(d.getUTCDate() - 1);
     return d.toISOString().slice(0, 10);
+  }
+
+  /** Expose la liste exhaustive des postes TFT (pour les exports). */
+  static get postesReferentiel(): typeof TFT_POSTES {
+    return TFT_POSTES;
   }
 
   private assertDateRange(fromDate: string, toDate: string): void {

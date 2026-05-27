@@ -85,7 +85,6 @@ function buildHarness(opts: {
     generalLedger: jest.fn(),
     generalLedgerOpening: jest.fn(),
     accountBalancesAsAt: jest.fn().mockImplementation(async (_org: string, asAt: string) => {
-      // Lhs (N) = toDate ; Rhs (N-1) = day before fromDate.
       if (asAt === '2026-12-31') return opts.balancesAtToDate ?? [];
       return opts.balancesAtN1 ?? [];
     }),
@@ -107,16 +106,16 @@ describe('CashFlowService — CAFG (FA)', () => {
   it('applique la formule FA = XD + 654 - 754 + XF + TO + RP + RQ + RS', async () => {
     const h = buildHarness({
       sig: buildSig({
-        XD: '10000.00', // EBE
-        XF: '500.00',   // Résultat financier
-        TO: '300.00',   // Autres produits HAO
-        RP: '200.00',   // Autres charges HAO
-        RQ: '100.00',   // Participation
-        RS: '400.00',   // IS
+        XD: '10000.00',
+        XF: '500.00',
+        TO: '300.00',
+        RP: '200.00',
+        RQ: '100.00',
+        RS: '400.00',
       }),
       movements: [
-        trialRow({ accountCode: '654000', periodDebit: '150.00', periodCredit: '0.00' }), // VNC cessions
-        trialRow({ accountCode: '754000', periodDebit: '0.00', periodCredit: '50.00' }), // produit cession
+        trialRow({ accountCode: '654000', periodDebit: '150.00', periodCredit: '0.00' }),
+        trialRow({ accountCode: '754000', periodDebit: '0.00', periodCredit: '50.00' }),
       ],
     });
 
@@ -125,7 +124,7 @@ describe('CashFlowService — CAFG (FA)', () => {
       toDate: '2026-12-31',
     });
 
-    const fa = result.sections[0].postes.find((p) => p.code === 'FA');
+    const fa = result.operatingFlows.postes.find((p) => p.code === 'FA');
     // FA = 10000 + 150 - 50 + 500 + 300 + 200 + 100 + 400 = 11600
     expect(fa?.amount).toBe('11600.00');
   });
@@ -136,7 +135,7 @@ describe('CashFlowService — CAFG (FA)', () => {
       fromDate: '2026-01-01',
       toDate: '2026-12-31',
     });
-    expect(result.sections[0].postes.find((p) => p.code === 'FA')?.amount).toBe('0.00');
+    expect(result.operatingFlows.postes.find((p) => p.code === 'FA')?.amount).toBe('0.00');
   });
 });
 
@@ -147,17 +146,15 @@ describe('CashFlowService — exclusions BFR', () => {
   const allExcludedCodes = ['485', '414', '467', '458', '4581', '4582', '4494', '4751', '4752', '404', '481', '482', '472', '465'];
 
   it.each(allExcludedCodes)(
-    'le compte %s ne contribue PAS aux variations FC/FD',
+    'le compte %s ne contribue PAS aux variations FD/FE',
     async (code) => {
-      // Cas pédagogique : seul ce compte a une variation entre N-1 et N.
-      // Sa variation NE DOIT PAS apparaître dans FC ni FD.
       const balancesN: BalanceRow[] = [
         row({ accountCode: code, totalDebit: '1000.00', totalCredit: '0.00' }),
-        row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }), // créance client (incluse)
+        row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }),
       ];
       const balancesN1: BalanceRow[] = [
         row({ accountCode: code, totalDebit: '0.00', totalCredit: '0.00' }),
-        row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }), // pas de variation
+        row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }),
       ];
       const h = buildHarness({
         balancesAtToDate: balancesN,
@@ -169,16 +166,14 @@ describe('CashFlowService — exclusions BFR', () => {
         toDate: '2026-12-31',
       });
 
-      const fc = Number(result.sections[0].postes.find((p) => p.code === 'FC')?.amount);
-      const fd = Number(result.sections[0].postes.find((p) => p.code === 'FD')?.amount);
-      // 411000 n'a pas bougé → FC = 0. Et le compte exclu ne doit pas
-      // contribuer non plus → FC reste 0.
-      expect(fc).toBe(0);
+      const fd = Number(result.operatingFlows.postes.find((p) => p.code === 'FD')?.amount);
+      const fe = Number(result.operatingFlows.postes.find((p) => p.code === 'FE')?.amount);
       expect(fd).toBe(0);
+      expect(fe).toBe(0);
     },
   );
 
-  it('inclut bien le compte 411 (créance client ordinaire)', async () => {
+  it('inclut bien le compte 411 (créance client ordinaire) dans FD', async () => {
     const h = buildHarness({
       balancesAtToDate: [row({ accountCode: '411000', totalDebit: '1000.00', totalCredit: '0.00' })],
       balancesAtN1: [row({ accountCode: '411000', totalDebit: '600.00', totalCredit: '0.00' })],
@@ -187,12 +182,12 @@ describe('CashFlowService — exclusions BFR', () => {
       fromDate: '2026-01-01',
       toDate: '2026-12-31',
     });
-    // FC = - Δcréances. Créance ↑ de 400 → FC = -400.
-    const fc = Number(result.sections[0].postes.find((p) => p.code === 'FC')?.amount);
-    expect(fc).toBe(-400);
+    // FD = - Δcréances. Créance ↑ de 400 → FD = -400.
+    const fd = Number(result.operatingFlows.postes.find((p) => p.code === 'FD')?.amount);
+    expect(fd).toBe(-400);
   });
 
-  it('inclut bien le compte 401 (fournisseur d\'exploitation)', async () => {
+  it("inclut bien le compte 401 (fournisseur d'exploitation) dans FE", async () => {
     const h = buildHarness({
       balancesAtToDate: [row({ accountCode: '401000', totalDebit: '0.00', totalCredit: '800.00' })],
       balancesAtN1: [row({ accountCode: '401000', totalDebit: '0.00', totalCredit: '500.00' })],
@@ -201,9 +196,9 @@ describe('CashFlowService — exclusions BFR', () => {
       fromDate: '2026-01-01',
       toDate: '2026-12-31',
     });
-    // FD = + Δdettes. Dette ↑ de 300 → FD = +300 (le cash a augmenté car on doit + de fournisseurs).
-    const fd = Number(result.sections[0].postes.find((p) => p.code === 'FD')?.amount);
-    expect(fd).toBe(300);
+    // FE = + Δdettes. Dette ↑ de 300 → FE = +300.
+    const fe = Number(result.operatingFlows.postes.find((p) => p.code === 'FE')?.amount);
+    expect(fe).toBe(300);
   });
 
   it('le helper isExcludedFromBfr renvoie true pour les 14 préfixes interdits', () => {
@@ -227,16 +222,16 @@ describe('CashFlowService — exclusions BFR', () => {
 });
 
 // ────────────────────────────────────────────────────────────────────
-// 3. Trésorerie ouverture / clôture
+// 3. Trésorerie ouverture (ZA) / clôture (ZH)
 // ────────────────────────────────────────────────────────────────────
-describe('CashFlowService — trésorerie nette', () => {
+describe('CashFlowService — trésorerie nette (ZA / ZH)', () => {
   it('netTreasury somme les classes 5x (débit positif, crédit négatif via signed)', () => {
     const signed: SignedAccountBalance[] = [
-      { accountCode: '521000', net: 5000 }, // banque solde débiteur
-      { accountCode: '521100', net: -2000 }, // banque solde créditeur (découvert)
-      { accountCode: '571000', net: 300 }, // caisse
-      { accountCode: '411000', net: 10000 }, // créance — exclue
-      { accountCode: '590000', net: -100 }, // dépréciation classe 5 — exclue (59)
+      { accountCode: '521000', net: 5000 },
+      { accountCode: '521100', net: -2000 },
+      { accountCode: '571000', net: 300 },
+      { accountCode: '411000', net: 10000 }, // exclu
+      { accountCode: '590000', net: -100 }, // 59 exclu
     ];
     expect(CashFlowService.netTreasury(signed)).toBe(5000 - 2000 + 300);
   });
@@ -248,10 +243,14 @@ describe('CashFlowService — trésorerie nette', () => {
     expect(CashFlowService.isTreasuryAccount('411000')).toBe(false);
   });
 
-  it('openingCash et closingCash sont calculés à partir des balances N-1 / N', async () => {
+  it('openingCash (ZA) calculé à partir des balances N-1 ; ZH = ZA + ZG', async () => {
+    // EBE 2500 → FA=2500 → ZB=2500. Pas d'activité invest/fin → ZG=2500.
+    // ZA = 1000 (compte 521 N-1). ZH = ZA + ZG = 3500.
+    // Trésorerie réelle à toDate = 3500. coherenceCheck ~ 0.
     const h = buildHarness({
       balancesAtN1: [row({ accountCode: '521000', totalDebit: '1000.00', totalCredit: '0.00' })],
       balancesAtToDate: [row({ accountCode: '521000', totalDebit: '3500.00', totalCredit: '0.00' })],
+      sig: buildSig({ XD: '2500.00' }),
     });
     const result = await h.service.getCashFlow(ORG_ID, {
       fromDate: '2026-01-01',
@@ -260,13 +259,14 @@ describe('CashFlowService — trésorerie nette', () => {
     expect(result.openingCash).toBe('1000.00');
     expect(result.closingCash).toBe('3500.00');
     expect(result.netCashVariation).toBe('2500.00');
+    expect(Math.abs(Number(result.coherenceCheck))).toBeLessThan(1);
   });
 });
 
 // ────────────────────────────────────────────────────────────────────
-// 4. Cohérence finale : ZA + ZB + ZC ≈ ZH
+// 4. Cohérence finale : ZH calculé ≈ trésorerie comptes 5x à toDate
 // ────────────────────────────────────────────────────────────────────
-describe('CashFlowService — cohérence ZA+ZB+ZC = ZH', () => {
+describe('CashFlowService — cohérence ZH ≈ trésorerie comptes 5x', () => {
   it('sur un dataset trivial sans activité, écart de cohérence = 0', async () => {
     const h = buildHarness({});
     const result = await h.service.getCashFlow(ORG_ID, {
@@ -276,10 +276,9 @@ describe('CashFlowService — cohérence ZA+ZB+ZC = ZH', () => {
     expect(Math.abs(Number(result.coherenceCheck))).toBeLessThan(1);
   });
 
-  it('sur un dataset équilibré (vente + encaissement), cohérence ~ 0', async () => {
-    // Scenario : l'entreprise vend 1000 cash. EBE = 1000. Pas de variation BFR.
-    // Trésorerie : N-1 = 0, N = 1000. ZA = FA = 1000. ZB = ZC = 0.
-    // ZH = 1000. Cohérence = (1000 + 0 + 0) - 1000 = 0.
+  it('sur un dataset équilibré (vente cash), cohérence ~ 0', async () => {
+    // Vente 1000 cash. EBE = 1000. Pas de variation BFR.
+    // ZA = 0, ZH = 1000, ZG = ZB = FA = 1000. Cohérence = 0.
     const h = buildHarness({
       sig: buildSig({ XD: '1000.00' }),
       balancesAtN1: [],
@@ -294,48 +293,35 @@ describe('CashFlowService — cohérence ZA+ZB+ZC = ZH', () => {
 });
 
 // ────────────────────────────────────────────────────────────────────
-// 5. Smoke test : dataset réaliste
+// 5. Smoke test : nomenclature complète Z + F
 // ────────────────────────────────────────────────────────────────────
-describe('CashFlowService — smoke test dataset réaliste', () => {
-  it('produit un TFT complet avec 22 postes/sections sur dataset multi-comptes', async () => {
+describe('CashFlowService — smoke test nomenclature doctrine p.34', () => {
+  it('expose 4 sections (ZB/ZC/ZD/ZE), 17 postes (FA-FQ), + ZA/ZF/ZG/ZH', async () => {
     const balancesN1: BalanceRow[] = [
-      // Trésorerie ouverture
       row({ accountCode: '521000', totalDebit: '5000.00', totalCredit: '0.00' }),
-      // Capital
       row({ accountCode: '101000', totalDebit: '0.00', totalCredit: '10000.00' }),
-      // Emprunt LT
       row({ accountCode: '161000', totalDebit: '0.00', totalCredit: '8000.00' }),
-      // Immobilisations
       row({ accountCode: '215000', totalDebit: '12000.00', totalCredit: '0.00' }),
-      // Stocks
       row({ accountCode: '311000', totalDebit: '2000.00', totalCredit: '0.00' }),
-      // Créances
       row({ accountCode: '411000', totalDebit: '1500.00', totalCredit: '0.00' }),
-      // Dettes
       row({ accountCode: '401000', totalDebit: '0.00', totalCredit: '1000.00' }),
-      // Subvention invest
       row({ accountCode: '141000', totalDebit: '0.00', totalCredit: '500.00' }),
-      // Compte EXCLU pour test (ne doit pas perturber BFR)
       row({ accountCode: '485000', totalDebit: '300.00', totalCredit: '0.00' }),
     ];
     const balancesN: BalanceRow[] = [
-      // Trésorerie clôture (gain de 3000)
       row({ accountCode: '521000', totalDebit: '8000.00', totalCredit: '0.00' }),
-      row({ accountCode: '101000', totalDebit: '0.00', totalCredit: '12000.00' }), // +2000 capital
-      row({ accountCode: '161000', totalDebit: '0.00', totalCredit: '7000.00' }), // -1000 emprunt remboursé
-      row({ accountCode: '215000', totalDebit: '15000.00', totalCredit: '0.00' }), // +3000 invest
-      row({ accountCode: '311000', totalDebit: '2500.00', totalCredit: '0.00' }), // +500 stocks
-      row({ accountCode: '411000', totalDebit: '2000.00', totalCredit: '0.00' }), // +500 créances
-      row({ accountCode: '401000', totalDebit: '0.00', totalCredit: '1300.00' }), // +300 dettes
-      row({ accountCode: '141000', totalDebit: '0.00', totalCredit: '800.00' }), // +300 subv
-      row({ accountCode: '485000', totalDebit: '700.00', totalCredit: '0.00' }), // +400 EXCLUE
+      row({ accountCode: '101000', totalDebit: '0.00', totalCredit: '12000.00' }),
+      row({ accountCode: '161000', totalDebit: '0.00', totalCredit: '7000.00' }),
+      row({ accountCode: '215000', totalDebit: '15000.00', totalCredit: '0.00' }),
+      row({ accountCode: '311000', totalDebit: '2500.00', totalCredit: '0.00' }),
+      row({ accountCode: '411000', totalDebit: '2000.00', totalCredit: '0.00' }),
+      row({ accountCode: '401000', totalDebit: '0.00', totalCredit: '1300.00' }),
+      row({ accountCode: '141000', totalDebit: '0.00', totalCredit: '800.00' }),
+      row({ accountCode: '485000', totalDebit: '700.00', totalCredit: '0.00' }),
     ];
     const movements = [
-      // Acquisitions immo : débit 215 = 3000
       trialRow({ accountCode: '215000', periodDebit: '3000.00', periodCredit: '0.00' }),
-      // Remboursement emprunt : débit 161 = 1000
       trialRow({ accountCode: '161000', periodDebit: '1000.00', periodCredit: '0.00' }),
-      // Nouveau capital : crédit 101 = 2000
       trialRow({ accountCode: '101000', periodDebit: '0.00', periodCredit: '2000.00' }),
     ];
 
@@ -351,25 +337,43 @@ describe('CashFlowService — smoke test dataset réaliste', () => {
       toDate: '2026-12-31',
     });
 
-    // Structure : 3 sections (ZA, ZB, ZC).
-    expect(result.sections).toHaveLength(3);
-    expect(result.sections.map((s) => s.code)).toEqual(['ZA', 'ZB', 'ZC']);
+    // Structure conforme doctrine p. 34 : 4 sections de détail
+    expect(result.operatingFlows.code).toBe('ZB');
+    expect(result.investingFlows.code).toBe('ZC');
+    expect(result.financingFlowsEquity.code).toBe('ZD');
+    expect(result.financingFlowsDebt.code).toBe('ZE');
 
-    // Postes : FA-FE (5), FF-FJ (5), FK-FQ (7) = 17 postes.
-    const allPostes = result.sections.flatMap((s) => s.postes);
+    // Postes : FA-FE (5) + FF-FJ (5) + FK-FN (4) + FO-FQ (3) = 17 postes
+    const allPostes = [
+      ...result.operatingFlows.postes,
+      ...result.investingFlows.postes,
+      ...result.financingFlowsEquity.postes,
+      ...result.financingFlowsDebt.postes,
+    ];
     expect(allPostes).toHaveLength(17);
-    const expectedCodes = ['FA', 'FB', 'FC', 'FD', 'FE', 'FF', 'FG', 'FH', 'FI', 'FJ', 'FK', 'FL', 'FM', 'FN', 'FO', 'FP', 'FQ'];
+    const expectedCodes = [
+      'FA', 'FB', 'FC', 'FD', 'FE',
+      'FF', 'FG', 'FH', 'FI', 'FJ',
+      'FK', 'FL', 'FM', 'FN',
+      'FO', 'FP', 'FQ',
+    ];
     expect(allPostes.map((p) => p.code)).toEqual(expectedCodes);
 
-    // Trésorerie : 5000 → 8000.
+    // Trésorerie : ZA = 5000 (compte 521 ouverture).
+    // ZH calculé = ZA + ZG (somme des flux). coherenceCheck = ZH − trésorerie réelle.
     expect(result.openingCash).toBe('5000.00');
-    expect(result.closingCash).toBe('8000.00');
-    expect(result.netCashVariation).toBe('3000.00');
+    // ZG est cohérent avec la somme des sous-totaux.
+    const zb = Number(result.operatingFlows.subtotal);
+    const zc = Number(result.investingFlows.subtotal);
+    const zf = Number(result.financingFlowsTotal);
+    const zg = Number(result.netCashVariation);
+    expect(Math.abs(zb + zc + zf - zg)).toBeLessThan(0.01);
+    // ZH = ZA + ZG par construction.
+    expect(Number(result.closingCash)).toBeCloseTo(5000 + zg, 2);
 
-    // Le compte exclu 485 (Δ +400) ne contribue PAS à FC/FD.
-    // Seules les variations de 411 (+500) et 401 (+300) comptent.
-    const fc = Number(result.sections[0].postes.find((p) => p.code === 'FC')?.amount);
-    expect(fc).toBe(-500); // Δ créance 411 = +500, FC = -Δ = -500.
+    // Le compte exclu 485 (Δ +400) ne contribue PAS à FD/FE.
+    const fd = Number(result.operatingFlows.postes.find((p) => p.code === 'FD')?.amount);
+    expect(fd).toBe(-500);
   });
 
   it('comparatif N-1 quand previousFromDate / previousToDate fournis', async () => {
@@ -383,11 +387,82 @@ describe('CashFlowService — smoke test dataset réaliste', () => {
     expect(result.previous).toBeDefined();
     expect(result.previous?.fromDate).toBe('2025-01-01');
     expect(result.previous?.toDate).toBe('2025-12-31');
+    // Comparatif expose les sous-totaux ZB/ZC/ZD/ZE/ZF
+    expect(result.previous?.operatingFlow).toBeDefined();
+    expect(result.previous?.investingFlow).toBeDefined();
+    expect(result.previous?.financingFlowEquity).toBeDefined();
+    expect(result.previous?.financingFlowDebt).toBeDefined();
+    expect(result.previous?.financingFlowTotal).toBeDefined();
   });
 });
 
 // ────────────────────────────────────────────────────────────────────
-// 6. Validations
+// 6. Doctrine p.34 : nomenclature stricte ZA..ZH
+// ────────────────────────────────────────────────────────────────────
+describe('CashFlowService — codes Z conformes doctrine p.34', () => {
+  it('expose openingCash (ZA), closingCash (ZH), netCashVariation (ZG)', async () => {
+    const h = buildHarness({});
+    const result = await h.service.getCashFlow(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    expect(typeof result.openingCash).toBe('string'); // ZA
+    expect(typeof result.closingCash).toBe('string'); // ZH
+    expect(typeof result.netCashVariation).toBe('string'); // ZG
+    expect(typeof result.financingFlowsTotal).toBe('string'); // ZF
+  });
+
+  it('ZF = ZD + ZE (sous-total financement)', async () => {
+    const h = buildHarness({
+      movements: [
+        trialRow({ accountCode: '161000', periodDebit: '0.00', periodCredit: '5000.00' }), // FO
+        trialRow({ accountCode: '465000', periodDebit: '2000.00', periodCredit: '0.00' }), // FN
+      ],
+    });
+    const result = await h.service.getCashFlow(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    const zd = Number(result.financingFlowsEquity.subtotal);
+    const ze = Number(result.financingFlowsDebt.subtotal);
+    const zf = Number(result.financingFlowsTotal);
+    expect(Math.abs(zd + ze - zf)).toBeLessThan(0.01);
+  });
+
+  it('ZG = ZB + ZC + ZF (variation totale)', async () => {
+    const h = buildHarness({
+      sig: buildSig({ XD: '1000.00' }),
+    });
+    const result = await h.service.getCashFlow(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    const zb = Number(result.operatingFlows.subtotal);
+    const zc = Number(result.investingFlows.subtotal);
+    const zf = Number(result.financingFlowsTotal);
+    const zg = Number(result.netCashVariation);
+    expect(Math.abs(zb + zc + zf - zg)).toBeLessThan(0.01);
+  });
+
+  it('ZH = ZA + ZG (trésorerie clôture)', async () => {
+    const h = buildHarness({
+      sig: buildSig({ XD: '500.00' }),
+      balancesAtN1: [row({ accountCode: '521000', totalDebit: '2000.00', totalCredit: '0.00' })],
+      balancesAtToDate: [row({ accountCode: '521000', totalDebit: '2500.00', totalCredit: '0.00' })],
+    });
+    const result = await h.service.getCashFlow(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    const za = Number(result.openingCash);
+    const zg = Number(result.netCashVariation);
+    const zh = Number(result.closingCash);
+    expect(Math.abs(za + zg - zh)).toBeLessThan(0.01);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// 7. Validations
 // ────────────────────────────────────────────────────────────────────
 describe('CashFlowService — validations', () => {
   it('rejette REPORT_INVALID_DATE_RANGE si fromDate > toDate', async () => {
@@ -412,7 +487,7 @@ describe('CashFlowService — validations', () => {
 });
 
 // ────────────────────────────────────────────────────────────────────
-// 7. Helpers unitaires
+// 8. Helpers unitaires
 // ────────────────────────────────────────────────────────────────────
 describe('CashFlowService — helpers statiques', () => {
   it('dayBefore renvoie le jour précédent en YYYY-MM-DD', () => {
@@ -426,7 +501,6 @@ describe('CashFlowService — helpers statiques', () => {
       { accountCode: '491000', totalDebit: '0.00', totalCredit: '200.00', isOpposing: true },
     ]);
     expect(result[0]).toEqual({ accountCode: '411000', net: 1000 });
-    // 491 dépréciation : net = 0 - 200 = -200, isOpposing → +200.
     expect(result[1]).toEqual({ accountCode: '491000', net: 200 });
   });
 
@@ -434,7 +508,7 @@ describe('CashFlowService — helpers statiques', () => {
     const m: PeriodMovement[] = [
       { accountCode: '654000', debit: 500, credit: 0 },
       { accountCode: '654100', debit: 200, credit: 50 },
-      { accountCode: '601000', debit: 999, credit: 0 }, // pas du préfixe
+      { accountCode: '601000', debit: 999, credit: 0 },
     ];
     expect(CashFlowService.sumPeriodForPrefix(m, '654', 'debit-credit')).toBe(500 + 200 - 50);
   });
@@ -442,8 +516,8 @@ describe('CashFlowService — helpers statiques', () => {
   it('sumDebitForPrefixes avec extra filter', () => {
     const m: PeriodMovement[] = [
       { accountCode: '215000', debit: 1000, credit: 0 },
-      { accountCode: '281500', debit: 500, credit: 0 }, // amortissement, exclu via filter
-      { accountCode: '291500', debit: 100, credit: 0 }, // dépréciation, exclu via filter
+      { accountCode: '281500', debit: 500, credit: 0 },
+      { accountCode: '291500', debit: 100, credit: 0 },
     ];
     const sum = CashFlowService.sumDebitForPrefixes(
       m,
@@ -451,5 +525,9 @@ describe('CashFlowService — helpers statiques', () => {
       (code) => !code.startsWith('28') && !code.startsWith('29'),
     );
     expect(sum).toBe(1000);
+  });
+
+  it('postesReferentiel expose 25 entrées (8 Z + 17 F)', () => {
+    expect(CashFlowService.postesReferentiel.length).toBe(25);
   });
 });
