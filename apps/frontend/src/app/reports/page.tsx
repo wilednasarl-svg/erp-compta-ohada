@@ -613,6 +613,16 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
         </div>
       </div>
 
+      {/* Diagnostic d'équilibre — visible uniquement quand le bilan est déséquilibré */}
+      {!isBalanced && (
+        <BilanDiagnostic
+          difference={differenceNum}
+          unclassified={report.unclassified}
+          netResultIncorporated={report.netResultIncorporated}
+          fmt={fmt}
+        />
+      )}
+
       {/* Layout classique du Bilan : Actif à gauche, Passif à droite,
           en miroir comme une liasse fiscale imprimée. Sur mobile, stack
           vertical (lg:grid-cols-2). */}
@@ -641,6 +651,134 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
         <UnclassifiedAccounts items={report.unclassified} fmt={fmt} />
       )}
     </div>
+  );
+}
+
+function BilanDiagnostic({
+  difference,
+  unclassified,
+  netResultIncorporated,
+  fmt,
+}: {
+  readonly difference: number;
+  readonly unclassified: ReadonlyArray<{ code: string; label: string; net: string; side?: string }>;
+  readonly netResultIncorporated: string | null;
+  readonly fmt: (v: string) => string;
+}) {
+  const absDiff = Math.abs(difference);
+
+  // Part expliquée par les comptes hors référentiel
+  const unclassifiedTotal = unclassified.reduce((s, p) => s + Number(p.net), 0);
+  const absUnclassified = Math.abs(unclassifiedTotal);
+  const residualAfterUnclassified = Math.abs(absDiff - absUnclassified);
+
+  // Part expliquée par le résultat non incorporé
+  const resultNet = netResultIncorporated !== null ? Number(netResultIncorporated) : null;
+  const resultExplains = resultNet !== null && Math.abs(Math.abs(resultNet) - absDiff) < 1;
+
+  // Résidu inexpliqué (après déduction des deux causes connues)
+  const knownImpact = absUnclassified + (resultNet !== null && netResultIncorporated === null ? Math.abs(resultNet) : 0);
+  const unexplained = Math.max(0, absDiff - knownImpact);
+
+  type Step = { label: string; amount?: number; action: string; priority: 'high' | 'medium' | 'low' };
+  const steps: Step[] = [];
+
+  if (unclassified.length > 0) {
+    steps.push({
+      label: `${unclassified.length} compte${unclassified.length > 1 ? 's' : ''} hors référentiel`,
+      amount: absUnclassified,
+      action: "Passer des OD de régularisation pour réimputer ces comptes sur leurs homologues SYSCOHADA (voir la section ci-dessous pour le détail et les corrections suggérées).",
+      priority: 'high',
+    });
+  }
+
+  if (resultNet !== null && netResultIncorporated === null) {
+    steps.push({
+      label: "Résultat net non incorporé au passif",
+      amount: Math.abs(resultNet),
+      action: "Cocher « Incorporer résultat » dans les paramètres de génération pour inclure le résultat de l'exercice dans les capitaux propres (poste CJ).",
+      priority: 'high',
+    });
+  }
+
+  if (residualAfterUnclassified > 1 && !resultExplains) {
+    steps.push({
+      label: "Écritures comptables déséquilibrées",
+      amount: residualAfterUnclassified > 1 ? residualAfterUnclassified : undefined,
+      action: "Vérifier dans la Balance générale que le total Débit = total Crédit. Si un écart existe, identifier les pièces déséquilibrées dans le Grand Livre et les corriger par OD.",
+      priority: unexplained > 1000 ? 'high' : 'medium',
+    });
+  }
+
+  if (steps.length === 0) {
+    steps.push({
+      label: "Cause non identifiée automatiquement",
+      action: "Consulter le Grand Livre pour identifier les écritures qui ne s'équilibrent pas.",
+      priority: 'medium',
+    });
+  }
+
+  const priorityColor = {
+    high: 'bg-critical-soft border-critical/30 text-critical-ink',
+    medium: 'bg-warn-soft border-warn/30 text-warn-ink',
+    low: 'bg-surface border-line text-ink',
+  };
+
+  const pct = (amount: number) => absDiff > 0 ? `${((amount / absDiff) * 100).toFixed(0)} %` : '';
+
+  return (
+    <section className="rounded-md border border-critical/30 bg-critical-soft/50 p-4">
+      <header className="flex items-center gap-2 border-b border-critical/20 pb-3">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-critical-ink" strokeWidth={1.5} />
+        <h4 className="font-display text-base font-medium text-critical-ink">
+          Comment équilibrer ce bilan ?
+        </h4>
+        <span className="ml-auto font-mono text-sm font-semibold tabular-nums text-critical-ink">
+          Écart : {fmt(Math.abs(difference).toFixed(2))}
+        </span>
+      </header>
+
+      <p className="mt-2 text-xs text-critical-ink/80">
+        Un bilan SYSCOHADA doit vérifier <strong>Actif = Passif</strong>. L&apos;écart actuel
+        de <strong>{fmt(absDiff.toFixed(2))}</strong> provient des causes identifiées
+        ci-dessous. Traitez-les dans l&apos;ordre pour rétablir l&apos;équilibre.
+      </p>
+
+      <ol className="mt-3 space-y-2">
+        {steps.map((step, i) => (
+          <li
+            key={i}
+            className={`rounded border px-3 py-2.5 text-xs ${priorityColor[step.priority]}`}
+          >
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-current/20 text-[10px] font-bold">
+                {i + 1}
+              </span>
+              <span className="font-medium">{step.label}</span>
+              {step.amount !== undefined && step.amount > 0.01 && (
+                <span className="ml-auto font-mono tabular-nums opacity-90">
+                  {fmt(step.amount.toFixed(2))}
+                  {absDiff > 0 && (
+                    <span className="ml-1 text-[10px] opacity-60">({pct(step.amount)})</span>
+                  )}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 leading-relaxed opacity-80">{step.action}</p>
+          </li>
+        ))}
+      </ol>
+
+      {absDiff > 0 && absUnclassified > 0 && (
+        <p className="mt-3 text-[10px] text-critical-ink/60">
+          Les comptes hors référentiel représentent{' '}
+          <strong>{pct(absUnclassified)}</strong> de l&apos;écart total.
+          {residualAfterUnclassified < 1
+            ? ' Régulariser ces comptes suffira à équilibrer le bilan.'
+            : ` Un résidu de ${fmt(residualAfterUnclassified.toFixed(2))} restera après régularisation.`}
+        </p>
+      )}
+    </section>
   );
 }
 
