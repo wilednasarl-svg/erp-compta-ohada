@@ -626,26 +626,38 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
       {/* Layout classique du Bilan : Actif à gauche, Passif à droite,
           en miroir comme une liasse fiscale imprimée. Sur mobile, stack
           vertical (lg:grid-cols-2). */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <BilanColumn 
-          title="Actif" 
-          subtitle="Patrimoine — emplois durables et circulants" 
-          masses={report.actifMasses} 
-          hasComp={hasComp} 
-          tone="info" 
-          totalGeneral={report.totals.actif}
-          totalGeneralPrevious={report.previous?.totalActif}
-        />
-        <BilanColumn 
-          title="Passif" 
-          subtitle="Financement — capitaux propres et dettes" 
-          masses={report.passifMasses} 
-          hasComp={hasComp} 
-          tone="accent" 
-          totalGeneral={report.totals.passif}
-          totalGeneralPrevious={report.previous?.totalPassif}
-        />
-      </div>
+      {(() => {
+        const unclActif  = report.unclassified.filter(p => p.side !== 'PASSIF');
+        const unclPassif = report.unclassified.filter(p => p.side === 'PASSIF');
+        const adjActif   = Number(report.totals.actif)  + unclActif.reduce((s, p) => s + Number(p.net), 0);
+        const adjPassif  = Number(report.totals.passif) + unclPassif.reduce((s, p) => s + Number(p.net), 0);
+        return (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <BilanColumn
+              title="Actif"
+              subtitle="Patrimoine — emplois durables et circulants"
+              masses={report.actifMasses}
+              hasComp={hasComp}
+              tone="info"
+              totalGeneral={report.totals.actif}
+              totalGeneralPrevious={report.previous?.totalActif}
+              unclassifiedItems={unclActif}
+              adjustedTotal={unclActif.length > 0 ? adjActif : undefined}
+            />
+            <BilanColumn
+              title="Passif"
+              subtitle="Financement — capitaux propres et dettes"
+              masses={report.passifMasses}
+              hasComp={hasComp}
+              tone="accent"
+              totalGeneral={report.totals.passif}
+              totalGeneralPrevious={report.previous?.totalPassif}
+              unclassifiedItems={unclPassif}
+              adjustedTotal={unclPassif.length > 0 ? adjPassif : undefined}
+            />
+          </div>
+        );
+      })()}
 
       {report.unclassified.length > 0 && (
         <UnclassifiedAccounts items={report.unclassified} fmt={fmt} />
@@ -914,6 +926,8 @@ function BilanColumn({
   tone,
   totalGeneral,
   totalGeneralPrevious,
+  unclassifiedItems = [],
+  adjustedTotal,
 }: {
   readonly title: string;
   readonly subtitle: string;
@@ -922,6 +936,8 @@ function BilanColumn({
   readonly tone: 'info' | 'accent';
   readonly totalGeneral: string | number;
   readonly totalGeneralPrevious?: string | number;
+  readonly unclassifiedItems?: ReadonlyArray<{ code: string; label: string; net: string }>;
+  readonly adjustedTotal?: number;
 }) {
   const toneClasses = {
     info: { dot: 'bg-info', headerText: 'text-info-ink' },
@@ -929,6 +945,7 @@ function BilanColumn({
   };
   const t = toneClasses[tone];
   const isActif = title.toUpperCase() === 'ACTIF';
+  const colSpan = isActif ? (hasComp ? 6 : 5) : (hasComp ? 4 : 3);
 
   const grandBrut = masses.flatMap(m => m.rubriques).flatMap(r => r.postes).reduce((s, p) => s + Number(p.brut ?? 0), 0);
   const grandDeduc = masses.flatMap(m => m.rubriques).flatMap(r => r.postes).reduce((s, p) => s + Number(p.deduction ?? 0), 0);
@@ -980,6 +997,34 @@ function BilanColumn({
           {masses.map((m) => (
             <BilanMasseTbody key={m.code} masse={m} hasComp={hasComp} isActif={isActif} />
           ))}
+          {/* Bucket hors référentiel — comptes sans poste SYSCOHADA, affichés en rouge */}
+          {unclassifiedItems.length > 0 && (
+            <tbody className="bg-critical-soft/30">
+              <tr className="border-t-2 border-critical/30">
+                <td colSpan={colSpan} className="px-3 py-1.5">
+                  <span className="flex items-center gap-1.5 text-2xs font-medium uppercase tracking-wider text-critical-ink/80">
+                    <AlertTriangle className="h-3 w-3" strokeWidth={1.5} />
+                    Comptes hors référentiel SYSCOHADA — à régulariser
+                  </span>
+                </td>
+              </tr>
+              {unclassifiedItems.map((p) => (
+                <tr key={`${p.code}-${p.label}`} className="border-t border-critical/10 hover:bg-critical-soft/40">
+                  <td className="px-3 py-1.5 font-mono text-xs text-critical-ink">{p.code}</td>
+                  <td className="px-3 py-1.5 text-xs italic text-critical-ink/80" colSpan={isActif ? 2 : 1}>{p.label}</td>
+                  {isActif && <td />}
+                  {isActif && (
+                    <>
+                      <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-critical-ink">{fmt(p.net)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-critical-ink/50">—</td>
+                    </>
+                  )}
+                  <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-critical-ink">{fmt(p.net)}</td>
+                  {hasComp && <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-ink-mute">—</td>}
+                </tr>
+              ))}
+            </tbody>
+          )}
           <tfoot>
             <tr className="border-t-4 border-line-strong bg-sunk/60">
               <td className="px-3 py-3 font-mono text-sm font-bold tabular-nums text-ink">{isActif ? 'BZ' : 'DZ'}</td>
@@ -991,7 +1036,14 @@ function BilanColumn({
                   <td className="px-3 py-3 text-right font-mono text-sm font-bold tabular-nums text-ink">{fmt(String(grandDeduc))}</td>
                 </>
               ) : null}
-              <td className="px-3 py-3 text-right font-mono text-base font-bold tabular-nums text-ink">{fmt(String(totalGeneral))}</td>
+              <td className="px-3 py-3 text-right font-mono text-base font-bold tabular-nums text-ink">
+                {adjustedTotal !== undefined ? (
+                  <span className="flex flex-col items-end gap-0.5">
+                    <span className="text-ink-mute line-through text-sm">{fmt(String(totalGeneral))}</span>
+                    <span className="text-ink">{fmt(adjustedTotal.toFixed(2))}</span>
+                  </span>
+                ) : fmt(String(totalGeneral))}
+              </td>
               {hasComp ? (
                 <td className="px-3 py-3 text-right font-mono text-sm font-bold tabular-nums text-ink-soft">
                   {totalGeneralPrevious !== undefined ? fmt(String(totalGeneralPrevious)) : '—'}
