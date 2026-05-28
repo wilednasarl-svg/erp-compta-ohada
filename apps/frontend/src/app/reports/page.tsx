@@ -11,6 +11,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  FlaskConical,
   GitBranch,
   History,
   Info,
@@ -55,6 +56,7 @@ import type {
   AnnexeNoteDetailReport,
   AnnexeReport,
   BalanceSheetReport,
+  BilanDiagnosticReport,
   BilanMasse,
   CashFlowReport,
   CashFlowSection,
@@ -125,6 +127,9 @@ interface BalanceSheetEnvelope {
 }
 interface ProfitLossEnvelope {
   readonly report: ProfitLossReport;
+}
+interface BilanDiagnosticEnvelope {
+  readonly report: BilanDiagnosticReport;
 }
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
@@ -222,6 +227,8 @@ export default function ReportsPage() {
           <MarginByAxisPanel orgId={orgId} />
         ) : mode === 'import-diagnostic' ? (
           <ImportDiagnosticPanel orgId={orgId} />
+        ) : mode === 'bilan-diagnostic' ? (
+          <BilanDiagnosticPanel orgId={orgId} />
         ) : mode === 'balance-upload' ? (
           <BalanceUploadPanel orgId={orgId} />
         ) : (
@@ -6083,6 +6090,330 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
               Le fichier est analysé côté client — aucune donnée n&apos;est envoyée avant de cliquer sur{' '}
               <span className="font-medium text-ink">Générer les états</span>.
             </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Bilan Diagnostic Panel ──────────────────────────────────────────────────
+
+function BilanDiagnosticPanel({ orgId }: { readonly orgId: string }) {
+  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
+  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [submitted, setSubmitted] = useState<boolean>(false);
+
+  const { data, isFetching, error } = useQuery<BilanDiagnosticEnvelope>({
+    queryKey: ['bilan-diagnostic', orgId, asAtDate, fiscalYearStartDate, submitted],
+    queryFn: async () => {
+      const params = new URLSearchParams({ asAtDate, fiscalYearStartDate });
+      return api.get<BilanDiagnosticEnvelope>(`/organizations/${orgId}/reports/balance-sheet-diagnostic?${params}`);
+    },
+    enabled: submitted && orgId !== '',
+  });
+
+  const report = data?.report;
+
+  const CLASS_ROLE_LABEL: Record<string, string> = {
+    BILAN_PASSIF: 'Passif',
+    BILAN_ACTIF: 'Actif',
+    PL_CHARGES: 'Charges',
+    PL_PRODUITS: 'Produits',
+    AUTRES: 'Autres',
+  };
+
+  const yearEndItems: Array<{ key: string; label: string; syscohada: string }> = [
+    { key: 'amortissements', label: 'Amortissements (28x)', syscohada: 'Art. 45 AUDCIF — obligatoires chaque exercice' },
+    { key: 'depreciations', label: 'Dépréciations (29x/39x/49x/59x)', syscohada: 'Art. 46 AUDCIF — pertes de valeur réversibles' },
+    { key: 'chargesConstateesAvance', label: 'Charges constatées d\'avance (476)', syscohada: 'Régularisation charges — Tome 2 SYSCOHADA' },
+    { key: 'produitsConstatesAvance', label: 'Produits constatés d\'avance (477)', syscohada: 'Régularisation produits — Tome 2 SYSCOHADA' },
+    { key: 'chargesAPayer', label: 'Charges à payer (408)', syscohada: 'Dettes provisionnées fin d\'exercice' },
+    { key: 'produitsARecevoir', label: 'Produits à recevoir (418)', syscohada: 'Créances provisionnées fin d\'exercice' },
+    { key: 'provisionImpots', label: 'Provision IS (444)', syscohada: 'Impôt sur les bénéfices à constater' },
+    { key: 'variationStocks', label: 'Variations de stocks (603/73x)', syscohada: 'Inventaire physique fin d\'exercice' },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base font-medium">
+          <FlaskConical className="h-4 w-4 text-ink-mute" strokeWidth={1.5} />
+          Diagnostic de l&apos;équilibre du bilan
+        </CardTitle>
+        <CardDescription>
+          Vérifie l&apos;équilibre journal (Σdébit = Σcrédit), décompose par classe et liste les travaux de fin
+          d&apos;exercice SYSCOHADA manquants.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label>Date du bilan</Label>
+            <Input type="date" value={asAtDate} onChange={e => setAsAtDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Début de l&apos;exercice</Label>
+            <Input type="date" value={fiscalYearStartDate} onChange={e => setFiscalYearStartDate(e.target.value)} />
+          </div>
+          <div className="flex items-end">
+            <Button
+              onClick={() => setSubmitted(true)}
+              disabled={isFetching || orgId === ''}
+              className="w-full"
+            >
+              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Analyser'}
+            </Button>
+          </div>
+        </div>
+
+        {error && <FormError error={{ message: error instanceof ApiError ? error.message : 'Erreur inattendue' }} />}
+
+        {report && (
+          <div className="space-y-6">
+            {/* Section 1 — Journal balance */}
+            <div className="rounded-md border border-line bg-paper">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                <p className="font-display text-sm font-medium tracking-tight text-ink">
+                  Équilibre du journal (Σdébit = Σcrédit)
+                </p>
+                {report.journal.isBalanced ? (
+                  <span className="flex items-center gap-1.5 rounded-sm bg-[oklch(0.93_0.08_145)] px-2 py-0.5 text-xs font-medium text-[oklch(0.35_0.14_145)]">
+                    <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} />
+                    Équilibré
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 rounded-sm bg-[oklch(0.94_0.06_25)] px-2 py-0.5 text-xs font-medium text-[oklch(0.40_0.15_25)]">
+                    <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} />
+                    Déséquilibré
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-line">
+                <div className="px-4 py-3">
+                  <p className="text-2xs uppercase tracking-wider text-ink-mute">Total débit</p>
+                  <p className="mt-0.5 font-mono text-sm text-ink">{fmt(report.journal.totalDebit)}</p>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-2xs uppercase tracking-wider text-ink-mute">Total crédit</p>
+                  <p className="mt-0.5 font-mono text-sm text-ink">{fmt(report.journal.totalCredit)}</p>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-2xs uppercase tracking-wider text-ink-mute">Écart</p>
+                  <p className={`mt-0.5 font-mono text-sm ${report.journal.isBalanced ? 'text-[oklch(0.40_0.14_145)]' : 'font-semibold text-[oklch(0.45_0.18_25)]'}`}>
+                    {fmt(report.journal.imbalance)}
+                  </p>
+                </div>
+              </div>
+              {!report.journal.isBalanced && (
+                <div className="border-t border-line bg-[oklch(0.97_0.02_25)] px-4 py-2.5">
+                  <p className="text-xs text-[oklch(0.45_0.15_25)]">
+                    Un écart journal non nul signifie que des écritures déséquilibrées ont été comptabilisées.
+                    Aucune configuration frontend ne peut rééquilibrer un bilan si le journal ne l&apos;est pas.
+                    Vérifiez vos saisies dans les journaux.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Section 2 — Réconciliation bilan */}
+            <div className="rounded-md border border-line bg-paper">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                <p className="font-display text-sm font-medium tracking-tight text-ink">
+                  Réconciliation bilan (actif vs passif)
+                </p>
+                {report.bilan.isEquilibrated ? (
+                  <span className="flex items-center gap-1.5 rounded-sm bg-[oklch(0.93_0.08_145)] px-2 py-0.5 text-xs font-medium text-[oklch(0.35_0.14_145)]">
+                    <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2} />
+                    Équilibré
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 rounded-sm bg-[oklch(0.94_0.06_25)] px-2 py-0.5 text-xs font-medium text-[oklch(0.40_0.15_25)]">
+                    <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} />
+                    Écart résiduel
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-px bg-line">
+                {[
+                  ['Actif classifié (postes lettrés)', report.bilan.actifClassified],
+                  ['Passif classifié (postes lettrés)', report.bilan.passifClassified],
+                  ['Actif hors-référentiel', report.bilan.actifUnclassified],
+                  ['Passif hors-référentiel', report.bilan.passifUnclassified],
+                  report.bilan.netResultIncorporated !== null
+                    ? ['Résultat incorporé', report.bilan.netResultIncorporated]
+                    : null,
+                  ['Actif ajusté (total)', report.bilan.adjActif],
+                  ['Passif ajusté (total)', report.bilan.adjPassif],
+                ].filter(Boolean).map((row) => (
+                  <div key={row![0]} className="bg-paper px-4 py-2.5">
+                    <p className="text-2xs uppercase tracking-wider text-ink-mute">{row![0]}</p>
+                    <p className="mt-0.5 font-mono text-sm text-ink">{fmt(row![1] as string)}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-line px-4 py-2.5">
+                <p className="text-2xs uppercase tracking-wider text-ink-mute">Écart ajusté (actif − passif)</p>
+                <p className={`mt-0.5 font-mono text-sm font-semibold ${report.bilan.isEquilibrated ? 'text-[oklch(0.40_0.14_145)]' : 'text-[oklch(0.45_0.18_25)]'}`}>
+                  {fmt(report.bilan.adjDifference)}
+                </p>
+              </div>
+            </div>
+
+            {/* Section 3 — Décomposition par classe */}
+            <div className="rounded-md border border-line bg-paper">
+              <div className="border-b border-line px-4 py-3">
+                <p className="font-display text-sm font-medium tracking-tight text-ink">
+                  Décomposition par classe SYSCOHADA
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-2xs uppercase tracking-wider text-ink-mute">
+                      <th className="py-2 pl-4 text-left font-medium">Classe</th>
+                      <th className="py-2 text-left font-medium">Rôle bilan</th>
+                      <th className="py-2 text-right font-medium">Total débit</th>
+                      <th className="py-2 text-right font-medium">Total crédit</th>
+                      <th className="py-2 pr-4 text-right font-medium">Net (D−C)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {report.byClass.map(row => (
+                      <tr key={row.class} className="hover:bg-sunk">
+                        <td className="py-2 pl-4">
+                          <span className="font-medium text-ink">Cl. {row.class}</span>
+                          <span className="ml-2 text-xs text-ink-soft">{row.label}</span>
+                        </td>
+                        <td className="py-2">
+                          <span className={`inline-block rounded-sm px-1.5 py-0.5 text-2xs font-medium ${
+                            row.role === 'BILAN_PASSIF' ? 'bg-[oklch(0.93_0.06_280)] text-[oklch(0.38_0.14_280)]' :
+                            row.role === 'BILAN_ACTIF' ? 'bg-[oklch(0.93_0.06_220)] text-[oklch(0.38_0.14_220)]' :
+                            row.role === 'PL_CHARGES' ? 'bg-[oklch(0.93_0.06_25)] text-[oklch(0.40_0.14_25)]' :
+                            row.role === 'PL_PRODUITS' ? 'bg-[oklch(0.93_0.08_145)] text-[oklch(0.35_0.14_145)]' :
+                            'bg-sunk text-ink-mute'
+                          }`}>
+                            {CLASS_ROLE_LABEL[row.role]}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right font-mono text-ink">{fmt(row.totalDebit)}</td>
+                        <td className="py-2 text-right font-mono text-ink">{fmt(row.totalCredit)}</td>
+                        <td className="pr-4 py-2 text-right font-mono text-ink">{fmt(row.net)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Section 4 — Travaux de fin d'exercice */}
+            <div className="rounded-md border border-line bg-paper">
+              <div className="border-b border-line px-4 py-3">
+                <p className="font-display text-sm font-medium tracking-tight text-ink">
+                  Checklist travaux de fin d&apos;exercice (SYSCOHADA obligatoires)
+                </p>
+                <p className="mt-0.5 text-xs text-ink-soft">
+                  Les entrées absentes ne bloquent pas la clôture mais indiquent un bilan potentiellement incomplet.
+                </p>
+              </div>
+              <ul className="divide-y divide-line">
+                {yearEndItems.map(({ key, label, syscohada }) => {
+                  const entry = report.yearEnd[key as keyof typeof report.yearEnd];
+                  const present = entry?.present ?? false;
+                  const amount = entry?.totalAmount ?? '0.00';
+                  return (
+                    <li key={key} className="flex items-start justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-ink">{label}</p>
+                        <p className="text-xs text-ink-mute">{syscohada}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        {present ? (
+                          <>
+                            <span className="font-mono text-xs text-ink-soft">{fmt(amount)}</span>
+                            <span className="flex items-center gap-1 rounded-sm bg-[oklch(0.93_0.08_145)] px-2 py-0.5 text-2xs font-medium text-[oklch(0.35_0.14_145)]">
+                              <CheckCircle2 className="h-3 w-3" strokeWidth={2} />
+                              Présent
+                            </span>
+                          </>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-sm bg-[oklch(0.94_0.06_55)] px-2 py-0.5 text-2xs font-medium text-[oklch(0.42_0.14_55)]">
+                            <AlertTriangle className="h-3 w-3" strokeWidth={2} />
+                            Absent
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {report.yearEnd.amortissements.accounts.length > 0 && (
+                <div className="border-t border-line px-4 py-3">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wider text-ink-mute">
+                    Détail comptes d&apos;amortissements
+                  </p>
+                  <div className="space-y-1">
+                    {report.yearEnd.amortissements.accounts.map(acc => (
+                      <div key={acc.code} className="flex items-center justify-between text-xs">
+                        <span className="font-mono text-ink-soft">{acc.code}</span>
+                        <span className="flex-1 px-3 text-ink">{acc.label}</span>
+                        <span className="font-mono text-ink">{fmt(acc.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section 5 — Comptes hors-référentiel */}
+            {report.unclassified.length > 0 && (
+              <div className="rounded-md border border-line bg-paper">
+                <div className="border-b border-line px-4 py-3">
+                  <p className="font-display text-sm font-medium tracking-tight text-ink">
+                    Comptes hors-référentiel SYSCOHADA ({report.unclassified.length})
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-soft">
+                    Ces comptes ont un solde actif mais aucun poste lettré DSF ne leur correspond.
+                    Vérifiez leur numérotation ou ajoutez-les à votre plan comptable.
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-line text-2xs uppercase tracking-wider text-ink-mute">
+                        <th className="py-2 pl-4 text-left font-medium">Compte</th>
+                        <th className="py-2 text-left font-medium">Côté</th>
+                        <th className="py-2 text-right font-medium">Débit</th>
+                        <th className="py-2 text-right font-medium">Crédit</th>
+                        <th className="py-2 pr-4 text-right font-medium">Net</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {report.unclassified.map(row => (
+                        <tr key={row.code} className="hover:bg-sunk">
+                          <td className="py-2 pl-4">
+                            <span className="font-mono text-xs font-medium text-ink">{row.code}</span>
+                            <span className="ml-2 text-xs text-ink-soft">{row.label}</span>
+                          </td>
+                          <td className="py-2">
+                            <span className={`inline-block rounded-sm px-1.5 py-0.5 text-2xs font-medium ${
+                              row.side === 'PASSIF'
+                                ? 'bg-[oklch(0.93_0.06_280)] text-[oklch(0.38_0.14_280)]'
+                                : 'bg-[oklch(0.93_0.06_220)] text-[oklch(0.38_0.14_220)]'
+                            }`}>
+                              {row.side}
+                            </span>
+                          </td>
+                          <td className="py-2 text-right font-mono text-ink">{fmt(row.totalDebit)}</td>
+                          <td className="py-2 text-right font-mono text-ink">{fmt(row.totalCredit)}</td>
+                          <td className="pr-4 py-2 text-right font-mono text-ink">{fmt(row.net)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

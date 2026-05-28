@@ -45,6 +45,7 @@ import {
   type AnalyticAxisSummary,
   type AnnexeNoteDetailReport,
   type AnnexeReport,
+  type BilanDiagnosticReport,
   type CashTrendReport,
   type ImportDiagnosticReport,
   type ComparativeBalanceReport,
@@ -70,6 +71,7 @@ import {
   AnnexeNoteDetailReportEnvelope,
   AnnexeReportEnvelope,
   BalanceSheetReportEnvelope,
+  BilanDiagnosticReportEnvelope,
   CashTrendReportEnvelope,
   ComparativeBalanceReportEnvelope,
   DsfValidationReportEnvelope,
@@ -422,6 +424,25 @@ export class ReportsController {
       asAtDate: query.asAtDate,
       fiscalYearStartDate: query.fiscalYearStartDate,
       compareWith,
+    });
+    return { report };
+  }
+
+  @Get('balance-sheet-diagnostic')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Diagnostic d\'équilibre du bilan SYSCOHADA — journal, décomposition par classe, checklist travaux de fin d\'exercice',
+  })
+  @ApiOkResponse({ type: BilanDiagnosticReportEnvelope })
+  async balanceSheetDiagnostic(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: BalanceSheetQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ report: BilanDiagnosticReport }> {
+    const report = await this.reports.getBilanDiagnostic(asTenantId(org.id), {
+      asAtDate: query.asAtDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
     });
     return { report };
   }

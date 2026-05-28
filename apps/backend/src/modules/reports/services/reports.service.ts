@@ -319,6 +319,63 @@ export interface BalanceSheetReport {
   readonly previous?: BalanceSheetPreviousSummary;
 }
 
+export type BilanDiagnosticClassRole = 'BILAN_PASSIF' | 'BILAN_ACTIF' | 'PL_CHARGES' | 'PL_PRODUITS' | 'AUTRES';
+
+export interface BilanDiagnosticYearEndEntry {
+  readonly present: boolean;
+  readonly totalAmount: string;
+}
+
+export interface BilanDiagnosticReport {
+  readonly asAtDate: string;
+  readonly journal: {
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly imbalance: string;
+    readonly isBalanced: boolean;
+  };
+  readonly byClass: ReadonlyArray<{
+    readonly class: number;
+    readonly label: string;
+    readonly role: BilanDiagnosticClassRole;
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly net: string;
+    readonly accountCount: number;
+  }>;
+  readonly bilan: {
+    readonly actifClassified: string;
+    readonly passifClassified: string;
+    readonly actifUnclassified: string;
+    readonly passifUnclassified: string;
+    readonly netResultIncorporated: string | null;
+    readonly adjActif: string;
+    readonly adjPassif: string;
+    readonly adjDifference: string;
+    readonly isEquilibrated: boolean;
+  };
+  readonly unclassified: ReadonlyArray<{
+    readonly code: string;
+    readonly label: string;
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly net: string;
+    readonly side: 'ACTIF' | 'PASSIF';
+  }>;
+  readonly yearEnd: {
+    readonly amortissements: BilanDiagnosticYearEndEntry & {
+      readonly accounts: ReadonlyArray<{ readonly code: string; readonly label: string; readonly amount: string }>;
+    };
+    readonly depreciations: BilanDiagnosticYearEndEntry;
+    readonly chargesConstateesAvance: BilanDiagnosticYearEndEntry;
+    readonly produitsConstatesAvance: BilanDiagnosticYearEndEntry;
+    readonly chargesAPayer: BilanDiagnosticYearEndEntry;
+    readonly produitsARecevoir: BilanDiagnosticYearEndEntry;
+    readonly provisionImpots: BilanDiagnosticYearEndEntry;
+    readonly variationStocks: BilanDiagnosticYearEndEntry;
+  };
+}
+
 export interface GeneralLedgerReport {
   readonly accountId: string;
   readonly accountCode: string;
@@ -3829,6 +3886,168 @@ export class ReportsService {
         warningCount,
         infoCount,
         canCommit,
+      },
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bilan Diagnostic
+  // ---------------------------------------------------------------------------
+
+  async getBilanDiagnostic(
+    organizationId: TenantId,
+    query: { asAtDate: string; fiscalYearStartDate?: string },
+  ): Promise<BilanDiagnosticReport> {
+    assertTenantId(organizationId);
+    if (!ReportsService.isYmd(query.asAtDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: `asAtDate must be YYYY-MM-DD (got ${query.asAtDate}).`,
+      });
+    }
+
+    const rows = await this.repo.accountBalancesAsAt(organizationId, query.asAtDate);
+
+    // 1. Journal balance check — Σ(débit) vs Σ(crédit) sur toutes les classes
+    let grandTotalDebit = 0;
+    let grandTotalCredit = 0;
+    for (const row of rows) {
+      grandTotalDebit += Number(row.totalDebit);
+      grandTotalCredit += Number(row.totalCredit);
+    }
+    const imbalance = grandTotalDebit - grandTotalCredit;
+
+    // 2. By-class breakdown
+    const CLASS_META: Record<number, { label: string; role: BilanDiagnosticClassRole }> = {
+      1: { label: 'Ressources durables (capitaux propres, dettes financières)', role: 'BILAN_PASSIF' },
+      2: { label: 'Immobilisations', role: 'BILAN_ACTIF' },
+      3: { label: 'Stocks', role: 'BILAN_ACTIF' },
+      4: { label: 'Comptes de tiers (actif et passif)', role: 'BILAN_ACTIF' },
+      5: { label: 'Trésorerie', role: 'BILAN_ACTIF' },
+      6: { label: 'Charges par nature', role: 'PL_CHARGES' },
+      7: { label: 'Produits par nature', role: 'PL_PRODUITS' },
+      8: { label: 'Autres charges et produits', role: 'PL_CHARGES' },
+      9: { label: 'Comptabilité analytique', role: 'AUTRES' },
+    };
+
+    const classMap = new Map<number, { debit: number; credit: number; count: number }>();
+    for (const row of rows) {
+      const cls = row.accountClass;
+      const acc = classMap.get(cls) ?? { debit: 0, credit: 0, count: 0 };
+      acc.debit += Number(row.totalDebit);
+      acc.credit += Number(row.totalCredit);
+      acc.count += 1;
+      classMap.set(cls, acc);
+    }
+    const byClass = Array.from(classMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([cls, acc]) => {
+        const meta = CLASS_META[cls] ?? { label: `Classe ${cls}`, role: 'AUTRES' as BilanDiagnosticClassRole };
+        return {
+          class: cls,
+          label: meta.label,
+          role: meta.role,
+          totalDebit: acc.debit.toFixed(2),
+          totalCredit: acc.credit.toFixed(2),
+          net: (acc.debit - acc.credit).toFixed(2),
+          accountCount: acc.count,
+        };
+      });
+
+    // 3. Bilan hierarchy (réutilise computeBalanceSheetBare pour la cohérence)
+    const bilanReport = await this.computeBalanceSheetBare(
+      organizationId,
+      query.asAtDate,
+      query.fiscalYearStartDate,
+    );
+
+    // 4. Réconciliation avec convention de signe passif
+    // Les comptes passif hors-référentiel ont net = débit - crédit (négatif pour un passif normal).
+    // On inverse le signe pour que le montant passif ajusté s'additionne positivement.
+    const unclActif = bilanReport.unclassified.filter(p => p.side !== 'PASSIF');
+    const unclPassif = bilanReport.unclassified.filter(p => p.side === 'PASSIF');
+    const actifUnclassifiedNet = unclActif.reduce((s, p) => s + Number(p.net), 0);
+    const passifUnclassifiedNet = unclPassif.reduce((s, p) => s + (-Number(p.net)), 0);
+    const adjActif = Number(bilanReport.totals.actif) + actifUnclassifiedNet;
+    const adjPassif = Number(bilanReport.totals.passif) + passifUnclassifiedNet;
+    const adjDifference = adjActif - adjPassif;
+
+    // 5. Checklist travaux de fin d'exercice
+    const matchesPrefix = (code: string, prefixes: string[]): boolean =>
+      prefixes.some(p => code.startsWith(p));
+
+    const yearEndCheck = (prefixes: string[]): { present: boolean; totalAmount: string } => {
+      let total = 0;
+      let count = 0;
+      for (const row of rows) {
+        if (matchesPrefix(row.accountCode, prefixes)) {
+          const net = Math.abs(Number(row.totalDebit) - Number(row.totalCredit));
+          if (net >= 0.005) { total += net; count += 1; }
+        }
+      }
+      return { present: count > 0, totalAmount: total.toFixed(2) };
+    };
+
+    const amortPrefixes = ['281', '282', '283', '284', '285', '286', '287', '288', '289'];
+    let amortTotal = 0;
+    const amortAccounts: Array<{ code: string; label: string; amount: string }> = [];
+    for (const row of rows) {
+      if (matchesPrefix(row.accountCode, amortPrefixes)) {
+        const net = Math.abs(Number(row.totalDebit) - Number(row.totalCredit));
+        if (net >= 0.005) {
+          amortTotal += net;
+          amortAccounts.push({ code: row.accountCode, label: row.accountLabel, amount: net.toFixed(2) });
+        }
+      }
+    }
+
+    // Enrichir les hors-référentiel avec totalDebit/totalCredit depuis les soldes bruts
+    const rowByCode = new Map(rows.map(r => [r.accountCode, r]));
+    const unclassifiedEnriched = bilanReport.unclassified.map(p => {
+      const row = rowByCode.get(p.code);
+      return {
+        code: p.code,
+        label: p.label,
+        totalDebit: row?.totalDebit ?? '0.00',
+        totalCredit: row?.totalCredit ?? '0.00',
+        net: p.net,
+        side: p.side,
+      };
+    });
+
+    return {
+      asAtDate: query.asAtDate,
+      journal: {
+        totalDebit: grandTotalDebit.toFixed(2),
+        totalCredit: grandTotalCredit.toFixed(2),
+        imbalance: imbalance.toFixed(2),
+        isBalanced: Math.abs(imbalance) < 1,
+      },
+      byClass,
+      bilan: {
+        actifClassified: bilanReport.totals.actif,
+        passifClassified: bilanReport.totals.passif,
+        actifUnclassified: actifUnclassifiedNet.toFixed(2),
+        passifUnclassified: passifUnclassifiedNet.toFixed(2),
+        netResultIncorporated: bilanReport.netResultIncorporated,
+        adjActif: adjActif.toFixed(2),
+        adjPassif: adjPassif.toFixed(2),
+        adjDifference: adjDifference.toFixed(2),
+        isEquilibrated: Math.abs(adjDifference) < 1,
+      },
+      unclassified: unclassifiedEnriched,
+      yearEnd: {
+        amortissements: {
+          present: amortAccounts.length > 0,
+          totalAmount: amortTotal.toFixed(2),
+          accounts: amortAccounts,
+        },
+        depreciations: yearEndCheck(['29', '39', '49', '59']),
+        chargesConstateesAvance: yearEndCheck(['476']),
+        produitsConstatesAvance: yearEndCheck(['477']),
+        chargesAPayer: yearEndCheck(['408']),
+        produitsARecevoir: yearEndCheck(['418']),
+        provisionImpots: yearEndCheck(['444']),
+        variationStocks: yearEndCheck(['603', '604', '605', '731', '732', '733', '734', '735', '736', '737', '738', '739']),
       },
     };
   }

@@ -621,3 +621,71 @@ export interface ProfitLossReport {
   readonly resultat: string;
   readonly previous?: ProfitLossPreviousSummary;
 }
+
+// ─── Bilan Diagnostic ────────────────────────────────────────────────────────
+
+export type BilanDiagnosticClassRole =
+  | 'BILAN_PASSIF'
+  | 'BILAN_ACTIF'
+  | 'PL_CHARGES'
+  | 'PL_PRODUITS'
+  | 'AUTRES';
+
+export interface BilanDiagnosticYearEndEntry {
+  readonly present: boolean;
+  readonly totalAmount: string;
+}
+
+export interface BilanDiagnosticReport {
+  readonly asAtDate: string;
+  readonly journal: {
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly imbalance: string;
+    readonly isBalanced: boolean;
+  };
+  readonly byClass: ReadonlyArray<{
+    readonly class: number;
+    readonly label: string;
+    readonly role: BilanDiagnosticClassRole;
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly net: string;
+    readonly accountCount: number;
+  }>;
+  readonly bilan: {
+    readonly actifClassified: string;
+    readonly passifClassified: string;
+    readonly actifUnclassified: string;
+    readonly passifUnclassified: string;
+    readonly netResultIncorporated: string | null;
+    readonly adjActif: string;
+    readonly adjPassif: string;
+    readonly adjDifference: string;
+    readonly isEquilibrated: boolean;
+  };
+  readonly unclassified: ReadonlyArray<{
+    readonly code: string;
+    readonly label: string;
+    readonly totalDebit: string;
+    readonly totalCredit: string;
+    readonly net: string;
+    readonly side: 'ACTIF' | 'PASSIF';
+  }>;
+  readonly yearEnd: {
+    readonly amortissements: BilanDiagnosticYearEndEntry & {
+      readonly accounts: ReadonlyArray<{
+        readonly code: string;
+        readonly label: string;
+        readonly amount: string;
+      }>;
+    };
+    readonly depreciations: BilanDiagnosticYearEndEntry;
+    readonly chargesConstateesAvance: BilanDiagnosticYearEndEntry;
+    readonly produitsConstatesAvance: BilanDiagnosticYearEndEntry;
+    readonly chargesAPayer: BilanDiagnosticYearEndEntry;
+    readonly produitsARecevoir: BilanDiagnosticYearEndEntry;
+    readonly provisionImpots: BilanDiagnosticYearEndEntry;
+    readonly variationStocks: BilanDiagnosticYearEndEntry;
+  };
+}

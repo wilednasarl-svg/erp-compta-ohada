@@ -6,6 +6,7 @@ import type {
   AnnexeNoteDetailReport,
   AnnexeReport,
   BalanceSheetReport,
+  BilanDiagnosticReport,
   CashTrendReport,
   ComparativeBalanceReport,
   FinancialRatiosReport,
@@ -98,6 +99,11 @@ export class ImportDiagnosticReportEnvelope {
 export class DsfValidationReportEnvelope {
   @ApiProperty({ type: 'object', description: 'Rapport de validation pré-dépôt DSF' })
   report!: DsfValidationReport;
+}
+
+export class BilanDiagnosticReportEnvelope {
+  @ApiProperty({ type: 'object', description: 'Diagnostic de l\'équilibre du bilan SYSCOHADA (journal, par classe, travaux de fin d\'exercice)' })
+  report!: BilanDiagnosticReport;
 }
 
 export class AnalyticAxisSummaryListResponse {

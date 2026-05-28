@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Upload,
   Wallet,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -51,6 +52,7 @@ export type ReportMode =
   | 'margin-by-axis'
   | 'general-ledger'
   | 'import-diagnostic'
+  | 'bilan-diagnostic'
   | 'balance-upload';
 
 interface ReportItem {
@@ -177,6 +179,12 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
         label: "Diagnostic d'import",
         icon: Stethoscope,
         hint: "Anomalies sur les écritures issues d'un import récent.",
+      },
+      {
+        mode: 'bilan-diagnostic',
+        label: 'Diagnostic bilan',
+        icon: FlaskConical,
+        hint: "Vérification de l'équilibre journal (Σdébit = Σcrédit), décomposition par classe, checklist travaux de fin d'exercice SYSCOHADA.",
       },
     ],
   },
