@@ -628,7 +628,11 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
           vertical (lg:grid-cols-2). */}
       {(() => {
         const unclActif  = report.unclassified.filter(p => p.side !== 'PASSIF');
-        const unclPassif = report.unclassified.filter(p => p.side === 'PASSIF');
+        // Passif accounts (class 1) have net = debit - credit, which is negative for normal liabilities.
+        // Negate net so display shows positive amounts and sum adds correctly to passif total.
+        const unclPassif = report.unclassified
+          .filter(p => p.side === 'PASSIF')
+          .map(p => ({ ...p, net: (-Number(p.net)).toFixed(2) }));
         const adjActif   = Number(report.totals.actif)  + unclActif.reduce((s, p) => s + Number(p.net), 0);
         const adjPassif  = Number(report.totals.passif) + unclPassif.reduce((s, p) => s + Number(p.net), 0);
         return (
