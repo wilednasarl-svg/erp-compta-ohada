@@ -541,17 +541,26 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
 
 function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
   const differenceNum = Number(report.totals.difference);
-  // Seuil de 1 FCFA pour la tolérance d'arrondi (5 décimales backend).
-  // En dessous on considère que l'équilibre est respecté.
   const isBalanced = Math.abs(differenceNum) < 1;
   const hasComp = report.previous !== undefined;
 
+  // Adjusted totals: incorporate unclassified accounts into each side.
+  // Passif accounts (class 1) store net = debit − credit (negative for liabilities).
+  // Negate so the convention matches totalPassif (positive = liability amount).
+  const unclActif = report.unclassified.filter(p => p.side !== 'PASSIF');
+  const unclPassif = report.unclassified
+    .filter(p => p.side === 'PASSIF')
+    .map(p => ({ ...p, net: (-Number(p.net)).toFixed(2) }));
+  const adjActif  = Number(report.totals.actif)  + unclActif.reduce((s, p) => s + Number(p.net), 0);
+  const adjPassif = Number(report.totals.passif) + unclPassif.reduce((s, p) => s + Number(p.net), 0);
+  const adjDiff   = adjActif - adjPassif;
+  const hasUncl   = report.unclassified.length > 0;
+  const isAdjBalanced = hasUncl && Math.abs(adjDiff) < 1;
+  const showGreen = isBalanced || isAdjBalanced;
+
   return (
     <div className="space-y-6">
-      {/* Bandeau récap : la signature du bilan en 4 chiffres. L'équilibre
-          Actif=Passif est LE contrôle visuel d'un bilan OHADA — un écart
-          ≠ 0 signifie un problème (résultat non incorporé, comptes hors
-          plan, écriture déséquilibrée). */}
+      {/* Bandeau récap : la signature du bilan en 4 chiffres. */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
         <div className="bg-paper px-4 py-3">
           <p className="text-2xs uppercase tracking-wider text-ink-mute">Arrêté au</p>
@@ -565,46 +574,54 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
           )}
         </div>
         <div className="bg-paper px-4 py-3">
-          <p className="text-2xs uppercase tracking-wider text-ink-mute">Total Actif</p>
-          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
-            {fmt(report.totals.actif)}
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">
+            Total Actif{hasUncl ? ' (ajusté)' : ''}
           </p>
+          {hasUncl ? (
+            <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink flex flex-col leading-tight">
+              <span className="text-sm text-ink-mute line-through">{fmt(report.totals.actif)}</span>
+              <span>{fmt(adjActif.toFixed(2))}</span>
+            </p>
+          ) : (
+            <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+              {fmt(report.totals.actif)}
+            </p>
+          )}
         </div>
         <div className="bg-paper px-4 py-3">
-          <p className="text-2xs uppercase tracking-wider text-ink-mute">Total Passif</p>
-          <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
-            {fmt(report.totals.passif)}
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">
+            Total Passif{hasUncl ? ' (ajusté)' : ''}
           </p>
+          {hasUncl ? (
+            <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink flex flex-col leading-tight">
+              <span className="text-sm text-ink-mute line-through">{fmt(report.totals.passif)}</span>
+              <span>{fmt(adjPassif.toFixed(2))}</span>
+            </p>
+          ) : (
+            <p className="mt-0.5 font-mono text-xl font-medium tabular-nums text-ink">
+              {fmt(report.totals.passif)}
+            </p>
+          )}
         </div>
-        <div
-          className={cn('px-4 py-3', isBalanced ? 'bg-accent-soft/60' : 'bg-critical-soft')}
-        >
-          <p
-            className={cn(
-              'text-2xs uppercase tracking-wider',
-              isBalanced ? 'text-accent-ink' : 'text-critical-ink',
-            )}
-          >
+        <div className={cn('px-4 py-3', showGreen ? 'bg-accent-soft/60' : 'bg-critical-soft')}>
+          <p className={cn('text-2xs uppercase tracking-wider', showGreen ? 'text-accent-ink' : 'text-critical-ink')}>
             Équilibre Actif − Passif
           </p>
-          <p
-            className={cn(
-              'mt-0.5 inline-flex items-center gap-1.5 font-mono text-xl font-medium tabular-nums',
-              isBalanced ? 'text-accent-ink' : 'text-critical-ink',
-            )}
-          >
-            {isBalanced ? (
-              <>
-                <CheckCircle2 className="h-5 w-5" />
-                0,00
-              </>
+          <p className={cn(
+            'mt-0.5 inline-flex items-center gap-1.5 font-mono text-xl font-medium tabular-nums',
+            showGreen ? 'text-accent-ink' : 'text-critical-ink',
+          )}>
+            {showGreen ? (
+              <><CheckCircle2 className="h-5 w-5" />0,00</>
             ) : (
-              <>
-                <AlertTriangle className="h-5 w-5" />
-                {fmt(report.totals.difference)}
-              </>
+              <><AlertTriangle className="h-5 w-5" />{fmt((hasUncl ? adjDiff : differenceNum).toFixed(2))}</>
             )}
           </p>
+          {isAdjBalanced && (
+            <p className="mt-0.5 text-2xs text-accent-ink/80">
+              Équilibré après incorporation des {report.unclassified.length} comptes hors référentiel
+            </p>
+          )}
           {report.netResultIncorporated !== null && (
             <p className="mt-0.5 text-2xs text-accent-ink/80">
               Résultat net incorporé : {fmt(report.netResultIncorporated)}
@@ -613,8 +630,8 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
         </div>
       </div>
 
-      {/* Diagnostic d'équilibre — visible uniquement quand le bilan est déséquilibré */}
-      {!isBalanced && (
+      {/* Diagnostic d'équilibre — visible quand le bilan reste déséquilibré après ajustement */}
+      {!isBalanced && !isAdjBalanced && (
         <BilanDiagnostic
           difference={differenceNum}
           unclassified={report.unclassified}
@@ -623,45 +640,30 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
         />
       )}
 
-      {/* Layout classique du Bilan : Actif à gauche, Passif à droite,
-          en miroir comme une liasse fiscale imprimée. Sur mobile, stack
-          vertical (lg:grid-cols-2). */}
-      {(() => {
-        const unclActif  = report.unclassified.filter(p => p.side !== 'PASSIF');
-        // Passif accounts (class 1) have net = debit - credit, which is negative for normal liabilities.
-        // Negate net so display shows positive amounts and sum adds correctly to passif total.
-        const unclPassif = report.unclassified
-          .filter(p => p.side === 'PASSIF')
-          .map(p => ({ ...p, net: (-Number(p.net)).toFixed(2) }));
-        const adjActif   = Number(report.totals.actif)  + unclActif.reduce((s, p) => s + Number(p.net), 0);
-        const adjPassif  = Number(report.totals.passif) + unclPassif.reduce((s, p) => s + Number(p.net), 0);
-        return (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <BilanColumn
-              title="Actif"
-              subtitle="Patrimoine — emplois durables et circulants"
-              masses={report.actifMasses}
-              hasComp={hasComp}
-              tone="info"
-              totalGeneral={report.totals.actif}
-              totalGeneralPrevious={report.previous?.totalActif}
-              unclassifiedItems={unclActif}
-              adjustedTotal={unclActif.length > 0 ? adjActif : undefined}
-            />
-            <BilanColumn
-              title="Passif"
-              subtitle="Financement — capitaux propres et dettes"
-              masses={report.passifMasses}
-              hasComp={hasComp}
-              tone="accent"
-              totalGeneral={report.totals.passif}
-              totalGeneralPrevious={report.previous?.totalPassif}
-              unclassifiedItems={unclPassif}
-              adjustedTotal={unclPassif.length > 0 ? adjPassif : undefined}
-            />
-          </div>
-        );
-      })()}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <BilanColumn
+          title="Actif"
+          subtitle="Patrimoine — emplois durables et circulants"
+          masses={report.actifMasses}
+          hasComp={hasComp}
+          tone="info"
+          totalGeneral={report.totals.actif}
+          totalGeneralPrevious={report.previous?.totalActif}
+          unclassifiedItems={unclActif}
+          adjustedTotal={unclActif.length > 0 ? adjActif : undefined}
+        />
+        <BilanColumn
+          title="Passif"
+          subtitle="Financement — capitaux propres et dettes"
+          masses={report.passifMasses}
+          hasComp={hasComp}
+          tone="accent"
+          totalGeneral={report.totals.passif}
+          totalGeneralPrevious={report.previous?.totalPassif}
+          unclassifiedItems={unclPassif}
+          adjustedTotal={unclPassif.length > 0 ? adjPassif : undefined}
+        />
+      </div>
 
       {report.unclassified.length > 0 && (
         <UnclassifiedAccounts items={report.unclassified} fmt={fmt} />
