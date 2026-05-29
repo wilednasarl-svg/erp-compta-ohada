@@ -7,7 +7,13 @@
  * Actif = Passif via `totals.difference`.
  */
 
-import type { BalanceSheetReport, ProfitLossReport, TrialBalanceReport } from '@/types/reports';
+import type {
+  BalanceSheetReport,
+  CashFlowReport,
+  ProfitLossReport,
+  SigReport,
+  TrialBalanceReport,
+} from '@/types/reports';
 
 import type { PeriodValidity } from './types';
 
@@ -36,6 +42,30 @@ export const validityFromProfitLoss = (report: ProfitLossReport): PeriodValidity
   computedAt: new Date().toISOString(),
   periodClosed: false,
 });
+
+/**
+ * SIG : cascade de soldes intermédiaires, sans invariant débit=crédit
+ * (comme le CR). Seules date de fin et fraîcheur sont renseignées.
+ */
+export const validityFromSig = (report: SigReport): PeriodValidity => ({
+  lastMovementDate: report.toDate,
+  computedAt: new Date().toISOString(),
+  periodClosed: false,
+});
+
+/**
+ * TFT : `coherenceCheck` = |ZH − trésorerie comptes classe 5|. > 1 FCFA révèle
+ * un défaut de mapping → exposé comme `imbalance` (signal réel de fiabilité).
+ */
+export const validityFromCashFlow = (report: CashFlowReport): PeriodValidity => {
+  const incoherence = Math.abs(Number(report.coherenceCheck));
+  return {
+    imbalance: incoherence < BALANCE_EPSILON ? 0 : Math.round(incoherence),
+    lastMovementDate: report.toDate,
+    computedAt: new Date().toISOString(),
+    periodClosed: false,
+  };
+};
 
 /** Équilibre d'une balance : Σ débit clôture vs Σ crédit clôture. */
 export const validityFromTrialBalance = (report: TrialBalanceReport): PeriodValidity => {

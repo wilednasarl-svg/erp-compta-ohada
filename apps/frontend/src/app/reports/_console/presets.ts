@@ -21,6 +21,12 @@ export const fromIso = (iso: string): Date => {
   return new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0, 0);
 };
 
+/** Décale une date ISO d'un nombre d'années (dérivation de la comparaison N-1). */
+export const shiftYears = (iso: string, delta: number): string => {
+  const d = fromIso(iso);
+  return toIso(new Date(d.getFullYear() + delta, d.getMonth(), d.getDate(), 12));
+};
+
 export const todayIso = (ref: Date = new Date()): string => toIso(ref);
 export const yearStartIso = (ref: Date = new Date()): string => `${ref.getFullYear()}-01-01`;
 export const previousYearEndIso = (ref: Date = new Date()): string =>

@@ -18,12 +18,16 @@ import { useCurrentOrg } from '@/stores/auth-store';
 import { BalanceConsole } from '../_console/balance-console';
 import { BilanConsole } from '../_console/bilan-console';
 import { CrConsole } from '../_console/cr-console';
+import { SigConsole } from '../_console/sig-console';
+import { TftConsole } from '../_console/tft-console';
 
-type ConsoleReport = 'balance-sheet' | 'profit-loss' | 'trial-balance';
+type ConsoleReport = 'balance-sheet' | 'profit-loss' | 'sig' | 'tft' | 'trial-balance';
 
 const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: string }> = [
   { key: 'balance-sheet', label: 'Bilan' },
   { key: 'profit-loss', label: 'Compte de résultat' },
+  { key: 'sig', label: 'SIG' },
+  { key: 'tft', label: 'TFT' },
   { key: 'trial-balance', label: 'Balance générale' },
 ];
 
@@ -74,6 +78,10 @@ export default function ReportConsolePage() {
           <BilanConsole orgId={orgId} />
         ) : active === 'profit-loss' ? (
           <CrConsole orgId={orgId} />
+        ) : active === 'sig' ? (
+          <SigConsole orgId={orgId} />
+        ) : active === 'tft' ? (
+          <TftConsole orgId={orgId} />
         ) : (
           <BalanceConsole orgId={orgId} />
         )}
