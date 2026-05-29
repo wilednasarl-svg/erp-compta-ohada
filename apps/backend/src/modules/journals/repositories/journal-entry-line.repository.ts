@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
+import { OrganizationAccountEntity } from '../../accounting-plan/entities/organization-account.entity';
 import { JournalEntryLineEntity } from '../entities/journal-entry-line.entity';
 import { JournalEntryEntity } from '../entities/journal-entry.entity';
 
@@ -105,6 +106,38 @@ export class JournalEntryLineRepository {
       line,
       entryStatus: line.journalEntry?.status ?? 'unknown',
     }));
+  }
+
+  /**
+   * Lettrage auto par facture : retourne les lignes encore NON lettrées,
+   * portant un `invoice_number`, rattachées à une écriture `validated` et
+   * à un compte tiers (classe 4, sous-classe 40/41/43/44). Chaque ligne
+   * porte sa relation `account` mappée pour que le service puisse
+   * regrouper par (compte, facture) et vérifier la classe.
+   *
+   * Tri stable par (compte, facture) pour un regroupement déterministe.
+   */
+  async listUnletteredPartnerLinesWithInvoice(
+    organizationId: TenantId | string,
+    options: { partnerAccountId?: string } = {},
+  ): Promise<JournalEntryLineEntity[]> {
+    assertTenantId(organizationId);
+    const qb = this.repo
+      .createQueryBuilder('l')
+      .innerJoinAndMapOne('l.account', OrganizationAccountEntity, 'a', 'a.id = l.account_id')
+      .innerJoin(JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere('l.lettering_id IS NULL')
+      .andWhere('l.invoice_number IS NOT NULL')
+      .andWhere("e.status = 'validated'")
+      .andWhere('a.class = 4')
+      .andWhere("substring(a.code from 1 for 2) IN ('40', '41', '43', '44')");
+    if (options.partnerAccountId !== undefined) {
+      qb.andWhere('l.account_id = :partnerAccountId', {
+        partnerAccountId: options.partnerAccountId,
+      });
+    }
+    return qb.orderBy('l.account_id', 'ASC').addOrderBy('l.invoice_number', 'ASC').getMany();
   }
 
   async attachLettering(

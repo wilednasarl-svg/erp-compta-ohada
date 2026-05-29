@@ -24,10 +24,15 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequirePermission } from '../../rbac/decorators/require-permission.decorator';
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
+import { AutoLetterByInvoiceDto } from '../dto/auto-letter-by-invoice.dto';
 import { BreakLetteringDto } from '../dto/break-lettering.dto';
 import { CreateLetteringDto } from '../dto/create-lettering.dto';
 import type { LetteringStatus } from '../entities/partner-lettering.entity';
-import { LetteringService, type LetteringView } from '../services/lettering.service';
+import {
+  LetteringService,
+  type AutoLetterByInvoiceResult,
+  type LetteringView,
+} from '../services/lettering.service';
 
 /**
  * `LetteringsController` — REST surface for partner-account
@@ -63,6 +68,31 @@ export class LetteringsController {
       buildAuditRequestContext(req),
     );
     return { lettering };
+  }
+
+  @Post('auto-by-invoice')
+  @RequirePermission('journals.lettering')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lettrage automatique par N° de facture',
+    description:
+      'Rapproche automatiquement les lignes non lettrées des comptes tiers ' +
+      'partageant le même N° de facture, lorsque le groupe est équilibré.',
+  })
+  async autoByInvoice(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Body() dto: AutoLetterByInvoiceDto,
+    @CurrentOrg() org: CurrentOrgContext,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'],
+    @Req() req: Request,
+  ): Promise<{ result: AutoLetterByInvoiceResult }> {
+    const result = await this.letterings.autoLetterByInvoice(
+      asTenantId(org.id),
+      { partnerAccountId: dto.partnerAccountId },
+      actorUserId,
+      buildAuditRequestContext(req),
+    );
+    return { result };
   }
 
   @Get()
