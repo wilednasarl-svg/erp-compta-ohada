@@ -35,6 +35,13 @@ export interface EntryLineView {
   readonly description: string | null;
   readonly debit: string; // DECIMAL serialisé en string (précision préservée)
   readonly credit: string;
+  // Métadonnées de pièce (Migration 0110). Optionnelles côté affichage —
+  // anciennes écritures et écritures saisies manuellement les laissent
+  // à null.
+  readonly invoiceNumber?: string | null;
+  readonly dueDate?: string | null;
+  readonly taxCode?: string | null;
+  readonly reference?: string | null;
 }
 
 /** Shape retournée par GET /entries (sans lignes, paginée). */

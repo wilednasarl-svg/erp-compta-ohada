@@ -8,6 +8,7 @@ import {
   BookText,
   Brain,
   Calendar,
+  CalendarClock,
   Coins,
   Compass,
   FileUp,
@@ -24,7 +25,9 @@ import {
   PenLine,
   Percent,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
+  Upload,
   Users,
   Warehouse,
 } from 'lucide-react';
@@ -68,6 +71,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'Référentiel',
     items: [
       { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen, hint: 'SYSCOHADA — comptes et classes' },
+      { href: '/chart-of-accounts/import', label: 'Importer un plan', icon: Upload, hint: 'Charger un plan comptable CSV / Excel' },
       { href: '/syscohada-knowledge', label: 'Doctrine SYSCOHADA', icon: BookOpenCheck, hint: 'Citations du Guide par module' },
       { href: '/accounting-periods', label: 'Périodes', icon: Calendar, hint: 'Exercices, mois, clôtures' },
       { href: '/currencies', label: 'Devises', icon: Coins, hint: 'XOF, EUR, USD et taux' },
@@ -85,6 +89,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'Retraitement',
     items: [
       { href: '/lettering', label: 'Lettrage', icon: Link2, hint: 'Comptes 40x · 41x, clients/fournisseurs' },
+      { href: '/aging', label: 'Échéancier', icon: CalendarClock, hint: 'Balance âgée clients / fournisseurs' },
       { href: '/bank-reconciliation', label: 'Rapprochement', icon: Banknote, hint: 'Pointer relevés bancaires' },
       { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft, hint: 'Retraitements et recalculs' },
       { href: '/rules', label: 'Règles', icon: Sparkles, hint: 'Automatisations comptables' },
@@ -94,7 +99,9 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'États',
     items: [
       { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat, TFT, SIG, Annexe' },
+      { href: '/reports/console', label: 'Console des états', icon: SlidersHorizontal, hint: 'Parcours guidé : période → générer (14 états)' },
       { href: '/tva', label: 'TVA', icon: Percent, hint: 'Déclarations UEMOA / DGI' },
+      { href: '/tax-breakdown', label: 'Ventilation TVA', icon: Percent, hint: 'Cumuls par code taxe' },
       { href: '/inventory', label: 'Inventaire', icon: Warehouse, hint: 'Stocks et inventaire physique' },
       { href: '/assets', label: 'Immobilisations', icon: Package, hint: 'Amortissements et dotations' },
     ],

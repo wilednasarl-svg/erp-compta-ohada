@@ -3,6 +3,7 @@ import {
   ValidationService,
   findParentAccountByPrefix,
   parseImportDate,
+  resolvePostingAccount,
   type ChartAccountIndex,
   type FiscalYearRange,
 } from './validation.service';
@@ -236,8 +237,10 @@ describe('ValidationService', () => {
     });
 
     it('emits unknown_account_with_parent_hint when a parent prefix exists in the reference set', () => {
+      // postingCodes ne contient AUCUN préfixe de 10100000 → pas de résolution
+      // par dé-padding ; seul le référentiel porte le parent → hint.
       const chart: ChartAccountIndex = {
-        postingCodes: new Set(['101']),
+        postingCodes: new Set(['4111']),
         allReferenceCodes: new Set(['10', '101']),
       };
       const errors = service.validateRow(balanceRow({ account: '10100000' }), {
@@ -250,6 +253,23 @@ describe('ValidationService', () => {
       expect(hint?.message).toContain('101');
       // Plain unknown_account is NOT emitted in addition.
       expect(errors.some((e) => e.code === 'unknown_account')).toBe(false);
+    });
+
+    it('réconcilie un code zéro-paddé Sage vers le compte imputable exact (pas d’erreur)', () => {
+      const chart: ChartAccountIndex = { postingCodes: new Set(['4011', '4452']) };
+      // 40110000 → 4011 (zéros terminaux retirés), 44520000 → 4452.
+      expect(
+        service.validateRow({ ...baseRow(), account: '40110000' }, { chart }),
+      ).toEqual([]);
+      expect(
+        service.validateRow({ ...baseRow(), account: '44520000' }, { chart }),
+      ).toEqual([]);
+    });
+
+    it('ne fusionne PAS un sous-compte dans son parent (60420000 reste inconnu si 6042 absent)', () => {
+      const chart: ChartAccountIndex = { postingCodes: new Set(['604', '6041']) };
+      const errors = service.validateRow({ ...baseRow(), account: '60420000' }, { chart });
+      expect(errors.some((e) => e.code === 'unknown_account')).toBe(true);
     });
 
     it('falls back to unknown_account when no parent prefix matches', () => {
@@ -309,6 +329,35 @@ describe('ValidationService', () => {
 
     it('returns null on accounts shorter than 2 chars', () => {
       expect(findParentAccountByPrefix('1', new Set(), new Set(['1']))).toBeNull();
+    });
+  });
+
+  describe('resolvePostingAccount', () => {
+    const posting = new Set(['4011', '4452', '4454', '6041', '604', '602', '624', '627']);
+
+    it('renvoie le code tel quel si déjà imputable', () => {
+      expect(resolvePostingAccount('4011', posting)).toBe('4011');
+    });
+
+    it('retire les zéros terminaux jusqu’à un compte imputable exact', () => {
+      expect(resolvePostingAccount('40110000', posting)).toBe('4011');
+      expect(resolvePostingAccount('44520000', posting)).toBe('4452');
+      expect(resolvePostingAccount('44540000', posting)).toBe('4454');
+      expect(resolvePostingAccount('60410000', posting)).toBe('6041');
+    });
+
+    it('renvoie null si le dé-padding ne tombe pas sur un compte imputable exact', () => {
+      // 60420000 → 6042 (absent) ; on NE descend PAS vers 604.
+      expect(resolvePostingAccount('60420000', posting)).toBeNull();
+      expect(resolvePostingAccount('62421000', posting)).toBeNull();
+    });
+
+    it('ne retire que des zéros (un chiffre significatif final bloque la descente)', () => {
+      expect(resolvePostingAccount('4011', new Set(['401']))).toBeNull();
+    });
+
+    it('renvoie null sur compte vide', () => {
+      expect(resolvePostingAccount('', posting)).toBeNull();
     });
   });
 

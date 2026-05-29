@@ -59,6 +59,7 @@ interface Harness {
     attachLettering: jest.Mock;
     detachLettering: jest.Mock;
     listByAccountAndOrg: jest.Mock;
+    listUnletteredPartnerLinesWithInvoice: jest.Mock;
   };
   audit: { record: jest.Mock };
 }
@@ -79,6 +80,7 @@ function buildHarness(): Harness {
     attachLettering: jest.fn().mockResolvedValue(undefined),
     detachLettering: jest.fn().mockResolvedValue(2),
     listByAccountAndOrg: jest.fn().mockResolvedValue([]),
+    listUnletteredPartnerLinesWithInvoice: jest.fn().mockResolvedValue([]),
   };
   const audit = { record: jest.fn().mockResolvedValue(null) };
   const service = new LetteringService(
@@ -427,5 +429,102 @@ describe('PartnerLetteringRepository.incrementCode (static helper)', () => {
     ['garbage', 'A0001'],
   ])('%s → %s', (input, expected) => {
     expect(PartnerLetteringRepository.incrementCode(input)).toBe(expected);
+  });
+});
+
+describe('LetteringService.autoLetterByInvoice', () => {
+  const fakeView = (code: string, amount: string) =>
+    ({ letteringCode: code, totalAmount: amount }) as never;
+
+  it('letters balanced same-invoice groups, skips singletons and unbalanced groups', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([
+      // Facture F1 — soldée (1000 débit / 1000 crédit) → lettrable
+      buildLine('l1', { invoiceNumber: 'F1', debit: '1000.00', credit: '0' }),
+      buildLine('l2', { invoiceNumber: 'F1', debit: '0', credit: '1000.00' }),
+      // Facture F2 — une seule ligne → singleton, ignorée
+      buildLine('l3', { invoiceNumber: 'F2', debit: '500.00', credit: '0' }),
+      // Facture F3 — règlement partiel (300 vs 200) → déséquilibrée, ignorée
+      buildLine('l4', { invoiceNumber: 'F3', debit: '300.00', credit: '0' }),
+      buildLine('l5', { invoiceNumber: 'F3', debit: '0', credit: '200.00' }),
+    ]);
+    const createSpy = jest
+      .spyOn(h.service, 'create')
+      .mockResolvedValue(fakeView('A0001', '1000.00'));
+
+    const result = await h.service.autoLetterByInvoice(ORG_ID, {}, USER_ID, CTX);
+
+    expect(result.groupsConsidered).toBe(3);
+    expect(result.letteringsCreated).toBe(1);
+    expect(result.linesLettered).toBe(2);
+    expect(result.skippedSingleton).toBe(1);
+    expect(result.skippedUnbalanced).toBe(1);
+    expect(result.skippedError).toBe(0);
+    expect(createSpy).toHaveBeenCalledTimes(1);
+    expect(createSpy).toHaveBeenCalledWith(
+      ORG_ID,
+      { journalEntryLineIds: ['l1', 'l2'] },
+      USER_ID,
+      CTX,
+    );
+    expect(result.letterings).toEqual([
+      expect.objectContaining({ letteringCode: 'A0001', invoiceNumber: 'F1', lineCount: 2 }),
+    ]);
+    expect(h.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'lettering_auto_by_invoice' }),
+    );
+  });
+
+  it('creates a separate lettering per distinct invoice', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([
+      buildLine('a1', { invoiceNumber: 'F1', debit: '100.00', credit: '0' }),
+      buildLine('a2', { invoiceNumber: 'F1', debit: '0', credit: '100.00' }),
+      buildLine('b1', { invoiceNumber: 'F2', debit: '200.00', credit: '0' }),
+      buildLine('b2', { invoiceNumber: 'F2', debit: '0', credit: '200.00' }),
+    ]);
+    const createSpy = jest
+      .spyOn(h.service, 'create')
+      .mockResolvedValueOnce(fakeView('A0001', '100.00'))
+      .mockResolvedValueOnce(fakeView('A0002', '200.00'));
+
+    const result = await h.service.autoLetterByInvoice(ORG_ID, {}, USER_ID, CTX);
+
+    expect(result.letteringsCreated).toBe(2);
+    expect(result.linesLettered).toBe(4);
+    expect(createSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('counts a per-group failure as skippedError without aborting the batch', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([
+      buildLine('a1', { invoiceNumber: 'F1', debit: '100.00', credit: '0' }),
+      buildLine('a2', { invoiceNumber: 'F1', debit: '0', credit: '100.00' }),
+      buildLine('b1', { invoiceNumber: 'F2', debit: '200.00', credit: '0' }),
+      buildLine('b2', { invoiceNumber: 'F2', debit: '0', credit: '200.00' }),
+    ]);
+    jest
+      .spyOn(h.service, 'create')
+      .mockRejectedValueOnce(new Error('LETTERING_LINE_ALREADY_USED (race)'))
+      .mockResolvedValueOnce(fakeView('A0001', '200.00'));
+
+    const result = await h.service.autoLetterByInvoice(ORG_ID, {}, USER_ID, CTX);
+
+    expect(result.letteringsCreated).toBe(1);
+    expect(result.skippedError).toBe(1);
+    expect(result.linesLettered).toBe(2);
+  });
+
+  it('returns an empty summary when no candidate lines exist', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([]);
+
+    const result = await h.service.autoLetterByInvoice(ORG_ID, {}, USER_ID, CTX);
+
+    expect(result).toMatchObject({
+      groupsConsidered: 0,
+      letteringsCreated: 0,
+      linesLettered: 0,
+    });
   });
 });

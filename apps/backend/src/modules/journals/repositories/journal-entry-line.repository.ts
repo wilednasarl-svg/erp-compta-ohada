@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
+import { OrganizationAccountEntity } from '../../accounting-plan/entities/organization-account.entity';
 import { JournalEntryLineEntity } from '../entities/journal-entry-line.entity';
 import { JournalEntryEntity } from '../entities/journal-entry.entity';
 
@@ -104,6 +105,119 @@ export class JournalEntryLineRepository {
     return rows.map((line) => ({
       line,
       entryStatus: line.journalEntry?.status ?? 'unknown',
+    }));
+  }
+
+  /**
+   * Lettrage auto par facture : retourne les lignes encore NON lettrées,
+   * portant un `invoice_number`, rattachées à une écriture `validated` et
+   * à un compte tiers (classe 4, sous-classe 40/41/43/44). Chaque ligne
+   * porte sa relation `account` mappée pour que le service puisse
+   * regrouper par (compte, facture) et vérifier la classe.
+   *
+   * Tri stable par (compte, facture) pour un regroupement déterministe.
+   */
+  async listUnletteredPartnerLinesWithInvoice(
+    organizationId: TenantId | string,
+    options: { partnerAccountId?: string } = {},
+  ): Promise<JournalEntryLineEntity[]> {
+    assertTenantId(organizationId);
+    const qb = this.repo
+      .createQueryBuilder('l')
+      .innerJoinAndMapOne('l.account', OrganizationAccountEntity, 'a', 'a.id = l.account_id')
+      .innerJoin(JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere('l.lettering_id IS NULL')
+      .andWhere('l.invoice_number IS NOT NULL')
+      .andWhere("e.status = 'validated'")
+      .andWhere('a.class = 4')
+      .andWhere("substring(a.code from 1 for 2) IN ('40', '41', '43', '44')");
+    if (options.partnerAccountId !== undefined) {
+      qb.andWhere('l.account_id = :partnerAccountId', {
+        partnerAccountId: options.partnerAccountId,
+      });
+    }
+    return qb.orderBy('l.account_id', 'ASC').addOrderBy('l.invoice_number', 'ASC').getMany();
+  }
+
+  /**
+   * Échéancier (balance âgée) : retourne les lignes encore OUVERTES
+   * (non lettrées) des comptes tiers, rattachées à une écriture
+   * `validated`. Une ligne ouverte = créance/dette non soldée. Chaque
+   * ligne porte sa relation `account` mappée (code, libellé, classe) pour
+   * que le service détermine le sens (client 41 / fournisseur 40) et le
+   * libellé tiers.
+   *
+   * `subClasses` filtre les sous-classes tiers (défaut 40 + 41). Tri par
+   * compte puis date d'échéance (NULLS LAST) pour un découpage stable.
+   */
+  async listOpenPartnerLines(
+    organizationId: TenantId | string,
+    options: { subClasses?: readonly string[]; partnerAccountId?: string } = {},
+  ): Promise<JournalEntryLineEntity[]> {
+    assertTenantId(organizationId);
+    const subClasses = options.subClasses ?? ['40', '41'];
+    const qb = this.repo
+      .createQueryBuilder('l')
+      .innerJoinAndMapOne('l.account', OrganizationAccountEntity, 'a', 'a.id = l.account_id')
+      .innerJoin(JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere('l.lettering_id IS NULL')
+      .andWhere("e.status = 'validated'")
+      .andWhere('a.class = 4')
+      .andWhere('substring(a.code from 1 for 2) IN (:...subClasses)', {
+        subClasses: [...subClasses],
+      });
+    if (options.partnerAccountId !== undefined) {
+      qb.andWhere('l.account_id = :partnerAccountId', {
+        partnerAccountId: options.partnerAccountId,
+      });
+    }
+    return qb
+      .orderBy('l.account_id', 'ASC')
+      .addOrderBy('l.due_date', 'ASC', 'NULLS LAST')
+      .getMany();
+  }
+
+  /**
+   * Ventilation TVA : agrège les lignes portant un `tax_code`, sur les
+   * écritures `validated` dont la date tombe dans [from, to], regroupées
+   * par code taxe. Renvoie des cumuls bruts (string DECIMAL côté PG via
+   * SUM) que le service convertit/format. `getRawMany` car c'est une
+   * agrégation, pas une hydratation d'entité.
+   */
+  async aggregateByTaxCode(
+    organizationId: TenantId | string,
+    range: { from: string; to: string },
+  ): Promise<
+    Array<{ taxCode: string; totalDebit: string; totalCredit: string; lineCount: number }>
+  > {
+    assertTenantId(organizationId);
+    const rows = await this.repo
+      .createQueryBuilder('l')
+      .innerJoin(JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
+      .select('l.tax_code', 'taxCode')
+      .addSelect('COALESCE(SUM(l.debit), 0)', 'totalDebit')
+      .addSelect('COALESCE(SUM(l.credit), 0)', 'totalCredit')
+      .addSelect('COUNT(*)', 'lineCount')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere('l.tax_code IS NOT NULL')
+      .andWhere("e.status = 'validated'")
+      .andWhere('e.entry_date >= :from', { from: range.from })
+      .andWhere('e.entry_date <= :to', { to: range.to })
+      .groupBy('l.tax_code')
+      .orderBy('l.tax_code', 'ASC')
+      .getRawMany<{
+        taxCode: string;
+        totalDebit: string;
+        totalCredit: string;
+        lineCount: string;
+      }>();
+    return rows.map((r) => ({
+      taxCode: r.taxCode,
+      totalDebit: r.totalDebit,
+      totalCredit: r.totalCredit,
+      lineCount: Number(r.lineCount),
     }));
   }
 

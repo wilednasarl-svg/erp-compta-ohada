@@ -121,7 +121,12 @@ export class ValidationService {
     //    8 chiffres alors que l'org ne tient son plan qu'à 3-6 chiffres.
     const account = row.account?.trim();
     if (account !== undefined && account.length > 0) {
-      if (!ctx.chart.postingCodes.has(account)) {
+      // Réconciliation zéro-padding (Sage exporte souvent des codes étendus
+      // à 8 chiffres : `40110000` = `4011`). Si le code, débarrassé de ses
+      // zéros terminaux, matche EXACTEMENT un compte imputable du plan, il
+      // est valide. On ne fusionne jamais un sous-compte dans son parent.
+      const resolved = resolvePostingAccount(account, ctx.chart.postingCodes);
+      if (resolved === null) {
         const allowParentHint =
           documentType === 'trial_balance' && ctx.chart.allReferenceCodes !== undefined;
         if (allowParentHint) {
@@ -377,6 +382,39 @@ export function findParentAccountByPrefix(
     if (postingCodes.has(prefix) || allReferenceCodes.has(prefix)) {
       return prefix;
     }
+  }
+  return null;
+}
+
+/**
+ * Réconcilie un code compte zéro-paddé vers le compte imputable réel du plan.
+ *
+ * Convention Sage : les codes sont fréquemment étendus à 8 chiffres par des
+ * zéros terminaux (`4011` → `40110000`, `4452` → `44520000`). Le plan de
+ * l'organisation tient ses codes en forme courte (SYSCOHADA : 3-4 chiffres),
+ * d'où des `unknown_account` en masse.
+ *
+ * On retire UNIQUEMENT les zéros terminaux et on exige une correspondance
+ * EXACTE avec un compte POSTING. On ne fusionne JAMAIS un sous-compte dans son
+ * parent (ex. `60420000` → `6042` absent ne devient PAS `604`) : reclasser une
+ * écriture dans un compte plus agrégé est une décision comptable, pas une
+ * normalisation de format — un tel cas reste `unknown_account` (à l'org de
+ * créer le compte, ou de le mapper explicitement).
+ *
+ * Renvoie le code imputable résolu, ou `null` si le compte est réellement
+ * inconnu. Exporté pour les tests et la canonicalisation côté orchestrateur.
+ */
+export function resolvePostingAccount(
+  account: string,
+  postingCodes: ReadonlySet<string>,
+): string | null {
+  const trimmed = account.trim();
+  if (trimmed.length === 0) return null;
+  if (postingCodes.has(trimmed)) return trimmed;
+  let candidate = trimmed;
+  while (candidate.length > 1 && candidate.endsWith('0')) {
+    candidate = candidate.slice(0, -1);
+    if (postingCodes.has(candidate)) return candidate;
   }
   return null;
 }

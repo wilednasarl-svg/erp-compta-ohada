@@ -133,7 +133,8 @@ function RangeBody({
       <Calendar
         mode="range"
         start={value.fromDate}
-        end={value.toDate || value.fromDate}
+        // from == to ⇒ borne haute pas encore choisie : permet la sélection en 2 clics.
+        end={value.toDate && value.toDate !== value.fromDate ? value.toDate : ''}
         onRangeChange={({ start, end }) =>
           onChange({ kind: 'range', fromDate: start, toDate: end || start })
         }

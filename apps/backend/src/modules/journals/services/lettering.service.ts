@@ -37,6 +37,27 @@ export interface ListLetteringFilters {
   readonly offset?: number;
 }
 
+export interface AutoLetterByInvoiceOptions {
+  /** Restreindre à un compte tiers précis (sinon tous les comptes 40/41/43/44). */
+  readonly partnerAccountId?: string;
+}
+
+export interface AutoLetterByInvoiceResult {
+  readonly letteringsCreated: number;
+  readonly linesLettered: number;
+  readonly groupsConsidered: number;
+  readonly skippedSingleton: number;
+  readonly skippedUnbalanced: number;
+  readonly skippedError: number;
+  readonly letterings: ReadonlyArray<{
+    readonly letteringCode: string;
+    readonly invoiceNumber: string;
+    readonly partnerAccountId: string;
+    readonly lineCount: number;
+    readonly totalAmount: string;
+  }>;
+}
+
 /**
  * `LetteringService` — Module 8 wave 2 partner-account reconciliation.
  *
@@ -210,6 +231,145 @@ export class LetteringService {
       .catch((e: unknown) => this.logger.warn(`Audit failed for lettering_created: ${String(e)}`));
 
     return this.toView(result, [...input.journalEntryLineIds]);
+  }
+
+  /**
+   * Lettrage automatique par N° de facture.
+   *
+   * Balaye les lignes non lettrées des comptes tiers (40/41/43/44)
+   * portant un `invoice_number`, les regroupe par `(compte, facture)`,
+   * et crée un lettrage pour chaque groupe **équilibré** d'au moins 2
+   * lignes (facture totalement réglée). Cas typique : la facture (débit
+   * 411) et son règlement (crédit 411) partagent le même N° de facture
+   * → rapprochement automatique.
+   *
+   * Robustesse :
+   *   - réutilise `create()` par groupe → toutes les invariants (classe
+   *     tiers, écritures validées, équilibre, course concurrente) sont
+   *     re-vérifiées, source de vérité unique ;
+   *   - un groupe singleton (1 ligne) ou déséquilibré (règlement partiel)
+   *     est ignoré, pas une erreur — comptabilisé dans le résumé ;
+   *   - un échec ponctuel sur un groupe (course concurrente) n'interrompt
+   *     pas le batch — il est compté dans `skippedError`.
+   *
+   * Idempotent : un 2e passage ne re-lettre rien (les lignes lettrées au
+   * 1er passage ne ressortent plus de la requête `lettering_id IS NULL`).
+   */
+  async autoLetterByInvoice(
+    organizationId: TenantId,
+    options: AutoLetterByInvoiceOptions,
+    actorId: string,
+    ctx: AuditContext,
+  ): Promise<AutoLetterByInvoiceResult> {
+    assertTenantId(organizationId);
+
+    const candidates = await this.lineRepo.listUnletteredPartnerLinesWithInvoice(organizationId, {
+      partnerAccountId: options.partnerAccountId,
+    });
+
+    // Regroupement par (compte, facture).
+    const groups = new Map<
+      string,
+      { partnerAccountId: string; invoiceNumber: string; lines: typeof candidates }
+    >();
+    for (const line of candidates) {
+      const invoice = (line.invoiceNumber ?? '').trim();
+      if (invoice === '') continue;
+      const key = `${line.accountId}|${invoice}`;
+      const bucket = groups.get(key);
+      if (bucket === undefined) {
+        groups.set(key, {
+          partnerAccountId: line.accountId,
+          invoiceNumber: invoice,
+          lines: [line],
+        });
+      } else {
+        bucket.lines.push(line);
+      }
+    }
+
+    let letteringsCreated = 0;
+    let linesLettered = 0;
+    let skippedSingleton = 0;
+    let skippedUnbalanced = 0;
+    let skippedError = 0;
+    const letterings: Array<{
+      letteringCode: string;
+      invoiceNumber: string;
+      partnerAccountId: string;
+      lineCount: number;
+      totalAmount: string;
+    }> = [];
+
+    for (const group of groups.values()) {
+      if (group.lines.length < 2) {
+        skippedSingleton += 1;
+        continue;
+      }
+      const totalDebit = group.lines.reduce((s, l) => s + Number(l.debit), 0);
+      const totalCredit = group.lines.reduce((s, l) => s + Number(l.credit), 0);
+      if (Math.abs(totalDebit - totalCredit) > LetteringService.BALANCE_TOLERANCE) {
+        // Règlement partiel ou facture non soldée — on ne lettre pas.
+        skippedUnbalanced += 1;
+        continue;
+      }
+      try {
+        const view = await this.create(
+          organizationId,
+          { journalEntryLineIds: group.lines.map((l) => l.id) },
+          actorId,
+          ctx,
+        );
+        letteringsCreated += 1;
+        linesLettered += group.lines.length;
+        letterings.push({
+          letteringCode: view.letteringCode,
+          invoiceNumber: group.invoiceNumber,
+          partnerAccountId: group.partnerAccountId,
+          lineCount: group.lines.length,
+          totalAmount: view.totalAmount,
+        });
+      } catch (e: unknown) {
+        // Course concurrente (lignes lettrées entre la requête et le
+        // create) ou invariant non satisfait — on saute ce groupe.
+        skippedError += 1;
+        this.logger.warn(
+          `autoLetterByInvoice: skipped invoice "${group.invoiceNumber}" on account ${group.partnerAccountId}: ${String(e)}`,
+        );
+      }
+    }
+
+    await this.audit
+      .record({
+        module: LetteringService.MODULE,
+        action: 'lettering_auto_by_invoice',
+        entityType: 'partner_lettering',
+        entityId: 'batch',
+        after: {
+          partnerAccountId: options.partnerAccountId ?? null,
+          groupsConsidered: groups.size,
+          letteringsCreated,
+          linesLettered,
+          skippedSingleton,
+          skippedUnbalanced,
+          skippedError,
+        },
+        ctx: { ...ctx, userId: actorId, organizationId },
+        legacyEventType: 'journals.lettering.auto_by_invoice',
+      })
+      .catch((e: unknown) =>
+        this.logger.warn(`Audit failed for lettering_auto_by_invoice: ${String(e)}`),
+      );
+
+    return {
+      letteringsCreated,
+      linesLettered,
+      groupsConsidered: groups.size,
+      skippedSingleton,
+      skippedUnbalanced,
+      skippedError,
+      letterings,
+    };
   }
 
   async breakLettering(

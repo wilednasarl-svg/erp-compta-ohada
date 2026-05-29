@@ -450,6 +450,15 @@ function EntryDetailSection({ orgId, entryQuery, accountById, onClose, onMutated
                 <th className="px-3 py-2 text-left">
                   <span className="eyebrow">Libellé</span>
                 </th>
+                <th className="px-3 py-2 text-left">
+                  <span className="eyebrow">Facture</span>
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <span className="eyebrow">Échéance</span>
+                </th>
+                <th className="px-3 py-2 text-left">
+                  <span className="eyebrow">Taxe</span>
+                </th>
                 <th className="px-3 py-2 text-right">
                   <span className="eyebrow">Débit</span>
                 </th>
@@ -470,7 +479,21 @@ function EntryDetailSection({ orgId, entryQuery, accountById, onClose, onMutated
                     <td className="px-3 py-2 font-mono text-ink">
                       {account ? `${account.code} — ${account.label}` : l.accountId.slice(0, 8)}
                     </td>
-                    <td className="px-3 py-2 text-ink">{l.description ?? '—'}</td>
+                    <td className="px-3 py-2 text-ink">
+                      {l.description ?? '—'}
+                      {l.reference ? (
+                        <span className="ml-2 text-2xs text-ink-mute">réf. {l.reference}</span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+                      {l.invoiceNumber ?? '—'}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs tabular-nums text-ink-soft">
+                      {l.dueDate ?? '—'}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+                      {l.taxCode ?? '—'}
+                    </td>
                     <td className="px-3 py-2 text-right font-mono text-ink">
                       {Number(l.debit) > 0 ? Number(l.debit).toFixed(2) : '—'}
                     </td>
@@ -483,7 +506,7 @@ function EntryDetailSection({ orgId, entryQuery, accountById, onClose, onMutated
             </tbody>
             <tfoot className="border-t border-line bg-sunk/40 text-sm font-medium text-ink">
               <tr>
-                <td className="px-3 py-2" colSpan={3}>
+                <td className="px-3 py-2" colSpan={6}>
                   Totaux
                 </td>
                 <td className="px-3 py-2 text-right font-mono">{totalDebit.toFixed(2)}</td>

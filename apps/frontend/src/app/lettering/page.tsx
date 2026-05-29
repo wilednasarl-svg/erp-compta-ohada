@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link2, Link2Off, Loader2 } from 'lucide-react';
+import { Link2, Link2Off, Loader2, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -29,6 +29,15 @@ interface LetteringView {
   readonly completedAt: string | null;
   readonly brokenAt: string | null;
   readonly brokenReason: string | null;
+}
+
+interface AutoLetterResult {
+  readonly letteringsCreated: number;
+  readonly linesLettered: number;
+  readonly groupsConsidered: number;
+  readonly skippedSingleton: number;
+  readonly skippedUnbalanced: number;
+  readonly skippedError: number;
 }
 
 const STATUS_LABEL: Record<LetteringStatus, string> = {
@@ -76,6 +85,19 @@ export default function LetteringPage() {
     });
   });
 
+  const autoMut = useApiMutation(async () => {
+    const data = await api.post<{ result: AutoLetterResult }>(
+      `/organizations/${orgId}/letterings/auto-by-invoice`,
+      {},
+    );
+    return data.result;
+  });
+
+  async function handleAuto(): Promise<void> {
+    await autoMut.mutateAsync(undefined);
+    void qc.invalidateQueries({ queryKey: ['letterings'] });
+  }
+
   function parseIds(text: string): string[] {
     return text
       .split(/[\s,\n]+/)
@@ -113,6 +135,55 @@ export default function LetteringPage() {
             lignes d'écriture validées sur un même compte partenaire, débit = crédit.
           </p>
         </header>
+
+        {/* ─── Auto-lettering by invoice ───────────────────── */}
+        <section aria-labelledby="auto-lettering-title" className="space-y-4">
+          <div className="border-b border-line pb-3">
+            <h2 id="auto-lettering-title" className="font-display text-xl font-medium text-ink">
+              Lettrage automatique
+            </h2>
+            <p className="mt-1 text-xs text-ink-mute">
+              Rapproche en un clic les lignes de tiers non lettrées partageant le même N° de
+              facture, lorsque la facture est totalement réglée (débit = crédit).
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <Button
+              type="button"
+              variant="secondary"
+              className="press"
+              disabled={autoMut.isPending || orgId === ''}
+              onClick={() => void handleAuto()}
+            >
+              {autoMut.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="mr-2 h-4 w-4" />
+              )}
+              Lettrer automatiquement par facture
+            </Button>
+
+            {autoMut.data !== undefined && (
+              <p className="text-xs text-ink-soft">
+                <span className="font-medium text-accent-ink">
+                  {autoMut.data.letteringsCreated} lettrage
+                  {autoMut.data.letteringsCreated !== 1 ? 's' : ''}
+                </span>{' '}
+                créé{autoMut.data.letteringsCreated !== 1 ? 's' : ''} (
+                <span className="font-mono tabular-nums">{autoMut.data.linesLettered}</span>{' '}
+                lignes) sur{' '}
+                <span className="font-mono tabular-nums">{autoMut.data.groupsConsidered}</span>{' '}
+                facture(s) — ignorées :{' '}
+                <span className="font-mono tabular-nums">{autoMut.data.skippedUnbalanced}</span>{' '}
+                non soldées,{' '}
+                <span className="font-mono tabular-nums">{autoMut.data.skippedSingleton}</span>{' '}
+                isolées.
+              </p>
+            )}
+          </div>
+          {autoMut.isError && <FormError error={autoMut.error} />}
+        </section>
 
         {/* ─── New lettering form ──────────────────────────── */}
         <section aria-labelledby="new-lettering-title" className="space-y-5">
