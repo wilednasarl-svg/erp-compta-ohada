@@ -7,7 +7,7 @@
  * Actif = Passif via `totals.difference`.
  */
 
-import type { BalanceSheetReport } from '@/types/reports';
+import type { BalanceSheetReport, TrialBalanceReport } from '@/types/reports';
 
 import type { PeriodValidity } from './types';
 
@@ -20,6 +20,19 @@ export const validityFromBalanceSheet = (report: BalanceSheetReport): PeriodVali
     // committedEntries volontairement omis : non fourni par l'API actuelle.
     imbalance: difference < BALANCE_EPSILON ? 0 : Math.round(difference),
     lastMovementDate: report.asAtDate,
+    computedAt: new Date().toISOString(),
+    periodClosed: false,
+  };
+};
+
+/** Équilibre d'une balance : Σ débit clôture vs Σ crédit clôture. */
+export const validityFromTrialBalance = (report: TrialBalanceReport): PeriodValidity => {
+  const difference = Math.abs(
+    Number(report.totals.endingDebit) - Number(report.totals.endingCredit),
+  );
+  return {
+    imbalance: difference < BALANCE_EPSILON ? 0 : Math.round(difference),
+    lastMovementDate: report.toDate,
     computedAt: new Date().toISOString(),
     periodClosed: false,
   };
