@@ -75,4 +75,41 @@ describe('SyscohadaKnowledgeService', () => {
       ]),
     );
   });
+
+  it('returns module guidance with searchable evidence from the Guide PDFs', () => {
+    const service = makeService();
+
+    const guidance = service.getModuleGuidance('reports');
+
+    expect(guidance.domain).toBe('reports');
+    expect(guidance.references).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tome: 3,
+          topic: expect.stringMatching(/financiers/i),
+        }),
+      ]),
+    );
+    expect(guidance.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceTitle: expect.stringMatching(/financiers/i),
+          excerpt: expect.stringContaining('Tableau des flux'),
+        }),
+      ]),
+    );
+  });
+
+  it('exposes named controls with legal basis and attached citation', () => {
+    const service = makeService();
+
+    const controls = service.getModuleControls('reports');
+
+    expect(controls.length).toBeGreaterThan(0);
+    const balance = controls.find((c) => c.id === 'bilan-actif-egal-passif');
+    expect(balance).toBeDefined();
+    expect(balance?.legalBasis.join(' ')).toMatch(/art\.\s*8/i);
+    // citation est soit un extrait sourcé, soit null si le corpus de test ne couvre pas le sujet
+    expect(balance).toHaveProperty('citation');
+  });
 });

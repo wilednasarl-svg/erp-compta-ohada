@@ -3,6 +3,8 @@ import { basename, join, resolve } from 'node:path';
 
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 
+import { SyscohadaControl, getControlsForDomain } from '../data/control-catalog';
+
 export const SYSCOHADA_KNOWLEDGE_OPTIONS = Symbol('SYSCOHADA_KNOWLEDGE_OPTIONS');
 
 export type SyscohadaDomain =
@@ -41,6 +43,18 @@ export interface SyscohadaDomainReference {
   readonly tome: number;
   readonly topic: string;
   readonly keywords: ReadonlyArray<string>;
+}
+
+export interface SyscohadaControlWithEvidence extends SyscohadaControl {
+  /** Extrait verbatim du Guide qui justifie le contrôle (null si introuvable). */
+  readonly citation: SyscohadaSearchResult | null;
+}
+
+export interface SyscohadaModuleGuidance {
+  readonly domain: SyscohadaDomain;
+  readonly references: ReadonlyArray<SyscohadaDomainReference>;
+  readonly controls: ReadonlyArray<SyscohadaControlWithEvidence>;
+  readonly evidence: ReadonlyArray<SyscohadaSearchResult>;
 }
 
 interface KnowledgeChunk extends SyscohadaSearchResult {
@@ -109,6 +123,32 @@ export class SyscohadaKnowledgeService {
 
   getDomainReferences(domain: SyscohadaDomain): SyscohadaDomainReference[] {
     return DOMAIN_REFERENCES.filter((r) => r.domain === domain);
+  }
+
+  getModuleGuidance(domain: SyscohadaDomain): SyscohadaModuleGuidance {
+    const references = this.getDomainReferences(domain);
+    const query = [
+      ...references.map((r) => r.topic),
+      ...references.flatMap((r) => r.keywords),
+    ].join(' ');
+
+    return {
+      domain,
+      references,
+      controls: this.getModuleControls(domain),
+      evidence: this.search({ query, domain, limit: 3 }),
+    };
+  }
+
+  getModuleControls(domain: SyscohadaDomain): SyscohadaControlWithEvidence[] {
+    return getControlsForDomain(domain).map((control) => {
+      const [citation] = this.search({
+        query: control.evidenceQuery,
+        domain,
+        limit: 1,
+      });
+      return { ...control, citation: citation ?? null };
+    });
   }
 
   async answerQuestion(input: {

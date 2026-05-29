@@ -4,6 +4,7 @@ import {
   Banknote,
   BarChart3,
   BookOpen,
+  BookOpenCheck,
   BookText,
   Brain,
   Calendar,
@@ -67,6 +68,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'Référentiel',
     items: [
       { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen, hint: 'SYSCOHADA — comptes et classes' },
+      { href: '/syscohada-knowledge', label: 'Doctrine SYSCOHADA', icon: BookOpenCheck, hint: 'Citations du Guide par module' },
       { href: '/accounting-periods', label: 'Périodes', icon: Calendar, hint: 'Exercices, mois, clôtures' },
       { href: '/currencies', label: 'Devises', icon: Coins, hint: 'XOF, EUR, USD et taux' },
     ],
