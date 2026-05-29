@@ -68,6 +68,18 @@ interface StagingLineDraft {
   /** Axes analytiques (Option A — Migration 0092). */
   readonly analyticAxisType: string | null;
   readonly analyticAxisCode: string | null;
+  /**
+   * N° de pièce comptable. Obligatoire pour `entries` (décision produit
+   * 2026-05-29) — clé de regroupement des lignes en une écriture. Vide
+   * ('') pour les natures sans pièce (balance, relevé) où l'on retombe
+   * sur un regroupement par date.
+   */
+  readonly pieceNumber: string;
+  /** Métadonnées de pièce propagées à la ligne d'écriture (Migration 0110). */
+  readonly invoiceNumber: string | null;
+  readonly dueDate: string | null;
+  readonly taxCode: string | null;
+  readonly reference: string | null;
 }
 import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
@@ -972,11 +984,12 @@ export class ImportSessionService {
    * the originally-created entry IDs are not retained on the session
    * row in wave 2 — wave 3 will persist them as a backref.
    *
-   * Grouping note: rows are grouped by `(journalCode, entryDate)` —
-   * the import format has no piece reference field. `projet-ferme-l4g`
-   * tracks adding a proper `reference` TargetField for per-piece
-   * grouping; in the meantime a daily aggregate per journal is the
-   * pragmatic MVP that still produces auditable balanced entries.
+   * Grouping note: rows are grouped by `(journalCode, pieceNumber)` when
+   * a piece number is present (mandatory for `entries` — décision produit
+   * 2026-05-29), so each accounting piece becomes one balanced entry.
+   * Natures without a per-line piece (balance, bank statement) fall back
+   * to `(journalCode, entryDate)`. The piece number is also written to
+   * the entry `reference`. Closes `projet-ferme-l4g`.
    */
   async commitSession(
     organizationId: TenantId,
@@ -1064,14 +1077,20 @@ export class ImportSessionService {
           description: row.label,
           analyticAxisType: row.analyticAxisType,
           analyticAxisCode: row.analyticAxisCode,
+          invoiceNumber: row.invoiceNumber,
+          dueDate: row.dueDate,
+          taxCode: row.taxCode,
+          reference: row.reference,
         }));
+        const pieceLabel =
+          group.pieceNumber !== '' ? `pièce ${group.pieceNumber}` : group.entryDate;
         const draft = await this.entries.createDraft(
           organizationId,
           {
             journalCode: group.journalCode,
             entryDate: group.entryDate,
-            description: `Import session ${sessionId} — ${group.journalCode} ${group.entryDate}`,
-            reference: null,
+            description: `Import session ${sessionId} — ${group.journalCode} ${pieceLabel}`,
+            reference: group.pieceNumber !== '' ? group.pieceNumber : null,
             lines,
             sourceType: 'import',
             sourceImportSessionId: sessionId,
@@ -1196,21 +1215,51 @@ export class ImportSessionService {
       partner: mapped.partner ?? null,
       analyticAxisType,
       analyticAxisCode,
+      pieceNumber: (mapped.pieceNumber ?? '').trim(),
+      invoiceNumber: emptyToNull(mapped.invoiceNumber),
+      dueDate: emptyToNull(mapped.dueDate),
+      taxCode: emptyToNull(mapped.taxCode),
+      reference: emptyToNull(mapped.reference),
     };
   }
 
+  /**
+   * Regroupe les lignes projetées en écritures.
+   *
+   *   - Si la ligne porte un `pieceNumber` (cas `entries` — obligatoire),
+   *     la clé est `(journalCode, pieceNumber)` : chaque pièce comptable
+   *     forme UNE écriture, comme dans un journal réel.
+   *   - Sinon (balance, relevé bancaire — pas de pièce par ligne), on
+   *     retombe sur l'ancien regroupement `(journalCode, entryDate)` pour
+   *     préserver le comportement de ces natures de documents.
+   *
+   * `entryDate` du groupe = date de la première ligne rencontrée (une
+   * pièce porte une date unique en pratique ; un éventuel écart de date
+   * intra-pièce sera capturé par la validation d'exercice en amont).
+   */
   private groupByJournalAndDate(
     drafts: readonly StagingLineDraft[],
-  ): Map<string, { journalCode: string; entryDate: string; rows: StagingLineDraft[] }> {
+  ): Map<
+    string,
+    { journalCode: string; entryDate: string; pieceNumber: string; rows: StagingLineDraft[] }
+  > {
     const groups = new Map<
       string,
-      { journalCode: string; entryDate: string; rows: StagingLineDraft[] }
+      { journalCode: string; entryDate: string; pieceNumber: string; rows: StagingLineDraft[] }
     >();
     for (const d of drafts) {
-      const key = `${d.journalCode}|${d.entryDate}`;
+      const key =
+        d.pieceNumber !== ''
+          ? `${d.journalCode}|P|${d.pieceNumber}`
+          : `${d.journalCode}|D|${d.entryDate}`;
       const bucket = groups.get(key);
       if (bucket === undefined) {
-        groups.set(key, { journalCode: d.journalCode, entryDate: d.entryDate, rows: [d] });
+        groups.set(key, {
+          journalCode: d.journalCode,
+          entryDate: d.entryDate,
+          pieceNumber: d.pieceNumber,
+          rows: [d],
+        });
       } else {
         bucket.rows.push(d);
       }
@@ -1221,11 +1270,12 @@ export class ImportSessionService {
   private collectUnbalancedGroups(
     groups: ReadonlyMap<
       string,
-      { journalCode: string; entryDate: string; rows: StagingLineDraft[] }
+      { journalCode: string; entryDate: string; pieceNumber: string; rows: StagingLineDraft[] }
     >,
   ): Array<{
     journalCode: string;
     entryDate: string;
+    pieceNumber: string | null;
     totalDebit: number;
     totalCredit: number;
     rowCount: number;
@@ -1233,6 +1283,7 @@ export class ImportSessionService {
     const out: Array<{
       journalCode: string;
       entryDate: string;
+      pieceNumber: string | null;
       totalDebit: number;
       totalCredit: number;
       rowCount: number;
@@ -1245,6 +1296,7 @@ export class ImportSessionService {
         out.push({
           journalCode: group.journalCode,
           entryDate: group.entryDate,
+          pieceNumber: group.pieceNumber !== '' ? group.pieceNumber : null,
           totalDebit: Math.round(totalDebit * 100) / 100,
           totalCredit: Math.round(totalCredit * 100) / 100,
           rowCount: group.rows.length,
@@ -1632,4 +1684,15 @@ function detectSuggestedDocumentType(
   }
 
   return null;
+}
+
+/**
+ * Normalise une valeur mappée optionnelle : trim puis `null` si vide.
+ * Garde les métadonnées de pièce (facture, échéance, taxe, référence)
+ * propres avant de les écrire sur la ligne d'écriture.
+ */
+function emptyToNull(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
 }

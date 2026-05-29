@@ -203,6 +203,54 @@ describe('EntriesService.createDraft — balance invariants', () => {
     expect(result.entryNumber).toBe(1);
   });
 
+  it('propagates piece metadata (invoice / due date / tax code / reference) to lines', async () => {
+    const { service, lineRepo } = buildService();
+
+    await service.createDraft(
+      asTenantId(ORG_ID),
+      {
+        journalCode: 'AC',
+        entryDate: '2026-01-15',
+        description: 'Facture fournisseur',
+        lines: [
+          {
+            accountCode: '606000',
+            debit: 100,
+            credit: 0,
+            description: 'Achat',
+            invoiceNumber: 'F-2026-001',
+            dueDate: '2026-02-15',
+            taxCode: 'TVA18',
+            reference: 'BL-77',
+          },
+          { accountCode: '401000', debit: 0, credit: 100, description: 'Fournisseur' },
+        ],
+      },
+      USER_ID,
+      CTX,
+    );
+
+    const persistedLines = lineRepo.createMany.mock.calls[0][0] as Array<{
+      invoiceNumber: string | null;
+      dueDate: string | null;
+      taxCode: string | null;
+      reference: string | null;
+    }>;
+    expect(persistedLines[0]).toMatchObject({
+      invoiceNumber: 'F-2026-001',
+      dueDate: '2026-02-15',
+      taxCode: 'TVA18',
+      reference: 'BL-77',
+    });
+    // La 2e ligne, sans métadonnées, reste à null (pas de undefined en base).
+    expect(persistedLines[1]).toMatchObject({
+      invoiceNumber: null,
+      dueDate: null,
+      taxCode: null,
+      reference: null,
+    });
+  });
+
   it('rejects an empty lines array', async () => {
     const { service } = buildService();
     await expect(

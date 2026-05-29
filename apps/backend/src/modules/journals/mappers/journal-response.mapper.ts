@@ -52,6 +52,10 @@ export function toJournalEntryDetail(view: EntryView): JournalEntryDetailRespons
     description: l.description,
     debit: l.debit,
     credit: l.credit,
+    invoiceNumber: l.invoiceNumber,
+    dueDate: l.dueDate,
+    taxCode: l.taxCode,
+    reference: l.reference,
   }));
 
   return {

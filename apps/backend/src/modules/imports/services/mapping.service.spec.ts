@@ -51,6 +51,40 @@ describe('MappingService', () => {
       expect(proposal.unmappedTargets).not.toContain('date');
     });
 
+    it('maps the journal import template headers (Sage-style export)', () => {
+      const proposal = service.autoMap([
+        'Jo',
+        'Date saisie',
+        'N° pièce',
+        'N° facture',
+        'Référence',
+        'N° compte général',
+        'N° compte tiers',
+        'Code taxe',
+        'Libellé écriture',
+        'Date échéance',
+        'Débit',
+        'Crédit',
+      ]);
+
+      // Toutes les colonnes du modèle sont reconnues, y compris les
+      // métadonnées de pièce (décision produit : N° pièce obligatoire).
+      expect(proposal.headerToTarget).toEqual({
+        Jo: 'journal',
+        'Date saisie': 'date',
+        'N° pièce': 'pieceNumber',
+        'N° facture': 'invoiceNumber',
+        Référence: 'reference',
+        'N° compte général': 'account',
+        'N° compte tiers': 'partner',
+        'Code taxe': 'taxCode',
+        'Libellé écriture': 'label',
+        'Date échéance': 'dueDate',
+        Débit: 'debit',
+        Crédit: 'credit',
+      });
+    });
+
     it('ignores empty / whitespace-only headers', () => {
       const proposal = service.autoMap(['', '   ', 'compte']);
       expect(proposal.headerToTarget).toEqual({ compte: 'account' });

@@ -46,6 +46,20 @@ export interface TrialBalanceQuery {
   readonly analyticAxisCode?: string;
 }
 
+/**
+ * Indice de validité d'une période AVANT génération d'un état (AC-V5).
+ * `imbalance` est arrondi à l'entier (0 si écart < 1 FCFA, tolérance arrondis).
+ * `periodClosed` reste `false` tant que le verrouillage d'exercice n'est pas
+ * exposé — on ne prétend jamais qu'une période est figée sans le savoir.
+ */
+export interface PeriodValidityReport {
+  readonly committedEntries: number;
+  readonly imbalance: number;
+  readonly lastMovementDate: string | null;
+  readonly computedAt: string;
+  readonly periodClosed: boolean;
+}
+
 export interface TrialBalanceReport {
   readonly fromDate: string;
   readonly toDate: string;
@@ -3723,6 +3737,33 @@ export class ReportsService {
         label: a.label,
         amount: a.amount.toFixed(2),
       })),
+    };
+  }
+
+  /**
+   * Validité de la période AVANT génération (AC-V5). Permet au Report Console
+   * d'annoncer, dès le choix de la période, si l'état sera fiable : nombre
+   * d'écritures committées, équilibre du journal (Σdébit−Σcrédit), date du
+   * dernier mouvement. Volontairement léger (un seul agrégat) pour rester
+   * appelable à chaque changement de période.
+   */
+  async getPeriodValidity(
+    organizationId: TenantId,
+    query: { readonly fromDate: string; readonly toDate: string },
+  ): Promise<PeriodValidityReport> {
+    this.assertDateRange(query.fromDate, query.toDate);
+
+    const agg = await this.repo.periodValidity(organizationId, {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    const rawImbalance = Math.abs(Number(agg.totalDebit) - Number(agg.totalCredit));
+    return {
+      committedEntries: agg.committedEntries,
+      imbalance: rawImbalance < 1 ? 0 : Math.round(rawImbalance),
+      lastMovementDate: agg.lastMovementDate,
+      computedAt: new Date().toISOString(),
+      periodClosed: false,
     };
   }
 

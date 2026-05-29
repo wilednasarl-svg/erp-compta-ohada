@@ -103,6 +103,7 @@
 ## À NE PAS forcer (confiance Faible — valider avant tout rattachement)
 
 - **transformations** : le module applicatif désigne des *retraitements/recalculs* internes, pas une opération doctrinale. Le seul chapitre proche est **Tome 2 Chap. 38 « Fusions et opérations assimilées »** (L6661), qui relève des restructurations (proche de la consolidation, hors cible PME). → Ne pas rattacher sauf si le module traite réellement de fusions/apports.
+  - **RÉSOLU (bug `jb0y`, 2026-05-29)** : la doctrine Fusions (Tome 2 Ch.38) avait été câblée par erreur sous le module Transformation Engine. Domaine renommé `transformations` → **`business-combinations`** et contrôleur guidance déplacé hors du module `transformations/` vers `syscohada-knowledge/controllers/` (route `business-combinations/syscohada-guidance`). Le Transformation Engine ne sert plus de doctrine fusions.
 - **bank-reconciliation** : le rapprochement bancaire est une procédure de contrôle interne, pas un chapitre doctrinal dédié. Rattachement faible (comptes financiers, Tome 1). → Garder éventuellement un seul contrôle `info` « rapprochement périodique des comptes 52x ».
 - **accounting-score / audit / dashboards** : transversaux/analytiques, hors doctrine directe.
 
@@ -122,7 +123,7 @@
 | pledged-assets | `pledged-assets` | 2 | Chap. 30 (L5280) | Moyenne |
 | regularizations | `regularizations` | 3 | CCA cpte 476 (L589) | Moyenne |
 | cash-flow | `cash-flow` | 3 | Section 4 (L211) | Forte |
-| transformations | — | — | (Chap. 38 fusions, indirect) | Faible |
+| business-combinations | `business-combinations` | 2 | Chap. 38 fusions (L6661) | Forte |
 | bank-reconciliation | — | 1 | comptes financiers | Faible |
 
 > Vérifié contre les sources embarquées (Tomes 1-3) le 2026-05-29. Voir

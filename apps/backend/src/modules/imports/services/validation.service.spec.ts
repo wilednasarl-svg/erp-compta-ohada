@@ -21,6 +21,7 @@ describe('ValidationService', () => {
     debit: '1500,00',
     credit: null,
     label: 'Vente facture FAC-001',
+    pieceNumber: 'P-001',
   });
 
   beforeEach(() => {
@@ -42,6 +43,43 @@ describe('ValidationService', () => {
       expect(codes).toContain('missing_required_field');
       const missing = errors.filter((e) => e.code === 'missing_required_field').map((e) => e.field);
       expect(missing).toEqual(expect.arrayContaining(['journal', 'date', 'label']));
+    });
+
+    it('requires pieceNumber for entries (mandatory — décision produit)', () => {
+      const { pieceNumber: _omit, ...withoutPiece } = baseRow();
+      const errors = service.validateRow(withoutPiece, { chart: baseChart });
+
+      expect(
+        errors.some((e) => e.code === 'missing_required_field' && e.field === 'pieceNumber'),
+      ).toBe(true);
+    });
+
+    it('does not require pieceNumber for a trial_balance (no piece per line)', () => {
+      const { pieceNumber: _omit, ...withoutPiece } = baseRow();
+      const errors = service.validateRow(
+        { ...withoutPiece, journal: null, date: null },
+        { chart: baseChart, documentType: 'trial_balance' },
+      );
+
+      expect(
+        errors.some((e) => e.code === 'missing_required_field' && e.field === 'pieceNumber'),
+      ).toBe(false);
+    });
+  });
+
+  describe('validateRow — due date', () => {
+    it('accepts a parseable due date', () => {
+      expect(
+        service.validateRow({ ...baseRow(), dueDate: '30/04/2024' }, { chart: baseChart }),
+      ).toEqual([]);
+    });
+
+    it('flags an unparseable due date with field dueDate', () => {
+      const errors = service.validateRow(
+        { ...baseRow(), dueDate: 'pas-une-date' },
+        { chart: baseChart },
+      );
+      expect(errors.some((e) => e.code === 'invalid_date' && e.field === 'dueDate')).toBe(true);
     });
   });
 

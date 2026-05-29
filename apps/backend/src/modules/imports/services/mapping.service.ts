@@ -177,7 +177,11 @@ export class MappingService {
       //   - la preview affiche des dates lisibles (pas "45658"),
       //   - les analytics agrègent correctement par jour,
       //   - le commit reçoit des dates déjà normalisées.
-      if (target === 'date' && typeof value === 'string' && value.trim().length > 0) {
+      if (
+        (target === 'date' || target === 'dueDate') &&
+        typeof value === 'string' &&
+        value.trim().length > 0
+      ) {
         const parsed = parseImportDate(value);
         if (parsed !== null) {
           out[target] = toIsoDate(parsed);

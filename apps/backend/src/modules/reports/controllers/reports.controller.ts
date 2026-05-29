@@ -30,6 +30,7 @@ import { AnnualPackageQueryDto } from '../dto/annual-package-query.dto';
 import { DsfPackageQueryDto } from '../dto/dsf-package-query.dto';
 import { MarginByAxisQueryDto } from '../dto/margin-by-axis-query.dto';
 import { PeriodQueryDto } from '../dto/period-query.dto';
+import { PeriodValidityQueryDto } from '../dto/period-validity-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
 import { ComparativeBalanceQueryDto } from '../dto/comparative-balance-query.dto';
 import { MultiYearBalanceQueryDto } from '../dto/multi-year-balance-query.dto';
@@ -53,6 +54,7 @@ import {
   type MultiYearBalanceReport,
   type FinancialRatiosReport,
   type GeneralLedgerReport,
+  type PeriodValidityReport,
   type ProfitLossReport,
   type SigReport,
   type TrialBalanceReport,
@@ -415,6 +417,25 @@ export class ReportsController {
       compareWith,
     });
     return { report };
+  }
+
+  @Get('validity')
+  @RequirePermission('journals.reports')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Indice de validité de la période AVANT génération (écritures committées, équilibre du journal, dernier mouvement)',
+  })
+  async periodValidity(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @Query() query: PeriodValidityQueryDto,
+    @CurrentOrg() org: CurrentOrgContext,
+  ): Promise<{ validity: PeriodValidityReport }> {
+    const validity = await this.reports.getPeriodValidity(asTenantId(org.id), {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+    return { validity };
   }
 
   @Get('balance-sheet-diagnostic')

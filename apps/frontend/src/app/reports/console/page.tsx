@@ -1,0 +1,141 @@
+'use client';
+
+/**
+ * `/reports/console` — Console des états : parcours unifié (guide ① Période →
+ * ② Périmètre → ③ Générer) servant le profil occasionnel comme l'expert.
+ *
+ * Coquille générique + sélecteur d'état. Chaque état est une console autonome
+ * branchée sur son endpoint réel, démontrant que le framework couvre les deux
+ * sémantiques de période : Bilan (`as-at`) et Balance générale (`range`).
+ */
+
+import { useState } from 'react';
+
+import { AppShell } from '@/components/app-shell';
+import { cn } from '@/lib/utils';
+import { useCurrentOrg } from '@/stores/auth-store';
+
+import { AgingConsole } from '../_console/aging-console';
+import { AnnexeConsole } from '../_console/annexe-console';
+import { BalanceConsole } from '../_console/balance-console';
+import { BilanConsole } from '../_console/bilan-console';
+import { BilanDiagnosticConsole } from '../_console/bilan-diagnostic-console';
+import { CashTrendConsole } from '../_console/cash-trend-console';
+import { ComparativeConsole } from '../_console/comparative-console';
+import { CrConsole } from '../_console/cr-console';
+import { GlConsole } from '../_console/gl-console';
+import { MarginConsole } from '../_console/margin-console';
+import { MultiYearConsole } from '../_console/multi-year-console';
+import { RatiosConsole } from '../_console/ratios-console';
+import { SigConsole } from '../_console/sig-console';
+import { TftConsole } from '../_console/tft-console';
+
+type ConsoleReport =
+  | 'balance-sheet'
+  | 'profit-loss'
+  | 'sig'
+  | 'tft'
+  | 'annexe'
+  | 'ratios'
+  | 'trial-balance'
+  | 'comparative-balance'
+  | 'multi-year-balance'
+  | 'margin-by-axis'
+  | 'general-ledger'
+  | 'aging-balance'
+  | 'cash-trend'
+  | 'bilan-diagnostic';
+
+const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: string }> = [
+  { key: 'balance-sheet', label: 'Bilan' },
+  { key: 'profit-loss', label: 'Compte de résultat' },
+  { key: 'sig', label: 'SIG' },
+  { key: 'tft', label: 'TFT' },
+  { key: 'annexe', label: 'Annexe' },
+  { key: 'ratios', label: 'Ratios' },
+  { key: 'trial-balance', label: 'Balance générale' },
+  { key: 'comparative-balance', label: 'Balance comparative' },
+  { key: 'multi-year-balance', label: 'Balance pluriannuelle' },
+  { key: 'margin-by-axis', label: 'Marge analytique' },
+  { key: 'general-ledger', label: 'Grand livre' },
+  { key: 'aging-balance', label: 'Balance âgée' },
+  { key: 'cash-trend', label: 'Tendance trésorerie' },
+  { key: 'bilan-diagnostic', label: 'Bilan diagnostic' },
+];
+
+export default function ReportConsolePage() {
+  const org = useCurrentOrg();
+  const orgId = org?.id ?? '';
+  const [active, setActive] = useState<ConsoleReport>('balance-sheet');
+
+  return (
+    <AppShell>
+      <div className="space-y-6">
+        <header className="border-b border-line pb-5">
+          <p className="text-2xs uppercase tracking-wider text-ink-mute">États · Reporting OHADA</p>
+          <h1 className="mt-1 font-display text-3xl font-medium tracking-tight text-ink">
+            Console des états
+          </h1>
+          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-ink-soft">
+            Un parcours unique pour générer chaque état : sélectionnez la période, ajustez le
+            périmètre, puis générez. La conformité est contrôlée sur le rapport produit.
+          </p>
+        </header>
+
+        <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="État à générer">
+          {REPORTS.map((r) => {
+            const isActive = r.key === active;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActive(r.key)}
+                className={cn(
+                  '-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors duration-fast',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
+                  isActive
+                    ? 'border-accent text-ink'
+                    : 'border-transparent text-ink-mute hover:text-ink',
+                )}
+              >
+                {r.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {active === 'balance-sheet' ? (
+          <BilanConsole orgId={orgId} />
+        ) : active === 'profit-loss' ? (
+          <CrConsole orgId={orgId} />
+        ) : active === 'sig' ? (
+          <SigConsole orgId={orgId} />
+        ) : active === 'tft' ? (
+          <TftConsole orgId={orgId} />
+        ) : active === 'annexe' ? (
+          <AnnexeConsole orgId={orgId} />
+        ) : active === 'ratios' ? (
+          <RatiosConsole orgId={orgId} />
+        ) : active === 'comparative-balance' ? (
+          <ComparativeConsole orgId={orgId} />
+        ) : active === 'multi-year-balance' ? (
+          <MultiYearConsole orgId={orgId} />
+        ) : active === 'margin-by-axis' ? (
+          <MarginConsole orgId={orgId} />
+        ) : active === 'general-ledger' ? (
+          <GlConsole orgId={orgId} />
+        ) : active === 'aging-balance' ? (
+          <AgingConsole orgId={orgId} />
+        ) : active === 'cash-trend' ? (
+          <CashTrendConsole orgId={orgId} />
+        ) : active === 'bilan-diagnostic' ? (
+          <BilanDiagnosticConsole orgId={orgId} />
+        ) : (
+          <BalanceConsole orgId={orgId} />
+        )}
+      </div>
+    </AppShell>
+  );
+}
