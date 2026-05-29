@@ -56,7 +56,7 @@ describe('e2e: rules tenant isolation (13.2)', () => {
       actions: [{ type: 'add_tag', tag: 'SECRET' }],
     });
     expect(created.status).toBe(HttpStatus.CREATED);
-    const ruleId = (created.body.data ?? created.body).id as string;
+    const ruleId = created.body.data.rule.id as string;
 
     // Alice (token org A) tente de lire la règle via l'URL d'org B.
     const crossRead = await authedJson(
@@ -116,7 +116,7 @@ describe('e2e: rules tenant isolation (13.2)', () => {
       conditions: [{ type: 'account_prefix', prefix: '70' }],
       actions: [{ type: 'add_tag', tag: 'TAG' }],
     });
-    const ruleId = (r.body.data ?? r.body).id as string;
+    const ruleId = r.body.data.rule.id as string;
 
     // Alice tente simulate sur la règle de Bob.
     const crossSim = await authedJson(
@@ -148,7 +148,7 @@ describe('e2e: rules tenant isolation (13.2)', () => {
       conditions: [{ type: 'account_prefix', prefix: '70' }],
       actions: [{ type: 'add_tag', tag: 'TAG' }],
     });
-    const ruleId = (r.body.data ?? r.body).id as string;
+    const ruleId = r.body.data.rule.id as string;
 
     const crossApply = await authedJson(
       handle.http,

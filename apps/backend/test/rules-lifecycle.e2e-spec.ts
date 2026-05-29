@@ -57,6 +57,17 @@ describe('e2e: rules lifecycle (13.1)', () => {
       .attach('file', Buffer.from(csv, 'utf8'), 'achats.csv');
     expect(upload.status).toBe(HttpStatus.CREATED);
 
+    // Preview applies + persists the auto-detected column mapping onto the
+    // staging rows (mapped_values). The rule engine matches on mapped_values,
+    // so this step must run before simulate/apply.
+    const previewRes = await authedJson(
+      handle.http,
+      'post',
+      `/organizations/${orgId}/imports/sessions/${sessionId}/preview`,
+      token,
+    ).send({});
+    expect(previewRes.status).toBe(HttpStatus.OK);
+
     // ── 2. Create a rule ────────────────────────────────────────────────────
 
     const created = await authedJson(
@@ -72,14 +83,14 @@ describe('e2e: rules lifecycle (13.1)', () => {
       actions: [{ type: 'reclassify_account', targetAccount: '401100' }],
     });
     expect(created.status).toBe(HttpStatus.CREATED);
-    const rule = created.body.data ?? created.body;
+    const rule = created.body.data.rule;
     const ruleId = rule.id as string;
     expect(ruleId).toBeDefined();
 
     // GET: liste des règles contient la nouvelle règle.
     const list = await authedJson(handle.http, 'get', `/organizations/${orgId}/rules`, token);
     expect(list.status).toBe(HttpStatus.OK);
-    const rules: Array<{ id: string }> = list.body.data ?? list.body;
+    const rules: Array<{ id: string }> = list.body.data.rules;
     expect(rules.some((r) => r.id === ruleId)).toBe(true);
 
     // GET: détail.
@@ -134,7 +145,7 @@ describe('e2e: rules lifecycle (13.1)', () => {
       token,
     );
     expect(histRes.status).toBe(HttpStatus.OK);
-    const execs: Array<{ mode: string }> = histRes.body.data ?? histRes.body;
+    const execs: Array<{ mode: string }> = histRes.body.data.executions;
     expect(execs.length).toBeGreaterThanOrEqual(2);
     const modes = execs.map((e) => e.mode);
     expect(modes).toContain('simulation');
@@ -160,7 +171,7 @@ describe('e2e: rules lifecycle (13.1)', () => {
       actions: [{ type: 'add_tag', tag: 'UNUSED' }],
     });
     expect(created.status).toBe(HttpStatus.CREATED);
-    const ruleId = (created.body.data ?? created.body).id as string;
+    const ruleId = created.body.data.rule.id as string;
 
     // Aucune écriture dans cette org → matchedCount=0.
     const sim = await authedJson(

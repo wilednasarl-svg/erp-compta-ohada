@@ -57,7 +57,7 @@ describe('e2e: Module 10 Document engine (12.6..12.7)', () => {
     // List — at least one row.
     const list = await authedJson(handle.http, 'get', '/documents', org.scopedAccessToken);
     expect(list.status).toBe(HttpStatus.OK);
-    const items = list.body.data.items ?? list.body.data.documents ?? [];
+    const items = list.body.data.rows ?? [];
     expect(items.length).toBeGreaterThan(0);
 
     // Download — Content-Type echoes the stored MIME, body matches what

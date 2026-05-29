@@ -72,11 +72,11 @@ describe('e2e: Module 3 Import engine (12.1..12.5)', () => {
     const preview = await authedJson(
       handle.http,
       'post',
-      `/organizations/${org.organizationId}/imports/sessions/${sessionId}/preview?page=1&pageSize=50`,
+      `/organizations/${org.organizationId}/imports/sessions/${sessionId}/preview?limit=50&offset=0`,
       org.scopedAccessToken,
     ).send({});
     expect(preview.status).toBe(HttpStatus.OK);
-    expect(Array.isArray(preview.body.data.rows ?? preview.body.data.items)).toBe(true);
+    expect(Array.isArray(preview.body.data.entries)).toBe(true);
 
     // Audit: at least 3 events landed (session_created + file_uploaded + file_parsed).
     const audit: Array<{ event_type: string }> = await dataSource.query(

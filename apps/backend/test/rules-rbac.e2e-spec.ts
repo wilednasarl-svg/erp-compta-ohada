@@ -77,7 +77,7 @@ describe('e2e: rules RBAC (13.3)', () => {
       actions: [{ type: 'add_tag', tag: 'X' }],
     });
     expect(r.status).toBe(HttpStatus.CREATED);
-    const ruleId = (r.body.data ?? r.body).id as string;
+    const ruleId = r.body.data.rule.id as string;
 
     const auditorToken = await addMemberAndGetToken(orgId, 'rbac-auditor@e2e.test', 'auditeur');
 
@@ -153,7 +153,7 @@ describe('e2e: rules RBAC (13.3)', () => {
       actions: [{ type: 'add_tag', tag: 'Y' }],
     });
     expect(r.status).toBe(HttpStatus.CREATED);
-    const ruleId = (r.body.data ?? r.body).id as string;
+    const ruleId = r.body.data.rule.id as string;
 
     const comptableToken = await addMemberAndGetToken(
       orgId,
@@ -233,7 +233,7 @@ describe('e2e: rules RBAC (13.3)', () => {
       actions: [{ type: 'add_tag', tag: 'EXP' }],
     });
     expect(r.status).toBe(HttpStatus.CREATED);
-    const ruleId = (r.body.data ?? r.body).id as string;
+    const ruleId = r.body.data.rule.id as string;
 
     // read → 200.
     const detail = await authedJson(
