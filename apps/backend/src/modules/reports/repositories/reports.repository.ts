@@ -66,6 +66,18 @@ export interface GeneralLedgerFilters {
 }
 
 /**
+ * Agrégat de validité d'une période (AC-V5), calculé AVANT génération.
+ * Money columns en `string` pour préserver DECIMAL(15,2). `lastMovementDate`
+ * est `null` quand la période ne contient aucune écriture validée.
+ */
+export interface PeriodValidityAggregate {
+  readonly committedEntries: number;
+  readonly totalDebit: string;
+  readonly totalCredit: string;
+  readonly lastMovementDate: string | null;
+}
+
+/**
  * Import session header for the diagnostic report. Only the columns the
  * report cares about — full session entity is loaded by the imports
  * module elsewhere.
@@ -224,6 +236,49 @@ export class ReportsRepository {
         endingCredit: (net < 0 ? -net : 0).toFixed(2),
       };
     });
+  }
+
+  /**
+   * Validité de la période sur les seules écritures `validated` (AC-V5).
+   * Une requête agrégée unique : compte d'écritures distinctes, Σ débit,
+   * Σ crédit et date du dernier mouvement sur [fromDate, toDate]. Sert à
+   * l'indice pré-génération du Report Console — l'invariant Σdébit=Σcrédit
+   * vaut sur n'importe quelle fenêtre (chaque écriture s'équilibre), donc un
+   * écart non nul révèle une corruption de données plutôt qu'un déséquilibre
+   * comptable normal.
+   */
+  async periodValidity(
+    organizationId: TenantId | string,
+    filters: { readonly fromDate: string; readonly toDate: string },
+  ): Promise<PeriodValidityAggregate> {
+    assertTenantId(organizationId);
+
+    const row = await this.lineRepo
+      .createQueryBuilder('l')
+      .innerJoin('journal_entries', 'e', 'e.id = l.journal_entry_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere(`e.status = 'validated'`)
+      .andWhere(`e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date`, {
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+      })
+      .select('COUNT(DISTINCT e.id)', 'committedEntries')
+      .addSelect('COALESCE(SUM(l.debit), 0)', 'totalDebit')
+      .addSelect('COALESCE(SUM(l.credit), 0)', 'totalCredit')
+      .addSelect(`TO_CHAR(MAX(e.entry_date), 'YYYY-MM-DD')`, 'lastMovementDate')
+      .getRawOne<{
+        committedEntries: string;
+        totalDebit: string;
+        totalCredit: string;
+        lastMovementDate: string | null;
+      }>();
+
+    return {
+      committedEntries: Number(row?.committedEntries ?? 0),
+      totalDebit: Number(row?.totalDebit ?? 0).toFixed(2),
+      totalCredit: Number(row?.totalCredit ?? 0).toFixed(2),
+      lastMovementDate: row?.lastMovementDate ?? null,
+    };
   }
 
   async generalLedger(

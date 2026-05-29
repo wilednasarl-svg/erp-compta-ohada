@@ -13,6 +13,7 @@ const ACC_ID = '00000000-0000-4000-8000-000000000010';
 function buildHarness() {
   const repo = {
     trialBalance: jest.fn(),
+    periodValidity: jest.fn(),
     generalLedger: jest.fn(),
     generalLedgerOpening: jest
       .fn()
@@ -2124,5 +2125,91 @@ describe('ReportsService.getMarginByAxis (D3 — Note 34 par axe)', () => {
         axisType: '   ',
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe('ReportsService.getPeriodValidity', () => {
+  const agg = (over: Partial<{
+    committedEntries: number;
+    totalDebit: string;
+    totalCredit: string;
+    lastMovementDate: string | null;
+  }> = {}) => ({
+    committedEntries: 0,
+    totalDebit: '0.00',
+    totalCredit: '0.00',
+    lastMovementDate: null,
+    ...over,
+  });
+
+  it('passe la fenêtre au repo et reporte un journal équilibré (imbalance 0)', async () => {
+    const h = buildHarness();
+    h.repo.periodValidity.mockResolvedValue(
+      agg({ committedEntries: 42, totalDebit: '1000.00', totalCredit: '1000.00', lastMovementDate: '2026-03-15' }),
+    );
+
+    const result = await h.service.getPeriodValidity(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    expect(h.repo.periodValidity).toHaveBeenCalledWith(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    expect(result.committedEntries).toBe(42);
+    expect(result.imbalance).toBe(0);
+    expect(result.lastMovementDate).toBe('2026-03-15');
+    expect(result.periodClosed).toBe(false);
+    expect(typeof result.computedAt).toBe('string');
+  });
+
+  it('expose un écart Σdébit−Σcrédit arrondi quand le journal est corrompu', async () => {
+    const h = buildHarness();
+    h.repo.periodValidity.mockResolvedValue(
+      agg({ committedEntries: 3, totalDebit: '1500.40', totalCredit: '1000.00' }),
+    );
+
+    const result = await h.service.getPeriodValidity(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    expect(result.imbalance).toBe(500);
+  });
+
+  it('considère équilibré un écart sous le FCFA (tolérance arrondis)', async () => {
+    const h = buildHarness();
+    h.repo.periodValidity.mockResolvedValue(
+      agg({ committedEntries: 1, totalDebit: '1000.40', totalCredit: '1000.00' }),
+    );
+
+    const result = await h.service.getPeriodValidity(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    expect(result.imbalance).toBe(0);
+  });
+
+  it('renvoie lastMovementDate null sur une période sans écriture', async () => {
+    const h = buildHarness();
+    h.repo.periodValidity.mockResolvedValue(agg({ committedEntries: 0 }));
+
+    const result = await h.service.getPeriodValidity(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    expect(result.committedEntries).toBe(0);
+    expect(result.lastMovementDate).toBeNull();
+  });
+
+  it('rejette une plage de dates invalide avant d’interroger le repo', async () => {
+    const h = buildHarness();
+    await expect(
+      h.service.getPeriodValidity(ORG_ID, { fromDate: '2026-12-31', toDate: '2026-01-01' }),
+    ).rejects.toThrow();
+    expect(h.repo.periodValidity).not.toHaveBeenCalled();
   });
 });
