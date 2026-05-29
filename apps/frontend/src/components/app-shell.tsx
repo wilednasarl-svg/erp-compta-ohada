@@ -472,7 +472,11 @@ function TopNavGroup({
  * autre entrée de navigation (sinon `/reports` resterait actif sur
  * `/reports/console`). `startsWith` reste la règle pour les routes à sous-pages.
  */
-const EXACT_MATCH_ROUTES: ReadonlySet<string> = new Set(['/dashboard', '/reports']);
+const EXACT_MATCH_ROUTES: ReadonlySet<string> = new Set([
+  '/dashboard',
+  '/reports',
+  '/chart-of-accounts',
+]);
 
 function isActive(href: string, pathname: string): boolean {
   return EXACT_MATCH_ROUTES.has(href) ? pathname === href : pathname.startsWith(href);

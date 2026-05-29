@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Upload,
   Users,
   Warehouse,
 } from 'lucide-react';
@@ -70,6 +71,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'Référentiel',
     items: [
       { href: '/chart-of-accounts', label: 'Plan comptable', icon: BookOpen, hint: 'SYSCOHADA — comptes et classes' },
+      { href: '/chart-of-accounts/import', label: 'Importer un plan', icon: Upload, hint: 'Charger un plan comptable CSV / Excel' },
       { href: '/syscohada-knowledge', label: 'Doctrine SYSCOHADA', icon: BookOpenCheck, hint: 'Citations du Guide par module' },
       { href: '/accounting-periods', label: 'Périodes', icon: Calendar, hint: 'Exercices, mois, clôtures' },
       { href: '/currencies', label: 'Devises', icon: Coins, hint: 'XOF, EUR, USD et taux' },
