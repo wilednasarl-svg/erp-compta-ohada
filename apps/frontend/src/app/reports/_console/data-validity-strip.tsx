@@ -23,6 +23,8 @@ import type { PeriodValidity } from './types';
 interface DataValidityStripProps {
   readonly validity: PeriodValidity | undefined;
   readonly loading?: boolean;
+  /** Texte affiché quand aucune validité n'est encore disponible (pré-génération). */
+  readonly pendingHint?: React.ReactNode;
 }
 
 const formatFcfa = (n: number): string =>
@@ -65,8 +67,8 @@ function Indicator({
   );
 }
 
-export function DataValidityStrip({ validity, loading }: DataValidityStripProps) {
-  if (loading || !validity) {
+export function DataValidityStrip({ validity, loading, pendingHint }: DataValidityStripProps) {
+  if (loading) {
     return (
       <div className="flex h-7 items-center gap-2 text-xs text-ink-mute" aria-live="polite">
         <Clock className="h-3.5 w-3.5 animate-pulse" strokeWidth={1.5} aria-hidden />
@@ -75,6 +77,16 @@ export function DataValidityStrip({ validity, loading }: DataValidityStripProps)
     );
   }
 
+  if (!validity) {
+    return (
+      <div className="flex h-7 items-center gap-2 text-xs text-ink-mute" aria-live="polite">
+        <Clock className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+        {pendingHint ?? 'La conformité est vérifiée à la génération.'}
+      </div>
+    );
+  }
+
+  const hasEntryCount = validity.committedEntries !== undefined;
   const empty = validity.committedEntries === 0;
   const balanced = validity.imbalance === 0;
 
@@ -83,18 +95,20 @@ export function DataValidityStrip({ validity, loading }: DataValidityStripProps)
       className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-sm border border-line bg-sunk/40 px-3 py-1.5"
       role="status"
     >
-      <Indicator
-        icon={empty ? CircleAlert : CheckCircle2}
-        tone={empty ? 'warn' : 'ok'}
-        tipLabel="Écritures sur la période"
-        tip={
-          empty
-            ? "Aucune écriture committée sur cette période. L'état généré sera vide."
-            : 'Nombre d’écritures committées agrégées dans cet état.'
-        }
-      >
-        {empty ? 'Aucune écriture' : `${validity.committedEntries.toLocaleString('fr-FR')} écritures`}
-      </Indicator>
+      {hasEntryCount && (
+        <Indicator
+          icon={empty ? CircleAlert : CheckCircle2}
+          tone={empty ? 'warn' : 'ok'}
+          tipLabel="Écritures sur la période"
+          tip={
+            empty
+              ? "Aucune écriture committée sur cette période. L'état généré sera vide."
+              : 'Nombre d’écritures committées agrégées dans cet état.'
+          }
+        >
+          {empty ? 'Aucune écriture' : `${(validity.committedEntries ?? 0).toLocaleString('fr-FR')} écritures`}
+        </Indicator>
+      )}
 
       <Indicator
         icon={balanced ? CheckCircle2 : TriangleAlert}

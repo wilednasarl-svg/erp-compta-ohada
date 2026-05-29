@@ -36,8 +36,12 @@ export type RunStatus = 'idle' | 'running' | 'ready' | 'error';
  * l'utilisateur, avant génération, si l'état sera fiable.
  */
 export interface PeriodValidity {
-  /** Nombre d'écritures committées rattachées à la période. */
-  readonly committedEntries: number;
+  /**
+   * Nombre d'écritures committées rattachées à la période. Optionnel : non
+   * disponible tant qu'un endpoint de validité pré-génération n'existe pas
+   * côté backend (la validité actuelle est dérivée du rapport généré).
+   */
+  readonly committedEntries?: number;
   /** Σ débit − Σ crédit sur la période, en valeur absolue (FCFA). 0 = équilibré. */
   readonly imbalance: number;
   /** Date ISO du mouvement le plus récent pris en compte. */

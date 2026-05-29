@@ -1,67 +1,72 @@
 # Report Console — Critères d'acceptation & tests utilisateurs
 
-Format : `Given / When / Then`. Statut **[P]** = vérifiable dès maintenant sur le
-prototype `/reports/console` ; **[I]** = à vérifier après intégration backend.
+Format : `Given / When / Then`. Statut **[F]** = vérifiable dans l'app sur
+`/reports/console` (session connectée, données présentes) ; **[B]** = nécessite un
+ajout backend (endpoint de validité pré-génération).
+
+> `/reports/console` est **câblé sur le vrai Bilan**. Les écrans de validité
+> pré-génération chiffrés (compteur d'écritures) sont **[B]** ; l'équilibre
+> Actif=Passif est vérifié **[F]** sur le rapport généré.
 
 ---
 
 ## 1. Champ de période (`DateRangeField`)
 
-- **AC-P1** [P] *Given* le champ fermé, *When* je clique dessus, *Then* un popover
+- **AC-P1** [F] *Given* le champ fermé, *When* je clique dessus, *Then* un popover
   s'ouvre avec rail de presets + calendrier + saisie manuelle, sans recharger la page.
-- **AC-P2** [P] *Given* le popover ouvert, *When* je choisis « Clôture N-1 » (mode
+- **AC-P2** [F] *Given* le popover ouvert, *When* je choisis « Clôture N-1 » (mode
   arrêté), *Then* la date d'arrêté passe au 31/12 N-1 et le début d'exercice au 01/01 N-1.
-- **AC-P3** [P] *Given* une sélection correspondant exactement à un preset, *Then* ce
+- **AC-P3** [F] *Given* une sélection correspondant exactement à un preset, *Then* ce
   preset est visuellement actif (`aria-pressed=true`).
-- **AC-P4** [P] *Given* le popover ouvert, *When* je presse `Échap`, *Then* il se ferme
+- **AC-P4** [F] *Given* le popover ouvert, *When* je presse `Échap`, *Then* il se ferme
   et le focus revient sur le déclencheur.
-- **AC-P5** [P] *Given* le calendrier focalisé, *When* j'utilise les flèches, `Origine`,
+- **AC-P5** [F] *Given* le calendrier focalisé, *When* j'utilise les flèches, `Origine`,
   `Fin` puis `Entrée`, *Then* je navigue jour à jour / semaine et sélectionne sans souris.
-- **AC-P6** [P] *Given* le mode plage, *When* je clique une date basse puis une date
+- **AC-P6** [F] *Given* le mode plage, *When* je clique une date basse puis une date
   haute, *Then* l'intervalle entre les deux est surligné et `Du/Au` se mettent à jour.
 
 ## 2. Indice de validité (`DataValidityStrip`)
 
-- **AC-V1** [P] *Given* le scénario « saine », *Then* « écritures » et « Journal
-  équilibré » s'affichent en `accent` (sain).
-- **AC-V2** [P] *Given* le scénario « déséquilibré », *Then* l'écart Σdébit−Σcrédit
-  s'affiche en FCFA, en `critical`, et un avertissement de non-conformité apparaît.
-- **AC-V3** [P] *Given* le scénario « vide », *Then* « Aucune écriture » s'affiche en
-  `warn` et l'info-bulle précise que l'état généré sera vide.
-- **AC-V4** [P] *Given* chaque indicateur, *When* je le survole **ou** le focalise au
+- **AC-V1** [F] *Given* un bilan équilibré généré, *Then* le bandeau affiche
+  « Journal équilibré » en `accent` et le résultat « Bilan équilibré · Actif=Passif ».
+- **AC-V2** [F] *Given* un bilan déséquilibré généré, *Then* l'écart Actif−Passif
+  s'affiche en FCFA, en `critical`, avec avertissement de non-conformité.
+- **AC-V3** [F] *Given* aucun bilan encore généré, *Then* le bandeau affiche l'état
+  neutre « La conformité est vérifiée à la génération » (aucun chiffre fabriqué).
+- **AC-V4** [F] *Given* chaque indicateur, *When* je le survole **ou** le focalise au
   clavier, *Then* une info-bulle accessible explique la mesure (pas un `title=`).
-- **AC-V5** [I] *Given* une période sélectionnée, *Then* l'indice reflète les vraies
-  écritures committées de l'organisation courante (query backend).
+- **AC-V5** [B] *Given* une période sélectionnée, *Then* l'indice reflète, **avant**
+  génération, les écritures committées de l'organisation (endpoint de validité à créer).
 
 ## 3. Génération & feedback (`GenerationProgress`)
 
-- **AC-G1** [P] *Given* l'état idle, *When* je clique « Générer », *Then* une barre
+- **AC-G1** [F] *Given* l'état idle, *When* je clique « Générer », *Then* une barre
   déterminée progresse de 0 à 100 % avec libellé d'étape et estimation restante.
-- **AC-G2** [P] *Given* la génération en cours, *Then* le bouton « Générer » est désactivé.
-- **AC-G3** [P] *Given* la fin de génération, *Then* le résultat s'affiche (fade-in),
+- **AC-G2** [F] *Given* la génération en cours, *Then* le bouton « Générer » est désactivé.
+- **AC-G3** [F] *Given* la fin de génération, *Then* le résultat s'affiche (fade-in),
   une barre d'export PDF/Excel apparaît, et l'exécution est ajoutée à l'historique.
-- **AC-G4** [P] *Given* `prefers-reduced-motion`, *Then* la barre ne s'anime pas par
+- **AC-G4** [F] *Given* `prefers-reduced-motion`, *Then* la barre ne s'anime pas par
   transition mais reflète la progression sans mouvement superflu.
 
 ## 4. Favoris & Historique (`stores.ts`)
 
-- **AC-F1** [P] *Given* une sélection période + périmètre, *When* je la nomme et
+- **AC-F1** [F] *Given* une sélection période + périmètre, *When* je la nomme et
   l'enregistre, *Then* elle apparaît dans le menu Favoris.
-- **AC-F2** [P] *Given* un favori, *When* je le sélectionne, *Then* période **et**
+- **AC-F2** [F] *Given* un favori, *When* je le sélectionne, *Then* période **et**
   périmètre (ex. comparer N-1) sont restaurés.
-- **AC-F3** [P] *Given* un favori enregistré, *When* je recharge la page, *Then* il est
+- **AC-F3** [F] *Given* un favori enregistré, *When* je recharge la page, *Then* il est
   toujours présent (persistance localStorage).
-- **AC-F4** [P] *Given* au moins une génération, *Then* le menu « Récent » liste les
+- **AC-F4** [F] *Given* au moins une génération, *Then* le menu « Récent » liste les
   dernières exécutions (max 8) avec date et durée (« généré en 1,2 s »).
-- **AC-F5** [P] *Given* deux dossiers (orgId) différents, *Then* leurs favoris/historique
+- **AC-F5** [F] *Given* deux dossiers (orgId) différents, *Then* leurs favoris/historique
   ne se mélangent pas (clé `${orgId}:${mode}`).
 
 ## 5. Guide & responsive (`ReportRunner`)
 
-- **AC-R1** [P] *Given* un état avec périmètre, *Then* le guide montre ① Période ›
+- **AC-R1** [F] *Given* un état avec périmètre, *Then* le guide montre ① Période ›
   ② Périmètre › ③ Générer ; sans périmètre, seulement ① et ②.
-- **AC-R2** [P] *Given* un résultat prêt, *Then* l'étape « Générer » est marquée faite.
-- **AC-R3** [P] *Given* une fenêtre étroite (≤ 768 px), *Then* la toolbar passe à la
+- **AC-R2** [F] *Given* un résultat prêt, *Then* l'étape « Générer » est marquée faite.
+- **AC-R3** [F] *Given* une fenêtre étroite (≤ 768 px), *Then* la toolbar passe à la
   ligne sans débordement horizontal.
 
 ---
@@ -73,14 +78,13 @@ prototype `/reports/console` ; **[I]** = à vérifier après intégration backen
 > *« Chaque matin je sors le Bilan arrêté au dernier jour clos, comparé à N-1. »*
 
 1. Ouvrir `/reports/console`.
-2. Vérifier que la validité montre l'équilibre **avant** de générer (AC-V1/V2).
-3. 1er jour : régler arrêté + comparer N-1, enregistrer le favori « Bilan quotidien ».
-4. Générer ; noter la durée affichée (AC-G1/G3).
-5. Jours suivants : rejouer le favori en un clic, recharger pour prouver la
+2. 1er jour : régler arrêté + comparer N-1, enregistrer le favori « Bilan quotidien ».
+3. Générer ; vérifier le bandeau d'équilibre Actif=Passif et noter la durée (AC-V1/AC-G1/G3).
+4. Jours suivants : rejouer le favori en un clic, recharger pour prouver la
    persistance (AC-F2/F3).
 
-**Succès** : sélection quotidienne ramenée à 1 clic ; déséquilibre détecté avant
-génération ; tout au clavier possible.
+**Succès** : sélection quotidienne ramenée à 1 clic ; déséquilibre signalé
+immédiatement sur le résultat ; tout au clavier possible.
 
 ### 6.2 Gestionnaire / dirigeant PME (occasionnel, non-spécialiste)
 
@@ -99,11 +103,11 @@ métier est explicité par les info-bulles ; aucune étape n'est devinée.
 
 > *« Je dois vérifier que cet état est fiable et savoir d'où il sort. »*
 
-1. Activer le scénario « déséquilibré » (AC-V2).
-2. Constater l'écart en FCFA + l'avertissement de non-conformité.
-3. Vérifier que l'état reste générable **pour contrôle** mais signalé non conforme.
+1. Générer un bilan sur un dossier dont le journal est déséquilibré (AC-V2).
+2. Constater l'écart Actif−Passif en FCFA + l'avertissement de non-conformité.
+3. Vérifier que l'état reste consultable **pour contrôle** mais signalé non conforme.
 4. Consulter « Récent » pour voir quand et sur quelle période un état a été produit.
-5. Activer « Période vide » et constater l'avertissement (AC-V3).
+5. Sur un dossier sans écriture sur la période, constater un bilan à zéro.
 
 **Succès** : la fiabilité est lisible sans ouvrir le grand livre ; un état douteux
 n'est jamais présenté comme définitif ; la traçabilité (historique) est immédiate.

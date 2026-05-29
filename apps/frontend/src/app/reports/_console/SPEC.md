@@ -4,7 +4,8 @@ Refonte du parcours de génération des états (`/reports`). Objectif : un parco
 unique, lisible par un profil occasionnel **et** efficace pour un expert, factorisant
 les filtres aujourd'hui réimplémentés dans chacun des 16 panneaux.
 
-Prototype haute-fidélité consultable : **`/reports/console`** (piloté par mock, sans backend).
+Parcours câblé consultable : **`/reports/console`** — branché sur le vrai endpoint
+Bilan (`GET /organizations/:org/reports/balance-sheet`), session connectée requise.
 
 ---
 
@@ -90,8 +91,13 @@ Répond, **avant** génération, aux trois questions du comptable :
 Sémantique couleur stricte (`DESIGN.md`) : `accent` = sain · `critical` = bloquant ·
 `warn` = attention. État de chargement (`loading`) tant que l'indice n'est pas calculé.
 
-**Source de données** (wiring réel) : endpoint léger `GET /reports/validity?from&to`
-renvoyant `PeriodValidity`, idéalement mis en cache TanStack Query (clé = org + période).
+**Source de données** : aujourd'hui, la validité du Bilan est **dérivée du rapport
+généré** (`validityFromBalanceSheet` — équilibre Actif=Passif via `totals.difference`),
+donc disponible *après* génération. Le compteur d'écritures pré-génération
+(`committedEntries`, optionnel) reste vide tant qu'un endpoint léger
+`GET /reports/validity?from&to` renvoyant `PeriodValidity` n'est pas ajouté côté
+backend (issue de suivi `bd`). Avant génération, le bandeau affiche un état neutre
+(`pendingHint`) plutôt que des chiffres fabriqués.
 
 ### 2.5 `GenerationProgress` — feedback de génération
 
@@ -123,16 +129,19 @@ toolbar, favoris/historique, l'export et les états idle/running/ready/error.
 
 ---
 
-## 3. Intégration au backend réel (hors prototype)
+## 3. Câblage des autres états
 
-Le prototype simule la génération. Pour brancher un état existant :
+Le Bilan est **déjà câblé** dans `console/page.tsx` (référence d'implémentation).
+Pour porter un autre état :
 
-1. Remplacer `validity` par une query `useQuery(['validity', orgId, period])`.
-2. Mapper l'état actuel (`PeriodFilter` / `AsAt`) vers `PeriodValue`.
-3. `onGenerate` → `mutateAsync` de l'état ; pousser la progression réelle si
-   l'API streame, sinon laisser `GenerationProgress` en mode indéterminé court.
+1. Mapper sa période (`range` ou `as-at`) vers `PeriodValue` + `defaultPeriod`.
+2. `onGenerate` → renseigner `submitted` qui active la `useQuery` de l'état.
+3. Progression : faute d'avancement réel exposé par l'API, `GenerationProgress`
+   est piloté par estimation de temps, plafonné à 90 % jusqu'à réponse (honnête).
 4. À la réussite : `history.record(...)` avec la durée mesurée.
-5. `children` = le tableau de l'état existant, inchangé.
+5. Validité : dériver du rapport ce qui est réellement vérifiable (équilibre,
+   totaux), ou brancher l'endpoint de validité dès qu'il existe.
+6. `children` = un renderer autonome de l'état (cf. `balance-sheet-result.tsx`).
 
 Migration **incrémentale** : un état à la fois, sans toucher au monolithe
 `reports/page.tsx` tant que tous ne sont pas portés.
