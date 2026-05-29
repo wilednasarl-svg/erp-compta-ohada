@@ -4,9 +4,10 @@ Format : `Given / When / Then`. Statut **[F]** = vérifiable dans l'app sur
 `/reports/console` (session connectée, données présentes) ; **[B]** = nécessite un
 ajout backend (endpoint de validité pré-génération).
 
-> `/reports/console` est **câblé sur le vrai Bilan**. Les écrans de validité
-> pré-génération chiffrés (compteur d'écritures) sont **[B]** ; l'équilibre
-> Actif=Passif est vérifié **[F]** sur le rapport généré.
+> `/reports/console` est **câblé sur les vrais états** (Bilan, CR, SIG, TFT, Balance).
+> L'indice de validité **pré-génération** (écritures committées + équilibre du journal)
+> est désormais **[F]** via l'endpoint `/reports/validity` ; l'équilibre Actif=Passif
+> reste vérifié **[F]** sur le rapport généré (relais post-génération).
 
 ---
 
@@ -35,8 +36,11 @@ ajout backend (endpoint de validité pré-génération).
   neutre « La conformité est vérifiée à la génération » (aucun chiffre fabriqué).
 - **AC-V4** [F] *Given* chaque indicateur, *When* je le survole **ou** le focalise au
   clavier, *Then* une info-bulle accessible explique la mesure (pas un `title=`).
-- **AC-V5** [B] *Given* une période sélectionnée, *Then* l'indice reflète, **avant**
-  génération, les écritures committées de l'organisation (endpoint de validité à créer).
+- **AC-V5** [F] *Given* une période sélectionnée, *Then* l'indice reflète, **avant**
+  génération, les écritures committées de l'organisation, l'équilibre du journal et
+  le dernier mouvement (endpoint `GET /organizations/:org/reports/validity`, branché
+  via `usePeriodValidity`). Après génération, l'indice dérivé du rapport produit prend
+  le relais (équilibre Actif=Passif effectif).
 
 ## 3. Génération & feedback (`GenerationProgress`)
 

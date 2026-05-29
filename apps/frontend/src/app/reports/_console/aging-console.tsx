@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * Console Annexe (notes DSF) — état à date (`as-at`), sans périmètre. Branchée
- * sur `GET /organizations/:org/reports/annexe`.
+ * Console Balance âgée — état à date (`as-at`). Branchée sur
+ * `GET /organizations/:org/reports/aging-balance`. Périmètre = côté analysé
+ * (créances clients ou dettes fournisseurs).
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -10,9 +11,9 @@ import { useEffect, useRef, useState } from 'react';
 
 import { FormError } from '@/components/ui/form-error';
 import { ApiError, api } from '@/lib/api-client';
-import type { AnnexeReport } from '@/types/reports';
+import type { AgingBalanceReport, AgingSide } from '@/types/reports';
 
-import { AnnexeResult } from './annexe-result';
+import { AgingResult } from './aging-result';
 import { defaultPeriod, summarizePeriod } from './presets';
 import { ReportRunner } from './report-runner';
 import { useHistoryStore } from './stores';
@@ -20,34 +21,35 @@ import type { PeriodValue, RunStatus } from './types';
 import { usePeriodValidity } from './use-period-validity';
 import { validityAsOf } from './validity';
 
-const MODE = 'annexe';
+const MODE = 'aging-balance';
 const PROGRESS_TARGET_MS = 1500;
 
 interface SubmittedParams {
+  readonly side: AgingSide;
   readonly asAtDate: string;
-  readonly fiscalYearStartDate: string;
 }
 
 const buildParams = (s: SubmittedParams): URLSearchParams =>
-  new URLSearchParams({ asAtDate: s.asAtDate, fiscalYearStartDate: s.fiscalYearStartDate });
+  new URLSearchParams({ side: s.side, asAtDate: s.asAtDate });
 
-export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
+export function AgingConsole({ orgId }: { readonly orgId: string }) {
   const scopeOrg = orgId || 'anon';
   const [period, setPeriod] = useState<PeriodValue>(() => defaultPeriod('as-at'));
+  const [side, setSide] = useState<AgingSide>('CLIENT');
   const [submitted, setSubmitted] = useState<SubmittedParams | null>(null);
-  const [progress, setProgress] = useState({ value: 0, stage: 'Production des notes…', etaMs: PROGRESS_TARGET_MS });
+  const [progress, setProgress] = useState({ value: 0, stage: 'Ventilation par ancienneté…', etaMs: PROGRESS_TARGET_MS });
 
   const startedAtRef = useRef<number>(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastRecorded = useRef<string>('');
   const record = useHistoryStore((s) => s.record);
 
-  const query = useQuery<AnnexeReport, ApiError>({
+  const query = useQuery<AgingBalanceReport, ApiError>({
     queryKey: ['reports-console', MODE, orgId, submitted],
     queryFn: async () => {
       if (submitted === null) throw new Error('not submitted');
-      const data = await api.get<{ report: AnnexeReport }>(
-        `/organizations/${orgId}/reports/annexe?${buildParams(submitted).toString()}`,
+      const data = await api.get<{ report: AgingBalanceReport }>(
+        `/organizations/${orgId}/reports/aging-balance?${buildParams(submitted).toString()}`,
       );
       return data.report;
     },
@@ -69,7 +71,7 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
       timer.current = setInterval(() => {
         const elapsed = Date.now() - begin;
         const value = Math.min(0.9, elapsed / PROGRESS_TARGET_MS);
-        setProgress({ value, stage: 'Production des notes…', etaMs: Math.max(0, PROGRESS_TARGET_MS - elapsed) });
+        setProgress({ value, stage: 'Ventilation par ancienneté…', etaMs: Math.max(0, PROGRESS_TARGET_MS - elapsed) });
       }, 80);
     } else {
       if (timer.current) clearInterval(timer.current);
@@ -84,7 +86,7 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
     if (status === 'ready' && query.dataUpdatedAt && String(query.dataUpdatedAt) !== lastRecorded.current) {
       lastRecorded.current = String(query.dataUpdatedAt);
       const durationMs = startedAtRef.current ? Date.now() - startedAtRef.current : 0;
-      record(scopeOrg, MODE, period, durationMs);
+      record(scopeOrg, MODE, period, durationMs, { side });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, query.dataUpdatedAt]);
@@ -92,15 +94,15 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
   const runGeneration = (): void => {
     if (period.kind !== 'as-at') return;
     startedAtRef.current = Date.now();
-    setProgress({ value: 0, stage: 'Production des notes…', etaMs: PROGRESS_TARGET_MS });
-    setSubmitted({ asAtDate: period.asAtDate, fiscalYearStartDate: period.fiscalYearStartDate });
+    setProgress({ value: 0, stage: 'Ventilation par ancienneté…', etaMs: PROGRESS_TARGET_MS });
+    setSubmitted({ side, asAtDate: period.asAtDate });
   };
 
   const download = (ext: 'xlsx' | 'pdf'): void => {
     if (submitted === null) return;
     void api.download(
-      `/organizations/${orgId}/reports/annexe.${ext}?${buildParams(submitted).toString()}`,
-      `annexe.${ext}`,
+      `/organizations/${orgId}/reports/aging-balance.${ext}?${buildParams(submitted).toString()}`,
+      `balance-agee.${ext}`,
     );
   };
 
@@ -110,8 +112,8 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
   return (
     <div className="space-y-5">
       <p className="max-w-[68ch] text-sm leading-relaxed text-ink-soft">
-        Notes annexes réglementaires du DSF. Chaque note indique si elle est calculée
-        automatiquement, partielle, ou à compléter à la main.
+        Ventilation des soldes clients ou fournisseurs par tranche d’ancienneté à la date d’arrêté,
+        pour piloter le recouvrement et les règlements.
       </p>
 
       {query.isError && <FormError error={query.error} />}
@@ -119,7 +121,7 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
       <ReportRunner
         orgId={scopeOrg}
         mode={MODE}
-        periodLabel="Annexe"
+        periodLabel="Balance âgée"
         period={period}
         onPeriodChange={setPeriod}
         validity={validity}
@@ -127,17 +129,34 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
         progress={progress}
         onGenerate={runGeneration}
         onExport={download}
+        scope={{ side }}
+        onApplyScope={(s) => {
+          if (s.side === 'CLIENT' || s.side === 'FOURNISSEUR') setSide(s.side);
+        }}
+        scopeControls={
+          <label className="space-y-1">
+            <span className="text-2xs uppercase tracking-wider text-ink-soft">Côté</span>
+            <select
+              value={side}
+              onChange={(e) => setSide(e.target.value as AgingSide)}
+              className="h-9 w-40 rounded-sm border border-line-strong bg-paper px-2 text-sm text-ink focus-visible:border-accent focus-visible:shadow-input focus-visible:outline-none"
+            >
+              <option value="CLIENT">Créances clients</option>
+              <option value="FOURNISSEUR">Dettes fournisseurs</option>
+            </select>
+          </label>
+        }
         emptyHint={
           <div className="space-y-1">
-            <p className="text-sm font-medium text-ink">Aucune annexe générée pour le moment</p>
+            <p className="text-sm font-medium text-ink">Aucune balance âgée générée pour le moment</p>
             <p className="text-sm text-ink-soft">
-              Période sélectionnée : {summarizePeriod(period)}. Lancez la génération pour afficher les
-              notes annexes.
+              Période sélectionnée : {summarizePeriod(period)}. Choisissez le côté puis lancez la
+              génération.
             </p>
           </div>
         }
       >
-        {query.data && <AnnexeResult report={query.data} />}
+        {query.data && <AgingResult report={query.data} />}
       </ReportRunner>
     </div>
   );

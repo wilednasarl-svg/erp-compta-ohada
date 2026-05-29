@@ -18,6 +18,7 @@ import { ProfitLossResult } from './profit-loss-result';
 import { ReportRunner } from './report-runner';
 import { useHistoryStore } from './stores';
 import type { PeriodValue, RunStatus } from './types';
+import { usePeriodValidity } from './use-period-validity';
 import { validityFromProfitLoss } from './validity';
 
 const MODE = 'profit-loss';
@@ -104,7 +105,8 @@ export function CrConsole({ orgId }: { readonly orgId: string }) {
     );
   };
 
-  const validity = query.data ? validityFromProfitLoss(query.data) : undefined;
+  const livePreGen = usePeriodValidity(orgId, period);
+  const validity = query.data ? validityFromProfitLoss(query.data) : livePreGen;
 
   return (
     <div className="space-y-5">

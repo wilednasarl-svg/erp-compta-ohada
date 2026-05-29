@@ -18,6 +18,7 @@ import { ReportRunner } from './report-runner';
 import { useHistoryStore } from './stores';
 import { TftResult } from './tft-result';
 import type { PeriodValue, RunStatus } from './types';
+import { usePeriodValidity } from './use-period-validity';
 import { validityFromCashFlow } from './validity';
 
 const MODE = 'tft';
@@ -119,7 +120,8 @@ export function TftConsole({ orgId }: { readonly orgId: string }) {
     );
   };
 
-  const validity = query.data ? validityFromCashFlow(query.data) : undefined;
+  const livePreGen = usePeriodValidity(orgId, period);
+  const validity = query.data ? validityFromCashFlow(query.data) : livePreGen;
 
   return (
     <div className="space-y-5">

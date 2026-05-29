@@ -18,6 +18,7 @@ import { defaultPeriod, fromIso, summarizePeriod, toIso } from './presets';
 import { ReportRunner } from './report-runner';
 import { useHistoryStore } from './stores';
 import type { PeriodValue, RunStatus } from './types';
+import { usePeriodValidity } from './use-period-validity';
 import { validityFromBalanceSheet } from './validity';
 
 const MODE = 'balance-sheet';
@@ -127,7 +128,8 @@ export function BilanConsole({ orgId }: { readonly orgId: string }) {
     );
   };
 
-  const validity = query.data ? validityFromBalanceSheet(query.data) : undefined;
+  const livePreGen = usePeriodValidity(orgId, period);
+  const validity = query.data ? validityFromBalanceSheet(query.data) : livePreGen;
 
   return (
     <div className="space-y-5">

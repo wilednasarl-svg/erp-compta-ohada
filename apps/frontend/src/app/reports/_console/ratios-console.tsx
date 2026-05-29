@@ -17,6 +17,7 @@ import { RatiosResult } from './ratios-result';
 import { ReportRunner } from './report-runner';
 import { useHistoryStore } from './stores';
 import type { PeriodValue, RunStatus } from './types';
+import { usePeriodValidity } from './use-period-validity';
 import { validityAsOf } from './validity';
 
 const MODE = 'ratios';
@@ -103,7 +104,8 @@ export function RatiosConsole({ orgId }: { readonly orgId: string }) {
     );
   };
 
-  const validity = query.data ? validityAsOf(query.data.asAtDate) : undefined;
+  const livePreGen = usePeriodValidity(orgId, period);
+  const validity = query.data ? validityAsOf(query.data.asAtDate) : livePreGen;
 
   return (
     <div className="space-y-5">

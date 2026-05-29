@@ -19,6 +19,7 @@ import { ReportRunner } from './report-runner';
 import { useHistoryStore } from './stores';
 import { TrialBalanceResult } from './trial-balance-result';
 import type { PeriodValue, RunStatus } from './types';
+import { usePeriodValidity } from './use-period-validity';
 import { validityFromTrialBalance } from './validity';
 
 const MODE = 'trial-balance';
@@ -113,7 +114,8 @@ export function BalanceConsole({ orgId }: { readonly orgId: string }) {
     );
   };
 
-  const validity = query.data ? validityFromTrialBalance(query.data) : undefined;
+  const livePreGen = usePeriodValidity(orgId, period);
+  const validity = query.data ? validityFromTrialBalance(query.data) : livePreGen;
 
   return (
     <div className="space-y-5">

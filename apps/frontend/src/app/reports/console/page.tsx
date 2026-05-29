@@ -15,10 +15,12 @@ import { AppShell } from '@/components/app-shell';
 import { cn } from '@/lib/utils';
 import { useCurrentOrg } from '@/stores/auth-store';
 
+import { AgingConsole } from '../_console/aging-console';
 import { AnnexeConsole } from '../_console/annexe-console';
 import { BalanceConsole } from '../_console/balance-console';
 import { BilanConsole } from '../_console/bilan-console';
 import { CrConsole } from '../_console/cr-console';
+import { GlConsole } from '../_console/gl-console';
 import { RatiosConsole } from '../_console/ratios-console';
 import { SigConsole } from '../_console/sig-console';
 import { TftConsole } from '../_console/tft-console';
@@ -30,7 +32,9 @@ type ConsoleReport =
   | 'tft'
   | 'annexe'
   | 'ratios'
-  | 'trial-balance';
+  | 'trial-balance'
+  | 'general-ledger'
+  | 'aging-balance';
 
 const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: string }> = [
   { key: 'balance-sheet', label: 'Bilan' },
@@ -40,6 +44,8 @@ const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: stri
   { key: 'annexe', label: 'Annexe' },
   { key: 'ratios', label: 'Ratios' },
   { key: 'trial-balance', label: 'Balance générale' },
+  { key: 'general-ledger', label: 'Grand livre' },
+  { key: 'aging-balance', label: 'Balance âgée' },
 ];
 
 export default function ReportConsolePage() {
@@ -97,6 +103,10 @@ export default function ReportConsolePage() {
           <AnnexeConsole orgId={orgId} />
         ) : active === 'ratios' ? (
           <RatiosConsole orgId={orgId} />
+        ) : active === 'general-ledger' ? (
+          <GlConsole orgId={orgId} />
+        ) : active === 'aging-balance' ? (
+          <AgingConsole orgId={orgId} />
         ) : (
           <BalanceConsole orgId={orgId} />
         )}

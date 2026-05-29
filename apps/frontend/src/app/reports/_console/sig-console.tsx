@@ -17,6 +17,7 @@ import { ReportRunner } from './report-runner';
 import { SigResult } from './sig-result';
 import { useHistoryStore } from './stores';
 import type { PeriodValue, RunStatus } from './types';
+import { usePeriodValidity } from './use-period-validity';
 import { validityFromSig } from './validity';
 
 const MODE = 'sig';
@@ -118,7 +119,8 @@ export function SigConsole({ orgId }: { readonly orgId: string }) {
     );
   };
 
-  const validity = query.data ? validityFromSig(query.data) : undefined;
+  const livePreGen = usePeriodValidity(orgId, period);
+  const validity = query.data ? validityFromSig(query.data) : livePreGen;
 
   return (
     <div className="space-y-5">
