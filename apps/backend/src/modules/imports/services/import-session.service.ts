@@ -85,7 +85,7 @@ import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { FileParserService } from './file-parser.service';
 import { MappingService } from './mapping.service';
-import { ValidationService, findParentAccountByPrefix } from './validation.service';
+import { ValidationService, findParentAccountByPrefix, resolvePostingAccount } from './validation.service';
 
 /**
  * Représentation minimale d'un fichier reçu en upload, agnostique du
@@ -738,7 +738,20 @@ export class ImportSessionService {
     });
 
     const entries: PreviewEntry[] = stagingRows.map((row) => {
-      const mapped = this.mapping.applyMapping(row.rawValues, proposal.headerToTarget);
+      const rawMapped = this.mapping.applyMapping(row.rawValues, proposal.headerToTarget);
+      // Canonicalisation du compte : réconcilie un code zéro-paddé Sage
+      // (`40110000`) vers le compte imputable réel du plan (`4011`). On
+      // persiste le code résolu dans `mappedValues`, donc la passation (qui
+      // relit le persisté) écrit sur le bon compte sans étape supplémentaire.
+      const rawAccount = rawMapped.account?.trim();
+      const resolvedAccount =
+        rawAccount !== undefined && rawAccount.length > 0
+          ? resolvePostingAccount(rawAccount, chart.postingCodes)
+          : null;
+      const mapped =
+        resolvedAccount !== null && resolvedAccount !== rawMapped.account
+          ? { ...rawMapped, account: resolvedAccount }
+          : rawMapped;
       const errors = this.validation.validateRow(mapped, {
         chart,
         documentType: documentType ?? undefined,
