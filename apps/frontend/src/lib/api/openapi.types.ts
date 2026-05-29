@@ -969,6 +969,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/syscohada-knowledge/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les domaines métiers reliés aux PDF du Guide SYSCOHADA. */
+        get: operations["SyscohadaKnowledgeController_listDomains"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/syscohada-knowledge/domains/{domain}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retourne les références SYSCOHADA d’un domaine métier. */
+        get: operations["SyscohadaKnowledgeController_getDomain"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/syscohada-knowledge/domains/{domain}/controls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les contrôles SYSCOHADA d’un domaine, avec base légale et extrait sourcé. */
+        get: operations["SyscohadaKnowledgeController_getDomainControls"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/syscohada-knowledge/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recherche des extraits citables dans le Guide d’application SYSCOHADA. */
+        get: operations["SyscohadaKnowledgeController_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/imports/sessions": {
         parameters: {
             query?: never;
@@ -1361,7 +1429,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TAFIRE + TFT + Annexe + Aging clients/fournisseurs) */
+        /** Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TFT + Annexe + Aging clients/fournisseurs) */
         get: operations["ReportsController_annualPackage"];
         put?: never;
         post?: never;
@@ -1507,17 +1575,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/organizations/{id}/reports/tafire": {
+    "/organizations/{id}/reports/balance-sheet-diagnostic": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** TAFIRE (Tableau Financier Ressources/Emplois) — OHADA Vol. 3 */
-        get: operations["ReportsController_tafire"];
+        /** Diagnostic d'équilibre du bilan SYSCOHADA — journal, décomposition par classe, checklist travaux de fin d'exercice */
+        get: operations["ReportsController_balanceSheetDiagnostic"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/from-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Génère Bilan + CR depuis une balance uploadée (sans écritures validées) */
+        post: operations["ReportsController_reportsFromBalance"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1565,7 +1650,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3 */
+        /** TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3 p. 34 */
         get: operations["ReportsController_tft"];
         put?: never;
         post?: never;
@@ -1626,6 +1711,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/reports/margin-by-axis.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export PDF — Marge par activité (aligné Note 34) */
+        get: operations["ReportsController_marginByAxisPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/reports/margin-by-axis.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Excel — Marge par activité (aligné Note 34) */
+        get: operations["ReportsController_marginByAxisXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/reports/analytic-axes": {
         parameters: {
             query?: never;
@@ -1652,23 +1771,6 @@ export interface paths {
         };
         /** Balance âgée clients ou fournisseurs (FIFO sur lignes) */
         get: operations["ReportsController_agingBalance"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/organizations/{id}/reports/tafire.xlsx": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export Excel — TAFIRE OHADA */
-        get: operations["ReportsController_tafireXlsx"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1924,23 +2026,6 @@ export interface paths {
         };
         /** Export PDF — Trésorerie nette glissante */
         get: operations["ReportsController_cashTrendPdf"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/organizations/{id}/reports/tafire.pdf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export PDF — TAFIRE */
-        get: operations["ReportsController_tafirePdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2482,6 +2567,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/dashboards/consolidated": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vue consolidée KPIs comptables pour plusieurs organisations */
+        get: operations["DashboardsController_getConsolidated"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/dashboards/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Comparaison multi-exercices KPIs comptables */
+        get: operations["DashboardsController_getComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/dashboards/aging": {
         parameters: {
             query?: never;
@@ -2542,6 +2661,23 @@ export interface paths {
         };
         /** Top N comptes par flux dans une catégorie */
         get: operations["DashboardsController_getTopAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/dashboards/day-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Comptages du jour : travail en attente, snapshot exercice, score, activité récente */
+        get: operations["DashboardsController_getDaySummary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2647,6 +2783,54 @@ export interface paths {
         get: operations["CollaborationController_listComments"];
         put?: never;
         post: operations["CollaborationController_addComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{orgId}/cash-flow/forecasts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CashFlowController_findAll"];
+        put?: never;
+        post: operations["CashFlowController_createForecast"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{orgId}/cash-flow/forecasts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["CashFlowController_updateForecast"];
+        post?: never;
+        delete: operations["CashFlowController_deleteForecast"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{orgId}/cash-flow/projection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CashFlowController_getProjection"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3745,16 +3929,27 @@ export interface components {
             /** @description Bilan OHADA */
             report: Record<string, never>;
         };
-        TafireReportEnvelope: {
-            /** @description TAFIRE OHADA */
+        BilanDiagnosticReportEnvelope: {
+            /** @description Diagnostic de l'équilibre du bilan SYSCOHADA (journal, par classe, travaux de fin d'exercice) */
             report: Record<string, never>;
+        };
+        FromBalanceRowDto: {
+            code: string;
+            label: string;
+            debit: string;
+            credit: string;
+        };
+        FromBalanceBodyDto: {
+            rows: components["schemas"]["FromBalanceRowDto"][];
+            asAtDate: string;
+            fiscalYearStartDate?: string;
         };
         ImportDiagnosticReportEnvelope: {
             /** @description Diagnostic de session d'import */
             report: Record<string, never>;
         };
         TftReportEnvelope: {
-            /** @description Tableau Flux Trésorerie */
+            /** @description Tableau Flux Trésorerie (CashFlowReport — Tome 3 p. 34) */
             report: Record<string, never>;
         };
         AnnexeReportEnvelope: {
@@ -4558,6 +4753,52 @@ export interface components {
         SummaryEnvelopeResponse: {
             summary: components["schemas"]["DashboardSummaryResponse"];
         };
+        ConsolidatedMetricsResponse: {
+            /** @description Solde net trésorerie (DECIMAL string) */
+            cashBalance: string;
+            /** @description Créances clients nettes (DECIMAL string) */
+            receivables: string;
+            /** @description Dettes fournisseurs nettes (DECIMAL string) */
+            payables: string;
+            /** @description Produits (DECIMAL string) */
+            revenue: string;
+            /** @description Charges (DECIMAL string) */
+            expenses: string;
+            /** @description Résultat net (DECIMAL string) */
+            netResult: string;
+        };
+        ConsolidatedOrganizationDataResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            organizationName: string;
+            metrics: components["schemas"]["ConsolidatedMetricsResponse"];
+        };
+        ConsolidatedSummaryResponse: {
+            year: number;
+            organizationsCount: number;
+            currency: string;
+            metrics: components["schemas"]["ConsolidatedMetricsResponse"];
+            organizationsData: components["schemas"]["ConsolidatedOrganizationDataResponse"][];
+        };
+        ConsolidatedEnvelopeResponse: {
+            consolidated: components["schemas"]["ConsolidatedSummaryResponse"];
+        };
+        DashboardComparisonDataResponse: {
+            year: number;
+            periodStart: string;
+            periodEnd: string;
+            metrics: components["schemas"]["ConsolidatedMetricsResponse"];
+        };
+        DashboardComparisonSummaryResponse: {
+            /** Format: uuid */
+            organizationId: string;
+            organizationName: string;
+            currency: string;
+            yearsData: components["schemas"]["DashboardComparisonDataResponse"][];
+        };
+        ComparisonEnvelopeResponse: {
+            comparison: components["schemas"]["DashboardComparisonSummaryResponse"];
+        };
         DashboardAgingResponse: {
             /** Format: uuid */
             organizationId: string;
@@ -4653,6 +4894,46 @@ export interface components {
         };
         AddCollaborationCommentDto: {
             body: string;
+        };
+        CreateCashFlowForecastDto: {
+            title: string;
+            description?: string;
+            type: Record<string, never>;
+            amount: string;
+            expectedDate: string;
+            status?: Record<string, never>;
+            category?: string;
+            recurrence?: string;
+            bankAccountId?: string;
+        };
+        CashFlowForecastResponseDto: {
+            id: string;
+            organizationId: string;
+            title: string;
+            description: string | null;
+            type: Record<string, never>;
+            amount: string;
+            expectedDate: string;
+            status: Record<string, never>;
+            category: string | null;
+            recurrence: string | null;
+            bankAccountId: string | null;
+            createdById: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateCashFlowForecastDto: {
+            title?: string;
+            description?: string;
+            type?: Record<string, never>;
+            amount?: string;
+            expectedDate?: string;
+            status?: Record<string, never>;
+            category?: string;
+            recurrence?: string;
+            bankAccountId?: string;
         };
     };
     responses: never;
@@ -6287,6 +6568,84 @@ export interface operations {
             };
         };
     };
+    SyscohadaKnowledgeController_listDomains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Domaines avec références et extraits sourcés. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SyscohadaKnowledgeController_getDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                domain: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    SyscohadaKnowledgeController_getDomainControls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                domain: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Contrôles métier rattachés à leur citation du Guide. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SyscohadaKnowledgeController_search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     ImportsController_listSessions: {
         parameters: {
             query?: never;
@@ -7226,11 +7585,17 @@ export interface operations {
             };
         };
     };
-    ReportsController_tafire: {
+    ReportsController_balanceSheetDiagnostic: {
         parameters: {
             query: {
-                fromDate: string;
-                toDate: string;
+                /** @description Cumulative balance as at this date (inclusive) */
+                asAtDate: string;
+                /** @description Optional start date of the fiscal year ending at `asAtDate`. When provided, the net result for the period [fiscalYearStartDate, asAtDate] is auto-incorporated into capitaux propres as a synthetic "Résultat de l'exercice" line — the bilan then balances by construction. */
+                fiscalYearStartDate?: string;
+                /** @description Optional prior-period snapshot date for N vs N-1 comparison. */
+                compareAsAtDate?: string;
+                /** @description Optional prior-year start date for the comparison consolidation. */
+                compareFiscalYearStartDate?: string;
             };
             header?: never;
             path: {
@@ -7245,8 +7610,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TafireReportEnvelope"];
+                    "application/json": components["schemas"]["BilanDiagnosticReportEnvelope"];
                 };
+            };
+        };
+    };
+    ReportsController_reportsFromBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FromBalanceBodyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7392,6 +7780,54 @@ export interface operations {
             };
         };
     };
+    ReportsController_marginByAxisPdf: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+                /** @description Type d'axe analytique à grouper (CHANTIER, BU, ACTIVITE, PROJET). */
+                axisType: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_marginByAxisXlsx: {
+        parameters: {
+            query: {
+                fromDate: string;
+                toDate: string;
+                /** @description Type d'axe analytique à grouper (CHANTIER, BU, ACTIVITE, PROJET). */
+                axisType: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ReportsController_analyticAxes: {
         parameters: {
             query?: never;
@@ -7418,7 +7854,10 @@ export interface operations {
             query: {
                 side: "CLIENT" | "FOURNISSEUR";
                 asAtDate: string;
-                /** @description Bornes des buckets en jours, séparées par virgule. Défaut '30,60,90,180'. */
+                /**
+                 * @deprecated
+                 * @description DEPRECATED (D1) — les buckets sont désormais figés sur la nomenclature SYSCOHADA Tome 3 Notes 7/17 (0-30 / 31-60 / 61-90 / >90). Paramètre accepté pour rétro-compat mais ignoré.
+                 */
                 bucketBoundaries?: number[];
             };
             header?: never;
@@ -7436,28 +7875,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AgingBalanceReportEnvelope"];
                 };
-            };
-        };
-    };
-    ReportsController_tafireXlsx: {
-        parameters: {
-            query: {
-                fromDate: string;
-                toDate: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -7510,7 +7927,10 @@ export interface operations {
             query: {
                 side: "CLIENT" | "FOURNISSEUR";
                 asAtDate: string;
-                /** @description Bornes des buckets en jours, séparées par virgule. Défaut '30,60,90,180'. */
+                /**
+                 * @deprecated
+                 * @description DEPRECATED (D1) — les buckets sont désormais figés sur la nomenclature SYSCOHADA Tome 3 Notes 7/17 (0-30 / 31-60 / 61-90 / >90). Paramètre accepté pour rétro-compat mais ignoré.
+                 */
                 bucketBoundaries?: number[];
             };
             header?: never;
@@ -7811,7 +8231,10 @@ export interface operations {
             query: {
                 side: "CLIENT" | "FOURNISSEUR";
                 asAtDate: string;
-                /** @description Bornes des buckets en jours, séparées par virgule. Défaut '30,60,90,180'. */
+                /**
+                 * @deprecated
+                 * @description DEPRECATED (D1) — les buckets sont désormais figés sur la nomenclature SYSCOHADA Tome 3 Notes 7/17 (0-30 / 31-60 / 61-90 / >90). Paramètre accepté pour rétro-compat mais ignoré.
+                 */
                 bucketBoundaries?: number[];
             };
             header?: never;
@@ -7837,28 +8260,6 @@ export interface operations {
                 fromMonth: string;
                 /** @description Dernier mois (inclusive) */
                 toMonth: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ReportsController_tafirePdf: {
-        parameters: {
-            query: {
-                fromDate: string;
-                toDate: string;
             };
             header?: never;
             path: {
@@ -8826,6 +9227,56 @@ export interface operations {
             };
         };
     };
+    DashboardsController_getConsolidated: {
+        parameters: {
+            query: {
+                /** @description List of organization UUIDs to aggregate */
+                organizationIds: string[];
+                /** @description The target year to consolidate */
+                year: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsolidatedEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    DashboardsController_getComparison: {
+        parameters: {
+            query: {
+                /** @description Liste des années à comparer */
+                years: number[];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonEnvelopeResponse"];
+                };
+            };
+        };
+    };
     DashboardsController_getAging: {
         parameters: {
             query: {
@@ -8931,6 +9382,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TopAccountsEnvelopeResponse"];
                 };
+            };
+        };
+    };
+    DashboardsController_getDaySummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9110,6 +9580,123 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    CashFlowController_findAll: {
+        parameters: {
+            query: {
+                status: string;
+            };
+            header?: never;
+            path: {
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlowForecastResponseDto"][];
+                };
+            };
+        };
+    };
+    CashFlowController_createForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCashFlowForecastDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlowForecastResponseDto"];
+                };
+            };
+        };
+    };
+    CashFlowController_updateForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCashFlowForecastDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlowForecastResponseDto"];
+                };
+            };
+        };
+    };
+    CashFlowController_deleteForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CashFlowController_getProjection: {
+        parameters: {
+            query: {
+                daysAhead: string;
+            };
+            header?: never;
+            path: {
+                orgId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
