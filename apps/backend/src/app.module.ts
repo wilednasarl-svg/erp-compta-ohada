@@ -39,6 +39,7 @@ import { EmailModule } from './modules/email/email.module';
 // saisie via REST E2-bis en suivi.
 import { ActuarialCommitmentsModule } from './modules/actuarial-commitments/actuarial-commitments.module';
 import { CashFlowModule } from './modules/cash-flow/cash-flow.module';
+import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohada-knowledge.module';
 
 @Module({
   imports: [
@@ -62,6 +63,10 @@ import { CashFlowModule } from './modules/cash-flow/cash-flow.module';
     AuthModule,
     RbacModule,
     AuditModule,
+    // Socle documentaire SYSCOHADA transversal. Indexe les textes extraits
+    // des Guides d'application partagés dans `.local/sources/` et expose
+    // une source doctrinale commune à tous les modules métier.
+    SyscohadaKnowledgeModule,
     // Module 2 (couche données — services et controllers à venir).
     // Pose les entités + repositories du plan comptable OHADA SYSCOHADA
     // AUDCIF : référentiel global + plans personnalisés par organisation.

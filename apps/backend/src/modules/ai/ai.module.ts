@@ -6,6 +6,7 @@ import { AccountingPeriodRepository } from '../journals/repositories/accounting-
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { SyscohadaKnowledgeModule } from '../syscohada-knowledge/syscohada-knowledge.module';
 import { AiController } from './controllers/ai.controller';
 import { AiAnomalyEntity } from './entities/ai-anomaly.entity';
 import { AiAnomalyRepository } from './repositories/ai-anomaly.repository';
@@ -39,6 +40,7 @@ import { RuleBasedAssistantProvider } from './services/rule-based-assistant-prov
     AuthModule,
     RbacModule,
     AuditModule,
+    SyscohadaKnowledgeModule,
   ],
   controllers: [AiController],
   providers: [

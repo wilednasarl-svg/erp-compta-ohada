@@ -1,6 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
+import type { SyscohadaDomain } from '../../syscohada-knowledge/services/syscohada-knowledge.service';
+import { SyscohadaKnowledgeService } from '../../syscohada-knowledge/services/syscohada-knowledge.service';
 import type { AssistantAnswer, AssistantContext, AssistantProvider } from './assistant-provider';
 
 /**
@@ -22,10 +24,16 @@ import type { AssistantAnswer, AssistantContext, AssistantProvider } from './ass
 export class RuleBasedAssistantProvider implements AssistantProvider {
   public readonly id = 'rule-based-v1';
 
-  constructor(@Inject(DataSource) private readonly dataSource: DataSource) {}
+  constructor(
+    @Inject(DataSource) private readonly dataSource: DataSource,
+    @Optional() private readonly knowledge?: SyscohadaKnowledgeService,
+  ) {}
 
   async ask(question: string, context: AssistantContext): Promise<AssistantAnswer> {
     const normalised = this.normalise(question);
+
+    const doctrineAnswer = await this.trySyscohadaKnowledge(question, normalised);
+    if (doctrineAnswer) return doctrineAnswer;
 
     const accountEvolution = this.matchAccountEvolution(normalised);
     if (accountEvolution) {
@@ -51,6 +59,39 @@ export class RuleBasedAssistantProvider implements AssistantProvider {
     }
 
     return this.unrecognised(question);
+  }
+
+  private async trySyscohadaKnowledge(
+    question: string,
+    normalised: string,
+  ): Promise<AssistantAnswer | null> {
+    if (!this.knowledge) return null;
+    if (!this.isDoctrineQuestion(normalised)) return null;
+    const domain = this.inferDomain(normalised);
+    const answer = await this.knowledge.answerQuestion({ query: question, domain, limit: 3 });
+    if (!answer) return null;
+    return {
+      answer: answer.answer,
+      confidence: 85,
+      matchedIntent: 'syscohada_knowledge',
+      supportingData: { domain, citations: answer.citations },
+    };
+  }
+
+  private isDoctrineQuestion(q: string): boolean {
+    return /\b(syscohada|ohada|guide|doctrine|referentiel|audcif|dsf|bilan|tft|flux|note annexe|immobilisation|amortissement|stock|tva)\b/.test(
+      q,
+    );
+  }
+
+  private inferDomain(q: string): SyscohadaDomain {
+    if (/\b(bilan|resultat|tft|flux|dsf|note|annexe|etat financier)\b/.test(q)) return 'reports';
+    if (/\b(immobilisation|amortissement|cession|depreciation)\b/.test(q)) return 'assets';
+    if (/\b(stock|inventaire|cmp|fifo)\b/.test(q)) return 'inventory';
+    if (/\b(tva|taxe|impot|fiscal)\b/.test(q)) return 'tva';
+    if (/\b(journal|ecriture|lettrage|debit|credit)\b/.test(q)) return 'journals';
+    if (/\b(compte|classe|plan comptable)\b/.test(q)) return 'accounting-plan';
+    return 'ai';
   }
 
   // ─── Intent matchers (publics pour tests) ────────────────────────────

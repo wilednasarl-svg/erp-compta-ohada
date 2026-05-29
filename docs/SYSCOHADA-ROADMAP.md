@@ -110,3 +110,9 @@ Issues `bd` créées dans la wave 1 portent le préfixe `M40-` (Module 40 = SYSC
 
 PDFs sources hébergés dans `.local/sources/` (gitignored).
 Synthèses détaillées par tome dans `.local/synthese/` (gitignored, ~1500 lignes).
+
+## Socle applicatif
+
+Le backend expose désormais un socle transversal `SyscohadaKnowledgeModule`
+qui indexe les textes extraits des PDF (`*.pdf.1-end.txt`) et les rend
+injectables dans les modules métier. Voir `docs/syscohada-knowledge.md`.
