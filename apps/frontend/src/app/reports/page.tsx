@@ -50,7 +50,7 @@ import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 
 import { PeriodFilter } from './_components/period-filter';
-import { usePersistedPeriod } from './_components/period-store';
+import { usePersistedAsAt, usePersistedPeriod } from './_components/period-store';
 import { ReportNav, getReportHint, getReportLabel, type ReportMode } from './_components/report-nav';
 import type {
   AgingBalanceReport,
@@ -336,8 +336,8 @@ function AnnualPackageButton({ orgId }: { readonly orgId: string }) {
  * cela, le bilan reste déséquilibré (différence = résultat net).
  */
 function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
-  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
-  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [asAt, setAsAt] = usePersistedAsAt();
+  const { asAtDate, fiscalYearStartDate } = asAt;
   const [compareAsAtDate, setCompareAsAtDate] = useState<string>(previousYearEndIso());
   const [compareFiscalYearStartDate, setCompareFiscalYearStartDate] = useState<string>(
     previousYearStartIso(),
@@ -431,7 +431,7 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
                   id="bs-fy"
                   type="date"
                   value={fiscalYearStartDate}
-                  onChange={(e) => setFiscalYearStartDate(e.target.value)}
+                  onChange={(e) => setAsAt({ asAtDate, fiscalYearStartDate: e.target.value })}
                   required
                   className="h-9 w-40 font-mono tabular-nums"
                 />
@@ -444,7 +444,7 @@ function BalanceSheetPanel({ orgId }: { readonly orgId: string }) {
                   id="bs-at"
                   type="date"
                   value={asAtDate}
-                  onChange={(e) => setAsAtDate(e.target.value)}
+                  onChange={(e) => setAsAt({ asAtDate: e.target.value, fiscalYearStartDate })}
                   required
                   className="h-9 w-40 font-mono tabular-nums"
                 />
@@ -3549,7 +3549,8 @@ function MultiYearBalanceTable({ report }: { readonly report: MultiYearBalanceRe
 
 function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
   const [side, setSide] = useState<'CLIENT' | 'FOURNISSEUR'>('CLIENT');
-  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
+  const [asAt, setAsAt] = usePersistedAsAt();
+  const { asAtDate } = asAt;
   const [submitted, setSubmitted] = useState<{
     side: 'CLIENT' | 'FOURNISSEUR';
     asAtDate: string;
@@ -3617,7 +3618,7 @@ function AgingBalancePanel({ orgId }: { readonly orgId: string }) {
               id="ag-at"
               type="date"
               value={asAtDate}
-              onChange={(e) => setAsAtDate(e.target.value)}
+              onChange={(e) => setAsAt({ asAtDate: e.target.value, fiscalYearStartDate: asAt.fiscalYearStartDate })}
               required
             />
           </div>
@@ -3980,8 +3981,8 @@ function SummaryCard({ label, value }: { readonly label: string; readonly value:
 // ─── Ratios financiers ─────────────────────────────────────────────────
 
 function FinancialRatiosPanel({ orgId }: { readonly orgId: string }) {
-  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
-  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [asAt, setAsAt] = usePersistedAsAt();
+  const { asAtDate, fiscalYearStartDate } = asAt;
   const [submitted, setSubmitted] = useState<{
     asAtDate: string;
     fiscalYearStartDate: string;
@@ -4037,7 +4038,7 @@ function FinancialRatiosPanel({ orgId }: { readonly orgId: string }) {
               id="fr-fy-start"
               type="date"
               value={fiscalYearStartDate}
-              onChange={(e) => setFiscalYearStartDate(e.target.value)}
+              onChange={(e) => setAsAt({ asAtDate, fiscalYearStartDate: e.target.value })}
               required
             />
           </div>
@@ -4047,7 +4048,7 @@ function FinancialRatiosPanel({ orgId }: { readonly orgId: string }) {
               id="fr-at"
               type="date"
               value={asAtDate}
-              onChange={(e) => setAsAtDate(e.target.value)}
+              onChange={(e) => setAsAt({ asAtDate: e.target.value, fiscalYearStartDate })}
               required
             />
           </div>
@@ -4727,8 +4728,8 @@ function CashFlowTotalRow({
 // ─── Annexe ────────────────────────────────────────────────────────────
 
 function AnnexePanel({ orgId }: { readonly orgId: string }) {
-  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
-  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [asAt, setAsAt] = usePersistedAsAt();
+  const { asAtDate, fiscalYearStartDate } = asAt;
   const [submitted, setSubmitted] = useState<{
     asAtDate: string;
     fiscalYearStartDate: string;
@@ -4782,7 +4783,7 @@ function AnnexePanel({ orgId }: { readonly orgId: string }) {
               id="anx-fy"
               type="date"
               value={fiscalYearStartDate}
-              onChange={(e) => setFiscalYearStartDate(e.target.value)}
+              onChange={(e) => setAsAt({ asAtDate, fiscalYearStartDate: e.target.value })}
               required
             />
           </div>
@@ -4792,7 +4793,7 @@ function AnnexePanel({ orgId }: { readonly orgId: string }) {
               id="anx-at"
               type="date"
               value={asAtDate}
-              onChange={(e) => setAsAtDate(e.target.value)}
+              onChange={(e) => setAsAt({ asAtDate: e.target.value, fiscalYearStartDate })}
               required
             />
           </div>
@@ -6070,8 +6071,8 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
 // ─── Bilan Diagnostic Panel ──────────────────────────────────────────────────
 
 function BilanDiagnosticPanel({ orgId }: { readonly orgId: string }) {
-  const [asAtDate, setAsAtDate] = useState<string>(todayIso());
-  const [fiscalYearStartDate, setFiscalYearStartDate] = useState<string>(yearStartIso());
+  const [asAt, setAsAt] = usePersistedAsAt();
+  const { asAtDate, fiscalYearStartDate } = asAt;
   const [submitted, setSubmitted] = useState<boolean>(false);
 
   const { data, isFetching, error } = useQuery<BilanDiagnosticEnvelope>({
@@ -6120,11 +6121,11 @@ function BilanDiagnosticPanel({ orgId }: { readonly orgId: string }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label>Date du bilan</Label>
-            <Input type="date" value={asAtDate} onChange={e => setAsAtDate(e.target.value)} />
+            <Input type="date" value={asAtDate} onChange={e => setAsAt({ asAtDate: e.target.value, fiscalYearStartDate })} />
           </div>
           <div className="space-y-1.5">
             <Label>Début de l&apos;exercice</Label>
-            <Input type="date" value={fiscalYearStartDate} onChange={e => setFiscalYearStartDate(e.target.value)} />
+            <Input type="date" value={fiscalYearStartDate} onChange={e => setAsAt({ asAtDate, fiscalYearStartDate: e.target.value })} />
           </div>
           <div className="flex items-end">
             <Button

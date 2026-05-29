@@ -47,3 +47,39 @@ export function usePersistedPeriod(): readonly [ReportPeriod, (next: ReportPerio
 
   return [period, setPeriod] as const;
 }
+
+// ─── Période « arrêté » (états à date : Bilan, Ratios, Annexe…) ─────────
+
+/**
+ * Modèle de période des états instantanés : une date d'arrêté + le début
+ * d'exercice (pour le rattachement du résultat). Partagé séparément de la
+ * plage Du/Au — un Bilan arrêté au 31/12 doit reporter cette date sur les
+ * Ratios et l'Annexe, sans interférer avec les balances Du/Au.
+ */
+export interface AsAtPeriod {
+  readonly asAtDate: string;
+  readonly fiscalYearStartDate: string;
+}
+
+let lastAsAt: AsAtPeriod = { asAtDate: todayIso(), fiscalYearStartDate: yearStartIso() };
+
+export const getLastAsAt = (): AsAtPeriod => lastAsAt;
+export const setLastAsAt = (next: AsAtPeriod): void => {
+  lastAsAt = next;
+};
+
+/**
+ * Hook d'état de période « arrêté » persistée. Renvoie `[asAt, setAsAt]` ;
+ * les panneaux destructurent `asAtDate` / `fiscalYearStartDate` et écrivent
+ * via `setAsAt({ ... })`.
+ */
+export function usePersistedAsAt(): readonly [AsAtPeriod, (next: AsAtPeriod) => void] {
+  const [asAt, setAsAtState] = useState<AsAtPeriod>(getLastAsAt);
+
+  const setAsAt = (next: AsAtPeriod): void => {
+    setLastAsAt(next);
+    setAsAtState(next);
+  };
+
+  return [asAt, setAsAt] as const;
+}
