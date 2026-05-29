@@ -20,7 +20,7 @@ export type SyscohadaDomain =
   | 'subsidies'
   | 'actuarial-commitments'
   | 'regularizations'
-  | 'transformations'
+  | 'business-combinations'
   | 'bills-of-exchange'
   | 'multi-currency'
   | 'pledged-assets'
@@ -171,7 +171,7 @@ const DOMAIN_REFERENCES: ReadonlyArray<SyscohadaDomainReference> = [
     ],
   },
   {
-    domain: 'transformations',
+    domain: 'business-combinations',
     tome: 2,
     topic: 'Fusions, apports partiels d’actif, scissions et transformations de sociétés',
     keywords: [

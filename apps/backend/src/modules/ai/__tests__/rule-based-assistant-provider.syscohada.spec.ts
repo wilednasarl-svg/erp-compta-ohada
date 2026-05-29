@@ -64,7 +64,7 @@ describe('RuleBasedAssistantProvider with SYSCOHADA knowledge', () => {
         question: 'Comment comptabiliser un écart de conversion sur devise ?',
         domain: 'multi-currency',
       },
-      { question: 'Comment évaluer les apports d’une fusion ?', domain: 'transformations' },
+      { question: 'Comment évaluer les apports d’une fusion ?', domain: 'business-combinations' },
       { question: 'Où présenter une garantie hypothèque donnée ?', domain: 'pledged-assets' },
       { question: 'Comment constater une charge constatée d’avance ?', domain: 'regularizations' },
     ];

@@ -11,7 +11,7 @@ import { PledgedAssetsSyscohadaGuidanceController } from '../../pledged-assets/c
 import { ProvisionsSyscohadaGuidanceController } from '../../provisions/controllers/provisions-syscohada-guidance.controller';
 import { RegularizationsSyscohadaGuidanceController } from '../../regularizations/controllers/regularizations-syscohada-guidance.controller';
 import { SubsidiesSyscohadaGuidanceController } from '../../subsidies/controllers/subsidies-syscohada-guidance.controller';
-import { TransformationsSyscohadaGuidanceController } from '../../transformations/controllers/transformations-syscohada-guidance.controller';
+import { BusinessCombinationsSyscohadaGuidanceController } from '../controllers/business-combinations-syscohada-guidance.controller';
 import { SyscohadaGuidanceModule } from '../syscohada-guidance.module';
 import type { SyscohadaDomain } from '../services/syscohada-knowledge.service';
 
@@ -33,7 +33,7 @@ describe('SyscohadaGuidanceModule', () => {
       [SubsidiesSyscohadaGuidanceController, 'subsidies'],
       [ActuarialCommitmentsSyscohadaGuidanceController, 'actuarial-commitments'],
       [RegularizationsSyscohadaGuidanceController, 'regularizations'],
-      [TransformationsSyscohadaGuidanceController, 'transformations'],
+      [BusinessCombinationsSyscohadaGuidanceController, 'business-combinations'],
       [BillsOfExchangeSyscohadaGuidanceController, 'bills-of-exchange'],
       [MultiCurrencySyscohadaGuidanceController, 'multi-currency'],
       [PledgedAssetsSyscohadaGuidanceController, 'pledged-assets'],

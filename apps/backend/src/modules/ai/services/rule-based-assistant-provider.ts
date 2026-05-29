@@ -112,7 +112,7 @@ export class RuleBasedAssistantProvider implements AssistantProvider {
     )
       return 'regularizations';
     if (/\b(fusion|scission|apport partiel|absorption|transformation de societe)\b/.test(q))
-      return 'transformations';
+      return 'business-combinations';
     if (
       /\b(effet de commerce|effets de commerce|traite|lettre de change|billet a ordre|escompte|endossement)\b/.test(
         q,

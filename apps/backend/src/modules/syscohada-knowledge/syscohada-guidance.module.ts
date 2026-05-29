@@ -11,8 +11,8 @@ import { PledgedAssetsSyscohadaGuidanceController } from '../pledged-assets/cont
 import { ProvisionsSyscohadaGuidanceController } from '../provisions/controllers/provisions-syscohada-guidance.controller';
 import { RegularizationsSyscohadaGuidanceController } from '../regularizations/controllers/regularizations-syscohada-guidance.controller';
 import { SubsidiesSyscohadaGuidanceController } from '../subsidies/controllers/subsidies-syscohada-guidance.controller';
-import { TransformationsSyscohadaGuidanceController } from '../transformations/controllers/transformations-syscohada-guidance.controller';
 
+import { BusinessCombinationsSyscohadaGuidanceController } from './controllers/business-combinations-syscohada-guidance.controller';
 import { SyscohadaKnowledgeModule } from './syscohada-knowledge.module';
 
 /**
@@ -40,7 +40,7 @@ import { SyscohadaKnowledgeModule } from './syscohada-knowledge.module';
     SubsidiesSyscohadaGuidanceController,
     ActuarialCommitmentsSyscohadaGuidanceController,
     RegularizationsSyscohadaGuidanceController,
-    TransformationsSyscohadaGuidanceController,
+    BusinessCombinationsSyscohadaGuidanceController,
     BillsOfExchangeSyscohadaGuidanceController,
     MultiCurrencySyscohadaGuidanceController,
     PledgedAssetsSyscohadaGuidanceController,

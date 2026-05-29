@@ -375,10 +375,10 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     evidenceQuery: 'charges payer produits recevoir constates cloture facture exercice',
   },
 
-  // ── Fusions, apports et transformations ───────────────────────────────────
+  // ── Fusions, apports et transformations de sociétés ───────────────────────
   {
-    id: 'transformations-evaluation-apports',
-    domain: 'transformations',
+    id: 'business-combinations-evaluation-apports',
+    domain: 'business-combinations',
     label: 'Évaluation des apports de fusion',
     description:
       'Les apports d’une fusion, scission ou apport partiel d’actif sont évalués (valeur réelle ou comptable selon le sens de l’opération) et la parité d’échange est justifiée.',

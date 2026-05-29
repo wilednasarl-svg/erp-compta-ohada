@@ -130,7 +130,7 @@ describe('SyscohadaKnowledgeService', () => {
       'subsidies',
       'actuarial-commitments',
       'regularizations',
-      'transformations',
+      'business-combinations',
       'bills-of-exchange',
       'multi-currency',
       'pledged-assets',
