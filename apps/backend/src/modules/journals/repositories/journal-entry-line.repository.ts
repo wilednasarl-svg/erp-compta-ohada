@@ -179,6 +179,48 @@ export class JournalEntryLineRepository {
       .getMany();
   }
 
+  /**
+   * Ventilation TVA : agrège les lignes portant un `tax_code`, sur les
+   * écritures `validated` dont la date tombe dans [from, to], regroupées
+   * par code taxe. Renvoie des cumuls bruts (string DECIMAL côté PG via
+   * SUM) que le service convertit/format. `getRawMany` car c'est une
+   * agrégation, pas une hydratation d'entité.
+   */
+  async aggregateByTaxCode(
+    organizationId: TenantId | string,
+    range: { from: string; to: string },
+  ): Promise<
+    Array<{ taxCode: string; totalDebit: string; totalCredit: string; lineCount: number }>
+  > {
+    assertTenantId(organizationId);
+    const rows = await this.repo
+      .createQueryBuilder('l')
+      .innerJoin(JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
+      .select('l.tax_code', 'taxCode')
+      .addSelect('COALESCE(SUM(l.debit), 0)', 'totalDebit')
+      .addSelect('COALESCE(SUM(l.credit), 0)', 'totalCredit')
+      .addSelect('COUNT(*)', 'lineCount')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere('l.tax_code IS NOT NULL')
+      .andWhere("e.status = 'validated'")
+      .andWhere('e.entry_date >= :from', { from: range.from })
+      .andWhere('e.entry_date <= :to', { to: range.to })
+      .groupBy('l.tax_code')
+      .orderBy('l.tax_code', 'ASC')
+      .getRawMany<{
+        taxCode: string;
+        totalDebit: string;
+        totalCredit: string;
+        lineCount: string;
+      }>();
+    return rows.map((r) => ({
+      taxCode: r.taxCode,
+      totalDebit: r.totalDebit,
+      totalCredit: r.totalCredit,
+      lineCount: Number(r.lineCount),
+    }));
+  }
+
   async attachLettering(
     lineIds: readonly string[],
     letteringId: string,

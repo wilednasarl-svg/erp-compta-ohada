@@ -9,6 +9,7 @@ import { WorkflowsModule } from '../workflows/workflows.module';
 import { OrganizationAccountEntity } from '../accounting-plan/entities/organization-account.entity';
 import { OrganizationAccountRepository } from '../accounting-plan/repositories/organization-account.repository';
 import { AgingController } from './controllers/aging.controller';
+import { TaxBreakdownController } from './controllers/tax-breakdown.controller';
 import { EntriesController } from './controllers/entries.controller';
 import { EntryWorkflowController } from './controllers/entry-workflow.controller';
 import { JournalsController } from './controllers/journals.controller';
@@ -34,6 +35,7 @@ import { EntryNotificationService } from './services/entry-notification.service'
 import { EntryPdfGenerator } from './services/entry-pdf-generator';
 import { EntryWorkflowService } from './services/entry-workflow.service';
 import { AgingService } from './services/aging.service';
+import { TaxBreakdownService } from './services/tax-breakdown.service';
 import { JournalsService } from './services/journals.service';
 import { LetteringService } from './services/lettering.service';
 import { PeriodsService } from './services/periods.service';
@@ -91,6 +93,7 @@ import { PeriodsService } from './services/periods.service';
     EntriesController,
     LetteringsController,
     AgingController,
+    TaxBreakdownController,
     EntryWorkflowController,
     SignatureVerifyController,
   ],
@@ -107,6 +110,7 @@ import { PeriodsService } from './services/periods.service';
     EntriesService,
     LetteringService,
     AgingService,
+    TaxBreakdownService,
     EntryWorkflowService,
     EntryPdfGenerator,
     EntryNotificationService,

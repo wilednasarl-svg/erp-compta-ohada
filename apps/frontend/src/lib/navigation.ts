@@ -99,6 +99,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat, TFT, SIG, Annexe' },
       { href: '/reports/console', label: 'Console des états', icon: SlidersHorizontal, hint: 'Parcours guidé : période → générer (14 états)' },
       { href: '/tva', label: 'TVA', icon: Percent, hint: 'Déclarations UEMOA / DGI' },
+      { href: '/tax-breakdown', label: 'Ventilation TVA', icon: Percent, hint: 'Cumuls par code taxe' },
       { href: '/inventory', label: 'Inventaire', icon: Warehouse, hint: 'Stocks et inventaire physique' },
       { href: '/assets', label: 'Immobilisations', icon: Package, hint: 'Amortissements et dotations' },
     ],
