@@ -19,6 +19,8 @@ import { AgingConsole } from '../_console/aging-console';
 import { AnnexeConsole } from '../_console/annexe-console';
 import { BalanceConsole } from '../_console/balance-console';
 import { BilanConsole } from '../_console/bilan-console';
+import { BilanDiagnosticConsole } from '../_console/bilan-diagnostic-console';
+import { CashTrendConsole } from '../_console/cash-trend-console';
 import { ComparativeConsole } from '../_console/comparative-console';
 import { CrConsole } from '../_console/cr-console';
 import { GlConsole } from '../_console/gl-console';
@@ -40,7 +42,9 @@ type ConsoleReport =
   | 'multi-year-balance'
   | 'margin-by-axis'
   | 'general-ledger'
-  | 'aging-balance';
+  | 'aging-balance'
+  | 'cash-trend'
+  | 'bilan-diagnostic';
 
 const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: string }> = [
   { key: 'balance-sheet', label: 'Bilan' },
@@ -55,6 +59,8 @@ const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: stri
   { key: 'margin-by-axis', label: 'Marge analytique' },
   { key: 'general-ledger', label: 'Grand livre' },
   { key: 'aging-balance', label: 'Balance âgée' },
+  { key: 'cash-trend', label: 'Tendance trésorerie' },
+  { key: 'bilan-diagnostic', label: 'Bilan diagnostic' },
 ];
 
 export default function ReportConsolePage() {
@@ -122,6 +128,10 @@ export default function ReportConsolePage() {
           <GlConsole orgId={orgId} />
         ) : active === 'aging-balance' ? (
           <AgingConsole orgId={orgId} />
+        ) : active === 'cash-trend' ? (
+          <CashTrendConsole orgId={orgId} />
+        ) : active === 'bilan-diagnostic' ? (
+          <BilanDiagnosticConsole orgId={orgId} />
         ) : (
           <BalanceConsole orgId={orgId} />
         )}

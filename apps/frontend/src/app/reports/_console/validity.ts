@@ -9,6 +9,7 @@
 
 import type {
   BalanceSheetReport,
+  BilanDiagnosticReport,
   CashFlowReport,
   ComparativeBalanceReport,
   ProfitLossReport,
@@ -74,6 +75,17 @@ export const validityFromCashFlow = (report: CashFlowReport): PeriodValidity => 
   return {
     imbalance: incoherence < BALANCE_EPSILON ? 0 : Math.round(incoherence),
     lastMovementDate: report.toDate,
+    computedAt: new Date().toISOString(),
+    periodClosed: false,
+  };
+};
+
+/** Diagnostic du bilan : déséquilibre du journal exposé directement par le rapport. */
+export const validityFromBilanDiagnostic = (report: BilanDiagnosticReport): PeriodValidity => {
+  const imbalance = Math.abs(Number(report.journal.imbalance));
+  return {
+    imbalance: imbalance < BALANCE_EPSILON ? 0 : Math.round(imbalance),
+    lastMovementDate: report.asAtDate,
     computedAt: new Date().toISOString(),
     periodClosed: false,
   };
