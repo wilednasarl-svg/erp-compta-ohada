@@ -1037,6 +1037,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/leases/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Crédit-bail / location-acquisition (Tome 2). */
+        get: operations["LeasesSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provisions/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Provisions pour risques et charges (Tome 2). */
+        get: operations["ProvisionsSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/impairments/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Dépréciations / pertes de valeur (Tome 1). */
+        get: operations["ImpairmentsSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subsidies/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Subventions (Tome 2). */
+        get: operations["SubsidiesSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/actuarial-commitments/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Engagements de retraite et avantages du personnel (Tome 2). */
+        get: operations["ActuarialCommitmentsSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/regularizations/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Régularisations / cut-off (Tome 1). */
+        get: operations["RegularizationsSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/transformations/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Fusions, apports et transformations (Tome 2). */
+        get: operations["TransformationsSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bills-of-exchange/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Effets de commerce (Tome 1). */
+        get: operations["BillsOfExchangeSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/multi-currency/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Opérations en devises (Tome 2). */
+        get: operations["MultiCurrencySyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pledged-assets/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Garanties et engagements (Tome 2). */
+        get: operations["PledgedAssetsSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cash-flow/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Tableau des flux de trésorerie (Tome 3). */
+        get: operations["CashFlowSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bank-reconciliation/syscohada-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Références et contrôles SYSCOHADA du module Rapprochement bancaire (Tome 1). */
+        get: operations["BankReconciliationSyscohadaGuidanceController_getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/imports/sessions": {
         parameters: {
             query?: never;
@@ -6643,6 +6847,222 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    LeasesSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProvisionsSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ImpairmentsSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SubsidiesSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ActuarialCommitmentsSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RegularizationsSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TransformationsSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BillsOfExchangeSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MultiCurrencySyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PledgedAssetsSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CashFlowSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BankReconciliationSyscohadaGuidanceController_getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Guidance doctrinale sourcée (références + contrôles cités). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
