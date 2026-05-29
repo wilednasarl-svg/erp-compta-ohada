@@ -277,21 +277,32 @@ describe('ReportsController.annualPackage', () => {
 
 describe('ReportsController.cashTrend + financialRatios', () => {
   it.each([
-    ['cashTrend', 'getCashTrend', () => Object.assign(new CashTrendQueryDto(), { fromMonth: '2026-01', toMonth: '2026-12' })],
+    [
+      'cashTrend',
+      'getCashTrend',
+      () => Object.assign(new CashTrendQueryDto(), { fromMonth: '2026-01', toMonth: '2026-12' }),
+    ],
     [
       'financialRatios',
       'getFinancialRatios',
-      () => Object.assign(new FinancialRatiosQueryDto(), { asAtDate: '2026-12-31', fiscalYearStartDate: '2026-01-01' }),
+      () =>
+        Object.assign(new FinancialRatiosQueryDto(), {
+          asAtDate: '2026-12-31',
+          fiscalYearStartDate: '2026-01-01',
+        }),
     ],
-  ])('controller.%s calls reports.%s and wraps result', async (method, serviceMethod, queryBuilder) => {
-    const h = buildHarness();
-    (h.reports as Record<string, jest.Mock>)[serviceMethod].mockResolvedValue({ stub: true });
-    const q = queryBuilder();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (h.controller as any)[method](ORG_ID, q, ORG);
-    expect((h.reports as Record<string, jest.Mock>)[serviceMethod]).toHaveBeenCalled();
-    expect(result).toEqual({ report: { stub: true } });
-  });
+  ])(
+    'controller.%s calls reports.%s and wraps result',
+    async (method, serviceMethod, queryBuilder) => {
+      const h = buildHarness();
+      (h.reports as Record<string, jest.Mock>)[serviceMethod].mockResolvedValue({ stub: true });
+      const q = queryBuilder();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (h.controller as any)[method](ORG_ID, q, ORG);
+      expect((h.reports as Record<string, jest.Mock>)[serviceMethod]).toHaveBeenCalled();
+      expect(result).toEqual({ report: { stub: true } });
+    },
+  );
 });
 
 describe('ReportsController.tft — B4 (delegates to CashFlowService)', () => {

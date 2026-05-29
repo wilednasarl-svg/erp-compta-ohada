@@ -25,10 +25,10 @@ const JOURNAL_ENTRY_SOURCE_TYPES: ReadonlyArray<JournalEntrySourceType> = [
  * de `JournalEntryEntity` (sans les relations FK).
  */
 export class JournalEntryListItemResponse {
-  @ApiProperty({ description: 'UUID de l\'écriture', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'écriture", format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ description: 'UUID de l\'organisation', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'organisation", format: 'uuid' })
   organizationId!: string;
 
   @ApiProperty({ description: 'UUID du journal', format: 'uuid' })
@@ -38,7 +38,7 @@ export class JournalEntryListItemResponse {
   periodId!: string;
 
   @ApiProperty({
-    description: 'Numéro de l\'écriture dans le journal (séquence par journal/org)',
+    description: "Numéro de l'écriture dans le journal (séquence par journal/org)",
     type: Number,
   })
   entryNumber!: number;
@@ -50,7 +50,7 @@ export class JournalEntryListItemResponse {
   })
   entryDate!: string;
 
-  @ApiProperty({ description: 'Libellé de l\'écriture', type: String })
+  @ApiProperty({ description: "Libellé de l'écriture", type: String })
   description!: string;
 
   @ApiProperty({
@@ -60,17 +60,17 @@ export class JournalEntryListItemResponse {
   })
   reference!: string | null;
 
-  @ApiProperty({ description: 'Statut de l\'écriture', enum: JOURNAL_ENTRY_STATUSES })
+  @ApiProperty({ description: "Statut de l'écriture", enum: JOURNAL_ENTRY_STATUSES })
   status!: JournalEntryStatus;
 
   @ApiProperty({
-    description: 'Origine de l\'écriture',
+    description: "Origine de l'écriture",
     enum: JOURNAL_ENTRY_SOURCE_TYPES,
   })
   sourceType!: JournalEntrySourceType;
 
   @ApiProperty({
-    description: 'UUID de la session d\'import (si sourceType=import)',
+    description: "UUID de la session d'import (si sourceType=import)",
     nullable: true,
     type: String,
     format: 'uuid',
@@ -78,7 +78,7 @@ export class JournalEntryListItemResponse {
   sourceImportSessionId!: string | null;
 
   @ApiProperty({
-    description: 'UUID de l\'écriture annulée (si contre-passation)',
+    description: "UUID de l'écriture annulée (si contre-passation)",
     nullable: true,
     type: String,
     format: 'uuid',
@@ -110,7 +110,7 @@ export class JournalEntryListItemResponse {
   validatedAt!: Date | null;
 
   @ApiProperty({
-    description: 'Date d\'annulation',
+    description: "Date d'annulation",
     nullable: true,
     type: String,
     format: 'date-time',
@@ -118,7 +118,7 @@ export class JournalEntryListItemResponse {
   cancelledAt!: Date | null;
 
   @ApiProperty({
-    description: 'UUID de l\'annulateur',
+    description: "UUID de l'annulateur",
     nullable: true,
     type: String,
     format: 'uuid',
@@ -126,7 +126,7 @@ export class JournalEntryListItemResponse {
   cancelledById!: string | null;
 
   @ApiProperty({
-    description: 'Motif d\'annulation',
+    description: "Motif d'annulation",
     nullable: true,
     type: String,
   })
@@ -145,10 +145,10 @@ export class JournalEntryListItemResponse {
  * Forme JSON alignée sur `EntryView` (cf. EntriesService.buildView).
  */
 export class JournalEntryDetailResponse {
-  @ApiProperty({ description: 'UUID de l\'écriture', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'écriture", format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ description: 'UUID de l\'organisation', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'organisation", format: 'uuid' })
   organizationId!: string;
 
   @ApiProperty({ description: 'Code court du journal (AC, VT, BQ, OD)', type: String })
@@ -157,7 +157,7 @@ export class JournalEntryDetailResponse {
   @ApiProperty({ description: 'UUID de la période comptable', format: 'uuid' })
   periodId!: string;
 
-  @ApiProperty({ description: 'Numéro de l\'écriture', type: Number })
+  @ApiProperty({ description: "Numéro de l'écriture", type: Number })
   entryNumber!: number;
 
   @ApiProperty({ description: 'Date comptable (YYYY-MM-DD)', type: String })
@@ -187,7 +187,7 @@ export class JournalEntryDetailResponse {
   validatedAt!: Date | null;
 
   @ApiProperty({
-    description: 'Date d\'annulation',
+    description: "Date d'annulation",
     nullable: true,
     type: String,
     format: 'date-time',
@@ -195,7 +195,7 @@ export class JournalEntryDetailResponse {
   cancelledAt!: Date | null;
 
   @ApiProperty({
-    description: 'Lignes débit/crédit de l\'écriture',
+    description: "Lignes débit/crédit de l'écriture",
     type: () => [JournalEntryLineResponse],
   })
   lines!: JournalEntryLineResponse[];

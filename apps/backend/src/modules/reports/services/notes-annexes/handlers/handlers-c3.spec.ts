@@ -72,8 +72,18 @@ function depsWithBalances(
 describe('Note 3E — Réévaluations', () => {
   it('renvoie une ligne par sous-compte 106 / 152 avec un TOTAL', async () => {
     const deps = depsWithBalances([
-      { accountCode: '1062', accountLabel: 'Écart de réévaluation libre', totalDebit: '0.00', totalCredit: '50000.00' },
-      { accountCode: '1521', accountLabel: 'Provision réglementée', totalDebit: '0.00', totalCredit: '12000.00' },
+      {
+        accountCode: '1062',
+        accountLabel: 'Écart de réévaluation libre',
+        totalDebit: '0.00',
+        totalCredit: '50000.00',
+      },
+      {
+        accountCode: '1521',
+        accountLabel: 'Provision réglementée',
+        totalDebit: '0.00',
+        totalCredit: '12000.00',
+      },
       { accountCode: '601', accountLabel: 'Achats', totalDebit: '7000.00', totalCredit: '0.00' },
     ]);
     const r = await handleN3eReevaluations(CTX, deps);
@@ -93,8 +103,18 @@ describe('Note 3E — Réévaluations', () => {
 describe('Note 3F — Charges immobilisées', () => {
   it('agrège les soldes 201/202/203/206/208 par catégorie', async () => {
     const deps = depsWithBalances([
-      { accountCode: '201', accountLabel: "Frais d'établissement", totalDebit: '10000.00', totalCredit: '0.00' },
-      { accountCode: '2031', accountLabel: 'Frais R&D', totalDebit: '5000.00', totalCredit: '0.00' },
+      {
+        accountCode: '201',
+        accountLabel: "Frais d'établissement",
+        totalDebit: '10000.00',
+        totalCredit: '0.00',
+      },
+      {
+        accountCode: '2031',
+        accountLabel: 'Frais R&D',
+        totalDebit: '5000.00',
+        totalCredit: '0.00',
+      },
     ]);
     const r = await handleN3fChargesImmobilisees(CTX, deps);
     expect(r.applicable).toBe(true);
@@ -107,9 +127,24 @@ describe('Note 3F — Charges immobilisées', () => {
 describe('Note 15B — Autres fonds propres', () => {
   it('agrège 104/105/108/109/17 sans inclure les comptes 11/12/13', async () => {
     const deps = depsWithBalances([
-      { accountCode: '1041', accountLabel: 'Primes émission', totalDebit: '0.00', totalCredit: '30000.00' },
-      { accountCode: '17', accountLabel: 'Dettes assimilées', totalDebit: '0.00', totalCredit: '8000.00' },
-      { accountCode: '111', accountLabel: 'Réserve légale', totalDebit: '0.00', totalCredit: '99999.00' }, // ignored
+      {
+        accountCode: '1041',
+        accountLabel: 'Primes émission',
+        totalDebit: '0.00',
+        totalCredit: '30000.00',
+      },
+      {
+        accountCode: '17',
+        accountLabel: 'Dettes assimilées',
+        totalDebit: '0.00',
+        totalCredit: '8000.00',
+      },
+      {
+        accountCode: '111',
+        accountLabel: 'Réserve légale',
+        totalDebit: '0.00',
+        totalCredit: '99999.00',
+      }, // ignored
     ]);
     const r = await handleN15bAutresFondsPropres(CTX, deps);
     expect(r.applicable).toBe(true);
@@ -123,7 +158,12 @@ describe('Note 16B — Engagements retraite', () => {
     const withProv = await handleN16bEngagementsRetraite(
       CTX,
       depsWithBalances([
-        { accountCode: '1962', accountLabel: 'Provision IFC', totalDebit: '0.00', totalCredit: '45000.00' },
+        {
+          accountCode: '1962',
+          accountLabel: 'Provision IFC',
+          totalDebit: '0.00',
+          totalCredit: '45000.00',
+        },
       ]),
     );
     expect(withProv.applicable).toBe(true);

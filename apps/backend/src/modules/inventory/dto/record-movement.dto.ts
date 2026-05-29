@@ -33,7 +33,7 @@ export class RecordMovementDto {
   qty!: string;
 
   @ApiPropertyOptional({
-    description: 'Prix unitaire d\'entrée (requis si purchase ou adjustment positif).',
+    description: "Prix unitaire d'entrée (requis si purchase ou adjustment positif).",
     example: '5000.00',
   })
   @IsOptional()

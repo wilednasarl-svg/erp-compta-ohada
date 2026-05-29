@@ -66,11 +66,7 @@ export class InventoryItemsService {
     // pattern as Module 12 (AssetsService.resolveAccountCode) — turning
     // a cross-tenant ID into a NotFound, never a leak.
     await this.assertAccountInTenant(input.stockAccountId, organizationId, 'stockAccountId');
-    await this.assertAccountInTenant(
-      input.purchaseAccountId,
-      organizationId,
-      'purchaseAccountId',
-    );
+    await this.assertAccountInTenant(input.purchaseAccountId, organizationId, 'purchaseAccountId');
     if (input.saleAccountId) {
       await this.assertAccountInTenant(input.saleAccountId, organizationId, 'saleAccountId');
     }

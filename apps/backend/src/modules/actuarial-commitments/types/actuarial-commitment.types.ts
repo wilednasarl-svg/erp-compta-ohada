@@ -17,7 +17,7 @@ export type ActuarialCommitmentType =
 export type ActuarialCommitmentStatus = 'active' | 'expired' | 'cancelled';
 
 /** Compte SYSCOHADA pour la partie déjà provisionnée. */
-export const ACTUARIAL_PROVISION_ACCOUNT = '196' as const;
+export const ACTUARIAL_PROVISION_ACCOUNT = '196';
 
 /**
  * Snapshot consommé par le handler N16B (decoupling : on n'importe pas

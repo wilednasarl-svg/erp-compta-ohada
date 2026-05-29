@@ -65,9 +65,7 @@ export class InventoryImpairmentsRepository {
     limit = 100,
   ): Promise<InventoryImpairmentEntity[]> {
     assertTenantId(organizationId);
-    const where = inventoryItemId
-      ? { organizationId, inventoryItemId }
-      : { organizationId };
+    const where = inventoryItemId ? { organizationId, inventoryItemId } : { organizationId };
     return this.repo.find({
       where,
       order: { testDate: 'DESC', createdAt: 'DESC' },

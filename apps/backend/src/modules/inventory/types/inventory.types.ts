@@ -27,12 +27,12 @@
 
 /** Famille de stock SYSCOHADA — détermine le compte racine. */
 export type StockFamily =
-  | 'marchandises'   // 31x — revente en l'état
-  | 'matieres'       // 32x — matières premières
-  | 'fournitures'    // 33x — autres approvisionnements
-  | 'en_cours'       // 34x/35x — produits/services en cours
+  | 'marchandises' // 31x — revente en l'état
+  | 'matieres' // 32x — matières premières
+  | 'fournitures' // 33x — autres approvisionnements
+  | 'en_cours' // 34x/35x — produits/services en cours
   | 'produits_finis' // 36x — fabriqués prêts à vendre
-  | 'en_route';      // 37x — en transit non encore réceptionné
+  | 'en_route'; // 37x — en transit non encore réceptionné
 
 export const STOCK_FAMILIES: ReadonlyArray<StockFamily> = [
   'marchandises',

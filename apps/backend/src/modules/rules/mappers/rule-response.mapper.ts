@@ -2,12 +2,12 @@ import type { RuleExecutionEntity } from '../entities/rule-execution.entity';
 import type { RuleEntity } from '../entities/rule.entity';
 import type { RuleExecutionResult } from '../types/rule.types';
 import {
-  ListRuleExecutionsResponse,
-  ListRulesResponse,
-  RuleEnvelopeResponse,
-  RuleExecutionEntityResponse,
-  RuleExecutionResultResponse,
-  RuleResponse,
+  type ListRuleExecutionsResponse,
+  type ListRulesResponse,
+  type RuleEnvelopeResponse,
+  type RuleExecutionEntityResponse,
+  type RuleExecutionResultResponse,
+  type RuleResponse,
 } from '../dto/responses';
 
 export function toRuleResponse(entity: RuleEntity): RuleResponse {
@@ -52,9 +52,7 @@ export function toRuleExecutionResponse(entity: RuleExecutionEntity): RuleExecut
   };
 }
 
-export function toListRuleExecutions(
-  entities: RuleExecutionEntity[],
-): ListRuleExecutionsResponse {
+export function toListRuleExecutions(entities: RuleExecutionEntity[]): ListRuleExecutionsResponse {
   return { executions: entities.map(toRuleExecutionResponse) };
 }
 

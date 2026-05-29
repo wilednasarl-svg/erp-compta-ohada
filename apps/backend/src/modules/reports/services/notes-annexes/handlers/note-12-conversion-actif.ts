@@ -9,8 +9,16 @@ import { computeAccountBreakdown, type BreakdownCategory } from './_account-brea
 import type { NoteHandler } from '../types';
 
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
-  { key: 'EC_ACTIF_CREANCES', label: 'Écarts de conversion-actif sur créances (4781)', prefixes: ['4781'] },
-  { key: 'EC_ACTIF_DETTES', label: 'Écarts de conversion-actif sur dettes (4782)', prefixes: ['4782'] },
+  {
+    key: 'EC_ACTIF_CREANCES',
+    label: 'Écarts de conversion-actif sur créances (4781)',
+    prefixes: ['4781'],
+  },
+  {
+    key: 'EC_ACTIF_DETTES',
+    label: 'Écarts de conversion-actif sur dettes (4782)',
+    prefixes: ['4782'],
+  },
 ];
 
 export const handleN12ConversionActif: NoteHandler = (ctx, deps) =>

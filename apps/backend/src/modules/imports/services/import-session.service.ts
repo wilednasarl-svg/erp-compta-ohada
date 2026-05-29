@@ -283,7 +283,7 @@ export class ImportSessionService {
       }
       // Merge into the existing JSONB: keep header overrides, replace
       // only the `__documentType` sentinel (or drop it on null).
-      const existing = (session.mappingOverride as Record<string, string> | null) ?? {};
+      const existing = session.mappingOverride ?? {};
       const merged: Record<string, string> = { ...existing };
       if (patch.documentType === null) {
         delete merged[DOCUMENT_TYPE_OVERRIDE_KEY];
@@ -300,8 +300,7 @@ export class ImportSessionService {
     }
 
     if (labelTouched) {
-      const trimmed =
-        patch.label === null || patch.label === undefined ? null : patch.label.trim();
+      const trimmed = patch.label === null || patch.label === undefined ? null : patch.label.trim();
       const normalized = trimmed === '' ? null : trimmed;
       await this.sessions.updateLabel(sessionId, organizationId, normalized);
     }
@@ -682,7 +681,8 @@ export class ImportSessionService {
     // Extraire le documentType du JSONB (clé sentinelle) et purifier
     // les overrides pour ne laisser que des mappings header → target.
     const rawOverride = (session.mappingOverride as Record<string, string>) ?? {};
-    const documentType = (rawOverride[DOCUMENT_TYPE_OVERRIDE_KEY] as DocumentType | undefined) ?? null;
+    const documentType =
+      (rawOverride[DOCUMENT_TYPE_OVERRIDE_KEY] as DocumentType | undefined) ?? null;
     const headerOverrides: Record<string, TargetField> = {};
     for (const [k, v] of Object.entries(rawOverride)) {
       if (k === DOCUMENT_TYPE_OVERRIDE_KEY) continue;
@@ -718,8 +718,7 @@ export class ImportSessionService {
       documentType === 'trial_balance' && this.referenceAccounts !== undefined
         ? await this.loadAllReferenceCodes()
         : undefined;
-    const chart =
-      allReferenceCodes !== undefined ? { ...baseChart, allReferenceCodes } : baseChart;
+    const chart = allReferenceCodes !== undefined ? { ...baseChart, allReferenceCodes } : baseChart;
 
     const stagingRows = await this.stagingEntries.listBySession(sessionId, organizationId, {
       limit: options.limit ?? 100,
@@ -744,9 +743,7 @@ export class ImportSessionService {
     // et que la structure du mapping ressemble fortement à une balance,
     // on propose `trial_balance` au frontend (toast non-bloquant).
     const suggestedDocumentType =
-      documentType === null
-        ? detectSuggestedDocumentType(proposal.headerToTarget)
-        : null;
+      documentType === null ? detectSuggestedDocumentType(proposal.headerToTarget) : null;
 
     // Fix projet-ferme-7kn: persist mapped values + validation errors
     // back to the staging rows so that SQL-level `countBySession` (which
@@ -1473,7 +1470,9 @@ export class ImportSessionService {
     // augmentés (les nouveaux auto-créés sont par construction POSTING
     // + actifs, donc on peut les fusionner sans recharger).
     const postingCodes = new Set<string>(
-      initialOrgAccounts.filter((a) => a.accountType === 'POSTING' && a.isActive).map((a) => a.code),
+      initialOrgAccounts
+        .filter((a) => a.accountType === 'POSTING' && a.isActive)
+        .map((a) => a.code),
     );
     for (const code of augmentedOrgCodes) {
       postingCodes.add(code);
@@ -1540,8 +1539,7 @@ export class ImportSessionService {
     // Préserver le `__documentType` éventuellement présent dans l'override
     // existant — un update de mapping côté UI ne doit pas effacer la
     // nature du document choisie à la création.
-    const existingDocType =
-      session.mappingOverride?.[DOCUMENT_TYPE_OVERRIDE_KEY] ?? null;
+    const existingDocType = session.mappingOverride?.[DOCUMENT_TYPE_OVERRIDE_KEY] ?? null;
     const merged: Record<string, string> = { ...mappingOverride };
     if (existingDocType !== null && merged[DOCUMENT_TYPE_OVERRIDE_KEY] === undefined) {
       merged[DOCUMENT_TYPE_OVERRIDE_KEY] = existingDocType;

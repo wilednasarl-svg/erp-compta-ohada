@@ -9,10 +9,26 @@ import { computeAccountBreakdown, type BreakdownCategory } from './_account-brea
 import type { NoteHandler } from '../types';
 
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
-  { key: 'DOT_AMORT', label: "Dotations aux amortissements d'exploitation (681)", prefixes: ['681'] },
-  { key: 'DOT_PROV_EXPL', label: "Dotations aux provisions d'exploitation (691)", prefixes: ['691'] },
-  { key: 'DOT_DEPRECIATIONS_EXPL', label: "Dotations aux dépréciations d'exploitation (659)", prefixes: ['659'] },
-  { key: 'DOT_AMORT_FIN', label: 'Dotations aux amortissements financiers (687)', prefixes: ['687'] },
+  {
+    key: 'DOT_AMORT',
+    label: "Dotations aux amortissements d'exploitation (681)",
+    prefixes: ['681'],
+  },
+  {
+    key: 'DOT_PROV_EXPL',
+    label: "Dotations aux provisions d'exploitation (691)",
+    prefixes: ['691'],
+  },
+  {
+    key: 'DOT_DEPRECIATIONS_EXPL',
+    label: "Dotations aux dépréciations d'exploitation (659)",
+    prefixes: ['659'],
+  },
+  {
+    key: 'DOT_AMORT_FIN',
+    label: 'Dotations aux amortissements financiers (687)',
+    prefixes: ['687'],
+  },
   { key: 'DOT_PROV_FIN', label: 'Dotations aux provisions financières (697)', prefixes: ['697'] },
   { key: 'DOT_HAO', label: 'Dotations HAO (854, 853)', prefixes: ['853', '854'] },
 ];

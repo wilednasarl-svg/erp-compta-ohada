@@ -5,10 +5,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { type TenantId } from '../../../common/persistence/tenant-scope';
 import { AccountingPeriodRepository } from '../../journals/repositories/accounting-period.repository';
 import { DashboardsRepository } from '../repositories/dashboards.repository';
-import type {
-  AccountClassBreakdown,
-  DashboardSummary,
-} from '../types/dashboard-types';
+import type { AccountClassBreakdown, DashboardSummary } from '../types/dashboard-types';
 
 /**
  * `DashboardSummaryService` — agrège les KPIs d'accueil pour un
@@ -59,10 +56,7 @@ export class DashboardSummaryService {
     private readonly periodsRepo: AccountingPeriodRepository,
   ) {}
 
-  async getSummary(
-    organizationId: TenantId,
-    exerciseId: string,
-  ): Promise<DashboardSummary> {
+  async getSummary(organizationId: TenantId, exerciseId: string): Promise<DashboardSummary> {
     const period = await this.periodsRepo.findById(exerciseId, organizationId);
     if (period === null || period.parentId !== null) {
       // On exige un exercice racine (annuel). Une sous-période
@@ -109,9 +103,7 @@ export class DashboardSummaryService {
     const revenueRow = classMap.get(7);
     const expensesRow = classMap.get(6);
     const revenueYtd = revenueRow ? sub(revenueRow.totalCredit, revenueRow.totalDebit) : '0.00';
-    const expensesYtd = expensesRow
-      ? sub(expensesRow.totalDebit, expensesRow.totalCredit)
-      : '0.00';
+    const expensesYtd = expensesRow ? sub(expensesRow.totalDebit, expensesRow.totalCredit) : '0.00';
     const netResultYtd = sub(revenueYtd, expensesYtd);
 
     // 3. Ratios — null si dénominateur = 0 (signal au client).
@@ -119,8 +111,7 @@ export class DashboardSummaryService {
     const payablesNum = Number(payables);
     const grossMarginRatio =
       revenueNum > 0 ? round4((revenueNum - Number(expensesYtd)) / revenueNum) : null;
-    const liquidityRatio =
-      payablesNum > 0 ? round4(Number(cashBalance) / payablesNum) : null;
+    const liquidityRatio = payablesNum > 0 ? round4(Number(cashBalance) / payablesNum) : null;
 
     // 4. Breakdown par classe pour drill-down ultérieur côté UI.
     const accountClassBreakdown: AccountClassBreakdown[] = classRows

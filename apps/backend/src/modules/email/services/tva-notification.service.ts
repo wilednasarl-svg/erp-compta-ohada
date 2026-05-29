@@ -98,7 +98,7 @@ export class TvaNotificationService {
       period: `${String(declaration.periodMonth).padStart(2, '0')}/${declaration.periodYear}`,
       deadlineDate,
       daysUntil,
-      status: declaration.status as TvaDeclarationStatus,
+      status: declaration.status,
       tvaADecaisser: new Intl.NumberFormat('fr-FR').format(
         parseFloat(declaration.tvaADecaisser ?? '0'),
       ),
@@ -201,7 +201,10 @@ function renderReminderHtml(ctx: ReminderContext): string {
     `<table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:22px;">`,
     tableRow('Période', escapeHtml(ctx.period)),
     tableRow('Échéance DGI', escapeHtml(ctx.deadlineDate)),
-    tableRow('Jours restants', `<strong>${ctx.daysUntil} jour${ctx.daysUntil > 1 ? 's' : ''}</strong>`),
+    tableRow(
+      'Jours restants',
+      `<strong>${ctx.daysUntil} jour${ctx.daysUntil > 1 ? 's' : ''}</strong>`,
+    ),
     tableRow('État', statusCell, true),
     `</table>`,
     `<p style="margin:0 0 24px;">`,

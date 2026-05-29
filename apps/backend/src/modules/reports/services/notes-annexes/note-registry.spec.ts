@@ -129,7 +129,7 @@ describe('notes-annexes registry — structure', () => {
 describe('notes-annexes registry — handlers implémentés', () => {
   const implementedIds = ALL_NOTE_IDS.filter((id) => !STILL_STUB.includes(id));
 
-  it("a au moins 45 entrées doctrine branchées (handler ou freeComment)", () => {
+  it('a au moins 45 entrées doctrine branchées (handler ou freeComment)', () => {
     expect(implementedIds.length).toBeGreaterThanOrEqual(45);
   });
 

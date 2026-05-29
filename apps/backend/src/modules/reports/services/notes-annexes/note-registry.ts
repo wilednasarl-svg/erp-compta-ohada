@@ -269,12 +269,7 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
   [
     'N5' as NoteId,
     {
-      metadata: meta(
-        'N5',
-        'Note 5 — Actif circulant et dettes circulantes HAO',
-        'BILAN',
-        false,
-      ),
+      metadata: meta('N5', 'Note 5 — Actif circulant et dettes circulantes HAO', 'BILAN', false),
       handler: handleN5ActifHao,
     },
   ],
@@ -354,12 +349,7 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
   [
     'N15A' as NoteId,
     {
-      metadata: meta(
-        'N15A',
-        'Note 15A — Subventions et provisions réglementées',
-        'BILAN',
-        false,
-      ),
+      metadata: meta('N15A', 'Note 15A — Subventions et provisions réglementées', 'BILAN', false),
       handler: handleN15Subventions,
     },
   ],

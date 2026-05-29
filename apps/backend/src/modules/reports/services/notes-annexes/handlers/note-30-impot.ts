@@ -12,7 +12,11 @@ import type { NoteHandler } from '../types';
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   { key: 'IS_EXIGIBLE', label: 'Impôts sur le résultat exigibles (891)', prefixes: ['891'] },
   { key: 'IS_DIFFERES', label: 'Impôts sur le résultat différés (892)', prefixes: ['892'] },
-  { key: 'IMPOTS_AUTRES', label: 'Autres impôts sur le résultat (893, 894, 895)', prefixes: ['893', '894', '895'] },
+  {
+    key: 'IMPOTS_AUTRES',
+    label: 'Autres impôts sur le résultat (893, 894, 895)',
+    prefixes: ['893', '894', '895'],
+  },
   { key: 'PARTICIPATION_SAL', label: 'Participation des travailleurs (87)', prefixes: ['87'] },
 ];
 

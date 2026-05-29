@@ -1,9 +1,6 @@
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { AccountingPeriodEntity } from '../../journals/entities/accounting-period.entity';
-import type {
-  ClassNetRow,
-  CodePrefixNetRow,
-} from '../repositories/dashboards.repository';
+import type { ClassNetRow, CodePrefixNetRow } from '../repositories/dashboards.repository';
 import { DashboardSummaryService } from '../services/dashboard-summary.service';
 
 /**
@@ -191,11 +188,11 @@ describe('DashboardSummaryService', () => {
         [1, 2, 3, 4, 5, 6, 7, 8, 9],
       );
       // Soldes instantanés appelés avec le `toDate` de l'exercice
-      expect(dashRepo.aggregateByCodePrefix).toHaveBeenCalledWith(
-        ORG_ID,
-        '2026-12-31',
-        ['51', '53', '57'],
-      );
+      expect(dashRepo.aggregateByCodePrefix).toHaveBeenCalledWith(ORG_ID, '2026-12-31', [
+        '51',
+        '53',
+        '57',
+      ]);
     });
   });
 });

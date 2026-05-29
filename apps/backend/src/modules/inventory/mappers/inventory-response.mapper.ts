@@ -2,12 +2,12 @@ import type { InventoryItemEntity } from '../entities/inventory-item.entity';
 import type { InventoryMovementEntity } from '../entities/inventory-movement.entity';
 import type { RecordMovementResult } from '../services/inventory-movements.service';
 import {
-  InventoryItemEnvelopeResponse,
-  InventoryItemResponse,
-  InventoryMovementResponse,
-  ListInventoryItemsResponse,
-  ListInventoryMovementsResponse,
-  RecordMovementResponse,
+  type InventoryItemEnvelopeResponse,
+  type InventoryItemResponse,
+  type InventoryMovementResponse,
+  type ListInventoryItemsResponse,
+  type ListInventoryMovementsResponse,
+  type RecordMovementResponse,
 } from '../dto/responses';
 
 export function toInventoryItemResponse(entity: InventoryItemEntity): InventoryItemResponse {

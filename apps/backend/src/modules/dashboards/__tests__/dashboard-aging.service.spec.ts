@@ -38,10 +38,7 @@ function line(p: {
   };
 }
 
-function buildService(opts: {
-  lines?: AgingLineRow[];
-  period?: AccountingPeriodEntity | null;
-}) {
+function buildService(opts: { lines?: AgingLineRow[]; period?: AccountingPeriodEntity | null }) {
   const dashRepo = {
     aggregateByClass: jest.fn(),
     aggregateByCodePrefix: jest.fn(),
@@ -80,9 +77,27 @@ describe('DashboardAgingService', () => {
       // 2 clients : A (créances 1.5M sur 2 buckets) et B (300k 0-30).
       const { service } = buildService({
         lines: [
-          line({ accountId: 'A', code: '4111CLI-A', label: 'Client A', netSigned: '500000.00', daysOld: 10 }),
-          line({ accountId: 'A', code: '4111CLI-A', label: 'Client A', netSigned: '1000000.00', daysOld: 65 }),
-          line({ accountId: 'B', code: '4111CLI-B', label: 'Client B', netSigned: '300000.00', daysOld: 5 }),
+          line({
+            accountId: 'A',
+            code: '4111CLI-A',
+            label: 'Client A',
+            netSigned: '500000.00',
+            daysOld: 10,
+          }),
+          line({
+            accountId: 'A',
+            code: '4111CLI-A',
+            label: 'Client A',
+            netSigned: '1000000.00',
+            daysOld: 65,
+          }),
+          line({
+            accountId: 'B',
+            code: '4111CLI-B',
+            label: 'Client B',
+            netSigned: '300000.00',
+            daysOld: 5,
+          }),
         ],
       });
       const result = await service.getAging(ORG_ID, { exerciseId: EXERCISE_ID, type: 'clients' });
@@ -134,10 +149,19 @@ describe('DashboardAgingService', () => {
       // positive.
       const { service } = buildService({
         lines: [
-          line({ accountId: 'X', code: '4011FOU-X', label: 'Fournisseur X', netSigned: '-1200000.00', daysOld: 45 }),
+          line({
+            accountId: 'X',
+            code: '4011FOU-X',
+            label: 'Fournisseur X',
+            netSigned: '-1200000.00',
+            daysOld: 45,
+          }),
         ],
       });
-      const result = await service.getAging(ORG_ID, { exerciseId: EXERCISE_ID, type: 'fournisseurs' });
+      const result = await service.getAging(ORG_ID, {
+        exerciseId: EXERCISE_ID,
+        type: 'fournisseurs',
+      });
 
       expect(result.type).toBe('fournisseurs');
       expect(result.totalOutstanding).toBe('1200000.00');

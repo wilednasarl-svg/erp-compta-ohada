@@ -143,7 +143,10 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
         };
 
         const assets: NoteAssetsDeps = {
-          findAllForExercise: async (orgId, fiscalYear): Promise<ReadonlyArray<NoteAssetRecord>> => {
+          findAllForExercise: async (
+            orgId,
+            fiscalYear,
+          ): Promise<ReadonlyArray<NoteAssetRecord>> => {
             const all = await assetsRepo.listByOrganization(orgId);
             // Filtre : assets acquis avant ou pendant l'exercice (un
             // asset acquis en N+1 n'a pas à figurer dans la liasse N).

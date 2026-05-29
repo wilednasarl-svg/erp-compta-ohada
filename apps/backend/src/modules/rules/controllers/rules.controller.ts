@@ -131,7 +131,13 @@ export class RulesController {
     @Req() req: Request,
   ): Promise<RuleEnvelopeResponse> {
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
-    const entity = await this.rulesService.updateRule(asTenantId(org.id), user.id, ruleId, dto, ctx);
+    const entity = await this.rulesService.updateRule(
+      asTenantId(org.id),
+      user.id,
+      ruleId,
+      dto,
+      ctx,
+    );
     return toRuleEnvelope(entity);
   }
 
@@ -161,7 +167,13 @@ export class RulesController {
       dateTo: dto.dateTo,
       importSessionId: dto.importSessionId,
     };
-    const result = await this.ruleEngine.simulateRules(asTenantId(org.id), ruleId, scope, user.id, ctx);
+    const result = await this.ruleEngine.simulateRules(
+      asTenantId(org.id),
+      ruleId,
+      scope,
+      user.id,
+      ctx,
+    );
     return toRuleExecutionResult(result);
   }
 
@@ -187,7 +199,13 @@ export class RulesController {
       dateTo: dto.dateTo,
       importSessionId: dto.importSessionId,
     };
-    const result = await this.ruleEngine.applyRules(asTenantId(org.id), ruleId, scope, user.id, ctx);
+    const result = await this.ruleEngine.applyRules(
+      asTenantId(org.id),
+      ruleId,
+      scope,
+      user.id,
+      ctx,
+    );
     return toRuleExecutionResult(result);
   }
 

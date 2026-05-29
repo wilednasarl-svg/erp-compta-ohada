@@ -5,10 +5,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import type { AuditContext } from '../../audit/services/audit-trail.service';
 import { DepreciationSchedulesRepository } from '../../assets/repositories/depreciation-schedules.repository';
-import {
-  EntriesService,
-  type CreateLineInput,
-} from '../../journals/services/entries.service';
+import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { CreateSubsidyDto } from '../dto/create-subsidy.dto';
 import { ReleaseSubsidyDto } from '../dto/release-subsidy.dto';
 import { SubsidyEntity } from '../entities/subsidy.entity';
@@ -32,7 +29,7 @@ const EPSILON = 0.005;
  * Code journal par défaut pour octroi / reprise. `OD` (opérations
  * diverses) est seedé pour toute organisation SYSCOHADA.
  */
-const DEFAULT_JOURNAL_CODE = 'OD' as const;
+const DEFAULT_JOURNAL_CODE = 'OD';
 
 export interface ListSubsidiesOptions {
   readonly status?: SubsidyStatus;
@@ -76,10 +73,7 @@ export class SubsidiesService {
 
   // ─── Queries ────────────────────────────────────────────────────────
 
-  async findById(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<SubsidyWithReleases> {
+  async findById(organizationId: TenantId, id: string): Promise<SubsidyWithReleases> {
     assertTenantId(organizationId);
     const subsidy = await this.requireSubsidy(organizationId, id);
     const releases = await this.releasesRepo.listBySubsidy(id, organizationId);
@@ -179,19 +173,11 @@ export class SubsidiesService {
       });
     }
 
-    return this.applyRelease(
-      organizationId,
-      subsidy,
-      dto.amount,
-      dto.releaseDate,
-      createdBy,
-      ctx,
-      {
-        journalCode: dto.journalCode ?? DEFAULT_JOURNAL_CODE,
-        note: dto.note,
-        relatedDepreciationScheduleId: null,
-      },
-    );
+    return this.applyRelease(organizationId, subsidy, dto.amount, dto.releaseDate, createdBy, ctx, {
+      journalCode: dto.journalCode ?? DEFAULT_JOURNAL_CODE,
+      note: dto.note,
+      relatedDepreciationScheduleId: null,
+    });
   }
 
   /**
@@ -445,10 +431,7 @@ export class SubsidiesService {
     return release;
   }
 
-  private async requireSubsidy(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<SubsidyEntity> {
+  private async requireSubsidy(organizationId: TenantId, id: string): Promise<SubsidyEntity> {
     const subsidy = await this.subsidiesRepo.findById(id, organizationId);
     if (!subsidy) {
       throw new AppException(ERROR_CODES.SUBSIDY_NOT_FOUND, {

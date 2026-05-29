@@ -12,11 +12,7 @@
  * réglementée 851/151 ; reprise en 151/861.
  */
 
-export type DepreciationMethod =
-  | 'linear'
-  | 'declining'
-  | 'softy'
-  | 'units_of_production';
+export type DepreciationMethod = 'linear' | 'declining' | 'softy' | 'units_of_production';
 export type AssetStatus = 'active' | 'fully_depreciated' | 'disposed';
 export type DepreciationStatus = 'pending' | 'posted';
 

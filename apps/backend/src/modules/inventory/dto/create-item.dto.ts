@@ -12,7 +12,10 @@ import {
 import { STOCK_FAMILIES, type StockFamily } from '../types/inventory.types';
 
 export class CreateInventoryItemDto {
-  @ApiProperty({ description: 'SKU interne (lettres maj, chiffres, tirets ; 1-32 chars)', example: 'SKU-001' })
+  @ApiProperty({
+    description: 'SKU interne (lettres maj, chiffres, tirets ; 1-32 chars)',
+    example: 'SKU-001',
+  })
   @IsString()
   @IsNotEmpty()
   @Matches(/^[A-Z0-9-]{1,32}$/, {
@@ -40,7 +43,7 @@ export class CreateInventoryItemDto {
   @IsUUID()
   stockAccountId!: string;
 
-  @ApiProperty({ description: 'ID compte d\'achat (60x)' })
+  @ApiProperty({ description: "ID compte d'achat (60x)" })
   @IsUUID()
   purchaseAccountId!: string;
 

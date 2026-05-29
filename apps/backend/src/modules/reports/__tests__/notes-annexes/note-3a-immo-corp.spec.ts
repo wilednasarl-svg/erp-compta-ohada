@@ -1,7 +1,9 @@
 import type { NoteAssetRecord, NoteDepreciationRecord, NoteId } from '../../services/notes-annexes';
 import { buildHarness } from './test-helpers';
 
-function asset(o: Partial<NoteAssetRecord> & { id: string; assetAccountCode: string }): NoteAssetRecord {
+function asset(
+  o: Partial<NoteAssetRecord> & { id: string; assetAccountCode: string },
+): NoteAssetRecord {
   const defaults = {
     code: 'A-' + o.id.slice(0, 4),
     label: 'Asset ' + o.id,
@@ -29,9 +31,19 @@ describe('Note 3A — Immobilisations corporelles', () => {
     const { service, assetsMock, request } = buildHarness();
 
     // Terrain (22x) acquis avant exercice.
-    const a1 = asset({ id: 'a1', assetAccountCode: '224000', acquisitionCost: '50000.00', acquisitionDate: '2023-06-01' });
+    const a1 = asset({
+      id: 'a1',
+      assetAccountCode: '224000',
+      acquisitionCost: '50000.00',
+      acquisitionDate: '2023-06-01',
+    });
     // Bâtiment (23x) acquis dans l'exercice.
-    const a2 = asset({ id: 'a2', assetAccountCode: '231000', acquisitionCost: '120000.00', acquisitionDate: '2026-04-10' });
+    const a2 = asset({
+      id: 'a2',
+      assetAccountCode: '231000',
+      acquisitionCost: '120000.00',
+      acquisitionDate: '2026-04-10',
+    });
     // Matériel (24x) cédé dans l'exercice.
     const a3 = asset({
       id: 'a3',
@@ -46,8 +58,18 @@ describe('Note 3A — Immobilisations corporelles', () => {
 
     // Schedules : matériel a3 amorti à 80%, bâtiment a2 amorti 1 an, terrain pas d'amort.
     assetsMock.findDepreciationForYear.mockResolvedValue([
-      sched({ assetId: 'a2', depreciationAmount: '4000.00', cumulativeDepreciation: '4000.00', netBookValue: '116000.00' }),
-      sched({ assetId: 'a3', depreciationAmount: '4000.00', cumulativeDepreciation: '16000.00', netBookValue: '4000.00' }),
+      sched({
+        assetId: 'a2',
+        depreciationAmount: '4000.00',
+        cumulativeDepreciation: '4000.00',
+        netBookValue: '116000.00',
+      }),
+      sched({
+        assetId: 'a3',
+        depreciationAmount: '4000.00',
+        cumulativeDepreciation: '16000.00',
+        netBookValue: '4000.00',
+      }),
     ]);
 
     const n3a = await service.getNote(request, 'N3A' as NoteId);

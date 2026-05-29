@@ -56,9 +56,11 @@ describe('ImportSessionService', () => {
     const chartRepo = {
       listByOrganization: jest.fn().mockResolvedValue([]),
       findByCode: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockImplementation((input: { code: string }) =>
-        Promise.resolve({ id: `org-acc-${input.code}`, ...input }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation((input: { code: string }) =>
+          Promise.resolve({ id: `org-acc-${input.code}`, ...input }),
+        ),
     };
     const referenceRepo = {
       listBySystem: jest.fn().mockResolvedValue([]),
@@ -732,15 +734,8 @@ describe('ImportSessionService', () => {
     }
 
     it('auto-creates 3 missing sub-accounts when parents exist in SYSCOHADA reference', async () => {
-      const {
-        service,
-        sessionsRepo,
-        stagingRepo,
-        chartRepo,
-        referenceRepo,
-        entries,
-        audit,
-      } = buildService();
+      const { service, sessionsRepo, stagingRepo, chartRepo, referenceRepo, entries, audit } =
+        buildService();
       sessionsRepo.findById.mockResolvedValue(balanceSession());
       // First countBySession (post-provision) returns 0 errors.
       stagingRepo.countBySession.mockResolvedValue({ total: 3, withErrors: 0 });
@@ -748,9 +743,7 @@ describe('ImportSessionService', () => {
       // mockResolvedValue covers every call (auto-provision + revalidation
       // + commit) with the same payload.
       stagingRepo.listBySession.mockResolvedValue(balanceRows());
-      referenceRepo.listBySystem.mockResolvedValue(
-        REF_PARENTS.map((p) => ({ code: p.code })),
-      );
+      referenceRepo.listBySystem.mockResolvedValue(REF_PARENTS.map((p) => ({ code: p.code })));
       referenceRepo.findByCode.mockImplementation(referenceFindByCodeImpl);
       // findByCode on chartRepo: returns null for the 3 leaves AND for
       // the 3 parents (no org-account exists for 101/213/311 either).
@@ -788,9 +781,7 @@ describe('ImportSessionService', () => {
       // single call returns the whole page. mockResolvedValue is used
       // (not Once) so both calls (auto-provision + commit) see the rows.
       stagingRepo.listBySession.mockResolvedValue(balanceRows());
-      referenceRepo.listBySystem.mockResolvedValue(
-        REF_PARENTS.map((p) => ({ code: p.code })),
-      );
+      referenceRepo.listBySystem.mockResolvedValue(REF_PARENTS.map((p) => ({ code: p.code })));
       referenceRepo.findByCode.mockImplementation(referenceFindByCodeImpl);
       // Simulate "already exists" — listByOrganization returns the 3
       // leaf accounts so they are NOT in candidateCodes minus existing.
@@ -815,7 +806,9 @@ describe('ImportSessionService', () => {
       // entries-type session — no __documentType override == defaults to entries.
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSessionLocal());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession.mockResolvedValueOnce(balancedRowsLocal()).mockResolvedValueOnce([]);
+      stagingRepo.listBySession
+        .mockResolvedValueOnce(balancedRowsLocal())
+        .mockResolvedValueOnce([]);
       entries.createDraft.mockResolvedValue({ id: 'entry-x' });
 
       const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -933,13 +926,10 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'parsed' }));
 
       const override = { 'N°DE COMPTE': 'account', LIBELLE: 'label' };
-      await service.updateMappingOverride(
-        asTenantId(ORG_ID),
-        SESSION_ID,
-        override,
-        USER_ID,
-        { ipAddress: null, userAgent: null },
-      );
+      await service.updateMappingOverride(asTenantId(ORG_ID), SESSION_ID, override, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
 
       expect(sessionsRepo.updateMappingOverride).toHaveBeenCalledWith(
         SESSION_ID,
@@ -1034,13 +1024,10 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeSession({ label: 'old', status: 'parsed' }));
 
-      await service.updateSession(
-        asTenantId(ORG_ID),
-        SESSION_ID,
-        { label: '   ' },
-        USER_ID,
-        { ipAddress: null, userAgent: null },
-      );
+      await service.updateSession(asTenantId(ORG_ID), SESSION_ID, { label: '   ' }, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
 
       expect(sessionsRepo.updateLabel).toHaveBeenCalledWith(SESSION_ID, ORG_ID, null);
     });
@@ -1068,13 +1055,10 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'parsed' }));
 
       await expect(
-        service.updateSession(
-          asTenantId(ORG_ID),
-          SESSION_ID,
-          {},
-          USER_ID,
-          { ipAddress: null, userAgent: null },
-        ),
+        service.updateSession(asTenantId(ORG_ID), SESSION_ID, {}, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
       ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_VALID });
     });
 
@@ -1083,13 +1067,10 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(null);
 
       await expect(
-        service.updateSession(
-          asTenantId(ORG_ID),
-          SESSION_ID,
-          { label: 'whatever' },
-          USER_ID,
-          { ipAddress: null, userAgent: null },
-        ),
+        service.updateSession(asTenantId(ORG_ID), SESSION_ID, { label: 'whatever' }, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
       ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_FOUND });
     });
   });
@@ -1102,12 +1083,10 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'completed' }));
 
       await expect(
-        service.deleteSession(
-          asTenantId(ORG_ID),
-          SESSION_ID,
-          USER_ID,
-          { ipAddress: null, userAgent: null },
-        ),
+        service.deleteSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
       ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_CANNOT_DELETE });
 
       expect(sessionsRepo.deleteById).not.toHaveBeenCalled();
@@ -1118,30 +1097,28 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(null);
 
       await expect(
-        service.deleteSession(
-          asTenantId(ORG_ID),
-          SESSION_ID,
-          USER_ID,
-          { ipAddress: null, userAgent: null },
-        ),
+        service.deleteSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
       ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_FOUND });
     });
 
     it('deletes the session, emits audit, and survives missing-file cleanup', async () => {
       const { service, sessionsRepo, filesRepo, audit } = buildService();
-      sessionsRepo.findById.mockResolvedValue(fakeSession({ status: 'failed', label: 'bad import' }));
+      sessionsRepo.findById.mockResolvedValue(
+        fakeSession({ status: 'failed', label: 'bad import' }),
+      );
       filesRepo.listBySession.mockResolvedValue([
         { id: FILE_ID, storagePath: `${ORG_ID}/${SESSION_ID}/missing.csv` },
       ]);
       sessionsRepo.deleteById.mockResolvedValue(1);
 
       await expect(
-        service.deleteSession(
-          asTenantId(ORG_ID),
-          SESSION_ID,
-          USER_ID,
-          { ipAddress: null, userAgent: null },
-        ),
+        service.deleteSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
       ).resolves.toBeUndefined();
 
       expect(sessionsRepo.deleteById).toHaveBeenCalledWith(SESSION_ID, ORG_ID);
@@ -1164,12 +1141,10 @@ describe('ImportSessionService', () => {
       sessionsRepo.deleteById.mockResolvedValue(0);
 
       await expect(
-        service.deleteSession(
-          asTenantId(ORG_ID),
-          SESSION_ID,
-          USER_ID,
-          { ipAddress: null, userAgent: null },
-        ),
+        service.deleteSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
       ).rejects.toMatchObject({ code: ERROR_CODES.IMPORT_SESSION_NOT_FOUND });
     });
   });

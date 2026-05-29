@@ -94,9 +94,7 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
     } as unknown as AuditTrailService;
 
     mockEntriesService = {
-      createDraft: jest
-        .fn()
-        .mockResolvedValue({ id: 'entry-draft-uuid' } as Partial<EntryView>),
+      createDraft: jest.fn().mockResolvedValue({ id: 'entry-draft-uuid' } as Partial<EntryView>),
       validate: jest
         .fn()
         .mockResolvedValue({ id: 'entry-draft-uuid', status: 'validated' } as Partial<EntryView>),
@@ -345,7 +343,7 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
     expect((err as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_NOT_CALCULATED);
   });
 
-  it('refuse d\'annuler une déclaration centralisée (W4.1)', async () => {
+  it("refuse d'annuler une déclaration centralisée (W4.1)", async () => {
     const decl = {
       id: 'decl-centralized',
       organizationId: ORG_ID,
@@ -363,9 +361,7 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
       err = e;
     }
     expect(err).toBeInstanceOf(AppException);
-    expect((err as AppException).code).toBe(
-      ERROR_CODES.TVA_DECLARATION_CENTRALIZED_CANNOT_CANCEL,
-    );
+    expect((err as AppException).code).toBe(ERROR_CODES.TVA_DECLARATION_CENTRALIZED_CANNOT_CANCEL);
     // Aucun update : la déclaration reste calculated.
     expect(mockTvaDeclarationRepo.save).not.toHaveBeenCalled();
   });
@@ -522,7 +518,7 @@ describe('TvaDeclarationsService Unit Tests (Module 13)', () => {
       expect(mockEntriesService.createDraft).not.toHaveBeenCalled();
     });
 
-    it('respecte l\'isolation tenant : retourne TVA_DECLARATION_NOT_FOUND si la déclaration n\'appartient pas à l\'org', async () => {
+    it("respecte l'isolation tenant : retourne TVA_DECLARATION_NOT_FOUND si la déclaration n'appartient pas à l'org", async () => {
       jest.spyOn(mockTvaDeclarationRepo, 'findById').mockResolvedValue(null);
 
       let err: unknown;

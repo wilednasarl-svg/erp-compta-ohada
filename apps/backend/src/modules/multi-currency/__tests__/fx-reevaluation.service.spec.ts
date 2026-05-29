@@ -32,7 +32,12 @@ interface ServiceUnderTest {
     journalCode: string;
     entryDate: string;
     description: string;
-    lines: Array<{ accountCode: string; debit: number; credit: number; description?: string | null }>;
+    lines: Array<{
+      accountCode: string;
+      debit: number;
+      credit: number;
+      description?: string | null;
+    }>;
   }>;
   storedRuns: FxReevaluationRunEntity[];
 }
@@ -71,8 +76,9 @@ function buildService(rateByDate: Record<string, string>): ServiceUnderTest {
       }
     }),
     findById: jest.fn(async (_org, id) => storedRuns.find((r) => r.id === id) ?? null),
-    findByClosingDate: jest.fn(async (_org, date) =>
-      storedRuns.find((r) => r.closingDate === date && r.status !== 'failed') ?? null,
+    findByClosingDate: jest.fn(
+      async (_org, date) =>
+        storedRuns.find((r) => r.closingDate === date && r.status !== 'failed') ?? null,
     ),
     list: jest.fn(async () => storedRuns),
   } as unknown as jest.Mocked<FxReevaluationRunsRepository>;
@@ -95,7 +101,12 @@ function buildService(rateByDate: Record<string, string>): ServiceUnderTest {
         entryDate: input.entryDate,
         description: input.description,
         lines: input.lines.map(
-          (l: { accountCode: string; debit: number; credit: number; description?: string | null }) => ({
+          (l: {
+            accountCode: string;
+            debit: number;
+            credit: number;
+            description?: string | null;
+          }) => ({
             accountCode: l.accountCode,
             debit: l.debit,
             credit: l.credit,
@@ -147,7 +158,12 @@ describe('FxReevaluationService', () => {
         {
           closingDate: '2026-12-31',
           balances: [
-            { accountCode: '411001', currency: 'XOF', amountCurrency: '1000', currentAmountXof: '1000' },
+            {
+              accountCode: '411001',
+              currency: 'XOF',
+              amountCurrency: '1000',
+              currentAmountXof: '1000',
+            },
           ],
         },
         ACTOR_ID,
@@ -164,7 +180,12 @@ describe('FxReevaluationService', () => {
         {
           closingDate: '2026-12-31',
           balances: [
-            { accountCode: '411001', currency: 'USD', amountCurrency: '1000', currentAmountXof: '600000' },
+            {
+              accountCode: '411001',
+              currency: 'USD',
+              amountCurrency: '1000',
+              currentAmountXof: '600000',
+            },
           ],
         },
         ACTOR_ID,
@@ -182,7 +203,12 @@ describe('FxReevaluationService', () => {
       {
         closingDate: '2026-12-31',
         balances: [
-          { accountCode: '411001', currency: 'EUR', amountCurrency: '1000', currentAmountXof: '655957' },
+          {
+            accountCode: '411001',
+            currency: 'EUR',
+            amountCurrency: '1000',
+            currentAmountXof: '655957',
+          },
         ],
       },
       ACTOR_ID,
@@ -205,7 +231,12 @@ describe('FxReevaluationService', () => {
       {
         closingDate: '2026-12-31',
         balances: [
-          { accountCode: '411001', currency: 'USD', amountCurrency: '1000', currentAmountXof: '600000' },
+          {
+            accountCode: '411001',
+            currency: 'USD',
+            amountCurrency: '1000',
+            currentAmountXof: '600000',
+          },
         ],
       },
       ACTOR_ID,
@@ -234,7 +265,12 @@ describe('FxReevaluationService', () => {
       {
         closingDate: '2026-12-31',
         balances: [
-          { accountCode: '401001', currency: 'USD', amountCurrency: '-500', currentAmountXof: '-300000' },
+          {
+            accountCode: '401001',
+            currency: 'USD',
+            amountCurrency: '-500',
+            currentAmountXof: '-300000',
+          },
         ],
       },
       ACTOR_ID,
@@ -260,7 +296,12 @@ describe('FxReevaluationService', () => {
       {
         closingDate: '2026-12-31',
         balances: [
-          { accountCode: '411001', currency: 'USD', amountCurrency: '1000', currentAmountXof: '600000' },
+          {
+            accountCode: '411001',
+            currency: 'USD',
+            amountCurrency: '1000',
+            currentAmountXof: '600000',
+          },
         ],
       },
       ACTOR_ID,
@@ -272,7 +313,12 @@ describe('FxReevaluationService', () => {
         {
           closingDate: '2026-12-31',
           balances: [
-            { accountCode: '411001', currency: 'USD', amountCurrency: '1000', currentAmountXof: '600000' },
+            {
+              accountCode: '411001',
+              currency: 'USD',
+              amountCurrency: '1000',
+              currentAmountXof: '600000',
+            },
           ],
         },
         ACTOR_ID,
@@ -290,7 +336,12 @@ describe('FxReevaluationService', () => {
       {
         closingDate: '2026-12-31',
         balances: [
-          { accountCode: '411001', currency: 'USD', amountCurrency: '1000', currentAmountXof: '600000' },
+          {
+            accountCode: '411001',
+            currency: 'USD',
+            amountCurrency: '1000',
+            currentAmountXof: '600000',
+          },
         ],
       },
       ACTOR_ID,

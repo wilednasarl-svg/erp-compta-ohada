@@ -6,18 +6,13 @@ import type { TenantId } from '../../../common/persistence/tenant-scope';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import type { CollaborationCommentEntity } from '../entities/collaboration-comment.entity';
 import type { CollaborationRequestEntity } from '../entities/collaboration-request.entity';
-import {
-  CollaborationCommentRepository,
-} from '../repositories/collaboration-comment.repository';
+import { CollaborationCommentRepository } from '../repositories/collaboration-comment.repository';
 import {
   CollaborationRequestRepository,
   type CollaborationRequestListFilters,
   type PaginationOptions,
 } from '../repositories/collaboration-request.repository';
-import {
-  isStatusTransitionAllowed,
-  type CollaborationStatus,
-} from '../types/collaboration-status';
+import { isStatusTransitionAllowed, type CollaborationStatus } from '../types/collaboration-status';
 import { CollaborationNotificationsService } from './collaboration-notifications.service';
 
 /**

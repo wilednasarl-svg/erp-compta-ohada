@@ -355,7 +355,9 @@ export function computeSoftySchedule(input: DepreciationInput): DepreciationLine
   const residual = toCents(input.residualValue);
   const depreciable = cost - residual;
   if (depreciable <= 0) {
-    throw new Error(`residualValue (${input.residualValue}) cannot exceed or equal acquisitionCost (${input.acquisitionCost})`);
+    throw new Error(
+      `residualValue (${input.residualValue}) cannot exceed or equal acquisitionCost (${input.acquisitionCost})`,
+    );
   }
   if (input.durationMonths <= 0) {
     throw new Error(`durationMonths must be > 0, got ${input.durationMonths}`);
@@ -445,12 +447,19 @@ export class UopUnitsOverflowError extends Error {
  * le bien n'est pas totalement amorti (VNC > residual maintenue).
  */
 export function computeUnitsOfProductionSchedule(input: UopScheduleInput): DepreciationLine[] {
-  if (!input.totalUnits || input.totalUnits <= 0 || !input.unitsPerYear || input.unitsPerYear.length === 0) {
+  if (
+    !input.totalUnits ||
+    input.totalUnits <= 0 ||
+    !input.unitsPerYear ||
+    input.unitsPerYear.length === 0
+  ) {
     throw new UopUnitsRequiredError();
   }
   const sumUnits = input.unitsPerYear.reduce((s, u) => s + (Number(u) || 0), 0);
   if (sumUnits - input.totalUnits > 0.5) {
-    throw new UopUnitsOverflowError(`sum(unitsPerYear)=${sumUnits} exceeds totalUnits=${input.totalUnits}`);
+    throw new UopUnitsOverflowError(
+      `sum(unitsPerYear)=${sumUnits} exceeds totalUnits=${input.totalUnits}`,
+    );
   }
 
   const cost = toCents(input.acquisitionCost);
@@ -570,10 +579,17 @@ export function computeDerogatorySchedule(input: DerogatoryInput): DerogatorySch
     throw new DerogatoryConfigInvalidError('derogatory.enabled must be true');
   }
   if (!cfg.economicMethod || !cfg.fiscalMethod) {
-    throw new DerogatoryConfigInvalidError('derogatory.fiscalMethod and economicMethod are both required');
+    throw new DerogatoryConfigInvalidError(
+      'derogatory.fiscalMethod and economicMethod are both required',
+    );
   }
-  if (cfg.fiscalMethod === 'declining' && (cfg.fiscalDecliningRate === null || cfg.fiscalDecliningRate === undefined)) {
-    throw new DerogatoryConfigInvalidError('fiscalDecliningRate required when fiscalMethod=declining');
+  if (
+    cfg.fiscalMethod === 'declining' &&
+    (cfg.fiscalDecliningRate === null || cfg.fiscalDecliningRate === undefined)
+  ) {
+    throw new DerogatoryConfigInvalidError(
+      'fiscalDecliningRate required when fiscalMethod=declining',
+    );
   }
 
   const baseEconomic: Omit<DepreciationInput, 'method'> = {
@@ -589,16 +605,29 @@ export function computeDerogatorySchedule(input: DerogatoryInput): DerogatorySch
     durationMonths: cfg.fiscalDuration ?? input.durationMonths,
   };
 
-  const economicLines = buildScheduleForMethod(cfg.economicMethod, baseEconomic, input.decliningRate, {
-    totalUnits: input.totalUnits,
-    unitsPerYear: input.unitsPerYear,
-  });
-  const fiscalLines = buildScheduleForMethod(cfg.fiscalMethod, baseFiscal, cfg.fiscalDecliningRate ?? input.decliningRate, {
-    totalUnits: input.totalUnits,
-    unitsPerYear: input.unitsPerYear,
-  });
+  const economicLines = buildScheduleForMethod(
+    cfg.economicMethod,
+    baseEconomic,
+    input.decliningRate,
+    {
+      totalUnits: input.totalUnits,
+      unitsPerYear: input.unitsPerYear,
+    },
+  );
+  const fiscalLines = buildScheduleForMethod(
+    cfg.fiscalMethod,
+    baseFiscal,
+    cfg.fiscalDecliningRate ?? input.decliningRate,
+    {
+      totalUnits: input.totalUnits,
+      unitsPerYear: input.unitsPerYear,
+    },
+  );
 
-  const yearMap = new Map<number, { periodStart: string; periodEnd: string; economic: number; fiscal: number }>();
+  const yearMap = new Map<
+    number,
+    { periodStart: string; periodEnd: string; economic: number; fiscal: number }
+  >();
   for (const l of economicLines) {
     yearMap.set(l.fiscalYear, {
       periodStart: l.periodStart,
@@ -649,7 +678,9 @@ export function computeSchedule(input: DepreciationInput): DepreciationLine[] {
     case 'softy':
       return computeSoftySchedule(input);
     case 'units_of_production':
-      throw new UopUnitsRequiredError('computeSchedule cannot dispatch UOP — use computeUnitsOfProductionSchedule with totalUnits + unitsPerYear');
+      throw new UopUnitsRequiredError(
+        'computeSchedule cannot dispatch UOP — use computeUnitsOfProductionSchedule with totalUnits + unitsPerYear',
+      );
   }
 }
 
@@ -743,9 +774,7 @@ export function computePartialYearDepreciation(
   if (!Number.isFinite(rate) || rate <= 0 || rate >= 1) {
     throw new Error(`decliningRate must be in (0, 1), got ${input.decliningRate}`);
   }
-  const accumulated = input.accumulatedDepreciation
-    ? toCents(input.accumulatedDepreciation)
-    : 0;
+  const accumulated = input.accumulatedDepreciation ? toCents(input.accumulatedDepreciation) : 0;
   const vncStart = Math.max(0, cost - residual - accumulated);
   if (vncStart <= 0) {
     return { amount: '0.00', daysProrated: segDays };

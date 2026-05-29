@@ -14,7 +14,11 @@ const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   { key: 'TRESOR', label: 'Trésor public (532)', prefixes: ['532'] },
   { key: 'MOBILE_MONEY', label: 'Mobile money et monnaie électronique (541)', prefixes: ['541'] },
   { key: 'CAISSE', label: 'Caisse (571)', prefixes: ['571'] },
-  { key: 'REGIES_AVANCES', label: "Régies d'avances et accréditifs (581, 588)", prefixes: ['581', '588'] },
+  {
+    key: 'REGIES_AVANCES',
+    label: "Régies d'avances et accréditifs (581, 588)",
+    prefixes: ['581', '588'],
+  },
 ];
 
 export const handleN11Disponibilites: NoteHandler = (ctx, deps) =>

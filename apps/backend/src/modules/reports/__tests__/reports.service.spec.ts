@@ -172,11 +172,7 @@ describe('ReportsService.getGeneralLedger', () => {
     });
     expect(result.lines.map((l) => l.runningBalance)).toEqual(['700.00', '600.00', '650.00']);
     expect(result.lines.map((l) => l.runningBalanceSide)).toEqual(['D', 'D', 'D']);
-    expect(result.lines.map((l) => l.runningBalanceAbs)).toEqual([
-      '700.00',
-      '600.00',
-      '650.00',
-    ]);
+    expect(result.lines.map((l) => l.runningBalanceAbs)).toEqual(['700.00', '600.00', '650.00']);
     expect(result.totals).toEqual({
       periodDebit: '250.00',
       periodCredit: '100.00',
@@ -207,11 +203,7 @@ describe('ReportsService.getGeneralLedger', () => {
 
     expect(result.opening.openingBalanceSide).toBe('D');
     expect(result.lines.map((l) => l.runningBalanceSide)).toEqual(['D', 'C', 'C']);
-    expect(result.lines.map((l) => l.runningBalanceAbs)).toEqual([
-      '150.00',
-      '50.00',
-      '150.00',
-    ]);
+    expect(result.lines.map((l) => l.runningBalanceAbs)).toEqual(['150.00', '50.00', '150.00']);
     expect(result.totals.closingBalance).toBe('150.00');
     expect(result.totals.closingBalanceSide).toBe('C');
   });
@@ -1079,9 +1071,7 @@ describe('ReportsService.getComparativeBalance', () => {
       tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '500.00' }),
       tbRow({ accountId: 'a-2', accountCode: '512000' }), // all zeros, both calls
     ]);
-    h.repo.trialBalance.mockResolvedValueOnce([
-      tbRow({ accountId: 'a-2', accountCode: '512000' }),
-    ]);
+    h.repo.trialBalance.mockResolvedValueOnce([tbRow({ accountId: 'a-2', accountCode: '512000' })]);
 
     const result = await h.service.getComparativeBalance(ORG_ID, {
       fromDate: '2026-01-01',
@@ -1283,9 +1273,24 @@ describe('ReportsService.getFinancialRatios', () => {
     // Actif : immo 600 (231) + circ 300 (411) + tréso 100 (521) = 1000
     // Passif : CP 400 (101) + DF 200 (162) + passif circ 350 (401) + tréso passif 50 (561) = 1000
     h.repo.accountBalancesAsAt.mockResolvedValue([
-      balanceRow({ accountId: 'a-immo', accountCode: '231000', accountClass: 2, totalDebit: '600' }),
-      balanceRow({ accountId: 'a-circ', accountCode: '411000', accountClass: 4, totalDebit: '300' }),
-      balanceRow({ accountId: 'a-tres', accountCode: '521000', accountClass: 5, totalDebit: '100' }),
+      balanceRow({
+        accountId: 'a-immo',
+        accountCode: '231000',
+        accountClass: 2,
+        totalDebit: '600',
+      }),
+      balanceRow({
+        accountId: 'a-circ',
+        accountCode: '411000',
+        accountClass: 4,
+        totalDebit: '300',
+      }),
+      balanceRow({
+        accountId: 'a-tres',
+        accountCode: '521000',
+        accountClass: 5,
+        totalDebit: '100',
+      }),
       balanceRow({ accountId: 'a-cp', accountCode: '101000', accountClass: 1, totalCredit: '400' }),
       balanceRow({ accountId: 'a-df', accountCode: '162000', accountClass: 1, totalCredit: '200' }),
       balanceRow({ accountId: 'a-pc', accountCode: '401000', accountClass: 4, totalCredit: '350' }),
@@ -1506,13 +1511,31 @@ describe('ReportsService.getMultiYearBalance', () => {
     const h = buildHarness();
     h.repo.trialBalance
       .mockResolvedValueOnce([
-        tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '100', periodCredit: '20', endingDebit: '80' }),
+        tbRow({
+          accountId: 'a-1',
+          accountCode: '411000',
+          periodDebit: '100',
+          periodCredit: '20',
+          endingDebit: '80',
+        }),
       ])
       .mockResolvedValueOnce([
-        tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '200', periodCredit: '50', endingDebit: '230' }),
+        tbRow({
+          accountId: 'a-1',
+          accountCode: '411000',
+          periodDebit: '200',
+          periodCredit: '50',
+          endingDebit: '230',
+        }),
       ])
       .mockResolvedValueOnce([
-        tbRow({ accountId: 'a-1', accountCode: '411000', periodDebit: '300', periodCredit: '100', endingDebit: '430.00' }),
+        tbRow({
+          accountId: 'a-1',
+          accountCode: '411000',
+          periodDebit: '300',
+          periodCredit: '100',
+          endingDebit: '430.00',
+        }),
       ]);
     const report = await h.service.getMultiYearBalance(ORG_ID, {
       periods: [
@@ -1573,16 +1596,16 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
 
   it('classe un compte 411 (client) dans le poste BI, agrégé dans la masse BK via la sous-masse BG', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '8000' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '8000' }),
+      ]);
     const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
 
     // Le poste BI est rattaché à sa sous-masse directe BG (« Créances
     // et emplois assimilés »), elle-même incluse dans la masse BK.
-    const allActifPostes = result.actifMasses.flatMap((m) =>
-      m.rubriques.flatMap((r) => r.postes),
-    );
+    const allActifPostes = result.actifMasses.flatMap((m) => m.rubriques.flatMap((r) => r.postes));
     const bi = allActifPostes.find((p) => p.code === 'BI');
     expect(bi).toMatchObject({ code: 'BI', net: '8000.00' });
 
@@ -1637,9 +1660,11 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
 
   it('classe un compte hors plan dans `unclassified` sans crasher', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      buildRow({ accountCode: '999999', accountClass: 2, totalDebit: '1234' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        buildRow({ accountCode: '999999', accountClass: 2, totalDebit: '1234' }),
+      ]);
     const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
     expect(result.unclassified.length).toBeGreaterThanOrEqual(1);
     expect(result.unclassified[0].code).toBe('999999');
@@ -1672,11 +1697,13 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
 
   it('totals.difference ≈ 0 sur un bilan équilibré', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '50000' }),
-      buildRow({ accountCode: '512000', accountClass: 5, totalDebit: '20000' }),
-      buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '70000' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '50000' }),
+        buildRow({ accountCode: '512000', accountClass: 5, totalDebit: '20000' }),
+        buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '70000' }),
+      ]);
     const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
     expect(result.totals.actif).toBe('70000.00');
     expect(result.totals.passif).toBe('70000.00');
@@ -1685,10 +1712,12 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
 
   it('expose totals.actif et totals.passif identiques à `actif.total` / `passif.total` (cohérence legacy)', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '5000' }),
-      buildRow({ accountCode: '401000', accountClass: 4, totalCredit: '3000' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        buildRow({ accountCode: '411000', accountClass: 4, totalDebit: '5000' }),
+        buildRow({ accountCode: '401000', accountClass: 4, totalCredit: '3000' }),
+      ]);
     const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
     expect(result.totals.actif).toBe(result.actif.total);
     expect(result.totals.passif).toBe(result.passif.total);
@@ -1696,10 +1725,12 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
 
   it('incorporation du résultat net : ajoute le bénéfice au poste CJ sous CP', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '50000' }),
-      buildRow({ accountCode: '512000', accountClass: 5, totalDebit: '52000' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '50000' }),
+        buildRow({ accountCode: '512000', accountClass: 5, totalDebit: '52000' }),
+      ]);
     h.repo.trialBalance.mockResolvedValue([
       tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '8000' }),
       tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '10000' }),
@@ -1740,9 +1771,11 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
 
   it('préserve la rétro-compat : `actif.sections` (legacy 4 buckets) reste exposé', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '60000' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '60000' }),
+      ]);
     const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
     expect(result.actif.sections).toBeDefined();
     expect(result.actif.sections.find((s) => s.key === 'IMMOBILISE')?.total).toBe('60000.00');
@@ -1796,9 +1829,9 @@ describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => 
     //   age 75j  → 61-90j  (2026-10-17,  300)
     //   age 200j → >90j    (2026-06-14,  700)
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      balanceRow({ accountCode: '411000', totalDebit: '2500.00' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([balanceRow({ accountCode: '411000', totalDebit: '2500.00' })]);
     h.repo.generalLedger.mockResolvedValue([
       ledger({ lineId: 'l-4', entryDate: '2026-06-14', debit: '700.00' }),
       ledger({ lineId: 'l-3', entryDate: '2026-10-17', debit: '300.00' }),
@@ -1825,10 +1858,12 @@ describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => 
 
   it('agrege bucketTotals + grandTotal sur plusieurs comptes', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      balanceRow({ accountId: 'a-1', accountCode: '411001', totalDebit: '1000.00' }),
-      balanceRow({ accountId: 'a-2', accountCode: '411002', totalDebit: '2000.00' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        balanceRow({ accountId: 'a-1', accountCode: '411001', totalDebit: '1000.00' }),
+        balanceRow({ accountId: 'a-2', accountCode: '411002', totalDebit: '2000.00' }),
+      ]);
     h.repo.generalLedger.mockImplementation(async (_o: unknown, f: { accountId: string }) => {
       if (f.accountId === 'a-1') {
         return [ledger({ entryDate: '2026-12-21', debit: '1000.00' })];
@@ -1848,37 +1883,34 @@ describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => 
 
   it('filtre par prefixes CLIENT elargi : 411/412/416/418', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      balanceRow({ accountId: 'a-1', accountCode: '411000', totalDebit: '100' }),
-      balanceRow({ accountId: 'a-2', accountCode: '412000', totalDebit: '200' }),
-      balanceRow({ accountId: 'a-3', accountCode: '416000', totalDebit: '300' }),
-      balanceRow({ accountId: 'a-4', accountCode: '418000', totalDebit: '400' }),
-      balanceRow({ accountId: 'a-5', accountCode: '401000', totalCredit: '999' }),
-      balanceRow({ accountId: 'a-6', accountCode: '707000', totalCredit: '999' }),
-    ]);
-    h.repo.generalLedger.mockResolvedValue([
-      ledger({ entryDate: '2026-12-21', debit: '100.00' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        balanceRow({ accountId: 'a-1', accountCode: '411000', totalDebit: '100' }),
+        balanceRow({ accountId: 'a-2', accountCode: '412000', totalDebit: '200' }),
+        balanceRow({ accountId: 'a-3', accountCode: '416000', totalDebit: '300' }),
+        balanceRow({ accountId: 'a-4', accountCode: '418000', totalDebit: '400' }),
+        balanceRow({ accountId: 'a-5', accountCode: '401000', totalCredit: '999' }),
+        balanceRow({ accountId: 'a-6', accountCode: '707000', totalCredit: '999' }),
+      ]);
+    h.repo.generalLedger.mockResolvedValue([ledger({ entryDate: '2026-12-21', debit: '100.00' })]);
 
     const report = await h.service.getAgingBalance(ORG_ID, {
       side: 'CLIENT',
       asAtDate: '2026-12-31',
     });
 
-    expect(report.rows.map((r) => r.accountCode)).toEqual([
-      '411000',
-      '412000',
-      '416000',
-      '418000',
-    ]);
+    expect(report.rows.map((r) => r.accountCode)).toEqual(['411000', '412000', '416000', '418000']);
   });
 
   it('cote FOURNISSEUR : filtre 401/402/403/408 et credits = dettes ouvertes', async () => {
     const h = buildHarness();
-    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
-      balanceRow({ accountId: 'a-1', accountCode: '401000', totalCredit: '5000.00' }),
-      balanceRow({ accountId: 'a-2', accountCode: '411000', totalDebit: '999' }),
-    ]);
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([
+        balanceRow({ accountId: 'a-1', accountCode: '401000', totalCredit: '5000.00' }),
+        balanceRow({ accountId: 'a-2', accountCode: '411000', totalDebit: '999' }),
+      ]);
     h.repo.generalLedger.mockResolvedValue([
       ledger({ entryDate: '2026-06-14', credit: '5000.00' }),
     ]);
@@ -1900,9 +1932,7 @@ describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => 
     h.repo.accountBalancesAsAt = jest
       .fn()
       .mockResolvedValue([balanceRow({ accountCode: '411000', totalDebit: '100' })]);
-    h.repo.generalLedger.mockResolvedValue([
-      ledger({ entryDate: '2026-12-21', debit: '100.00' }),
-    ]);
+    h.repo.generalLedger.mockResolvedValue([ledger({ entryDate: '2026-12-21', debit: '100.00' })]);
 
     const report = await h.service.getAgingBalance(ORG_ID, {
       side: 'CLIENT',
@@ -1951,7 +1981,6 @@ describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => 
     ).rejects.toMatchObject({ code: 'REPORT_INVALID_DATE_RANGE' });
   });
 });
-
 
 // ─── D3 — Marge par axe analytique (aligné Note 34) ─────────────────────
 
@@ -2069,9 +2098,7 @@ describe('ReportsService.getMarginByAxis (D3 — Note 34 par axe)', () => {
   });
 
   it('retourne null pour les taux quand le CA est nul (évite division par zéro)', async () => {
-    const rawRows: MbaRawRow[] = [
-      raw('Z', '601000', 6, '1000.00', '0.00'),
-    ];
+    const rawRows: MbaRawRow[] = [raw('Z', '601000', 6, '1000.00', '0.00')];
     const h = buildMbaHarness(rawRows);
 
     const out = await h.service.getMarginByAxis(ORG_ID, {

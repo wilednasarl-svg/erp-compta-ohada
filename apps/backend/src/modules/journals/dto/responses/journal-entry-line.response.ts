@@ -12,7 +12,7 @@ export class JournalEntryLineResponse {
   @ApiProperty({ description: 'UUID du compte référencé', format: 'uuid' })
   accountId!: string;
 
-  @ApiProperty({ description: 'Position 1-N de la ligne dans l\'écriture', type: Number })
+  @ApiProperty({ description: "Position 1-N de la ligne dans l'écriture", type: Number })
   position!: number;
 
   @ApiProperty({ description: 'Libellé libre de la ligne', nullable: true, type: String })

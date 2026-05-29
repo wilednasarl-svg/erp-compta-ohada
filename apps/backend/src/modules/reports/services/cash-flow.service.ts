@@ -62,7 +62,14 @@ export const BFR_EXCLUDED_PREFIXES: ReadonlyArray<string> = [
 
 /** Préfixes des comptes "trésorerie active" (classe 5 actif).  */
 export const TRESORERIE_ACTIF_PREFIXES: ReadonlyArray<string> = [
-  '50', '51', '52', '53', '54', '55', '56', '57',
+  '50',
+  '51',
+  '52',
+  '53',
+  '54',
+  '55',
+  '56',
+  '57',
 ];
 
 /** Préfixes "trésorerie passive" (découverts bancaires, classe 5
@@ -70,13 +77,18 @@ export const TRESORERIE_ACTIF_PREFIXES: ReadonlyArray<string> = [
  * caisses spéciales. La logique côté service distingue par le SIGNE
  * du solde (débit = actif, crédit = passif) plutôt que par préfixe.
  */
-export const TRESORERIE_PASSIF_PREFIXES: ReadonlyArray<string> = [
-  '564', '565', '566', '585',
-];
+export const TRESORERIE_PASSIF_PREFIXES: ReadonlyArray<string> = ['564', '565', '566', '585'];
 
 /** Préfixes d'immobilisations corporelles, incorporelles, financières.  */
 export const IMMOBILISATION_PREFIXES: ReadonlyArray<string> = [
-  '20', '21', '22', '23', '24', '25', '26', '27',
+  '20',
+  '21',
+  '22',
+  '23',
+  '24',
+  '25',
+  '26',
+  '27',
 ];
 
 /** Préfixes d'immobilisations financières (titres, prêts, dépôts).  */
@@ -215,18 +227,11 @@ export class CashFlowService {
    * Point d'entrée principal. Charge balances + SIG, calcule le TFT
    * conforme à la nomenclature officielle SYSCOHADA Révisé p. 34.
    */
-  async getCashFlow(
-    organizationId: TenantId,
-    query: CashFlowQuery,
-  ): Promise<CashFlowReport> {
+  async getCashFlow(organizationId: TenantId, query: CashFlowQuery): Promise<CashFlowReport> {
     assertTenantId(organizationId);
     this.assertDateRange(query.fromDate, query.toDate);
 
-    const current = await this.computeBare(
-      organizationId,
-      query.fromDate,
-      query.toDate,
-    );
+    const current = await this.computeBare(organizationId, query.fromDate, query.toDate);
 
     if (query.previousFromDate === undefined || query.previousToDate === undefined) {
       return current;
@@ -323,16 +328,15 @@ export class CashFlowService {
     );
 
     // FE = + Δ dettes ordinaires (classe 4 passif hors exclusions)
-    const fe =
-      -CashFlowService.deltaSignedByFilter(
-        signedN1,
-        signedN,
-        (code) =>
-          code.startsWith('4') &&
-          !CashFlowService.isExcludedFromBfr(code) &&
-          (CashFlowService.netForCode(signedN, code) < 0 ||
-            CashFlowService.netForCode(signedN1, code) < 0),
-      );
+    const fe = -CashFlowService.deltaSignedByFilter(
+      signedN1,
+      signedN,
+      (code) =>
+        code.startsWith('4') &&
+        !CashFlowService.isExcludedFromBfr(code) &&
+        (CashFlowService.netForCode(signedN, code) < 0 ||
+          CashFlowService.netForCode(signedN1, code) < 0),
+    );
 
     // ZB = FA + FB + FC + FD + FE
     const zb = fa + fb + fc + fd + fe;
@@ -377,17 +381,12 @@ export class CashFlowService {
     const fk = CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
-      (code) =>
-        code.startsWith('10') &&
-        !code.startsWith('106') &&
-        !code.startsWith('109'),
+      (code) => code.startsWith('10') && !code.startsWith('106') && !code.startsWith('109'),
     );
 
     // FL = + subventions d'investissement reçues (Δ classe 14)
-    const fl = CashFlowService.deltaSignedByFilter(
-      signedN1,
-      signedN,
-      (code) => code.startsWith('14'),
+    const fl = CashFlowService.deltaSignedByFilter(signedN1, signedN, (code) =>
+      code.startsWith('14'),
     );
 
     // FM = - prélèvements sur le capital (débits 4581/4582 — opérations
@@ -431,11 +430,36 @@ export class CashFlowService {
         label: getTftLabel('ZB'),
         subtotal: zb.toFixed(2),
         postes: [
-          { code: 'FA', label: getTftLabel('FA'), amount: fa.toFixed(2), source: 'XD + 654 - 754 + XF + TO + RP + RQ + RS' },
-          { code: 'FB', label: getTftLabel('FB'), amount: fb.toFixed(2), source: "actif circulant HAO (compte 485 — traité en section invest.)" },
-          { code: 'FC', label: getTftLabel('FC'), amount: fc.toFixed(2), source: 'classe 3 hors 39' },
-          { code: 'FD', label: getTftLabel('FD'), amount: fd.toFixed(2), source: 'classe 4 actif hors exclusions' },
-          { code: 'FE', label: getTftLabel('FE'), amount: fe.toFixed(2), source: 'classe 4 passif hors exclusions' },
+          {
+            code: 'FA',
+            label: getTftLabel('FA'),
+            amount: fa.toFixed(2),
+            source: 'XD + 654 - 754 + XF + TO + RP + RQ + RS',
+          },
+          {
+            code: 'FB',
+            label: getTftLabel('FB'),
+            amount: fb.toFixed(2),
+            source: 'actif circulant HAO (compte 485 — traité en section invest.)',
+          },
+          {
+            code: 'FC',
+            label: getTftLabel('FC'),
+            amount: fc.toFixed(2),
+            source: 'classe 3 hors 39',
+          },
+          {
+            code: 'FD',
+            label: getTftLabel('FD'),
+            amount: fd.toFixed(2),
+            source: 'classe 4 actif hors exclusions',
+          },
+          {
+            code: 'FE',
+            label: getTftLabel('FE'),
+            amount: fe.toFixed(2),
+            source: 'classe 4 passif hors exclusions',
+          },
         ],
       },
       investingFlows: {
@@ -443,7 +467,12 @@ export class CashFlowService {
         label: getTftLabel('ZC'),
         subtotal: zc.toFixed(2),
         postes: [
-          { code: 'FF', label: getTftLabel('FF'), amount: ff.toFixed(2), source: 'débits 20-25 hors 28/29' },
+          {
+            code: 'FF',
+            label: getTftLabel('FF'),
+            amount: ff.toFixed(2),
+            source: 'débits 20-25 hors 28/29',
+          },
           { code: 'FG', label: getTftLabel('FG'), amount: fg.toFixed(2), source: 'débits 26-27' },
           { code: 'FH', label: getTftLabel('FH'), amount: fh.toFixed(2), source: 'crédit 82' },
           { code: 'FI', label: getTftLabel('FI'), amount: fi.toFixed(2), source: 'crédits 26-27' },
@@ -455,9 +484,19 @@ export class CashFlowService {
         label: getTftLabel('ZD'),
         subtotal: zd.toFixed(2),
         postes: [
-          { code: 'FK', label: getTftLabel('FK'), amount: fk.toFixed(2), source: 'Δ classe 10 hors 106/109' },
+          {
+            code: 'FK',
+            label: getTftLabel('FK'),
+            amount: fk.toFixed(2),
+            source: 'Δ classe 10 hors 106/109',
+          },
           { code: 'FL', label: getTftLabel('FL'), amount: fl.toFixed(2), source: 'Δ classe 14' },
-          { code: 'FM', label: getTftLabel('FM'), amount: fm.toFixed(2), source: 'débits 4581/4582' },
+          {
+            code: 'FM',
+            label: getTftLabel('FM'),
+            amount: fm.toFixed(2),
+            source: 'débits 4581/4582',
+          },
           { code: 'FN', label: getTftLabel('FN'), amount: fn.toFixed(2), source: 'débits 465' },
         ],
       },

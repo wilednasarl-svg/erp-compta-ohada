@@ -20,12 +20,7 @@
  * permettre l'agrégation par type dans la note annexe (colonnes
  * « Hypothèques | Nantissements | Gages | autres »).
  */
-export type PledgeType =
-  | 'hypotheque'
-  | 'nantissement'
-  | 'gage'
-  | 'caution'
-  | 'autre';
+export type PledgeType = 'hypotheque' | 'nantissement' | 'gage' | 'caution' | 'autre';
 
 /**
  * Cycle de vie d'une sûreté.

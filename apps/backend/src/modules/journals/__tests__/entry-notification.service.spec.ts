@@ -81,15 +81,17 @@ function buildService(opts: { entry?: JournalEntryEntity | null } = {}): {
       }),
     },
     users: {
-      findActiveById: jest.fn().mockResolvedValue({ id: 'creator-1', email: 'creator@example.com' }),
+      findActiveById: jest
+        .fn()
+        .mockResolvedValue({ id: 'creator-1', email: 'creator@example.com' }),
     },
     orgs: { findActiveById: jest.fn().mockResolvedValue({ id: ORG_ID, name: 'Acme' }) },
     entryRepo: { findById: jest.fn().mockResolvedValue(entry) },
     lineRepo: { listByEntry: jest.fn().mockResolvedValue([]) },
     signatures: {
-      listByEntry: jest.fn().mockResolvedValue([
-        { id: 'sig-2', signerRole: 'expert_comptable', signedAt: new Date() },
-      ]),
+      listByEntry: jest
+        .fn()
+        .mockResolvedValue([{ id: 'sig-2', signerRole: 'expert_comptable', signedAt: new Date() }]),
     },
     journals: { findById: jest.fn().mockResolvedValue({ code: 'AC', label: 'Achats' }) },
     periods: {

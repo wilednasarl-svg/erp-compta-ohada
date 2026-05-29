@@ -31,7 +31,7 @@ const CATEGORIES: ReadonlyArray<{ readonly prefix: string; readonly label: strin
   { prefix: '201', label: "201 — Frais d'établissement" },
   { prefix: '202', label: '202 — Charges à répartir sur plusieurs exercices' },
   { prefix: '203', label: '203 — Frais de recherche et de développement' },
-  { prefix: '206', label: "206 — Primes de remboursement des obligations" },
+  { prefix: '206', label: '206 — Primes de remboursement des obligations' },
   { prefix: '208', label: '208 — Autres charges immobilisées' },
 ];
 

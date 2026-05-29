@@ -14,34 +14,34 @@ import {
  * parser explicitement.
  */
 export class AssetResponse {
-  @ApiProperty({ description: 'UUID de l\'immobilisation', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'immobilisation", format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ description: 'UUID de l\'organisation', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'organisation", format: 'uuid' })
   organizationId!: string;
 
-  @ApiProperty({ description: 'Code interne de l\'immobilisation', type: String })
+  @ApiProperty({ description: "Code interne de l'immobilisation", type: String })
   code!: string;
 
   @ApiProperty({ description: 'Libellé', type: String })
   label!: string;
 
-  @ApiProperty({ description: 'Date d\'acquisition (YYYY-MM-DD)', type: String })
+  @ApiProperty({ description: "Date d'acquisition (YYYY-MM-DD)", type: String })
   acquisitionDate!: string;
 
   @ApiProperty({ description: 'Date de mise en service (YYYY-MM-DD)', type: String })
   putInServiceDate!: string;
 
-  @ApiProperty({ description: 'Coût d\'acquisition. DECIMAL(15,2) en string.', type: String })
+  @ApiProperty({ description: "Coût d'acquisition. DECIMAL(15,2) en string.", type: String })
   acquisitionCost!: string;
 
   @ApiProperty({ description: 'Valeur résiduelle. DECIMAL(15,2) en string.', type: String })
   residualValue!: string;
 
-  @ApiProperty({ description: 'Méthode d\'amortissement', enum: DEPRECIATION_METHODS })
+  @ApiProperty({ description: "Méthode d'amortissement", enum: DEPRECIATION_METHODS })
   depreciationMethod!: DepreciationMethod;
 
-  @ApiProperty({ description: 'Durée d\'amortissement en mois', type: Number })
+  @ApiProperty({ description: "Durée d'amortissement en mois", type: Number })
   durationMonths!: number;
 
   @ApiProperty({
@@ -51,16 +51,16 @@ export class AssetResponse {
   })
   decliningRate!: string | null;
 
-  @ApiProperty({ description: 'UUID du compte d\'immobilisation (21x/22x/23x)', format: 'uuid' })
+  @ApiProperty({ description: "UUID du compte d'immobilisation (21x/22x/23x)", format: 'uuid' })
   assetAccountId!: string;
 
-  @ApiProperty({ description: 'UUID du compte d\'amortissement cumulé (28x)', format: 'uuid' })
+  @ApiProperty({ description: "UUID du compte d'amortissement cumulé (28x)", format: 'uuid' })
   depreciationAccountId!: string;
 
   @ApiProperty({ description: 'UUID du compte de dotation (681x)', format: 'uuid' })
   expenseAccountId!: string;
 
-  @ApiProperty({ description: 'Statut de l\'immobilisation', enum: ASSET_STATUSES })
+  @ApiProperty({ description: "Statut de l'immobilisation", enum: ASSET_STATUSES })
   status!: AssetStatus;
 
   @ApiProperty({

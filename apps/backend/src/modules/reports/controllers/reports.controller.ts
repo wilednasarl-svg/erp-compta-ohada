@@ -58,10 +58,7 @@ import {
   type TrialBalanceReport,
 } from '../services/reports.service';
 import { CashFlowService, type CashFlowReport } from '../services/cash-flow.service';
-import {
-  DsfValidatorService,
-  type DsfValidationReport,
-} from '../services/dsf-validator.service';
+import { DsfValidatorService, type DsfValidationReport } from '../services/dsf-validator.service';
 import { ReportsPackageService } from '../services/reports-package.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
 import { ReportsXlsxService } from '../services/reports-xlsx.service';
@@ -155,32 +152,24 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
-    const buffer = await this.packageBuilder.buildDsfPackage(
-      asTenantId(org.id),
-      query.exerciseId,
-      {
-        fromDate: query.fromDate,
-        toDate: query.toDate,
-        fiscalYearStartDate: query.fiscalYearStartDate,
-        orgName: org.name,
-      },
-    );
+    const buffer = await this.packageBuilder.buildDsfPackage(asTenantId(org.id), query.exerciseId, {
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      fiscalYearStartDate: query.fiscalYearStartDate,
+      orgName: org.name,
+    });
     const slug = (org.name ?? 'organization')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    this.sendFile(
-      res,
-      buffer,
-      'application/zip',
-      `dsf-${slug}-${query.toDate}.zip`,
-    );
+    this.sendFile(res, buffer, 'application/zip', `dsf-${slug}-${query.toDate}.zip`);
   }
 
   @Get('annual-package.zip')
   @RequirePermission('journals.reports')
   @ApiOperation({
-    summary: 'Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TFT + Annexe + Aging clients/fournisseurs)',
+    summary:
+      'Dossier annuel SYSCOHADA en ZIP (Balance + CR officiel + Bilan + SIG + Ratios + TFT + Annexe + Aging clients/fournisseurs)',
   })
   @ApiProduces('application/zip')
   async annualPackage(
@@ -432,7 +421,8 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Diagnostic d\'équilibre du bilan SYSCOHADA — journal, décomposition par classe, checklist travaux de fin d\'exercice',
+    summary:
+      "Diagnostic d'équilibre du bilan SYSCOHADA — journal, décomposition par classe, checklist travaux de fin d'exercice",
   })
   @ApiOkResponse({ type: BilanDiagnosticReportEnvelope })
   async balanceSheetDiagnostic(
@@ -450,7 +440,9 @@ export class ReportsController {
   @Post('from-balance')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('journals.reports')
-  @ApiOperation({ summary: 'Génère Bilan + CR depuis une balance uploadée (sans écritures validées)' })
+  @ApiOperation({
+    summary: 'Génère Bilan + CR depuis une balance uploadée (sans écritures validées)',
+  })
   async reportsFromBalance(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Body() body: FromBalanceBodyDto,
@@ -506,7 +498,9 @@ export class ReportsController {
   @Get('tft')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3 p. 34' })
+  @ApiOperation({
+    summary: 'TFT (Tableau Flux Trésorerie - méthode indirecte) — OHADA Vol. 3 p. 34',
+  })
   @ApiOkResponse({ type: TftReportEnvelope })
   async tft(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
@@ -558,7 +552,7 @@ export class ReportsController {
   @Get('margin-by-axis')
   @RequirePermission('journals.reports')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Marge brute par axe analytique (chantier / BU / activité)" })
+  @ApiOperation({ summary: 'Marge brute par axe analytique (chantier / BU / activité)' })
   @ApiOkResponse({ type: MarginByAxisReportEnvelope })
   async marginByAxis(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
@@ -1130,13 +1124,7 @@ export class ReportsController {
       res,
       buffer,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      this.filename(
-        org.name,
-        'balance-comparative',
-        query.previousFromDate,
-        query.toDate,
-        'xlsx',
-      ),
+      this.filename(org.name, 'balance-comparative', query.previousFromDate, query.toDate, 'xlsx'),
     );
   }
 
@@ -1229,13 +1217,7 @@ export class ReportsController {
       res,
       buffer,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      this.filename(
-        org.name,
-        'compte-resultat-officiel',
-        query.fromDate,
-        query.toDate,
-        'xlsx',
-      ),
+      this.filename(org.name, 'compte-resultat-officiel', query.fromDate, query.toDate, 'xlsx'),
     );
   }
 

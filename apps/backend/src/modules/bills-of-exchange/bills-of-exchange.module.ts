@@ -26,10 +26,7 @@ import { BillsOfExchangeService } from './services/bills-of-exchange.service';
  * (ex. workflows banque) puisse s'y brancher.
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([BillOfExchangeEntity, BillEventEntity]),
-    JournalsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([BillOfExchangeEntity, BillEventEntity]), JournalsModule],
   providers: [BillsOfExchangeRepository, BillEventsRepository, BillsOfExchangeService],
   exports: [BillsOfExchangeService],
 })

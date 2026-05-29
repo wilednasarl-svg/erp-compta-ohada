@@ -1,10 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import type {
-  AccountType,
-  AccountingSystem,
-  NormalBalance,
-} from '../../types/accounting-system';
+import type { AccountType, AccountingSystem, NormalBalance } from '../../types/accounting-system';
 
 export class AccountViewResponse {
   @ApiProperty({ format: 'uuid' })

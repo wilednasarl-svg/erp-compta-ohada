@@ -22,11 +22,7 @@
  * (ex. tests registry mock), on renvoie une ligne « source
  * indisponible » mais la note reste applicable.
  */
-import type {
-  NoteHandler,
-  NoteRow,
-  NoteSynthesisSnapshot,
-} from '../types';
+import type { NoteHandler, NoteRow, NoteSynthesisSnapshot } from '../types';
 
 function num(s: string | null | undefined): number {
   if (!s) return 0;

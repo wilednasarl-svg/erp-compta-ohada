@@ -17,7 +17,7 @@ export class AgingBalanceQueryDto {
     required: false,
     deprecated: true,
     description:
-      "DEPRECATED (D1) — les buckets sont désormais figés sur la nomenclature SYSCOHADA Tome 3 Notes 7/17 (0-30 / 31-60 / 61-90 / >90). Paramètre accepté pour rétro-compat mais ignoré.",
+      'DEPRECATED (D1) — les buckets sont désormais figés sur la nomenclature SYSCOHADA Tome 3 Notes 7/17 (0-30 / 31-60 / 61-90 / >90). Paramètre accepté pour rétro-compat mais ignoré.',
     example: '30,60,90',
   })
   @IsOptional()

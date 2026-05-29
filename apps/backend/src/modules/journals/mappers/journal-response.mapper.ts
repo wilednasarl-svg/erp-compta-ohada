@@ -1,10 +1,10 @@
 import type { JournalEntryEntity } from '../entities/journal-entry.entity';
 import type { EntryView } from '../services/entries.service';
 import {
-  JournalEntryDetailResponse,
-  JournalEntryLineResponse,
-  JournalEntryListItemResponse,
-  ListEntriesResponse,
+  type JournalEntryDetailResponse,
+  type JournalEntryLineResponse,
+  type JournalEntryListItemResponse,
+  type ListEntriesResponse,
 } from '../dto/responses';
 
 /**
@@ -19,9 +19,7 @@ import {
  * c'est un refactor de contrat, pas une refonte d'API.
  */
 
-export function toJournalEntryListItem(
-  entity: JournalEntryEntity,
-): JournalEntryListItemResponse {
+export function toJournalEntryListItem(entity: JournalEntryEntity): JournalEntryListItemResponse {
   return {
     id: entity.id,
     organizationId: entity.organizationId,

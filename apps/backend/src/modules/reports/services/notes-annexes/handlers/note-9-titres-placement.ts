@@ -13,7 +13,11 @@ const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   { key: 'ACTIONS', label: 'Actions (502)', prefixes: ['502'] },
   { key: 'OBLIGATIONS', label: 'Obligations (503)', prefixes: ['503'] },
   { key: 'BONS_SOUSCRIPTION', label: 'Bons de souscription (504)', prefixes: ['504'] },
-  { key: 'AUTRES_VMP', label: 'Autres titres de placement (505-508)', prefixes: ['505', '506', '507', '508'] },
+  {
+    key: 'AUTRES_VMP',
+    label: 'Autres titres de placement (505-508)',
+    prefixes: ['505', '506', '507', '508'],
+  },
 ];
 
 export const handleN9TitresPlacement: NoteHandler = (ctx, deps) =>

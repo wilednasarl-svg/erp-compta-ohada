@@ -3,16 +3,16 @@ import type { BankStatementEntity } from '../entities/bank-statement.entity';
 import type { BankStatementLineEntity } from '../entities/bank-statement-line.entity';
 import type { AutoMatchProposal } from '../services/auto-match-algorithm';
 import {
-  AutoMatchProposalResponse,
-  BankAccountEnvelopeResponse,
-  BankAccountResponse,
-  BankStatementLineResponse,
-  BankStatementResponse,
-  BankStatementWithLinesResponse,
-  ImportBankStatementResponse,
-  ListBankAccountsResponse,
-  ListBankStatementsResponse,
-  ListProposalsResponse,
+  type AutoMatchProposalResponse,
+  type BankAccountEnvelopeResponse,
+  type BankAccountResponse,
+  type BankStatementLineResponse,
+  type BankStatementResponse,
+  type BankStatementWithLinesResponse,
+  type ImportBankStatementResponse,
+  type ListBankAccountsResponse,
+  type ListBankStatementsResponse,
+  type ListProposalsResponse,
 } from '../dto/responses';
 
 /**
@@ -101,9 +101,7 @@ export function toListBankAccounts(
   return { accounts: entities.map(toBankAccountResponse) };
 }
 
-export function toBankAccountEnvelope(
-  entity: BankAccountEntity,
-): BankAccountEnvelopeResponse {
+export function toBankAccountEnvelope(entity: BankAccountEntity): BankAccountEnvelopeResponse {
   return { account: toBankAccountResponse(entity) };
 }
 

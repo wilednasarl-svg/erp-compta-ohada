@@ -2,15 +2,15 @@ import type { AssetEntity } from '../entities/asset.entity';
 import type { DepreciationScheduleEntity } from '../entities/depreciation-schedule.entity';
 import type { DisposalJournalEntrySummary } from '../services/assets.service';
 import {
-  AssetDisposalResponse,
-  AssetEnvelopeResponse,
-  AssetResponse,
-  AssetWithScheduleResponse,
-  DepreciationScheduleResponse,
-  DisposalJournalEntryResponse,
-  ListAssetsResponse,
-  ListSchedulesResponse,
-  ScheduleEnvelopeResponse,
+  type AssetDisposalResponse,
+  type AssetEnvelopeResponse,
+  type AssetResponse,
+  type AssetWithScheduleResponse,
+  type DepreciationScheduleResponse,
+  type DisposalJournalEntryResponse,
+  type ListAssetsResponse,
+  type ListSchedulesResponse,
+  type ScheduleEnvelopeResponse,
 } from '../dto/responses';
 
 /**
@@ -90,9 +90,7 @@ export function toDisposalJournalEntryResponse(
 
 // ─── Enveloppes ───────────────────────────────────────────────────────
 
-export function toListAssets(
-  entities: ReadonlyArray<AssetEntity>,
-): ListAssetsResponse {
+export function toListAssets(entities: ReadonlyArray<AssetEntity>): ListAssetsResponse {
   return { assets: entities.map(toAssetResponse) };
 }
 
@@ -106,9 +104,7 @@ export function toListSchedules(
   return { schedule: entities.map(toDepreciationScheduleResponse) };
 }
 
-export function toScheduleEnvelope(
-  entity: DepreciationScheduleEntity,
-): ScheduleEnvelopeResponse {
+export function toScheduleEnvelope(entity: DepreciationScheduleEntity): ScheduleEnvelopeResponse {
   return { schedule: toDepreciationScheduleResponse(entity) };
 }
 

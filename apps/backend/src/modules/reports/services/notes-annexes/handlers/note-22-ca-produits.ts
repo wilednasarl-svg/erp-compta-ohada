@@ -9,12 +9,28 @@ import type { NoteHandler } from '../types';
 
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   { key: 'VENTES_MARCHANDISES', label: 'Ventes de marchandises (701)', prefixes: ['701'] },
-  { key: 'VENTES_PRODUITS', label: 'Ventes de produits fabriqués (702, 703, 704)', prefixes: ['702', '703', '704'] },
-  { key: 'TRAVAUX_SERVICES', label: 'Travaux et services vendus (705, 706)', prefixes: ['705', '706'] },
-  { key: 'PRODUITS_ACCESSOIRES', label: 'Produits accessoires (707, 708)', prefixes: ['707', '708'] },
+  {
+    key: 'VENTES_PRODUITS',
+    label: 'Ventes de produits fabriqués (702, 703, 704)',
+    prefixes: ['702', '703', '704'],
+  },
+  {
+    key: 'TRAVAUX_SERVICES',
+    label: 'Travaux et services vendus (705, 706)',
+    prefixes: ['705', '706'],
+  },
+  {
+    key: 'PRODUITS_ACCESSOIRES',
+    label: 'Produits accessoires (707, 708)',
+    prefixes: ['707', '708'],
+  },
   { key: 'SUBVENTIONS_EXPL', label: "Subventions d'exploitation (71)", prefixes: ['71'] },
   { key: 'PRODUCTION_IMMOB', label: 'Production immobilisée (72)', prefixes: ['72'] },
-  { key: 'VARIATIONS_STOCKS_PROD', label: 'Variations des stocks de biens et services produits (73)', prefixes: ['73'] },
+  {
+    key: 'VARIATIONS_STOCKS_PROD',
+    label: 'Variations des stocks de biens et services produits (73)',
+    prefixes: ['73'],
+  },
   { key: 'AUTRES_PRODUITS', label: 'Autres produits (75)', prefixes: ['75'] },
 ];
 

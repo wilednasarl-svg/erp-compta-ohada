@@ -141,9 +141,7 @@ export class DashboardAgingService {
     // Tri partenaire par totalOutstanding desc (les plus gros dus en
     // tête — c'est ce qu'un comptable veut voir en premier sur un
     // dashboard).
-    partnerBreakdown.sort(
-      (a, b) => Number(b.totalOutstanding) - Number(a.totalOutstanding),
-    );
+    partnerBreakdown.sort((a, b) => Number(b.totalOutstanding) - Number(a.totalOutstanding));
 
     // Totaux globaux par bucket. On somme à partir des partenaires
     // FILTRÉS (post-exclusion des avances), pour rester cohérent avec

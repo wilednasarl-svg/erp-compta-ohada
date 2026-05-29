@@ -15,9 +15,7 @@ import type {
 const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
 const EXERCISE_ID = '11111111-2222-4333-8444-555555555555';
 
-function annualPeriod(
-  overrides: Partial<AccountingPeriodEntity> = {},
-): AccountingPeriodEntity {
+function annualPeriod(overrides: Partial<AccountingPeriodEntity> = {}): AccountingPeriodEntity {
   return {
     id: EXERCISE_ID,
     organizationId: ORG_ID,
@@ -66,13 +64,15 @@ function balancedTrialBalance(): TrialBalanceReport {
   };
 }
 
-function buildHarness(overrides: {
-  period?: AccountingPeriodEntity | null;
-  children?: AccountingPeriodEntity[];
-  bilan?: BalanceSheetReport;
-  trialBalance?: TrialBalanceReport;
-  comments?: ReadonlyArray<NoteAnnexeCommentEntity>;
-} = {}) {
+function buildHarness(
+  overrides: {
+    period?: AccountingPeriodEntity | null;
+    children?: AccountingPeriodEntity[];
+    bilan?: BalanceSheetReport;
+    trialBalance?: TrialBalanceReport;
+    comments?: ReadonlyArray<NoteAnnexeCommentEntity>;
+  } = {},
+) {
   const period = overrides.period === undefined ? annualPeriod() : overrides.period;
   const children = overrides.children ?? [];
   const bilan = overrides.bilan ?? balancedBilan();
@@ -103,9 +103,7 @@ function buildHarness(overrides: {
 describe('DsfValidatorService.validate — guards', () => {
   it('throws NotFoundException when the period does not exist', async () => {
     const h = buildHarness({ period: null });
-    await expect(h.service.validate(ORG_ID, EXERCISE_ID)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(h.service.validate(ORG_ID, EXERCISE_ID)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('throws NotFoundException when the period is not annual', async () => {
@@ -165,7 +163,7 @@ describe('DsfValidatorService.validate — verdict aggregation', () => {
 });
 
 describe('DsfValidatorService.validate — checks individuels', () => {
-  it('WARN PERIOD_NOT_CLOSED quand l\'exercice est ouvert', async () => {
+  it("WARN PERIOD_NOT_CLOSED quand l'exercice est ouvert", async () => {
     const comments = mockCommentsForAllDefaultNotes(false);
     const h = buildHarness({
       period: annualPeriod({ status: 'open' }),

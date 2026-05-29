@@ -15,7 +15,7 @@ import { IsBoolean, IsInt, IsOptional, IsString, Matches, Max, Min } from 'class
  * collapse to the regular trial balance.
  */
 export class ComparativeBalanceQueryDto {
-  @ApiProperty({ example: '2026-01-01', description: "Début période N (inclusive)" })
+  @ApiProperty({ example: '2026-01-01', description: 'Début période N (inclusive)' })
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'fromDate must be YYYY-MM-DD' })
   fromDate!: string;

@@ -11,18 +11,18 @@ import { DisposalJournalEntryResponse } from './disposal-journal-entry.response'
  */
 
 export class ListAssetsResponse {
-  @ApiProperty({ description: 'Toutes les immobilisations de l\'org', type: () => [AssetResponse] })
+  @ApiProperty({ description: "Toutes les immobilisations de l'org", type: () => [AssetResponse] })
   assets!: AssetResponse[];
 }
 
 export class AssetEnvelopeResponse {
-  @ApiProperty({ description: 'L\'immobilisation', type: () => AssetResponse })
+  @ApiProperty({ description: "L'immobilisation", type: () => AssetResponse })
   asset!: AssetResponse;
 }
 
 export class ListSchedulesResponse {
   @ApiProperty({
-    description: 'Échéancier d\'amortissement complet de l\'immobilisation',
+    description: "Échéancier d'amortissement complet de l'immobilisation",
     type: () => [DepreciationScheduleResponse],
   })
   schedule!: DepreciationScheduleResponse[];
@@ -30,7 +30,7 @@ export class ListSchedulesResponse {
 
 export class ScheduleEnvelopeResponse {
   @ApiProperty({
-    description: 'Une ligne d\'échéancier postée en comptabilité',
+    description: "Une ligne d'échéancier postée en comptabilité",
     type: () => DepreciationScheduleResponse,
   })
   schedule!: DepreciationScheduleResponse;
@@ -41,7 +41,7 @@ export class AssetWithScheduleResponse {
   asset!: AssetResponse;
 
   @ApiProperty({
-    description: 'Échéancier d\'amortissement recalculé',
+    description: "Échéancier d'amortissement recalculé",
     type: () => [DepreciationScheduleResponse],
   })
   schedule!: DepreciationScheduleResponse[];

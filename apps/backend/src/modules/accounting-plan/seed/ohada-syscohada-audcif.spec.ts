@@ -166,9 +166,8 @@ describe('OHADA SYSCOHADA AUDCIF reference chart (seed)', () => {
       const codes = new Set(OHADA_REFERENCE_CHART.map((r) => r.code));
       for (const row of OHADA_REFERENCE_CHART) {
         if (row.code.length <= 1) continue;
-        const ancestors = Array.from(
-          { length: row.code.length - 1 },
-          (_, i) => row.code.slice(0, i + 1),
+        const ancestors = Array.from({ length: row.code.length - 1 }, (_, i) =>
+          row.code.slice(0, i + 1),
         );
         expect(ancestors.some((p) => codes.has(p))).toBe(true);
       }

@@ -55,11 +55,7 @@ import { BankStatementsService } from './services/bank-statements.service';
     JournalsModule,
     MultiCurrencyModule,
   ],
-  controllers: [
-    BankAccountsController,
-    BankStatementsController,
-    BankReconciliationController,
-  ],
+  controllers: [BankAccountsController, BankStatementsController, BankReconciliationController],
   providers: [
     BankAccountsRepository,
     BankStatementsRepository,

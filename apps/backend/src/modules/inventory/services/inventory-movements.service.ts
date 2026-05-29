@@ -125,9 +125,7 @@ export class InventoryMovementsService {
         });
       }
       if (item.status !== 'active') {
-        throw new BadRequestException(
-          `Cannot record movement on archived item '${item.code}'.`,
-        );
+        throw new BadRequestException(`Cannot record movement on archived item '${item.code}'.`);
       }
 
       // ─── Valorisation : CMP ou FIFO ───────────────────────────────
@@ -261,11 +259,7 @@ export class InventoryMovementsService {
         const matching = lots.find((l) => l.id === line.lotId);
         if (!matching) continue;
         const newRemaining = Number(matching.remainingQty) - Number(line.qty);
-        await this.lotsRepo.updateRemainingQty(
-          line.lotId,
-          newRemaining.toFixed(4),
-          manager,
-        );
+        await this.lotsRepo.updateRemainingQty(line.lotId, newRemaining.toFixed(4), manager);
       }
 
       // Build a ValuationResult compatible with the CMP shape. Quantité
@@ -293,9 +287,7 @@ export class InventoryMovementsService {
       case 'purchase':
       case 'production':
         if (input.unitPrice === undefined || input.unitPrice === null) {
-          throw new BadRequestException(
-            `${input.type} movement requires a unitPrice.`,
-          );
+          throw new BadRequestException(`${input.type} movement requires a unitPrice.`);
         }
         return applyPurchase(state, { qty: input.qty, unitPrice: input.unitPrice });
       case 'sale':
@@ -381,9 +373,7 @@ export class InventoryMovementsService {
       return entry.id;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(
-        `Failed to generate journal entry for movement ${movement.id}: ${msg}`,
-      );
+      this.logger.warn(`Failed to generate journal entry for movement ${movement.id}: ${msg}`);
       return null;
     }
   }

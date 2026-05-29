@@ -23,9 +23,7 @@ export const handleN27bEffectifs: NoteHandler = async (ctx, deps) => {
     return { rows: [], applicable: true };
   }
 
-  const workforce = await deps.dsfProfile.getWorkforceByQualification(
-    ctx.organizationId as string,
-  );
+  const workforce = await deps.dsfProfile.getWorkforceByQualification(ctx.organizationId as string);
 
   const entries = Object.entries(workforce).filter(
     ([, n]) => typeof n === 'number' && Number.isFinite(n),

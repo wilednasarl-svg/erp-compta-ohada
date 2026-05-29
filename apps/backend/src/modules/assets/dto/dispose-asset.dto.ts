@@ -1,12 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsIn,
-  IsNotEmpty,
-  IsNumberString,
-  IsOptional,
-  IsString,
-  Matches,
-} from 'class-validator';
+import { IsIn, IsNotEmpty, IsNumberString, IsOptional, IsString, Matches } from 'class-validator';
 
 /**
  * W3.3 — Cession d'immobilisation SYSCOHADA (App. 33 / 66 / 110, Tome 1 G04).
@@ -64,7 +57,7 @@ export class DisposeAssetDto {
   proceedsAccountCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Note libre archivée dans la piste d\'audit.',
+    description: "Note libre archivée dans la piste d'audit.",
   })
   @IsOptional()
   @IsString()

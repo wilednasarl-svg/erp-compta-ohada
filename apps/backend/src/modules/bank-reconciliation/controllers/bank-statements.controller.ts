@@ -10,12 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -59,10 +54,7 @@ export class BankStatementsController {
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
   ): Promise<ListBankStatementsResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
-    const statements = await this.service.listByBankAccount(
-      bankAccountId,
-      asTenantId(tokenOrgId),
-    );
+    const statements = await this.service.listByBankAccount(bankAccountId, asTenantId(tokenOrgId));
     return toListBankStatements(statements);
   }
 

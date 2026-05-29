@@ -24,7 +24,7 @@ export class TvaDeclarationResponse {
   id!: string;
 
   @ApiProperty({
-    description: 'Identifiant UUID v4 de l\'organisation propriétaire',
+    description: "Identifiant UUID v4 de l'organisation propriétaire",
     format: 'uuid',
   })
   organizationId!: string;
@@ -97,7 +97,7 @@ export class TvaDeclarationResponse {
   computedAt!: Date | null;
 
   @ApiProperty({
-    description: 'UUID de l\'utilisateur ayant calculé la déclaration',
+    description: "UUID de l'utilisateur ayant calculé la déclaration",
     nullable: true,
     type: String,
     format: 'uuid',
@@ -105,7 +105,7 @@ export class TvaDeclarationResponse {
   computedById!: string | null;
 
   @ApiProperty({
-    description: 'Date d\'annulation (null si non annulée)',
+    description: "Date d'annulation (null si non annulée)",
     nullable: true,
     type: String,
     format: 'date-time',
@@ -113,7 +113,7 @@ export class TvaDeclarationResponse {
   cancelledAt!: Date | null;
 
   @ApiProperty({
-    description: 'UUID de l\'utilisateur ayant annulé la déclaration',
+    description: "UUID de l'utilisateur ayant annulé la déclaration",
     nullable: true,
     type: String,
     format: 'uuid',
@@ -121,7 +121,7 @@ export class TvaDeclarationResponse {
   cancelledById!: string | null;
 
   @ApiProperty({
-    description: 'Motif d\'annulation libre (null si non annulée)',
+    description: "Motif d'annulation libre (null si non annulée)",
     nullable: true,
     type: String,
   })
@@ -129,7 +129,7 @@ export class TvaDeclarationResponse {
 
   @ApiProperty({
     description:
-      'UUID de l\'écriture de journal OD générée par la centralisation TVA (W4.1). Null tant que la déclaration n\'a pas été centralisée.',
+      "UUID de l'écriture de journal OD générée par la centralisation TVA (W4.1). Null tant que la déclaration n'a pas été centralisée.",
     nullable: true,
     type: String,
     format: 'uuid',
@@ -138,7 +138,7 @@ export class TvaDeclarationResponse {
 
   @ApiProperty({
     description:
-      'Date à laquelle la centralisation TVA a été exécutée (W4.1). Null tant que la déclaration n\'a pas été centralisée.',
+      "Date à laquelle la centralisation TVA a été exécutée (W4.1). Null tant que la déclaration n'a pas été centralisée.",
     nullable: true,
     type: String,
     format: 'date-time',
@@ -146,7 +146,7 @@ export class TvaDeclarationResponse {
   centralizedAt!: Date | null;
 
   @ApiProperty({
-    description: 'Lignes d\'agrégation par préfixe de compte SYSCOHADA',
+    description: "Lignes d'agrégation par préfixe de compte SYSCOHADA",
     type: () => [TvaDeclarationLineResponse],
   })
   lines!: TvaDeclarationLineResponse[];

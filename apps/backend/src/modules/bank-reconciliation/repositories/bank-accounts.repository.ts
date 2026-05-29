@@ -58,10 +58,7 @@ export class BankAccountsRepository {
     return repo.save(entity);
   }
 
-  async findById(
-    id: string,
-    organizationId: TenantId | string,
-  ): Promise<BankAccountEntity | null> {
+  async findById(id: string, organizationId: TenantId | string): Promise<BankAccountEntity | null> {
     assertTenantId(organizationId);
     return this.repo.findOne({ where: { id, organizationId } });
   }

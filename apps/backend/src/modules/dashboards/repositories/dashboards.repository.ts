@@ -148,9 +148,7 @@ export class DashboardsRepository {
       .addSelect('COALESCE(SUM(l.credit), 0)', 'totalCredit');
 
     // Construit dynamiquement le OR (a.code LIKE prefix%).
-    const orParts = codePrefixes
-      .map((_, i) => `a.code LIKE :prefix${i}`)
-      .join(' OR ');
+    const orParts = codePrefixes.map((_, i) => `a.code LIKE :prefix${i}`).join(' OR ');
     const params: Record<string, string> = {};
     codePrefixes.forEach((p, i) => {
       params[`prefix${i}`] = `${p}%`;

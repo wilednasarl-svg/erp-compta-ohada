@@ -27,8 +27,7 @@ export class MatchStatementLineDto {
    * 0.01 côté service.
    */
   @ApiPropertyOptional({
-    description:
-      "Tolérance absolue (devise du compte) sur la somme des montants. Défaut 0.01.",
+    description: 'Tolérance absolue (devise du compte) sur la somme des montants. Défaut 0.01.',
     example: 0.5,
     minimum: 0,
   })

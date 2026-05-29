@@ -324,8 +324,6 @@ export function getTftLabel(code: string): string {
 }
 
 /** Renvoie la liste des codes de détail d'une section donnée. */
-export function getTftPostesOfSection(
-  section: TftSection,
-): readonly TftPosteRef[] {
+export function getTftPostesOfSection(section: TftSection): readonly TftPosteRef[] {
   return TFT_POSTES.filter((p) => p.section === section && p.kind === 'POSTE');
 }

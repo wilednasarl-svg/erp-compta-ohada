@@ -48,61 +48,71 @@ const base64Bytes = (expectedBytes: number) =>
       }
     }, `must be a base64-encoded value of exactly ${expectedBytes} bytes`);
 
-export const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+export const envSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3001),
 
-  DATABASE_URL: z.string().url('must be a valid URL'),
-  DB_SSL: booleanFromEnv.default(false),
-  DB_SCHEMA: z.string().default('public'),
+    DATABASE_URL: z.string().url('must be a valid URL'),
+    DB_SSL: booleanFromEnv.default(false),
+    DB_SCHEMA: z.string().default('public'),
 
-  JWT_SECRET: z.string().min(32, 'must be at least 32 characters long'),
-  JWT_ACCESS_TTL: z
-    .string()
-    .regex(TTL_PATTERN, 'must match a duration (e.g. 15m, 1h, 900)')
-    .default('15m'),
-  JWT_REFRESH_TTL: z
-    .string()
-    .regex(TTL_PATTERN, 'must match a duration (e.g. 7d, 1w, 604800)')
-    .default('7d'),
+    JWT_SECRET: z.string().min(32, 'must be at least 32 characters long'),
+    JWT_ACCESS_TTL: z
+      .string()
+      .regex(TTL_PATTERN, 'must match a duration (e.g. 15m, 1h, 900)')
+      .default('15m'),
+    JWT_REFRESH_TTL: z
+      .string()
+      .regex(TTL_PATTERN, 'must match a duration (e.g. 7d, 1w, 604800)')
+      .default('7d'),
 
-  MFA_ENCRYPTION_KEY: base64Bytes(32),
+    MFA_ENCRYPTION_KEY: base64Bytes(32),
 
-  SMTP_HOST: z.string().min(1, 'is required'),
-  SMTP_PORT: z.coerce.number().int().min(1).max(65535),
-  SMTP_USER: z.string().min(1, 'is required'),
-  SMTP_PASS: z.string().min(1, 'is required'),
-  SMTP_FROM: z.string().email('must be a valid email address'),
+    SMTP_HOST: z.string().min(1, 'is required'),
+    SMTP_PORT: z.coerce.number().int().min(1).max(65535),
+    SMTP_USER: z.string().min(1, 'is required'),
+    SMTP_PASS: z.string().min(1, 'is required'),
+    SMTP_FROM: z.string().email('must be a valid email address'),
 
-  APP_BASE_URL: z.string().url('must be a valid URL'),
+    APP_BASE_URL: z.string().url('must be a valid URL'),
 
-  EMAIL_DRY_RUN: booleanFromEnv,
+    EMAIL_DRY_RUN: booleanFromEnv,
 
-  // Module 3 — Import engine.
-  IMPORT_STORAGE_DIR: z.string().min(1).default('./uploads'),
-  IMPORT_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(25),
+    // Module 3 — Import engine.
+    IMPORT_STORAGE_DIR: z.string().min(1).default('./uploads'),
+    IMPORT_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(25),
 
-  // Module 10 — Document engine.
-  // Set DOC_STORAGE_DRIVER=supabase in production to persist files in
-  // Supabase Storage instead of the local filesystem (Railway ephemeral).
-  DOC_STORAGE_DRIVER: z.enum(['local', 'supabase']).default('local'),
-  DOC_STORAGE_DIR: z.string().min(1).default('./uploads/documents'),
-  DOC_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(50),
+    // Module 10 — Document engine.
+    // Set DOC_STORAGE_DRIVER=supabase in production to persist files in
+    // Supabase Storage instead of the local filesystem (Railway ephemeral).
+    DOC_STORAGE_DRIVER: z.enum(['local', 'supabase']).default('local'),
+    DOC_STORAGE_DIR: z.string().min(1).default('./uploads/documents'),
+    DOC_MAX_FILE_SIZE_MB: z.coerce.number().int().min(1).max(500).default(50),
 
-  // Supabase Storage — required when DOC_STORAGE_DRIVER=supabase.
-  SUPABASE_URL: z.string().url().optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
-  SUPABASE_STORAGE_BUCKET: z.string().min(1).default('documents'),
-}).superRefine((data, ctx) => {
-  if (data.DOC_STORAGE_DRIVER === 'supabase') {
-    if (!data.SUPABASE_URL) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SUPABASE_URL'], message: 'required when DOC_STORAGE_DRIVER=supabase' });
+    // Supabase Storage — required when DOC_STORAGE_DRIVER=supabase.
+    SUPABASE_URL: z.string().url().optional(),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+    SUPABASE_STORAGE_BUCKET: z.string().min(1).default('documents'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.DOC_STORAGE_DRIVER === 'supabase') {
+      if (!data.SUPABASE_URL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SUPABASE_URL'],
+          message: 'required when DOC_STORAGE_DRIVER=supabase',
+        });
+      }
+      if (!data.SUPABASE_SERVICE_ROLE_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SUPABASE_SERVICE_ROLE_KEY'],
+          message: 'required when DOC_STORAGE_DRIVER=supabase',
+        });
+      }
     }
-    if (!data.SUPABASE_SERVICE_ROLE_KEY) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SUPABASE_SERVICE_ROLE_KEY'], message: 'required when DOC_STORAGE_DRIVER=supabase' });
-    }
-  }
-});
+  });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;
 

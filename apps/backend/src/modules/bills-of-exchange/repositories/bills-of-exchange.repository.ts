@@ -41,10 +41,7 @@ export class BillsOfExchangeRepository {
     private readonly repo: Repository<BillOfExchangeEntity>,
   ) {}
 
-  async create(
-    input: CreateBillInput,
-    manager?: EntityManager,
-  ): Promise<BillOfExchangeEntity> {
+  async create(input: CreateBillInput, manager?: EntityManager): Promise<BillOfExchangeEntity> {
     assertTenantId(input.organizationId);
     const repo = manager ? manager.getRepository(BillOfExchangeEntity) : this.repo;
     const entity = repo.create({
@@ -99,9 +96,7 @@ export class BillsOfExchangeRepository {
     await repo.update({ id, organizationId }, patch);
     const updated = await repo.findOne({ where: { id, organizationId } });
     if (!updated) {
-      throw new Error(
-        `Bill of exchange ${id} disappeared after UPDATE in org ${organizationId}`,
-      );
+      throw new Error(`Bill of exchange ${id} disappeared after UPDATE in org ${organizationId}`);
     }
     return updated;
   }

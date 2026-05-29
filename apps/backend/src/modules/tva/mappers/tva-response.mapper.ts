@@ -2,13 +2,13 @@ import type { TvaCodeEntity } from '../entities/tva-code.entity';
 import type { TvaDeclarationLineEntity } from '../entities/tva-declaration-line.entity';
 import type { TvaDeclarationEntity } from '../entities/tva-declaration.entity';
 import {
-  ListTvaCodesResponse,
-  ListTvaDeclarationsResponse,
-  TvaCodeEnvelopeResponse,
-  TvaCodeResponse,
-  TvaDeclarationEnvelopeResponse,
-  TvaDeclarationLineResponse,
-  TvaDeclarationResponse,
+  type ListTvaCodesResponse,
+  type ListTvaDeclarationsResponse,
+  type TvaCodeEnvelopeResponse,
+  type TvaCodeResponse,
+  type TvaDeclarationEnvelopeResponse,
+  type TvaDeclarationLineResponse,
+  type TvaDeclarationResponse,
 } from '../dto/responses';
 
 /**
@@ -33,12 +33,8 @@ export function toTvaDeclarationLineResponse(
   };
 }
 
-export function toTvaDeclarationResponse(
-  entity: TvaDeclarationEntity,
-): TvaDeclarationResponse {
-  const lines = Array.isArray(entity.lines)
-    ? entity.lines.map(toTvaDeclarationLineResponse)
-    : [];
+export function toTvaDeclarationResponse(entity: TvaDeclarationEntity): TvaDeclarationResponse {
+  const lines = Array.isArray(entity.lines) ? entity.lines.map(toTvaDeclarationLineResponse) : [];
 
   return {
     id: entity.id,
@@ -95,9 +91,7 @@ export function toEnvelopeDeclaration(
   };
 }
 
-export function toListCodes(
-  entities: ReadonlyArray<TvaCodeEntity>,
-): ListTvaCodesResponse {
+export function toListCodes(entities: ReadonlyArray<TvaCodeEntity>): ListTvaCodesResponse {
   return {
     codes: entities.map(toTvaCodeResponse),
   };

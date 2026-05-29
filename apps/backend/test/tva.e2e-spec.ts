@@ -43,10 +43,10 @@ describe('e2e: TVA & Déclarations fiscales (Module 13)', () => {
     expect(listRes.status).toBe(HttpStatus.OK);
     const codes = listRes.body.data.codes;
     expect(codes.length).toBeGreaterThanOrEqual(4);
-    
+
     const standardCode = codes.find((c: any) => c.code === 'TVA-N-18');
     expect(standardCode).toBeDefined();
-    expect(Number(standardCode.rate)).toBe(18.00);
+    expect(Number(standardCode.rate)).toBe(18.0);
     expect(standardCode.type).toBe('both');
 
     // 2. Create custom TVA code
@@ -65,7 +65,7 @@ describe('e2e: TVA & Déclarations fiscales (Module 13)', () => {
     expect(createRes.status).toBe(HttpStatus.CREATED);
     const createdCode = createRes.body.data.code;
     expect(createdCode.code).toBe('TVA-REDUIT-CI');
-    expect(Number(createdCode.rate)).toBe(5.50);
+    expect(Number(createdCode.rate)).toBe(5.5);
 
     // 3. Prevent duplicate TVA code
     const dupRes = await authedJson(
@@ -95,7 +95,7 @@ describe('e2e: TVA & Déclarations fiscales (Module 13)', () => {
     });
     expect(updateRes.status).toBe(HttpStatus.OK);
     expect(updateRes.body.data.code.label).toBe('TVA CI Réduit Spécial Renommé');
-    expect(Number(updateRes.body.data.code.rate)).toBe(6.00);
+    expect(Number(updateRes.body.data.code.rate)).toBe(6.0);
   });
 
   // ─────────────────────────────────────────────────────────────────
@@ -108,10 +108,12 @@ describe('e2e: TVA & Déclarations fiscales (Module 13)', () => {
 
     // 1. Post a validated entry to seed collected/deductible VAT in a period
     // Find the OD journal ID for the organization
-    const journal = (await dataSource.query(
-      `SELECT "id" FROM "journals" WHERE "organization_id" = $1 AND "code" = 'OD' LIMIT 1`,
-      [org.organizationId],
-    ))[0];
+    const journal = (
+      await dataSource.query(
+        `SELECT "id" FROM "journals" WHERE "organization_id" = $1 AND "code" = 'OD' LIMIT 1`,
+        [org.organizationId],
+      )
+    )[0];
     expect(journal).toBeDefined();
 
     // Insert an accounting period for 2026
@@ -251,11 +253,11 @@ describe('e2e: TVA & Déclarations fiscales (Module 13)', () => {
       `/organizations/${org.organizationId}/tva/declarations/${decl.id}/cancel`,
       org.scopedAccessToken,
     ).send({
-      reason: 'Correction d\'écriture',
+      reason: "Correction d'écriture",
     });
     expect(cancelRes.status).toBe(HttpStatus.OK);
     expect(cancelRes.body.data.declaration.status).toBe('cancelled');
-    expect(cancelRes.body.data.declaration.cancelledReason).toBe('Correction d\'écriture');
+    expect(cancelRes.body.data.declaration.cancelledReason).toBe("Correction d'écriture");
   });
 
   // ─────────────────────────────────────────────────────────────────

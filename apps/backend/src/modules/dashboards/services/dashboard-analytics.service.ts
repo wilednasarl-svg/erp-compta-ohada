@@ -90,10 +90,7 @@ export class DashboardAnalyticsService {
     };
   }
 
-  async getEvolution(
-    organizationId: TenantId,
-    exerciseId: string,
-  ): Promise<DashboardEvolution> {
+  async getEvolution(organizationId: TenantId, exerciseId: string): Promise<DashboardEvolution> {
     const period = await this.requireRootPeriod(organizationId, exerciseId);
 
     const rows = await this.dashRepo.monthlyAggregateByClass(
@@ -167,8 +164,7 @@ export class DashboardAnalyticsService {
       .map((f) => {
         const debit = Number(f.totalDebit);
         const credit = Number(f.totalCredit);
-        const amount =
-          input.category === 'expenses' ? debit - credit : credit - debit;
+        const amount = input.category === 'expenses' ? debit - credit : credit - debit;
         return { ...f, amount };
       })
       .filter((f) => f.amount > 0); // skip comptes contre-passés à 0 ou négatifs
@@ -265,8 +261,18 @@ function toIso2(d: Date): string {
 }
 
 const MONTH_LABELS_FR = [
-  'Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin',
-  'Juill.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.',
+  'Janv.',
+  'Févr.',
+  'Mars',
+  'Avr.',
+  'Mai',
+  'Juin',
+  'Juill.',
+  'Août',
+  'Sept.',
+  'Oct.',
+  'Nov.',
+  'Déc.',
 ];
 
 function monthLabelFr(d: Date): string {

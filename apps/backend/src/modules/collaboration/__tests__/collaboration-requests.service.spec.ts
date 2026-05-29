@@ -6,11 +6,8 @@ import type { CollaborationRequestRepository } from '../repositories/collaborati
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { AppException } from '../../../common/errors/app-exception';
-import {
-  isStatusTransitionAllowed,
-  type CollaborationStatus,
-} from '../types/collaboration-status';
-import { CollaborationNotificationsService } from '../services/collaboration-notifications.service';
+import { isStatusTransitionAllowed, type CollaborationStatus } from '../types/collaboration-status';
+import { type CollaborationNotificationsService } from '../services/collaboration-notifications.service';
 import { CollaborationRequestsService } from '../services/collaboration-requests.service';
 
 const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
@@ -175,7 +172,9 @@ describe('CollaborationRequestsService.createRequest', () => {
   it('mappe une violation de FK en COLLAB_LINKED_NOT_FOUND (422)', async () => {
     const { service } = buildService();
     const fkError = Object.assign(new Error('FK fail'), { code: '23503' });
-    const { mocks } = buildService({ requests: { createOne: jest.fn().mockRejectedValue(fkError) } as never });
+    const { mocks } = buildService({
+      requests: { createOne: jest.fn().mockRejectedValue(fkError) } as never,
+    });
     // On rebranche le service sur ces mocks-ci.
     const svc = new CollaborationRequestsService(
       mocks.requests,
@@ -331,8 +330,9 @@ describe('CollaborationRequestsService.addComment', () => {
       }),
     );
     // PII guard : le body n'est PAS journalisé dans `after`.
-    const afterPayload = (mocks.audit.record.mock.calls[0][0] as { after?: Record<string, unknown> })
-      .after;
+    const afterPayload = (
+      mocks.audit.record.mock.calls[0][0] as { after?: Record<string, unknown> }
+    ).after;
     expect(afterPayload).not.toHaveProperty('body');
   });
 
@@ -358,7 +358,7 @@ describe('CollaborationRequestsService.addComment', () => {
     expect(mocks.comments.createOne).not.toHaveBeenCalled();
   });
 
-  it("un client ne peut pas commenter une demande non assignée", async () => {
+  it('un client ne peut pas commenter une demande non assignée', async () => {
     const { service, mocks } = buildService();
     mocks.requests.findById.mockResolvedValue(
       makeRequest({ status: 'in_progress', assigneeId: OTHER_CLIENT_ID }),
@@ -373,7 +373,7 @@ describe('CollaborationRequestsService.addComment', () => {
 });
 
 describe('CollaborationRequestsService.listForActor', () => {
-  it("scope cabinet : pas de filtre assignee imposé", async () => {
+  it('scope cabinet : pas de filtre assignee imposé', async () => {
     const { service, mocks } = buildService();
     mocks.requests.listForOrg.mockResolvedValue({ rows: [], total: 0 });
 
@@ -392,7 +392,7 @@ describe('CollaborationRequestsService.listForActor', () => {
     );
   });
 
-  it("scope client : assignee_id forcé à actorUserId (même si client passe un autre id)", async () => {
+  it('scope client : assignee_id forcé à actorUserId (même si client passe un autre id)', async () => {
     const { service, mocks } = buildService();
     mocks.requests.listForOrg.mockResolvedValue({ rows: [], total: 0 });
 

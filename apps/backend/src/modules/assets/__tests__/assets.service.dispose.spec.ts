@@ -240,13 +240,7 @@ describe('AssetsService.dispose (W3.3 — cession SYSCOHADA)', () => {
         proceedsAmount: '50000.00',
         disposalKind: 'recurring',
       };
-      const { journalEntries } = await h.service.dispose(
-        'asset-1',
-        ORG_ID,
-        dto,
-        ACTOR_ID,
-        CTX,
-      );
+      const { journalEntries } = await h.service.dispose('asset-1', ORG_ID, dto, ACTOR_ID, CTX);
 
       // Pas de prorata car proratStart (2026-01-01) > disposalDate (2025-12-31).
       const types = journalEntries.map((e) => e.type);
@@ -280,13 +274,7 @@ describe('AssetsService.dispose (W3.3 — cession SYSCOHADA)', () => {
         proceedsAmount: '0.00',
         disposalKind: 'hao',
       };
-      const { journalEntries } = await h.service.dispose(
-        'asset-1',
-        ORG_ID,
-        dto,
-        ACTOR_ID,
-        CTX,
-      );
+      const { journalEntries } = await h.service.dispose('asset-1', ORG_ID, dto, ACTOR_ID, CTX);
 
       const types = journalEntries.map((e) => e.type);
       expect(types).toEqual(['asset_writeoff']);
@@ -294,7 +282,7 @@ describe('AssetsService.dispose (W3.3 — cession SYSCOHADA)', () => {
     });
   });
 
-  describe('prorata cession en cours d\'année', () => {
+  describe("prorata cession en cours d'année", () => {
     it('génère une écriture de dotation prorata avant la sortie', async () => {
       const h = buildHarness();
       // Cession 30/06/2026 : dernière dotation 31/12/2025 (60k cumul).
@@ -310,13 +298,7 @@ describe('AssetsService.dispose (W3.3 — cession SYSCOHADA)', () => {
         proceedsAmount: '50000.00',
         disposalKind: 'recurring',
       };
-      const { journalEntries } = await h.service.dispose(
-        'asset-1',
-        ORG_ID,
-        dto,
-        ACTOR_ID,
-        CTX,
-      );
+      const { journalEntries } = await h.service.dispose('asset-1', ORG_ID, dto, ACTOR_ID, CTX);
 
       const types = journalEntries.map((e) => e.type);
       expect(types[0]).toBe('prorata_depreciation');

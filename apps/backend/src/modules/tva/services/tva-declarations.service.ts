@@ -5,7 +5,11 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
-import { EntriesService, type CreateLineInput, type EntryView } from '../../journals/services/entries.service';
+import {
+  EntriesService,
+  type CreateLineInput,
+  type EntryView,
+} from '../../journals/services/entries.service';
 import { TvaDeclarationEntity } from '../entities/tva-declaration.entity';
 import { TvaDeclarationLineEntity } from '../entities/tva-declaration-line.entity';
 import { TvaDeclarationRepository } from '../repositories/tva-declaration.repository';
@@ -252,7 +256,7 @@ export class TvaDeclarationsService {
     if (decl.centralizationJournalEntryId != null) {
       throw new AppException(ERROR_CODES.TVA_DECLARATION_CENTRALIZED_CANNOT_CANCEL, {
         message:
-          'Cette déclaration a été centralisée : annulez d\'abord l\'écriture de centralisation dans le journal OD, puis ré-essayez.',
+          "Cette déclaration a été centralisée : annulez d'abord l'écriture de centralisation dans le journal OD, puis ré-essayez.",
       });
     }
 
@@ -343,8 +347,7 @@ export class TvaDeclarationsService {
       // l'invariant : signaler explicitement plutôt que produire une
       // écriture vide rejetée par `EntriesService`.
       throw new AppException(ERROR_CODES.JOURNAL_ENTRY_EMPTY_LINES, {
-        message:
-          'Aucun mouvement TVA sur la période : la centralisation n\'a pas d\'objet.',
+        message: "Aucun mouvement TVA sur la période : la centralisation n'a pas d'objet.",
       });
     }
 

@@ -1,12 +1,12 @@
 import type { AccountView } from '../services/chart-of-accounts.service';
 import type { ReferenceAccountView } from '../services/reference-chart.service';
 import {
-  AccountEnvelopeResponse,
-  AccountViewResponse,
-  ImportChartResponse,
-  ListAccountsResponse,
-  ListReferenceAccountsResponse,
-  ReferenceAccountViewResponse,
+  type AccountEnvelopeResponse,
+  type AccountViewResponse,
+  type ImportChartResponse,
+  type ListAccountsResponse,
+  type ListReferenceAccountsResponse,
+  type ReferenceAccountViewResponse,
 } from '../dto/responses';
 
 export function toAccountViewResponse(view: AccountView): AccountViewResponse {
@@ -23,9 +23,7 @@ export function toAccountViewResponse(view: AccountView): AccountViewResponse {
   };
 }
 
-export function toListAccounts(
-  views: ReadonlyArray<AccountView>,
-): ListAccountsResponse {
+export function toListAccounts(views: ReadonlyArray<AccountView>): ListAccountsResponse {
   return { accounts: views.map(toAccountViewResponse) };
 }
 
@@ -33,10 +31,7 @@ export function toAccountEnvelope(view: AccountView): AccountEnvelopeResponse {
   return { account: toAccountViewResponse(view) };
 }
 
-export function toImportChart(result: {
-  added: number;
-  skipped: number;
-}): ImportChartResponse {
+export function toImportChart(result: { added: number; skipped: number }): ImportChartResponse {
   return { added: result.added, skipped: result.skipped };
 }
 

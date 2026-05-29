@@ -18,19 +18,19 @@ export type SubsidyReleaseMethod = 'on_depreciation' | 'linear_10y' | 'manual';
 export type SubsidyStatus = 'active' | 'fully_released' | 'cancelled';
 
 /** Compte SYSCOHADA crédité à l'octroi (capitaux propres, classe 14). */
-export const SUBSIDY_GRANT_LIABILITY_ACCOUNT = '1411' as const;
+export const SUBSIDY_GRANT_LIABILITY_ACCOUNT = '1411';
 
 /**
  * Compte par défaut débité à l'octroi : créance sur le bailleur (4494).
  * Pour un encaissement direct, le caller passe '521' (banque) dans le DTO.
  */
-export const DEFAULT_GRANT_DEBIT_ACCOUNT = '4494' as const;
+export const DEFAULT_GRANT_DEBIT_ACCOUNT = '4494';
 
 /** Compte de produit crédité à chaque reprise (transfert au résultat). */
-export const SUBSIDY_RELEASE_INCOME_ACCOUNT = '799' as const;
+export const SUBSIDY_RELEASE_INCOME_ACCOUNT = '799';
 
 /**
  * Durée d'étalement par défaut pour la méthode `linear_10y` (asset non
  * amortissable ou subvention non liée à un asset). 10 ans = 120 mois.
  */
-export const LINEAR_RELEASE_MONTHS = 120 as const;
+export const LINEAR_RELEASE_MONTHS = 120;

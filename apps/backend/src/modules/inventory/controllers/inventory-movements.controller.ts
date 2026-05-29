@@ -10,7 +10,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -24,14 +30,8 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { ListMovementsQueryDto } from '../dto/list-movements-query.dto';
 import { RecordMovementDto } from '../dto/record-movement.dto';
-import {
-  ListInventoryMovementsResponse,
-  RecordMovementResponse,
-} from '../dto/responses';
-import {
-  toListInventoryMovements,
-  toRecordMovement,
-} from '../mappers/inventory-response.mapper';
+import { ListInventoryMovementsResponse, RecordMovementResponse } from '../dto/responses';
+import { toListInventoryMovements, toRecordMovement } from '../mappers/inventory-response.mapper';
 import { InventoryMovementsService } from '../services/inventory-movements.service';
 
 @ApiTags('Inventory — Movements')

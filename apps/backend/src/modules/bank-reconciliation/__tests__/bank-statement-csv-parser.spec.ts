@@ -63,10 +63,9 @@ describe('parseBankCsv', () => {
     });
 
     it('handles quoted fields containing separator', () => {
-      const csv = [
-        'date_operation,libelle,montant',
-        '2026-03-15,"VIR ACME, SARL",1500000.00',
-      ].join('\n');
+      const csv = ['date_operation,libelle,montant', '2026-03-15,"VIR ACME, SARL",1500000.00'].join(
+        '\n',
+      );
       const result = parseBankCsv(csv);
       expect(result.lines[0].label).toBe('VIR ACME, SARL');
     });
@@ -106,8 +105,7 @@ describe('parseBankCsv', () => {
     });
 
     it('rejects both debit and credit positive', () => {
-      const csv =
-        'date_operation,libelle,debit,credit\n2026-03-15,ACME,100.00,200.00';
+      const csv = 'date_operation,libelle,debit,credit\n2026-03-15,ACME,100.00,200.00';
       expect(() => parseBankCsv(csv)).toThrow(BankCsvParseError);
     });
 

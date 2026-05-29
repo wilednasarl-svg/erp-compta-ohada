@@ -28,8 +28,9 @@ describe('PdfFileParser', () => {
 
   describe('canHandle', () => {
     it('accepte une extension .pdf', () => {
-      expect(parser.canHandle({ originalName: 'export.pdf', mimeType: 'application/octet-stream' }))
-        .toBe(true);
+      expect(
+        parser.canHandle({ originalName: 'export.pdf', mimeType: 'application/octet-stream' }),
+      ).toBe(true);
     });
 
     it('accepte le MIME application/pdf même sans extension', () => {
@@ -79,7 +80,7 @@ describe('PdfFileParser', () => {
       return filePath;
     }
 
-    it("extrait un tableau structuré via getTable() (chemin nominal)", async () => {
+    it('extrait un tableau structuré via getTable() (chemin nominal)', async () => {
       const pdfPath = await setupWithMockedPdfParse(Buffer.from('%PDF-1.4\nfake'), {
         getTable: async () => ({
           mergedTables: [

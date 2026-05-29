@@ -61,10 +61,6 @@ import { InventoryMovementsService } from './services/inventory-movements.servic
   // W2.4.c — `InventoryItemRepository` est ré-exporté pour que
   // `ReportsModule` puisse l'injecter dans l'adapter `NoteInventoryDeps`
   // (Notes annexes N6 — Stocks et en-cours).
-  exports: [
-    InventoryItemsService,
-    InventoryMovementsService,
-    InventoryItemRepository,
-  ],
+  exports: [InventoryItemsService, InventoryMovementsService, InventoryItemRepository],
 })
 export class InventoryModule {}

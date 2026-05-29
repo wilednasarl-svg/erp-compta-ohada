@@ -3,9 +3,9 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { AuditContext } from '../../audit/services/audit-trail.service';
 import type { EntriesService } from '../../journals/services/entries.service';
-import { CreateBillDto } from '../dto/create-bill.dto';
-import { DiscountBillDto } from '../dto/discount-bill.dto';
-import { SettleBillDto } from '../dto/settle-bill.dto';
+import { type CreateBillDto } from '../dto/create-bill.dto';
+import { type DiscountBillDto } from '../dto/discount-bill.dto';
+import { type SettleBillDto } from '../dto/settle-bill.dto';
 import type { BillEventEntity } from '../entities/bill-event.entity';
 import type { BillOfExchangeEntity } from '../entities/bill-of-exchange.entity';
 import type { BillEventsRepository } from '../repositories/bill-events.repository';
@@ -80,9 +80,7 @@ function buildHarness(): Harness {
     }),
     findById: jest.fn(async (id: string, organizationId: string) => {
       return (
-        storedBills.find(
-          (b) => b.id === id && b.organizationId === String(organizationId),
-        ) ?? null
+        storedBills.find((b) => b.id === id && b.organizationId === String(organizationId)) ?? null
       );
     }),
     listByOrganization: jest.fn(async (organizationId: string, filters = {}) => {
@@ -244,12 +242,7 @@ describe('BillsOfExchangeService', () => {
     it('rejects a non-positive nominal amount', async () => {
       const h = buildHarness();
       await expect(
-        h.service.issue(
-          ORG_ID,
-          buildReceivableDto({ nominalAmount: '0' }),
-          ACTOR_ID,
-          AUDIT_CTX,
-        ),
+        h.service.issue(ORG_ID, buildReceivableDto({ nominalAmount: '0' }), ACTOR_ID, AUDIT_CTX),
       ).rejects.toMatchObject({ code: ERROR_CODES.BILL_INVALID_AMOUNT });
       expect(h.entries.createDraft).not.toHaveBeenCalled();
       expect(h.storedBills).toHaveLength(0);
@@ -508,9 +501,7 @@ describe('BillsOfExchangeService', () => {
       const h = buildHarness();
       const bill = await h.service.issue(ORG_ID, buildReceivableDto(), ACTOR_ID, AUDIT_CTX);
 
-      await expect(h.service.findById(OTHER_ORG_ID, bill.id)).rejects.toBeInstanceOf(
-        AppException,
-      );
+      await expect(h.service.findById(OTHER_ORG_ID, bill.id)).rejects.toBeInstanceOf(AppException);
       await expect(h.service.findById(OTHER_ORG_ID, bill.id)).rejects.toMatchObject({
         code: ERROR_CODES.BILL_NOT_FOUND,
       });

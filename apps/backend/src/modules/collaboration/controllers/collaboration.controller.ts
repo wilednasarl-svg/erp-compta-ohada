@@ -19,10 +19,7 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 import { asTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
-import type {
-  CurrentOrgContext,
-  CurrentUserContext,
-} from '../../../common/types/request-context';
+import type { CurrentOrgContext, CurrentUserContext } from '../../../common/types/request-context';
 import { CurrentOrg } from '../../auth/decorators/current-org.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';

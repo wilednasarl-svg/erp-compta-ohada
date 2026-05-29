@@ -95,7 +95,9 @@ function buildService(opts: {
   } as unknown as Parameters<Parameters<jest.Mock>[0]>[0];
 
   const dataSource = {
-    transaction: jest.fn(async (cb: (m: typeof fakeManager) => Promise<unknown>) => cb(fakeManager)),
+    transaction: jest.fn(async (cb: (m: typeof fakeManager) => Promise<unknown>) =>
+      cb(fakeManager),
+    ),
   } as unknown as ConstructorParameters<typeof InventoryMovementsService>[0];
 
   const itemsRepo = {
@@ -246,7 +248,7 @@ describe('InventoryMovementsService — W4.2', () => {
     expect(lotInput.sourceMovementId).toBe('mov-1');
   });
 
-  it('sale FIFO: consomme les lots dans l\'ordre + écriture au totalCost FIFO', async () => {
+  it("sale FIFO: consomme les lots dans l'ordre + écriture au totalCost FIFO", async () => {
     const lot1: InventoryLotEntity = {
       id: 'lot-1',
       organizationId: ORG_ID,
@@ -328,7 +330,7 @@ describe('InventoryMovementsService — W4.2', () => {
     });
   });
 
-  it('item sans accountCode: mouvement persisté, pas d\'écriture (warning)', async () => {
+  it("item sans accountCode: mouvement persisté, pas d'écriture (warning)", async () => {
     const { service, mocks } = buildService({
       item: { accountCode: null },
     });
@@ -350,7 +352,7 @@ describe('InventoryMovementsService — W4.2', () => {
     expect(mocks.entries.createDraft).not.toHaveBeenCalled();
   });
 
-  it('EntriesService non câblé: mouvement persisté, pas d\'écriture', async () => {
+  it("EntriesService non câblé: mouvement persisté, pas d'écriture", async () => {
     const { service, mocks } = buildService({ withEntries: false });
 
     await service.recordMovement(
@@ -393,7 +395,7 @@ describe('InventoryMovementsService — W4.2', () => {
     expect(lines[1].accountCode).toBe('7133');
   });
 
-  it('production: pas d\'écriture comptable générée (out of scope W4.2)', async () => {
+  it("production: pas d'écriture comptable générée (out of scope W4.2)", async () => {
     const { service, mocks } = buildService({
       item: { currentQty: '100.0000', currentCmp: '50.0000' },
     });
@@ -415,7 +417,9 @@ describe('InventoryMovementsService — W4.2', () => {
 
   it('échec génération écriture: log warning mais mouvement persisté', async () => {
     const { service, mocks } = buildService({});
-    mocks.entries.createDraft.mockRejectedValueOnce(new AppException(ERROR_CODES.JOURNAL_NOT_FOUND));
+    mocks.entries.createDraft.mockRejectedValueOnce(
+      new AppException(ERROR_CODES.JOURNAL_NOT_FOUND),
+    );
 
     const result = await service.recordMovement(
       ORG_ID as never,

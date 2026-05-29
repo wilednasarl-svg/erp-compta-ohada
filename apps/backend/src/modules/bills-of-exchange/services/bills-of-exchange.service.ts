@@ -12,11 +12,7 @@ import { BillEventEntity } from '../entities/bill-event.entity';
 import { BillOfExchangeEntity } from '../entities/bill-of-exchange.entity';
 import { BillEventsRepository } from '../repositories/bill-events.repository';
 import { BillsOfExchangeRepository } from '../repositories/bills-of-exchange.repository';
-import {
-  BILL_ACCOUNTS,
-  type BillKind,
-  type BillStatus,
-} from '../types/bill.types';
+import { BILL_ACCOUNTS, type BillKind, type BillStatus } from '../types/bill.types';
 
 /**
  * Filtres acceptes par `listByOrg`.
@@ -43,9 +39,9 @@ const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
 /** Journal par defaut pour les operations bancaires (encaissement, escompte). */
-const DEFAULT_BANK_JOURNAL_CODE = 'BQ' as const;
+const DEFAULT_BANK_JOURNAL_CODE = 'BQ';
 /** Journal par defaut pour les operations diverses (emission, impaye). */
-const DEFAULT_OD_JOURNAL_CODE = 'OD' as const;
+const DEFAULT_OD_JOURNAL_CODE = 'OD';
 
 interface JournalLineSpec {
   readonly accountCode: string;
@@ -94,10 +90,7 @@ export class BillsOfExchangeService {
 
   // ─── Queries ────────────────────────────────────────────────────────
 
-  async findById(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<BillWithEvents> {
+  async findById(organizationId: TenantId, id: string): Promise<BillWithEvents> {
     assertTenantId(organizationId);
     const bill = await this.requireBill(organizationId, id);
     const events = await this.eventsRepo.listByBill(id, organizationId);
@@ -141,12 +134,8 @@ export class BillsOfExchangeService {
       ? BILL_ACCOUNTS.RECEIVABLE_HOLDING
       : BILL_ACCOUNTS.PAYABLE_HOLDING;
 
-    const debitAccount = isReceivable
-      ? BILL_ACCOUNTS.RECEIVABLE_HOLDING
-      : dto.partnerAccountCode;
-    const creditAccount = isReceivable
-      ? dto.partnerAccountCode
-      : BILL_ACCOUNTS.PAYABLE_HOLDING;
+    const debitAccount = isReceivable ? BILL_ACCOUNTS.RECEIVABLE_HOLDING : dto.partnerAccountCode;
+    const creditAccount = isReceivable ? dto.partnerAccountCode : BILL_ACCOUNTS.PAYABLE_HOLDING;
 
     const journalCode = dto.journalCode ?? DEFAULT_OD_JOURNAL_CODE;
 
@@ -195,9 +184,7 @@ export class BillsOfExchangeService {
       createdById: actorId,
     });
 
-    this.logger.log(
-      `Bill ${bill.id} issued — kind=${dto.kind} amount=${bill.nominalAmount}`,
-    );
+    this.logger.log(`Bill ${bill.id} issued — kind=${dto.kind} amount=${bill.nominalAmount}`);
     return bill;
   }
 
@@ -242,9 +229,7 @@ export class BillsOfExchangeService {
       });
     }
 
-    const lines: JournalLineSpec[] = [
-      { accountCode: BILL_ACCOUNTS.BANK, debit: net, credit: 0 },
-    ];
+    const lines: JournalLineSpec[] = [{ accountCode: BILL_ACCOUNTS.BANK, debit: net, credit: 0 }];
     if (discountFee > 0) {
       lines.push({
         accountCode: BILL_ACCOUNTS.DISCOUNT_FEE,
@@ -456,10 +441,7 @@ export class BillsOfExchangeService {
 
   // ─── Helpers ────────────────────────────────────────────────────────
 
-  private async requireBill(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<BillOfExchangeEntity> {
+  private async requireBill(organizationId: TenantId, id: string): Promise<BillOfExchangeEntity> {
     const bill = await this.billsRepo.findById(id, organizationId);
     if (!bill) {
       throw new AppException(ERROR_CODES.BILL_NOT_FOUND, {
@@ -469,10 +451,7 @@ export class BillsOfExchangeService {
     return bill;
   }
 
-  private assertPositiveAmount(
-    amount: string,
-    code: 'BILL_INVALID_AMOUNT',
-  ): void {
+  private assertPositiveAmount(amount: string, code: 'BILL_INVALID_AMOUNT'): void {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) {
       throw new AppException(ERROR_CODES[code], {
@@ -481,10 +460,7 @@ export class BillsOfExchangeService {
     }
   }
 
-  private assertNonNegativeAmount(
-    amount: string,
-    code: 'BILL_INVALID_AMOUNT',
-  ): void {
+  private assertNonNegativeAmount(amount: string, code: 'BILL_INVALID_AMOUNT'): void {
     const value = Number(amount);
     if (!Number.isFinite(value) || value < 0) {
       throw new AppException(ERROR_CODES[code], {

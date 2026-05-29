@@ -202,10 +202,10 @@ describe('ValidationService', () => {
         postingCodes: new Set(['101']),
         allReferenceCodes: new Set(['10', '101']),
       };
-      const errors = service.validateRow(
-        balanceRow({ account: '10100000' }),
-        { chart, documentType: 'trial_balance' },
-      );
+      const errors = service.validateRow(balanceRow({ account: '10100000' }), {
+        chart,
+        documentType: 'trial_balance',
+      });
       const hint = errors.find((e) => e.code === 'unknown_account_with_parent_hint');
       expect(hint).toBeDefined();
       expect(hint?.message).toContain('10100000');
@@ -261,18 +261,12 @@ describe('ValidationService', () => {
     });
 
     it('matches against postingCodes too, not only the reference set', () => {
-      const result = findParentAccountByPrefix(
-        '41100000',
-        new Set(['411']),
-        new Set(['41']),
-      );
+      const result = findParentAccountByPrefix('41100000', new Set(['411']), new Set(['41']));
       expect(result).toBe('411');
     });
 
     it('returns null when nothing matches', () => {
-      expect(
-        findParentAccountByPrefix('99999999', new Set(['411']), new Set(['10'])),
-      ).toBeNull();
+      expect(findParentAccountByPrefix('99999999', new Set(['411']), new Set(['10']))).toBeNull();
     });
 
     it('returns null on accounts shorter than 2 chars', () => {

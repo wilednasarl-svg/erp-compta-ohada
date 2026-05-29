@@ -289,23 +289,85 @@ const fakeProfitLoss = (): ProfitLossReport => ({
   // 9 SIG (XA..XI) intercalés. Les montants sont arbitraires (suffisants
   // pour vérifier que le PDF rend bien chaque code).
   lines: [
-    { ref: 'TA', label: 'Ventes de marchandises', note: '21', sign: '+', kind: 'PRODUIT', amountN: '5000000.00' },
-    { ref: 'RA', label: 'Achats de marchandises', note: '22', sign: '-', kind: 'CHARGE', amountN: '-3000000.00' },
-    { ref: 'RB', label: 'Variation de stocks de marchandises', note: '6', sign: '-/+', kind: 'CHARGE', amountN: '0.00' },
+    {
+      ref: 'TA',
+      label: 'Ventes de marchandises',
+      note: '21',
+      sign: '+',
+      kind: 'PRODUIT',
+      amountN: '5000000.00',
+    },
+    {
+      ref: 'RA',
+      label: 'Achats de marchandises',
+      note: '22',
+      sign: '-',
+      kind: 'CHARGE',
+      amountN: '-3000000.00',
+    },
+    {
+      ref: 'RB',
+      label: 'Variation de stocks de marchandises',
+      note: '6',
+      sign: '-/+',
+      kind: 'CHARGE',
+      amountN: '0.00',
+    },
     { ref: 'XA', label: 'MARGE COMMERCIALE', kind: 'SIG', amountN: '2000000.00' },
-    { ref: 'TB', label: 'Ventes de produits fabriqués', note: '21', sign: '+', kind: 'PRODUIT', amountN: '3000000.00' },
-    { ref: 'TC', label: 'Travaux, services vendus', note: '21', sign: '+', kind: 'PRODUIT', amountN: '0.00' },
-    { ref: 'TD', label: 'Produits accessoires', note: '21', sign: '+', kind: 'PRODUIT', amountN: '0.00' },
+    {
+      ref: 'TB',
+      label: 'Ventes de produits fabriqués',
+      note: '21',
+      sign: '+',
+      kind: 'PRODUIT',
+      amountN: '3000000.00',
+    },
+    {
+      ref: 'TC',
+      label: 'Travaux, services vendus',
+      note: '21',
+      sign: '+',
+      kind: 'PRODUIT',
+      amountN: '0.00',
+    },
+    {
+      ref: 'TD',
+      label: 'Produits accessoires',
+      note: '21',
+      sign: '+',
+      kind: 'PRODUIT',
+      amountN: '0.00',
+    },
     { ref: 'XB', label: "CHIFFRE D'AFFAIRES", kind: 'SIG', amountN: '8000000.00' },
     { ref: 'XC', label: 'VALEUR AJOUTÉE', kind: 'SIG', amountN: '4500000.00' },
-    { ref: 'RK', label: 'Charges de personnel', note: '27', sign: '-', kind: 'CHARGE', amountN: '-2000000.00' },
+    {
+      ref: 'RK',
+      label: 'Charges de personnel',
+      note: '27',
+      sign: '-',
+      kind: 'CHARGE',
+      amountN: '-2000000.00',
+    },
     { ref: 'XD', label: "EXCÉDENT BRUT D'EXPLOITATION", kind: 'SIG', amountN: '2500000.00' },
     { ref: 'XE', label: "RÉSULTAT D'EXPLOITATION", kind: 'SIG', amountN: '2500000.00' },
-    { ref: 'TK', label: 'Revenus financiers et assimilés', note: '29', sign: '+', kind: 'PRODUIT', amountN: '500000.00' },
+    {
+      ref: 'TK',
+      label: 'Revenus financiers et assimilés',
+      note: '29',
+      sign: '+',
+      kind: 'PRODUIT',
+      amountN: '500000.00',
+    },
     { ref: 'XF', label: 'RÉSULTAT FINANCIER', kind: 'SIG', amountN: '500000.00' },
     { ref: 'XG', label: 'RÉSULTAT DES ACTIVITÉS ORDINAIRES', kind: 'SIG', amountN: '3000000.00' },
     { ref: 'XH', label: 'RÉSULTAT HORS ACTIVITÉS ORDINAIRES', kind: 'SIG', amountN: '0.00' },
-    { ref: 'RS', label: 'Impôts sur le résultat', sign: '-', kind: 'CHARGE', amountN: '-1000000.00' },
+    {
+      ref: 'RS',
+      label: 'Impôts sur le résultat',
+      sign: '-',
+      kind: 'CHARGE',
+      amountN: '-1000000.00',
+    },
     { ref: 'XI', label: 'RÉSULTAT NET', kind: 'SIG', amountN: '2000000.00' },
   ],
   totalCharges: '6500000.00',
@@ -323,7 +385,7 @@ const fakeTft = (): CashFlowReport => ({
     subtotal: '3000000.00',
     postes: [
       { code: 'FA', label: 'CAFG', amount: '2500000.00' },
-      { code: 'FB', label: "Variation actif circulant HAO", amount: '0.00' },
+      { code: 'FB', label: 'Variation actif circulant HAO', amount: '0.00' },
       { code: 'FC', label: 'Variation stocks', amount: '0.00' },
       { code: 'FD', label: 'Variation créances', amount: '500000.00' },
       { code: 'FE', label: 'Variation passif circulant', amount: '0.00' },
@@ -395,7 +457,7 @@ describe('ReportsPdfService — Compte de Résultat W5.2 volet 2', () => {
     }
   });
 
-  it("contient la section « ACTIVITÉS ORDINAIRES » + intercale les SIG XA..XI en cascade", async () => {
+  it('contient la section « ACTIVITÉS ORDINAIRES » + intercale les SIG XA..XI en cascade', async () => {
     const cap = captureTextCalls();
     try {
       await service.profitLossPdf(fakeProfitLoss(), 'ACME SARL');
@@ -411,7 +473,7 @@ describe('ReportsPdfService — Compte de Résultat W5.2 volet 2', () => {
     expect(joined).toContain('XOF');
   });
 
-  it("intercale les SIG entre les postes lettrés (XA après TA/RA/RB, pas en encadré séparé)", async () => {
+  it('intercale les SIG entre les postes lettrés (XA après TA/RA/RB, pas en encadré séparé)', async () => {
     const cap = captureTextCalls();
     try {
       await service.profitLossPdf(fakeProfitLoss(), 'ACME SARL');
@@ -547,7 +609,16 @@ describe('ReportsPdfService — Grand Livre D2 (doctrine OHADA)', () => {
       cap.restore();
     }
     const joined = cap.calls.join('||');
-    for (const header of ['Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Solde', 'D/C']) {
+    for (const header of [
+      'Date',
+      'Journal',
+      'Pièce',
+      'Libellé',
+      'Débit',
+      'Crédit',
+      'Solde',
+      'D/C',
+    ]) {
       expect(joined).toContain(header);
     }
     expect(joined).toContain('REPORT À NOUVEAU');

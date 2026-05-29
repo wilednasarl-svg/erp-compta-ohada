@@ -94,10 +94,7 @@ describe('CmpCalculator', () => {
 
   describe('applyAdjustment', () => {
     it('positive deltaQty acts as purchase', () => {
-      const result = applyAdjustment(
-        { qty: 100, cmp: 10 },
-        { deltaQty: 50, unitPrice: 20 },
-      );
+      const result = applyAdjustment({ qty: 100, cmp: 10 }, { deltaQty: 50, unitPrice: 20 });
       expect(result.qty).toBe('150.0000');
       expect(Number(result.cmp)).toBeCloseTo(13.3333, 3);
     });
@@ -156,28 +153,22 @@ describe('CmpCalculator', () => {
 
   describe('replayHistory — composition', () => {
     it('5 purchases + 2 sales reproduce expected state', () => {
-      const result = replayHistory(
-        { qty: 0, cmp: 0 },
-        [
-          { type: 'purchase', qty: 100, unitPrice: 10 },  // 100 @ 10
-          { type: 'purchase', qty: 100, unitPrice: 20 },  // 200 @ 15
-          { type: 'sale', qty: 50 },                      // 150 @ 15
-          { type: 'purchase', qty: 50, unitPrice: 18 },   // 200 @ 15.75
-          { type: 'sale', qty: 100 },                     // 100 @ 15.75
-        ],
-      );
+      const result = replayHistory({ qty: 0, cmp: 0 }, [
+        { type: 'purchase', qty: 100, unitPrice: 10 }, // 100 @ 10
+        { type: 'purchase', qty: 100, unitPrice: 20 }, // 200 @ 15
+        { type: 'sale', qty: 50 }, // 150 @ 15
+        { type: 'purchase', qty: 50, unitPrice: 18 }, // 200 @ 15.75
+        { type: 'sale', qty: 100 }, // 100 @ 15.75
+      ]);
       expect(result.qty).toBe('100.0000');
       expect(Number(result.cmp)).toBeCloseTo(15.75, 4);
     });
 
     it('inventory_count overrides historical drift', () => {
-      const result = replayHistory(
-        { qty: 0, cmp: 0 },
-        [
-          { type: 'purchase', qty: 100, unitPrice: 10 },
-          { type: 'inventory_count', qty: 90 }, // 10 lost
-        ],
-      );
+      const result = replayHistory({ qty: 0, cmp: 0 }, [
+        { type: 'purchase', qty: 100, unitPrice: 10 },
+        { type: 'inventory_count', qty: 90 }, // 10 lost
+      ]);
       expect(result.qty).toBe('90.0000');
       expect(result.cmp).toBe('10.0000');
     });
@@ -189,9 +180,9 @@ describe('CmpCalculator', () => {
     });
 
     it('throws on purchase entry missing unitPrice', () => {
-      expect(() =>
-        replayHistory({ qty: 0, cmp: 0 }, [{ type: 'purchase', qty: 10 }]),
-      ).toThrow(/requires unitPrice/);
+      expect(() => replayHistory({ qty: 0, cmp: 0 }, [{ type: 'purchase', qty: 10 }])).toThrow(
+        /requires unitPrice/,
+      );
     });
   });
 

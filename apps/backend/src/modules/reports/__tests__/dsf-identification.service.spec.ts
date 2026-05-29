@@ -57,9 +57,7 @@ function buildOrg(overrides: Partial<OrganizationEntity> = {}): OrganizationEnti
   } as OrganizationEntity;
 }
 
-function buildPeriod(
-  overrides: Partial<AccountingPeriodEntity> = {},
-): AccountingPeriodEntity {
+function buildPeriod(overrides: Partial<AccountingPeriodEntity> = {}): AccountingPeriodEntity {
   return {
     id: EXERCISE_ID,
     organizationId: ORG_ID,
@@ -89,11 +87,13 @@ interface Harness {
   periods: { findById: jest.Mock };
 }
 
-function buildHarness(opts: {
-  profile?: OrganizationDsfProfileEntity | null;
-  org?: OrganizationEntity | null;
-  period?: AccountingPeriodEntity | null;
-} = {}): Harness {
+function buildHarness(
+  opts: {
+    profile?: OrganizationDsfProfileEntity | null;
+    org?: OrganizationEntity | null;
+    period?: AccountingPeriodEntity | null;
+  } = {},
+): Harness {
   const profile = opts.profile === undefined ? buildProfile() : opts.profile;
   const org = opts.org === undefined ? buildOrg() : opts.org;
   const period = opts.period === undefined ? buildPeriod() : opts.period;
@@ -163,9 +163,7 @@ describe('DsfIdentificationService.getOrCreateProfile', () => {
 
   it('rejects empty organizationId via tenant guard', async () => {
     const h = buildHarness();
-    await expect(h.service.getOrCreateProfile('')).rejects.toThrow(
-      /Tenant scope violation/,
-    );
+    await expect(h.service.getOrCreateProfile('')).rejects.toThrow(/Tenant scope violation/);
   });
 });
 

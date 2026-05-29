@@ -96,9 +96,7 @@ export class ActuarialCommitmentsService {
       label: dto.label,
       valuationDate: dto.valuationDate,
       obligationAmount:
-        dto.obligationAmount !== undefined
-          ? this.normalizeAmount(dto.obligationAmount)
-          : undefined,
+        dto.obligationAmount !== undefined ? this.normalizeAmount(dto.obligationAmount) : undefined,
       provisionedAmount:
         dto.provisionedAmount !== undefined
           ? this.normalizeAmount(dto.provisionedAmount)
@@ -118,10 +116,7 @@ export class ActuarialCommitmentsService {
    * n'est plus consommée par le handler N16B ni par
    * `sumOffBalanceSheetAsOf`.
    */
-  async expire(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<ActuarialCommitmentEntity> {
+  async expire(organizationId: TenantId, id: string): Promise<ActuarialCommitmentEntity> {
     assertTenantId(organizationId);
     const current = await this.requireCommitment(organizationId, id);
     if (current.status !== 'active') {
@@ -165,10 +160,7 @@ export class ActuarialCommitmentsService {
    * toutes les évaluations actives à `asAtDate`. Renvoie une string
    * NUMERIC(15,2) "0.00".
    */
-  async sumOffBalanceSheetAsOf(
-    organizationId: TenantId,
-    asAtDate: string,
-  ): Promise<string> {
+  async sumOffBalanceSheetAsOf(organizationId: TenantId, asAtDate: string): Promise<string> {
     assertTenantId(organizationId);
     const rows = await this.repo.listActiveAsOf(organizationId, asAtDate);
     const total = rows.reduce((acc, row) => {

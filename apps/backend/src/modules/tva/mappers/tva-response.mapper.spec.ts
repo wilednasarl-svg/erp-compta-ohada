@@ -27,9 +27,7 @@ function buildLine(overrides: Partial<TvaDeclarationLineEntity> = {}): TvaDeclar
   } as TvaDeclarationLineEntity;
 }
 
-function buildDeclaration(
-  overrides: Partial<TvaDeclarationEntity> = {},
-): TvaDeclarationEntity {
+function buildDeclaration(overrides: Partial<TvaDeclarationEntity> = {}): TvaDeclarationEntity {
   return {
     id: 'decl-1',
     organizationId: 'org-1',

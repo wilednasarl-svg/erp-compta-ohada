@@ -16,7 +16,11 @@ const CATEGORIES: ReadonlyArray<{
   { prefix: '211', key: 'FRAIS_ETABLISSEMENT', label: "Frais d'établissement (211)" },
   { prefix: '212', key: 'CHARGES_A_REPARTIR', label: 'Charges à répartir (212)' },
   { prefix: '213', key: 'R_AND_D', label: 'Frais de recherche et développement (213)' },
-  { prefix: '214', key: 'BREVETS_LICENCES', label: 'Brevets, licences, marques, droits assimilés (214)' },
+  {
+    prefix: '214',
+    key: 'BREVETS_LICENCES',
+    label: 'Brevets, licences, marques, droits assimilés (214)',
+  },
   { prefix: '215', key: 'LOGICIELS', label: 'Logiciels et sites internet (215)' },
   { prefix: '216', key: 'FONDS_COMMERCIAL', label: 'Fonds commercial (216)' },
   { prefix: '217', key: 'INVESTISSEMENTS_BAIL', label: 'Investissements de création (217)' },

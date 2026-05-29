@@ -14,7 +14,7 @@ export class AnnualPackageQueryDto {
 
   @ApiProperty({
     required: false,
-    description: "Début exercice fiscal pour bilan/ratios. Défaut = fromDate.",
+    description: 'Début exercice fiscal pour bilan/ratios. Défaut = fromDate.',
   })
   @IsOptional()
   @IsString()

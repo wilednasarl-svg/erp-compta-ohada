@@ -99,7 +99,6 @@ export const ALL_REGULARIZATION_TYPES: ReadonlyArray<RegularizationType> = Objec
 
 export function isRegularizationType(value: unknown): value is RegularizationType {
   return (
-    typeof value === 'string' &&
-    (ALL_REGULARIZATION_TYPES as ReadonlyArray<string>).includes(value)
+    typeof value === 'string' && (ALL_REGULARIZATION_TYPES as ReadonlyArray<string>).includes(value)
   );
 }

@@ -25,17 +25,9 @@ export type LeaseFrequency = 'monthly' | 'quarterly' | 'annual';
 
 export type LeaseStatus = 'active' | 'closed' | 'cancelled';
 
-export const LEASE_FREQUENCIES: ReadonlyArray<LeaseFrequency> = [
-  'monthly',
-  'quarterly',
-  'annual',
-];
+export const LEASE_FREQUENCIES: ReadonlyArray<LeaseFrequency> = ['monthly', 'quarterly', 'annual'];
 
-export const LEASE_STATUSES: ReadonlyArray<LeaseStatus> = [
-  'active',
-  'closed',
-  'cancelled',
-];
+export const LEASE_STATUSES: ReadonlyArray<LeaseStatus> = ['active', 'closed', 'cancelled'];
 
 /**
  * Comptes SYSCOHADA agités par les écritures du module.
@@ -58,7 +50,7 @@ export const LEASE_ACCOUNTS = {
  * `OD` (opérations diverses) est seedé par OrganizationsService pour
  * toute organisation SYSCOHADA.
  */
-export const LEASE_DEFAULT_JOURNAL_CODE = 'OD' as const;
+export const LEASE_DEFAULT_JOURNAL_CODE = 'OD';
 
 /**
  * Nombre de périodes par an selon la fréquence du contrat.

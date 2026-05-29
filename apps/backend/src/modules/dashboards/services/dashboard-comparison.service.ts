@@ -13,10 +13,7 @@ export class DashboardComparisonService {
     private readonly organizations: OrganizationRepository,
   ) {}
 
-  async getComparisonSummary(
-    orgId: string,
-    years: number[],
-  ): Promise<DashboardComparisonSummary> {
+  async getComparisonSummary(orgId: string, years: number[]): Promise<DashboardComparisonSummary> {
     const orgData = await this.organizations.findActiveById(orgId);
     if (!orgData) {
       return {
@@ -32,7 +29,7 @@ export class DashboardComparisonService {
     for (const year of years) {
       const targetDate = `${year}-12-31`;
       const period = await this.periods.findContainingDate(orgId, targetDate, 'ANNUAL');
-      
+
       if (!period) {
         // If there's no period for this year, we still return a 0ed result for consistent comparison
         yearsData.push({
@@ -74,9 +71,10 @@ export class DashboardComparisonService {
     return {
       organizationId: orgId,
       organizationName: orgData.name,
-      currency: yearsData.length > 0 && yearsData[0].metrics.revenue !== '0.00' 
-        ? 'XOF' // Could use real currency from summary but XOF is standard for now
-        : 'XOF',
+      currency:
+        yearsData.length > 0 && yearsData[0].metrics.revenue !== '0.00'
+          ? 'XOF' // Could use real currency from summary but XOF is standard for now
+          : 'XOF',
       yearsData,
     };
   }

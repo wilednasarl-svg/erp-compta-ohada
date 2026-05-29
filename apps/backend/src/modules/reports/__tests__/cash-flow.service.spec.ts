@@ -61,7 +61,12 @@ function buildSig(over: {
     toDate: '2026-12-31',
     charges: [
       { code: 'RP', label: 'Autres charges HAO', side: 'CHARGE', amount: over.RP ?? '0.00' },
-      { code: 'RQ', label: 'Participation travailleurs', side: 'CHARGE', amount: over.RQ ?? '0.00' },
+      {
+        code: 'RQ',
+        label: 'Participation travailleurs',
+        side: 'CHARGE',
+        amount: over.RQ ?? '0.00',
+      },
       { code: 'RS', label: 'Impôts sur résultat', side: 'CHARGE', amount: over.RS ?? '0.00' },
     ],
     produits: [
@@ -143,39 +148,53 @@ describe('CashFlowService — CAFG (FA)', () => {
 // 2. Δ BFR exclut les comptes interdits
 // ────────────────────────────────────────────────────────────────────
 describe('CashFlowService — exclusions BFR', () => {
-  const allExcludedCodes = ['485', '414', '467', '458', '4581', '4582', '4494', '4751', '4752', '404', '481', '482', '472', '465'];
+  const allExcludedCodes = [
+    '485',
+    '414',
+    '467',
+    '458',
+    '4581',
+    '4582',
+    '4494',
+    '4751',
+    '4752',
+    '404',
+    '481',
+    '482',
+    '472',
+    '465',
+  ];
 
-  it.each(allExcludedCodes)(
-    'le compte %s ne contribue PAS aux variations FD/FE',
-    async (code) => {
-      const balancesN: BalanceRow[] = [
-        row({ accountCode: code, totalDebit: '1000.00', totalCredit: '0.00' }),
-        row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }),
-      ];
-      const balancesN1: BalanceRow[] = [
-        row({ accountCode: code, totalDebit: '0.00', totalCredit: '0.00' }),
-        row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }),
-      ];
-      const h = buildHarness({
-        balancesAtToDate: balancesN,
-        balancesAtN1: balancesN1,
-      });
+  it.each(allExcludedCodes)('le compte %s ne contribue PAS aux variations FD/FE', async (code) => {
+    const balancesN: BalanceRow[] = [
+      row({ accountCode: code, totalDebit: '1000.00', totalCredit: '0.00' }),
+      row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }),
+    ];
+    const balancesN1: BalanceRow[] = [
+      row({ accountCode: code, totalDebit: '0.00', totalCredit: '0.00' }),
+      row({ accountCode: '411000', totalDebit: '500.00', totalCredit: '0.00' }),
+    ];
+    const h = buildHarness({
+      balancesAtToDate: balancesN,
+      balancesAtN1: balancesN1,
+    });
 
-      const result = await h.service.getCashFlow(ORG_ID, {
-        fromDate: '2026-01-01',
-        toDate: '2026-12-31',
-      });
+    const result = await h.service.getCashFlow(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
 
-      const fd = Number(result.operatingFlows.postes.find((p) => p.code === 'FD')?.amount);
-      const fe = Number(result.operatingFlows.postes.find((p) => p.code === 'FE')?.amount);
-      expect(fd).toBe(0);
-      expect(fe).toBe(0);
-    },
-  );
+    const fd = Number(result.operatingFlows.postes.find((p) => p.code === 'FD')?.amount);
+    const fe = Number(result.operatingFlows.postes.find((p) => p.code === 'FE')?.amount);
+    expect(fd).toBe(0);
+    expect(fe).toBe(0);
+  });
 
   it('inclut bien le compte 411 (créance client ordinaire) dans FD', async () => {
     const h = buildHarness({
-      balancesAtToDate: [row({ accountCode: '411000', totalDebit: '1000.00', totalCredit: '0.00' })],
+      balancesAtToDate: [
+        row({ accountCode: '411000', totalDebit: '1000.00', totalCredit: '0.00' }),
+      ],
       balancesAtN1: [row({ accountCode: '411000', totalDebit: '600.00', totalCredit: '0.00' })],
     });
     const result = await h.service.getCashFlow(ORG_ID, {
@@ -216,7 +235,19 @@ describe('CashFlowService — exclusions BFR', () => {
 
   it('export BFR_EXCLUDED_PREFIXES contient les 14 préfixes documentés', () => {
     expect(BFR_EXCLUDED_PREFIXES).toEqual(
-      expect.arrayContaining(['485', '414', '467', '458', '4494', '4751', '4752', '404', '481', '482', '472']),
+      expect.arrayContaining([
+        '485',
+        '414',
+        '467',
+        '458',
+        '4494',
+        '4751',
+        '4752',
+        '404',
+        '481',
+        '482',
+        '472',
+      ]),
     );
   });
 });
@@ -249,7 +280,9 @@ describe('CashFlowService — trésorerie nette (ZA / ZH)', () => {
     // Trésorerie réelle à toDate = 3500. coherenceCheck ~ 0.
     const h = buildHarness({
       balancesAtN1: [row({ accountCode: '521000', totalDebit: '1000.00', totalCredit: '0.00' })],
-      balancesAtToDate: [row({ accountCode: '521000', totalDebit: '3500.00', totalCredit: '0.00' })],
+      balancesAtToDate: [
+        row({ accountCode: '521000', totalDebit: '3500.00', totalCredit: '0.00' }),
+      ],
       sig: buildSig({ XD: '2500.00' }),
     });
     const result = await h.service.getCashFlow(ORG_ID, {
@@ -282,7 +315,9 @@ describe('CashFlowService — cohérence ZH ≈ trésorerie comptes 5x', () => {
     const h = buildHarness({
       sig: buildSig({ XD: '1000.00' }),
       balancesAtN1: [],
-      balancesAtToDate: [row({ accountCode: '521000', totalDebit: '1000.00', totalCredit: '0.00' })],
+      balancesAtToDate: [
+        row({ accountCode: '521000', totalDebit: '1000.00', totalCredit: '0.00' }),
+      ],
     });
     const result = await h.service.getCashFlow(ORG_ID, {
       fromDate: '2026-01-01',
@@ -352,10 +387,23 @@ describe('CashFlowService — smoke test nomenclature doctrine p.34', () => {
     ];
     expect(allPostes).toHaveLength(17);
     const expectedCodes = [
-      'FA', 'FB', 'FC', 'FD', 'FE',
-      'FF', 'FG', 'FH', 'FI', 'FJ',
-      'FK', 'FL', 'FM', 'FN',
-      'FO', 'FP', 'FQ',
+      'FA',
+      'FB',
+      'FC',
+      'FD',
+      'FE',
+      'FF',
+      'FG',
+      'FH',
+      'FI',
+      'FJ',
+      'FK',
+      'FL',
+      'FM',
+      'FN',
+      'FO',
+      'FP',
+      'FQ',
     ];
     expect(allPostes.map((p) => p.code)).toEqual(expectedCodes);
 
@@ -448,7 +496,9 @@ describe('CashFlowService — codes Z conformes doctrine p.34', () => {
     const h = buildHarness({
       sig: buildSig({ XD: '500.00' }),
       balancesAtN1: [row({ accountCode: '521000', totalDebit: '2000.00', totalCredit: '0.00' })],
-      balancesAtToDate: [row({ accountCode: '521000', totalDebit: '2500.00', totalCredit: '0.00' })],
+      balancesAtToDate: [
+        row({ accountCode: '521000', totalDebit: '2500.00', totalCredit: '0.00' }),
+      ],
     });
     const result = await h.service.getCashFlow(ORG_ID, {
       fromDate: '2026-01-01',

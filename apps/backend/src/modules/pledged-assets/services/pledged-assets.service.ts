@@ -38,10 +38,7 @@ export class PledgedAssetsService {
 
   // ─── Queries ────────────────────────────────────────────────────────
 
-  async findById(
-    organizationId: TenantId | string,
-    id: string,
-  ): Promise<PledgedAssetEntity> {
+  async findById(organizationId: TenantId | string, id: string): Promise<PledgedAssetEntity> {
     assertTenantId(organizationId);
     return this.requirePledgedAsset(organizationId, id);
   }
@@ -126,8 +123,7 @@ export class PledgedAssetsService {
     }
 
     const nextStart = dto.startDate ?? existing.startDate;
-    const nextEnd =
-      dto.endDate === undefined ? existing.endDate : dto.endDate;
+    const nextEnd = dto.endDate === undefined ? existing.endDate : dto.endDate;
     if (nextEnd !== null) {
       this.assertDateRange(nextStart, nextEnd);
     }
@@ -176,10 +172,7 @@ export class PledgedAssetsService {
   }
 
   /** Annulation administrative — possible uniquement sur sûretés actives. */
-  async cancel(
-    organizationId: TenantId | string,
-    id: string,
-  ): Promise<PledgedAssetEntity> {
+  async cancel(organizationId: TenantId | string, id: string): Promise<PledgedAssetEntity> {
     assertTenantId(organizationId);
     const existing = await this.requirePledgedAsset(organizationId, id);
     this.assertActive(existing);

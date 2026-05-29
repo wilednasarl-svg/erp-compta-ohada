@@ -11,12 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -28,15 +23,9 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateCurrencyDto } from '../dto/create-currency.dto';
-import {
-  CurrencyEnvelopeResponse,
-  ListCurrenciesResponse,
-} from '../dto/responses';
+import { CurrencyEnvelopeResponse, ListCurrenciesResponse } from '../dto/responses';
 import { UpdateCurrencyDto } from '../dto/update-currency.dto';
-import {
-  toCurrencyEnvelope,
-  toListCurrencies,
-} from '../mappers/multi-currency-response.mapper';
+import { toCurrencyEnvelope, toListCurrencies } from '../mappers/multi-currency-response.mapper';
 import { CurrenciesService } from '../services/currencies.service';
 
 @ApiTags('Currencies')

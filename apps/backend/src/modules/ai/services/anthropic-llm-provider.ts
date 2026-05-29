@@ -130,7 +130,7 @@ export class AnthropicLlmProvider implements LlmProvider {
         return null;
       }
 
-      const json = (await res.json()) as unknown;
+      const json = await res.json();
       return this.extractText(json);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

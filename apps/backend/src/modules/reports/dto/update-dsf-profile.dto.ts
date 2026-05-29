@@ -45,7 +45,10 @@ export class UpdateDsfProfileDto {
   @Matches(/^[A-Z]{3}$/, { message: 'country must be a 3-letter uppercase ISO code' })
   country?: string;
 
-  @ApiPropertyOptional({ example: '1234567890123', description: 'NINEA / IFU / identifiant fiscal' })
+  @ApiPropertyOptional({
+    example: '1234567890123',
+    description: 'NINEA / IFU / identifiant fiscal',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(64)
@@ -81,7 +84,10 @@ export class UpdateDsfProfileDto {
   @MaxLength(255)
   email?: string;
 
-  @ApiPropertyOptional({ example: '10000000.00', description: 'Capital social libéré (string décimal)' })
+  @ApiPropertyOptional({
+    example: '10000000.00',
+    description: 'Capital social libéré (string décimal)',
+  })
   @IsOptional()
   @IsNumberString({ no_symbols: false }, { message: 'capital must be a decimal string' })
   capital?: string;
@@ -169,9 +175,7 @@ export function assertValidNotesApplicable(
   }
 }
 
-export function assertValidWorkforce(
-  value: unknown,
-): asserts value is Record<string, number> {
+export function assertValidWorkforce(value: unknown): asserts value is Record<string, number> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('workforceByQualification must be a plain object of integers');
   }

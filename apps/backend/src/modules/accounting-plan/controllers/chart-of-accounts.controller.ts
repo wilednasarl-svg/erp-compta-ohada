@@ -202,7 +202,9 @@ export class ChartOfAccountsController {
         message: 'Organization has no accounting configuration',
       });
     }
-    return toImportChart(await this.chart.cloneReferenceIntoOrganization(tokenOrgId, config.system));
+    return toImportChart(
+      await this.chart.cloneReferenceIntoOrganization(tokenOrgId, config.system),
+    );
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────

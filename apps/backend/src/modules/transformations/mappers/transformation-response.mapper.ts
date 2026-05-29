@@ -1,8 +1,8 @@
 import type { TransformationSummary } from '../services/transformation.service';
 import {
-  TransformationEnvelopeResponse,
-  TransformationHistoryResponse,
-  TransformationSummaryResponse,
+  type TransformationEnvelopeResponse,
+  type TransformationHistoryResponse,
+  type TransformationSummaryResponse,
 } from '../dto/responses';
 
 export function toTransformationSummaryResponse(

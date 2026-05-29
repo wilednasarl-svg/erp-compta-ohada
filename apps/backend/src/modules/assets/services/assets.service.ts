@@ -410,9 +410,7 @@ export class AssetsService {
     // dotation has ever been posted, start from the put-in-service date
     // (or 01/01 of the disposal year, whichever is later — but
     // simplest/safest is from putInServiceDate).
-    const proratStart = lastPostedEnd
-      ? this.addOneDay(lastPostedEnd)
-      : asset.putInServiceDate;
+    const proratStart = lastPostedEnd ? this.addOneDay(lastPostedEnd) : asset.putInServiceDate;
 
     const { amount: proratAmountStr, daysProrated } = computePartialYearDepreciation(
       {
@@ -874,8 +872,7 @@ export class AssetsService {
     if (method !== 'units_of_production') return;
     if (!totalUnits || totalUnits <= 0 || !unitsPerYear || unitsPerYear.length === 0) {
       throw new AppException(ERROR_CODES.ASSET_UOP_UNITS_REQUIRED, {
-        message:
-          'units_of_production requires totalUnits > 0 and a non-empty unitsPerYear array.',
+        message: 'units_of_production requires totalUnits > 0 and a non-empty unitsPerYear array.',
       });
     }
     const sum = unitsPerYear.reduce((s, u) => s + (Number(u) || 0), 0);
@@ -886,9 +883,7 @@ export class AssetsService {
     }
   }
 
-  private normalizeDerogatoryConfig(
-    dto: CreateAssetDto,
-  ): DerogatoryConfig | null {
+  private normalizeDerogatoryConfig(dto: CreateAssetDto): DerogatoryConfig | null {
     if (!dto.derogatory || !dto.derogatory.enabled) return null;
     const d = dto.derogatory;
     if (!d.fiscalMethod) {

@@ -24,7 +24,9 @@ export class CreateCashFlowForecastDto {
   type!: CashFlowForecastType;
 
   @IsString()
-  @Matches(/^\d+(\.\d{1,2})?$/, { message: 'Montant invalide, utilisez le format décimal (ex: 1500.50)' })
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: 'Montant invalide, utilisez le format décimal (ex: 1500.50)',
+  })
   amount!: string;
 
   @IsISO8601({ strict: true }, { message: 'Date invalide, format YYYY-MM-DD attendu' })
@@ -63,7 +65,9 @@ export class UpdateCashFlowForecastDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d+(\.\d{1,2})?$/, { message: 'Montant invalide, utilisez le format décimal (ex: 1500.50)' })
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: 'Montant invalide, utilisez le format décimal (ex: 1500.50)',
+  })
   amount?: string;
 
   @IsOptional()

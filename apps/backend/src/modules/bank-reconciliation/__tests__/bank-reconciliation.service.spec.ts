@@ -6,7 +6,7 @@
  * la validation de la somme, le branchement FX et la propagation du
  * `matchGroupId`.
  */
-import { DataSource } from 'typeorm';
+import { type DataSource } from 'typeorm';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -231,12 +231,7 @@ describe('BankReconciliationService.applyMatch — 1:N + FX', () => {
       { amountTolerance: 1 },
     );
 
-    expect(exchangeRates.getRateAtDate).toHaveBeenCalledWith(
-      ORG,
-      'EUR',
-      'XOF',
-      '2026-03-15',
-    );
+    expect(exchangeRates.getRateAtDate).toHaveBeenCalledWith(ORG, 'EUR', 'XOF', '2026-03-15');
     expect(result.fxRateApplied).toBe('656.957');
     expect(createManyCalls[0]).toHaveLength(1);
   });

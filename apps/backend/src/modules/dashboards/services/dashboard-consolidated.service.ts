@@ -54,7 +54,7 @@ export class DashboardConsolidatedService {
       // Find a period that contains December 31st of the requested year
       const targetDate = `${year}-12-31`;
       const period = await this.periods.findContainingDate(orgId, targetDate, 'ANNUAL');
-      
+
       if (!period) {
         // Skip organizations that don't have an exercise for this year, or maybe throw?
         // Let's just skip them to allow consolidation of those that do.
@@ -72,20 +72,20 @@ export class DashboardConsolidatedService {
     }
 
     if (summaries.length === 0) {
-       return {
-          year,
-          organizationsCount: 0,
-          currency: 'XOF',
-          metrics: {
-            cashBalance: '0.00',
-            receivables: '0.00',
-            payables: '0.00',
-            revenue: '0.00',
-            expenses: '0.00',
-            netResult: '0.00',
-          },
-          organizationsData: [],
-       };
+      return {
+        year,
+        organizationsCount: 0,
+        currency: 'XOF',
+        metrics: {
+          cashBalance: '0.00',
+          receivables: '0.00',
+          payables: '0.00',
+          revenue: '0.00',
+          expenses: '0.00',
+          netResult: '0.00',
+        },
+        organizationsData: [],
+      };
     }
 
     // 5. Aggregate
@@ -94,9 +94,9 @@ export class DashboardConsolidatedService {
     let sumPayables = 0;
     let sumRevenue = 0;
     let sumExpenses = 0;
-    let currency = summaries[0].currency;
+    const currency = summaries[0].currency;
 
-    const organizationsData = summaries.map(s => {
+    const organizationsData = summaries.map((s) => {
       const rev = Number(s.revenueYtd);
       const exp = Number(s.expensesYtd);
       return {
@@ -109,7 +109,7 @@ export class DashboardConsolidatedService {
           revenue: rev.toFixed(2),
           expenses: exp.toFixed(2),
           netResult: (rev - exp).toFixed(2),
-        }
+        },
       };
     });
 

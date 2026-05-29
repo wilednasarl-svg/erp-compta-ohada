@@ -10,12 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -30,14 +25,8 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateBankAccountDto } from '../dto/create-bank-account.dto';
-import {
-  BankAccountEnvelopeResponse,
-  ListBankAccountsResponse,
-} from '../dto/responses';
-import {
-  toBankAccountEnvelope,
-  toListBankAccounts,
-} from '../mappers/bank-response.mapper';
+import { BankAccountEnvelopeResponse, ListBankAccountsResponse } from '../dto/responses';
+import { toBankAccountEnvelope, toListBankAccounts } from '../mappers/bank-response.mapper';
 import { BankAccountsService } from '../services/bank-accounts.service';
 
 @ApiTags('BankAccounts')

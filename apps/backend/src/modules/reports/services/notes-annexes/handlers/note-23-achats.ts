@@ -12,9 +12,17 @@ import type { NoteHandler } from '../types';
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   { key: 'ACHATS_MARCHANDISES', label: 'Achats de marchandises (601)', prefixes: ['601'] },
   { key: 'ACHATS_MATIERES', label: 'Achats de matières premières (602)', prefixes: ['602'] },
-  { key: 'VAR_STOCKS', label: "Variations des stocks de biens achetés (603)", prefixes: ['603'] },
-  { key: 'AUTRES_APPROS', label: 'Autres approvisionnements (604, 605, 608)', prefixes: ['604', '605', '608'] },
-  { key: 'EAU_ENERGIE', label: 'Eau, électricité, autres énergies (605 détail)', prefixes: ['6051', '6052', '6053'] },
+  { key: 'VAR_STOCKS', label: 'Variations des stocks de biens achetés (603)', prefixes: ['603'] },
+  {
+    key: 'AUTRES_APPROS',
+    label: 'Autres approvisionnements (604, 605, 608)',
+    prefixes: ['604', '605', '608'],
+  },
+  {
+    key: 'EAU_ENERGIE',
+    label: 'Eau, électricité, autres énergies (605 détail)',
+    prefixes: ['6051', '6052', '6053'],
+  },
   { key: 'EMBALLAGES', label: 'Emballages (608)', prefixes: ['608'] },
 ];
 

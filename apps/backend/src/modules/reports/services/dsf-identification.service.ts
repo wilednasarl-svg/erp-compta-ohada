@@ -110,7 +110,7 @@ export class DsfIdentificationService {
     const [profile, org, period] = await Promise.all([
       this.profiles.ensureExists(organizationId),
       this.orgs.findActiveById(organizationId),
-      this.periods.findById(exerciseId, organizationId as TenantId),
+      this.periods.findById(exerciseId, organizationId),
     ]);
 
     if (!org) {
@@ -200,9 +200,7 @@ export class DsfIdentificationService {
    * entreprise individuelle n'a ni président ni commissaire) — on
    * remonte ce qui est saisi.
    */
-  async buildDirectorsFiche(
-    organizationId: TenantId | string,
-  ): Promise<DirectorsFicheData> {
+  async buildDirectorsFiche(organizationId: TenantId | string): Promise<DirectorsFicheData> {
     assertTenantId(organizationId);
     const profile = await this.profiles.ensureExists(organizationId);
     return {

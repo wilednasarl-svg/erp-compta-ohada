@@ -29,12 +29,18 @@ export class DerogatoryConfigDto {
   @IsBoolean()
   enabled!: boolean;
 
-  @ApiPropertyOptional({ description: 'Méthode fiscale (declining, softy…)', enum: DEPRECIATION_METHODS })
+  @ApiPropertyOptional({
+    description: 'Méthode fiscale (declining, softy…)',
+    enum: DEPRECIATION_METHODS,
+  })
   @IsOptional()
   @IsIn(DEPRECIATION_METHODS as readonly string[])
   fiscalMethod?: DepreciationMethod;
 
-  @ApiPropertyOptional({ description: 'Méthode économique (référence comptable)', enum: DEPRECIATION_METHODS })
+  @ApiPropertyOptional({
+    description: 'Méthode économique (référence comptable)',
+    enum: DEPRECIATION_METHODS,
+  })
   @IsOptional()
   @IsIn(DEPRECIATION_METHODS as readonly string[])
   economicMethod?: DepreciationMethod;

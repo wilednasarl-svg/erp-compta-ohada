@@ -5,12 +5,12 @@ import type {
   OrganizationSummary,
 } from '../services/organizations.service';
 import {
-  CreateOrganizationResponse,
-  ListOrganizationsResponse,
-  MembershipResponse,
-  OrganizationEnvelopeResponse,
-  OrganizationResponse,
-  OrganizationSummaryResponse,
+  type CreateOrganizationResponse,
+  type ListOrganizationsResponse,
+  type MembershipResponse,
+  type OrganizationEnvelopeResponse,
+  type OrganizationResponse,
+  type OrganizationSummaryResponse,
 } from '../dto/responses';
 
 export function toOrganizationResponse(entity: OrganizationEntity): OrganizationResponse {
@@ -54,15 +54,11 @@ export function toListOrganizations(
   return { organizations: summaries.map(toOrganizationSummaryResponse) };
 }
 
-export function toOrganizationEnvelope(
-  entity: OrganizationEntity,
-): OrganizationEnvelopeResponse {
+export function toOrganizationEnvelope(entity: OrganizationEntity): OrganizationEnvelopeResponse {
   return { organization: toOrganizationResponse(entity) };
 }
 
-export function toCreateOrganization(
-  result: CreateOrganizationResult,
-): CreateOrganizationResponse {
+export function toCreateOrganization(result: CreateOrganizationResult): CreateOrganizationResponse {
   return {
     organization: toOrganizationResponse(result.organization),
     membership: toMembershipResponse(result.membership),

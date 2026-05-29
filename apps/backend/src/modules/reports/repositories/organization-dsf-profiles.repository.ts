@@ -49,9 +49,7 @@ export class OrganizationDsfProfilesRepository {
     private readonly repo: Repository<OrganizationDsfProfileEntity>,
   ) {}
 
-  async findByOrg(
-    organizationId: TenantId | string,
-  ): Promise<OrganizationDsfProfileEntity | null> {
+  async findByOrg(organizationId: TenantId | string): Promise<OrganizationDsfProfileEntity | null> {
     assertTenantId(organizationId);
     return this.repo.findOne({ where: { organizationId } });
   }
@@ -61,9 +59,7 @@ export class OrganizationDsfProfilesRepository {
    * existe déjà. Utilisé par `getOrCreateProfile` pour matérialiser
    * l'agrégat lors du premier accès.
    */
-  async ensureExists(
-    organizationId: TenantId | string,
-  ): Promise<OrganizationDsfProfileEntity> {
+  async ensureExists(organizationId: TenantId | string): Promise<OrganizationDsfProfileEntity> {
     assertTenantId(organizationId);
     const existing = await this.repo.findOne({ where: { organizationId } });
     if (existing) {

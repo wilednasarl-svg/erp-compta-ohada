@@ -7,9 +7,7 @@ import { EmailService } from './services/email.service';
 import { TvaNotificationService } from './services/tva-notification.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([TvaDeclarationEntity, MembershipEntity]),
-  ],
+  imports: [TypeOrmModule.forFeature([TvaDeclarationEntity, MembershipEntity])],
   providers: [EmailService, TvaNotificationService],
   exports: [EmailService],
 })

@@ -3,8 +3,8 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { AuditContext } from '../../audit/services/audit-trail.service';
 import type { EntriesService } from '../../journals/services/entries.service';
-import { AddEntryDto } from '../dto/add-entry.dto';
-import { CreateBatchDto } from '../dto/create-batch.dto';
+import { type AddEntryDto } from '../dto/add-entry.dto';
+import { type CreateBatchDto } from '../dto/create-batch.dto';
 import type { RegularizationBatchEntity } from '../entities/regularization-batch.entity';
 import type { RegularizationEntryEntity } from '../entities/regularization-entry.entity';
 import type { RegularizationBatchesRepository } from '../repositories/regularization-batches.repository';
@@ -82,17 +82,15 @@ function buildHarness(): Harness {
     }),
     findById: jest.fn(async (organizationId: string, id: string) => {
       return (
-        storedBatches.find(
-          (b) => b.id === id && b.organizationId === String(organizationId),
-        ) ?? null
+        storedBatches.find((b) => b.id === id && b.organizationId === String(organizationId)) ??
+        null
       );
     }),
     listByOrg: jest.fn(async (organizationId: string, filters = {}) => {
       return storedBatches.filter((b) => {
         if (b.organizationId !== String(organizationId)) return false;
         if (filters.status && b.status !== filters.status) return false;
-        if (filters.exerciseEndDate && b.exerciseEndDate !== filters.exerciseEndDate)
-          return false;
+        if (filters.exerciseEndDate && b.exerciseEndDate !== filters.exerciseEndDate) return false;
         return true;
       });
     }),
@@ -153,7 +151,12 @@ function buildHarness(): Harness {
         entryDate: input.entryDate,
         description: input.description,
         lines: input.lines.map(
-          (l: { accountCode: string; debit: number; credit: number; description?: string | null }) => ({
+          (l: {
+            accountCode: string;
+            debit: number;
+            credit: number;
+            description?: string | null;
+          }) => ({
             accountCode: l.accountCode,
             debit: l.debit,
             credit: l.credit,

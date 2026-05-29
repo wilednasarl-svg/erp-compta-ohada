@@ -2,7 +2,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { AuditContext } from '../../audit/services/audit-trail.service';
 import type { EntriesService } from '../../journals/services/entries.service';
-import { CreateLeaseDto } from '../dto/create-lease.dto';
+import { type CreateLeaseDto } from '../dto/create-lease.dto';
 import type { LeaseEntity } from '../entities/lease.entity';
 import type { LeaseInstallmentEntity } from '../entities/lease-installment.entity';
 import type { LeasePaymentEntity } from '../entities/lease-payment.entity';
@@ -81,9 +81,7 @@ function buildHarness(): Harness {
     }),
     findById: jest.fn(async (id: string, organizationId: string) => {
       return (
-        storedLeases.find(
-          (l) => l.id === id && l.organizationId === String(organizationId),
-        ) ?? null
+        storedLeases.find((l) => l.id === id && l.organizationId === String(organizationId)) ?? null
       );
     }),
     listByOrganization: jest.fn(async (organizationId: string, filters = {}) => {
@@ -111,34 +109,36 @@ function buildHarness(): Harness {
 
   const installmentsRepo = {
     createMany: jest.fn(async (inputs) => {
-      const created = inputs.map((input: {
-        leaseId: string;
-        organizationId: string;
-        dueDate: string;
-        installmentNumber: number;
-        totalAmount: string;
-        interestPart: string;
-        capitalPart: string;
-        outstandingBalance: string;
-      }) => {
-        const installment: LeaseInstallmentEntity = {
-          id: `inst-${++installmentCounter}`,
-          leaseId: input.leaseId,
-          organizationId: String(input.organizationId),
-          dueDate: input.dueDate,
-          installmentNumber: input.installmentNumber,
-          totalAmount: input.totalAmount,
-          interestPart: input.interestPart,
-          capitalPart: input.capitalPart,
-          outstandingBalance: input.outstandingBalance,
-          paid: false,
-          createdAt: new Date(),
-          lease: undefined as never,
-          organization: undefined as never,
-        };
-        storedInstallments.push(installment);
-        return installment;
-      });
+      const created = inputs.map(
+        (input: {
+          leaseId: string;
+          organizationId: string;
+          dueDate: string;
+          installmentNumber: number;
+          totalAmount: string;
+          interestPart: string;
+          capitalPart: string;
+          outstandingBalance: string;
+        }) => {
+          const installment: LeaseInstallmentEntity = {
+            id: `inst-${++installmentCounter}`,
+            leaseId: input.leaseId,
+            organizationId: String(input.organizationId),
+            dueDate: input.dueDate,
+            installmentNumber: input.installmentNumber,
+            totalAmount: input.totalAmount,
+            interestPart: input.interestPart,
+            capitalPart: input.capitalPart,
+            outstandingBalance: input.outstandingBalance,
+            paid: false,
+            createdAt: new Date(),
+            lease: undefined as never,
+            organization: undefined as never,
+          };
+          storedInstallments.push(installment);
+          return installment;
+        },
+      );
       return created;
     }),
     findById: jest.fn(async (id: string, organizationId: string) => {
@@ -150,9 +150,7 @@ function buildHarness(): Harness {
     }),
     listByLease: jest.fn(async (leaseId: string, organizationId: string) => {
       return storedInstallments
-        .filter(
-          (i) => i.leaseId === leaseId && i.organizationId === String(organizationId),
-        )
+        .filter((i) => i.leaseId === leaseId && i.organizationId === String(organizationId))
         .sort((a, b) => a.installmentNumber - b.installmentNumber);
     }),
     markPaid: jest.fn(async (id: string, organizationId: string) => {
@@ -195,38 +193,43 @@ function buildHarness(): Harness {
   } as unknown as jest.Mocked<LeasePaymentsRepository>;
 
   const entries = {
-    createDraft: jest.fn(async (organizationId: string, input: {
-      journalCode: string;
-      entryDate: string;
-      description: string;
-      lines: Array<{ accountCode: string; debit: number; credit: number }>;
-    }) => {
-      const totalDebit = input.lines.reduce((s, l) => s + (l.debit ?? 0), 0);
-      const totalCredit = input.lines.reduce((s, l) => s + (l.credit ?? 0), 0);
-      createDraftCalls.push({
-        organizationId: String(organizationId),
-        journalCode: input.journalCode,
-        lines: input.lines,
-        totalDebit,
-        totalCredit,
-      });
-      return {
-        id: `entry-${++entryCounter}`,
-        organizationId: String(organizationId),
-        journalCode: input.journalCode,
-        periodId: 'period-1',
-        entryNumber: entryCounter,
-        entryDate: input.entryDate,
-        description: input.description,
-        reference: null,
-        status: 'draft',
-        sourceType: 'manual',
-        createdById: ACTOR_ID,
-        validatedAt: null,
-        cancelledAt: null,
-        lines: [],
-      };
-    }),
+    createDraft: jest.fn(
+      async (
+        organizationId: string,
+        input: {
+          journalCode: string;
+          entryDate: string;
+          description: string;
+          lines: Array<{ accountCode: string; debit: number; credit: number }>;
+        },
+      ) => {
+        const totalDebit = input.lines.reduce((s, l) => s + (l.debit ?? 0), 0);
+        const totalCredit = input.lines.reduce((s, l) => s + (l.credit ?? 0), 0);
+        createDraftCalls.push({
+          organizationId: String(organizationId),
+          journalCode: input.journalCode,
+          lines: input.lines,
+          totalDebit,
+          totalCredit,
+        });
+        return {
+          id: `entry-${++entryCounter}`,
+          organizationId: String(organizationId),
+          journalCode: input.journalCode,
+          periodId: 'period-1',
+          entryNumber: entryCounter,
+          entryDate: input.entryDate,
+          description: input.description,
+          reference: null,
+          status: 'draft',
+          sourceType: 'manual',
+          createdById: ACTOR_ID,
+          validatedAt: null,
+          cancelledAt: null,
+          lines: [],
+        };
+      },
+    ),
   } as unknown as jest.Mocked<EntriesService>;
 
   const service = new LeasesService(leasesRepo, installmentsRepo, paymentsRepo, entries);
@@ -387,12 +390,7 @@ describe('LeasesService', () => {
 
     it('raises LEASE_INSTALLMENT_NOT_FOUND when the installment id does not match', async () => {
       const h = buildHarness();
-      const { lease } = await h.service.create(
-        ORG_ID,
-        buildCreateDto(),
-        ACTOR_ID,
-        AUDIT_CTX,
-      );
+      const { lease } = await h.service.create(ORG_ID, buildCreateDto(), ACTOR_ID, AUDIT_CTX);
       await expect(
         h.service.payInstallment(
           ORG_ID,
@@ -409,12 +407,7 @@ describe('LeasesService', () => {
   describe('tenant isolation', () => {
     it('does not return a lease created by another org', async () => {
       const h = buildHarness();
-      const { lease } = await h.service.create(
-        ORG_ID,
-        buildCreateDto(),
-        ACTOR_ID,
-        AUDIT_CTX,
-      );
+      const { lease } = await h.service.create(ORG_ID, buildCreateDto(), ACTOR_ID, AUDIT_CTX);
 
       await expect(h.service.findById(OTHER_ORG_ID, lease.id)).rejects.toMatchObject({
         code: ERROR_CODES.LEASE_NOT_FOUND,

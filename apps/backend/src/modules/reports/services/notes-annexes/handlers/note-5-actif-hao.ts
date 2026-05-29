@@ -9,7 +9,11 @@ import { computeAccountBreakdown, type BreakdownCategory } from './_account-brea
 import type { NoteHandler } from '../types';
 
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
-  { key: 'CREANCES_CESSIONS_IMMO', label: "Créances sur cessions d'immobilisations (485)", prefixes: ['485'] },
+  {
+    key: 'CREANCES_CESSIONS_IMMO',
+    label: "Créances sur cessions d'immobilisations (485)",
+    prefixes: ['485'],
+  },
   { key: 'CREANCES_HAO_AUTRES', label: 'Créances HAO autres (488)', prefixes: ['488'] },
 ];
 

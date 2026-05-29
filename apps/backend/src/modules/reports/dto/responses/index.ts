@@ -37,7 +37,7 @@ export class MultiYearBalanceReportEnvelope {
 }
 
 export class GeneralLedgerReportEnvelope {
-  @ApiProperty({ type: 'object', description: 'Grand livre d\'un compte' })
+  @ApiProperty({ type: 'object', description: "Grand livre d'un compte" })
   report!: GeneralLedgerReport;
 }
 
@@ -57,7 +57,10 @@ export class BalanceSheetReportEnvelope {
 }
 
 export class TftReportEnvelope {
-  @ApiProperty({ type: 'object', description: 'Tableau Flux Trésorerie (CashFlowReport — Tome 3 p. 34)' })
+  @ApiProperty({
+    type: 'object',
+    description: 'Tableau Flux Trésorerie (CashFlowReport — Tome 3 p. 34)',
+  })
   report!: CashFlowReport;
 }
 
@@ -67,7 +70,7 @@ export class AnnexeReportEnvelope {
 }
 
 export class AnnexeNoteDetailReportEnvelope {
-  @ApiProperty({ type: 'object', description: 'Détail d\'une note d\'annexe' })
+  @ApiProperty({ type: 'object', description: "Détail d'une note d'annexe" })
   report!: AnnexeNoteDetailReport;
 }
 
@@ -92,7 +95,7 @@ export class MarginByAxisReportEnvelope {
 }
 
 export class ImportDiagnosticReportEnvelope {
-  @ApiProperty({ type: 'object', description: 'Diagnostic de session d\'import' })
+  @ApiProperty({ type: 'object', description: "Diagnostic de session d'import" })
   report!: ImportDiagnosticReport;
 }
 
@@ -102,7 +105,11 @@ export class DsfValidationReportEnvelope {
 }
 
 export class BilanDiagnosticReportEnvelope {
-  @ApiProperty({ type: 'object', description: 'Diagnostic de l\'équilibre du bilan SYSCOHADA (journal, par classe, travaux de fin d\'exercice)' })
+  @ApiProperty({
+    type: 'object',
+    description:
+      "Diagnostic de l'équilibre du bilan SYSCOHADA (journal, par classe, travaux de fin d'exercice)",
+  })
   report!: BilanDiagnosticReport;
 }
 

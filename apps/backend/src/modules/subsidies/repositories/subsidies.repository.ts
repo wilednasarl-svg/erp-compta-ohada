@@ -57,10 +57,7 @@ export class SubsidiesRepository {
     return repo.save(entity);
   }
 
-  async findById(
-    id: string,
-    organizationId: TenantId | string,
-  ): Promise<SubsidyEntity | null> {
+  async findById(id: string, organizationId: TenantId | string): Promise<SubsidyEntity | null> {
     assertTenantId(organizationId);
     return this.repo.findOne({ where: { id, organizationId } });
   }

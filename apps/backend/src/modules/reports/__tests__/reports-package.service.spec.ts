@@ -15,14 +15,8 @@ import { ReportsPackageService } from '../services/reports-package.service';
 import { ReportsPdfService } from '../services/reports-pdf.service';
 import type { ReportsService } from '../services/reports.service';
 import { ReportsXlsxService } from '../services/reports-xlsx.service';
-import type {
-  BalanceSheetReport,
-  ProfitLossReport,
-} from '../services/reports.service';
-import type {
-  CashFlowReport,
-  CashFlowService,
-} from '../services/cash-flow.service';
+import type { BalanceSheetReport, ProfitLossReport } from '../services/reports.service';
+import type { CashFlowReport, CashFlowService } from '../services/cash-flow.service';
 import type { DsfIdentificationBundle } from '../types/dsf-profile.types';
 
 /* ────────────────────────────────────────────────────────────────────
@@ -129,9 +123,7 @@ function buildComputedNote(id: string): NoteContent {
       applicableByDefault: true,
     },
     applicable: true,
-    rows: [
-      { key: 'L1', label: 'Ligne 1', values: { amount: '1000.00' } },
-    ],
+    rows: [{ key: 'L1', label: 'Ligne 1', values: { amount: '1000.00' } }],
     computedAt: new Date().toISOString(),
   };
 }
@@ -234,19 +226,21 @@ describe('ReportsPackageService.buildDsfPackage', () => {
     const zip = await JSZip.loadAsync(buf);
     const names = Object.keys(zip.files);
 
-    expect(names).toEqual(expect.arrayContaining([
-      '00-MANIFEST.txt',
-      '01-page-de-garde-R1.pdf',
-      '02-identification-R2.pdf',
-      '03-dirigeants-R3.pdf',
-      '04-applicabilite-R4.pdf',
-      '10-bilan.pdf',
-      '10-bilan.xlsx',
-      '11-compte-resultat.pdf',
-      '11-compte-resultat.xlsx',
-      '12-tft.pdf',
-      '12-tft.xlsx',
-    ]));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        '00-MANIFEST.txt',
+        '01-page-de-garde-R1.pdf',
+        '02-identification-R2.pdf',
+        '03-dirigeants-R3.pdf',
+        '04-applicabilite-R4.pdf',
+        '10-bilan.pdf',
+        '10-bilan.xlsx',
+        '11-compte-resultat.pdf',
+        '11-compte-resultat.xlsx',
+        '12-tft.pdf',
+        '12-tft.xlsx',
+      ]),
+    );
   });
 
   it('ZIP contains a 20-notes-annexes/ folder with MANIFEST and computed notes', async () => {
@@ -257,27 +251,21 @@ describe('ReportsPackageService.buildDsfPackage', () => {
     const zip = await JSZip.loadAsync(buf);
 
     expect(zip.file('20-notes-annexes/MANIFEST.txt')).not.toBeNull();
-    const notesManifest = await zip
-      .file('20-notes-annexes/MANIFEST.txt')!
-      .async('string');
+    const notesManifest = await zip.file('20-notes-annexes/MANIFEST.txt')!.async('string');
     expect(notesManifest).toContain('COMPUTED');
     expect(notesManifest).toContain('N1');
     expect(notesManifest).toContain('N3A');
 
     // Both computed notes produced JSON files.
-    const jsonFiles = Object.keys(zip.files).filter((n) =>
-      n.startsWith('20-notes-annexes/') && n.endsWith('.json'),
+    const jsonFiles = Object.keys(zip.files).filter(
+      (n) => n.startsWith('20-notes-annexes/') && n.endsWith('.json'),
     );
     expect(jsonFiles.length).toBe(2);
   });
 
   it('pending (stub) notes are placed under _pending/ instead of crashing', async () => {
     const svc = makeService({
-      notes: [
-        buildComputedNote('N1'),
-        buildPendingNote('N3B'),
-        buildPendingNote('N15'),
-      ],
+      notes: [buildComputedNote('N1'), buildPendingNote('N3B'), buildPendingNote('N15')],
     });
     const buf = await svc.buildDsfPackage(ORG_ID, EXERCISE_ID, baseOpts);
     const zip = await JSZip.loadAsync(buf);
@@ -318,9 +306,9 @@ describe('ReportsPackageService.buildDsfPackage', () => {
         message: 'period not found',
       }),
     });
-    await expect(
-      svc.buildDsfPackage(ORG_ID, EXERCISE_ID, baseOpts),
-    ).rejects.toMatchObject({ code: ERROR_CODES.DSF_PACKAGE_PROFILE_INCOMPLETE });
+    await expect(svc.buildDsfPackage(ORG_ID, EXERCISE_ID, baseOpts)).rejects.toMatchObject({
+      code: ERROR_CODES.DSF_PACKAGE_PROFILE_INCOMPLETE,
+    });
   });
 
   it('does not crash when getAllNotes itself throws — warning in MANIFEST instead', async () => {

@@ -55,10 +55,7 @@ export class ProvisionsRepository {
     return repo.save(entity);
   }
 
-  async findById(
-    id: string,
-    organizationId: TenantId | string,
-  ): Promise<ProvisionEntity | null> {
+  async findById(id: string, organizationId: TenantId | string): Promise<ProvisionEntity | null> {
     assertTenantId(organizationId);
     return this.repo.findOne({ where: { id, organizationId } });
   }

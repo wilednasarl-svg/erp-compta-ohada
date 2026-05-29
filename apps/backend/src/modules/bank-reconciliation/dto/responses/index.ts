@@ -47,7 +47,7 @@ export class BankAccountResponse {
   @ApiProperty({ format: 'uuid' })
   chartAccountId!: string;
 
-  @ApiProperty({ description: 'Solde d\'ouverture. DECIMAL(15,2) en string.', type: String })
+  @ApiProperty({ description: "Solde d'ouverture. DECIMAL(15,2) en string.", type: String })
   openingBalance!: string;
 
   @ApiProperty({ enum: BANK_ACCOUNT_STATUSES })

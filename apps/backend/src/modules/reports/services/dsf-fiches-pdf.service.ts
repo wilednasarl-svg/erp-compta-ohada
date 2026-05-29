@@ -26,7 +26,7 @@ export class DsfFichesPdfService {
   private static readonly MARGIN = 50;
   private static readonly LINE_HEIGHT = 16;
   private static readonly STAMP =
-    "Liasse DSF SYSCOHADA AUDCIF - Tome 3 « Etats financiers » p. 18-31";
+    'Liasse DSF SYSCOHADA AUDCIF - Tome 3 « Etats financiers » p. 18-31';
 
   // ─── R1 — Page de garde ──────────────────────────────────────────
   async coverPagePdf(cover: CoverPageData, orgName: string): Promise<Buffer> {
@@ -36,13 +36,10 @@ export class DsfFichesPdfService {
 
     // Titre centré.
     doc.moveDown(4);
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(22)
-      .text('DÉCLARATION STATISTIQUE ET FISCALE', m, doc.y, {
-        width: pageWidth,
-        align: 'center',
-      });
+    doc.font('Helvetica-Bold').fontSize(22).text('DÉCLARATION STATISTIQUE ET FISCALE', m, doc.y, {
+      width: pageWidth,
+      align: 'center',
+    });
     doc.moveDown(0.3);
     doc
       .font('Helvetica-Bold')
@@ -52,12 +49,11 @@ export class DsfFichesPdfService {
         align: 'center',
       });
     doc.moveDown(0.4);
-    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#555555').text(
-      'Fiche R1 — Page de garde',
-      m,
-      doc.y,
-      { width: pageWidth, align: 'center' },
-    );
+    doc
+      .font('Helvetica-Oblique')
+      .fontSize(10)
+      .fillColor('#555555')
+      .text('Fiche R1 — Page de garde', m, doc.y, { width: pageWidth, align: 'center' });
     doc.fillColor('#000000');
     doc.moveDown(4);
 
@@ -77,7 +73,10 @@ export class DsfFichesPdfService {
 
     for (const [label, value] of rows) {
       doc.font('Helvetica-Bold').fontSize(11).text(label, m, y, { width: 180 });
-      doc.font('Helvetica').fontSize(11).text(value, m + 200, y, { width: pageWidth - 200 });
+      doc
+        .font('Helvetica')
+        .fontSize(11)
+        .text(value, m + 200, y, { width: pageWidth - 200 });
       y += rowGap;
     }
 
@@ -87,12 +86,10 @@ export class DsfFichesPdfService {
       .font('Helvetica-Oblique')
       .fontSize(9)
       .fillColor('#555555')
-      .text(
-        `Exercice clos le ${cover.exerciseEndDate}`,
-        m,
-        footerY,
-        { width: pageWidth, align: 'center' },
-      );
+      .text(`Exercice clos le ${cover.exerciseEndDate}`, m, footerY, {
+        width: pageWidth,
+        align: 'center',
+      });
     doc.moveDown(0.3);
     doc.text(DsfFichesPdfService.STAMP, m, doc.y, {
       width: pageWidth,
@@ -106,7 +103,7 @@ export class DsfFichesPdfService {
   // ─── R2 — Fiche d'identification ─────────────────────────────────
   async identificationFichePdf(r2: IdentificationFicheData): Promise<Buffer> {
     const doc = this.createDoc();
-    this.header(doc, 'Fiche R2 — Identification de l\'entité', r2.organizationName);
+    this.header(doc, "Fiche R2 — Identification de l'entité", r2.organizationName);
 
     const rows: Array<[string, string]> = [
       ['Raison sociale', r2.organizationName],
@@ -119,7 +116,7 @@ export class DsfFichesPdfService {
       ['Ville', r2.siegeCity ?? '—'],
       ['Téléphone', r2.phone ?? '—'],
       ['Email', r2.email ?? '—'],
-      ['Secteur d\'activité', r2.activitySector ?? '—'],
+      ["Secteur d'activité", r2.activitySector ?? '—'],
     ];
     this.twoColTable(doc, rows);
 
@@ -159,9 +156,12 @@ export class DsfFichesPdfService {
     const doc = this.createDoc();
     this.header(doc, 'Fiche R4 — Applicabilité des notes annexes AUDCIF', '');
 
-    doc.font('Helvetica').fontSize(10).text(
-      `Total notes : ${r4.totalNotes}  |  Applicables : ${r4.applicableCount}  |  N/A : ${r4.notApplicableCount}`,
-    );
+    doc
+      .font('Helvetica')
+      .fontSize(10)
+      .text(
+        `Total notes : ${r4.totalNotes}  |  Applicables : ${r4.applicableCount}  |  N/A : ${r4.notApplicableCount}`,
+      );
     doc.moveDown(0.5);
 
     const m = DsfFichesPdfService.MARGIN;
@@ -174,7 +174,11 @@ export class DsfFichesPdfService {
     doc.text('Libellé', colsX[1], y, { width: 300 });
     doc.text('Statut', colsX[2], y, { width: 70 });
     y += DsfFichesPdfService.LINE_HEIGHT;
-    doc.moveTo(m, y).lineTo(doc.page.width - m, y).lineWidth(0.5).stroke();
+    doc
+      .moveTo(m, y)
+      .lineTo(doc.page.width - m, y)
+      .lineWidth(0.5)
+      .stroke();
     y += 4;
 
     doc.font('Helvetica').fontSize(9);
@@ -192,9 +196,11 @@ export class DsfFichesPdfService {
     }
 
     doc.y = y + 6;
-    doc.font('Helvetica-Oblique').fontSize(8).fillColor('#555555').text(
-      'Légende : A = Applicable, N/A = Non Applicable (Tome 3 p. 31).',
-    );
+    doc
+      .font('Helvetica-Oblique')
+      .fontSize(8)
+      .fillColor('#555555')
+      .text('Légende : A = Applicable, N/A = Non Applicable (Tome 3 p. 31).');
     doc.fillColor('#000000');
 
     this.footer(doc);
@@ -223,11 +229,7 @@ export class DsfFichesPdfService {
     }
     doc.font('Helvetica-Bold').fontSize(15).text(title);
     doc.moveDown(0.3);
-    doc
-      .font('Helvetica-Oblique')
-      .fontSize(8)
-      .fillColor('#555555')
-      .text(DsfFichesPdfService.STAMP);
+    doc.font('Helvetica-Oblique').fontSize(8).fillColor('#555555').text(DsfFichesPdfService.STAMP);
     doc.fillColor('#000000');
     doc.moveDown(0.8);
   }
@@ -243,7 +245,10 @@ export class DsfFichesPdfService {
         y = DsfFichesPdfService.MARGIN;
       }
       doc.font('Helvetica-Bold').fontSize(10).text(label, m, y, { width: labelWidth });
-      doc.font('Helvetica').fontSize(10).text(value, m + labelWidth, y, { width: valueWidth });
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .text(value, m + labelWidth, y, { width: valueWidth });
       y += DsfFichesPdfService.LINE_HEIGHT;
     }
     doc.y = y;

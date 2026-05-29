@@ -42,7 +42,7 @@ const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   },
   {
     key: 'EMPRUNTS_EQUIV_FONDS_PROPRES',
-    label: "Emprunts et dettes assimilées à des fonds propres (17)",
+    label: 'Emprunts et dettes assimilées à des fonds propres (17)',
     prefixes: ['17'],
   },
 ];

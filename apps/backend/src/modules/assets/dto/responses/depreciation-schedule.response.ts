@@ -10,13 +10,13 @@ const DEPRECIATION_STATUSES: ReadonlyArray<DepreciationStatus> = ['pending', 'po
  * `DepreciationScheduleEntity`.
  */
 export class DepreciationScheduleResponse {
-  @ApiProperty({ description: 'UUID de la ligne d\'échéancier', format: 'uuid' })
+  @ApiProperty({ description: "UUID de la ligne d'échéancier", format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ description: 'UUID de l\'organisation', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'organisation", format: 'uuid' })
   organizationId!: string;
 
-  @ApiProperty({ description: 'UUID de l\'immobilisation', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'immobilisation", format: 'uuid' })
   assetId!: string;
 
   @ApiProperty({ description: 'Année fiscale (ex 2026)', type: Number })
@@ -32,7 +32,7 @@ export class DepreciationScheduleResponse {
   depreciationAmount!: string;
 
   @ApiProperty({
-    description: 'Cumul des amortissements jusqu\'à la fin de période. DECIMAL(15,2) en string.',
+    description: "Cumul des amortissements jusqu'à la fin de période. DECIMAL(15,2) en string.",
     type: String,
   })
   cumulativeDepreciation!: string;
@@ -44,7 +44,7 @@ export class DepreciationScheduleResponse {
   status!: DepreciationStatus;
 
   @ApiProperty({
-    description: 'UUID de l\'écriture comptable (si status=posted)',
+    description: "UUID de l'écriture comptable (si status=posted)",
     nullable: true,
     type: String,
     format: 'uuid',
@@ -60,7 +60,7 @@ export class DepreciationScheduleResponse {
   postedAt!: Date | null;
 
   @ApiProperty({
-    description: 'UUID de l\'utilisateur ayant posté',
+    description: "UUID de l'utilisateur ayant posté",
     nullable: true,
     type: String,
     format: 'uuid',

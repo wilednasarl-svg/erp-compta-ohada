@@ -42,9 +42,7 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
  * down() : DROP des nouvelles colonnes + rollback des CHECK constraints
  * (linear/declining seulement).
  */
-export class ExtendAssetsForAdvancedDepreciation1700000000104
-  implements MigrationInterface
-{
+export class ExtendAssetsForAdvancedDepreciation1700000000104 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // ─── assets : nouvelles colonnes ─────────────────────────────────
     await queryRunner.query(`

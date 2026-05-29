@@ -1,7 +1,9 @@
 import type { NoteId, NoteInventoryItem } from '../../services/notes-annexes';
 import { buildHarness } from './test-helpers';
 
-function item(o: Partial<NoteInventoryItem> & { id: string; family: NoteInventoryItem['family'] }): NoteInventoryItem {
+function item(
+  o: Partial<NoteInventoryItem> & { id: string; family: NoteInventoryItem['family'] },
+): NoteInventoryItem {
   return {
     code: 'SKU-' + o.id,
     label: 'Item ' + o.id,

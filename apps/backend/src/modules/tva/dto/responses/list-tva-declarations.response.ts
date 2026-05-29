@@ -10,7 +10,7 @@ import { TvaDeclarationResponse } from './tva-declaration.response';
  */
 export class ListTvaDeclarationsResponse {
   @ApiProperty({
-    description: 'Liste des déclarations TVA pour l\'organisation',
+    description: "Liste des déclarations TVA pour l'organisation",
     type: () => [TvaDeclarationResponse],
   })
   declarations!: TvaDeclarationResponse[];

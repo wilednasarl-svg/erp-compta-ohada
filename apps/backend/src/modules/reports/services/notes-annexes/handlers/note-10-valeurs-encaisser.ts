@@ -13,7 +13,11 @@ const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   { key: 'CHEQUES_ENCAISSER', label: 'Chèques à encaisser (513)', prefixes: ['513'] },
   { key: 'COUPONS_ECHUS', label: 'Coupons échus (514)', prefixes: ['514'] },
   { key: 'CARTES_BANCAIRES', label: 'Cartes bancaires à encaisser (515)', prefixes: ['515'] },
-  { key: 'AUTRES_VAE', label: 'Autres valeurs à encaisser (516-519)', prefixes: ['516', '517', '518', '519'] },
+  {
+    key: 'AUTRES_VAE',
+    label: 'Autres valeurs à encaisser (516-519)',
+    prefixes: ['516', '517', '518', '519'],
+  },
 ];
 
 export const handleN10ValeursEncaisser: NoteHandler = (ctx, deps) =>

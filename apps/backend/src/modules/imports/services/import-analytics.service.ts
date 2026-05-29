@@ -188,10 +188,7 @@ function computeByJournal(rows: ReadonlyArray<Row>): ImportAnalyticsJournalRow[]
     .sort((a, b) => Number(b.total) - Number(a.total));
 }
 
-function computeTopAccounts(
-  rows: ReadonlyArray<Row>,
-  limit: number,
-): ImportAnalyticsAccountRow[] {
+function computeTopAccounts(rows: ReadonlyArray<Row>, limit: number): ImportAnalyticsAccountRow[] {
   const buckets = new Map<string, { debit: number; credit: number; lines: number }>();
   for (const r of rows) {
     const a = r.mappedValues.account;
@@ -231,8 +228,7 @@ function computeByAccountClass(rows: ReadonlyArray<Row>): ImportAnalyticsClassRo
   for (const r of rows) {
     const a = r.mappedValues.account;
     const firstDigit = a !== null && a !== undefined && a.length > 0 ? a[0] : null;
-    const key =
-      firstDigit !== null && /^[1-9]$/.test(firstDigit) ? firstDigit : 'autre';
+    const key = firstDigit !== null && /^[1-9]$/.test(firstDigit) ? firstDigit : 'autre';
     const existing = buckets.get(key) ?? { debit: 0, credit: 0, lines: 0 };
     existing.debit += parseAmount(r.mappedValues.debit);
     existing.credit += parseAmount(r.mappedValues.credit);

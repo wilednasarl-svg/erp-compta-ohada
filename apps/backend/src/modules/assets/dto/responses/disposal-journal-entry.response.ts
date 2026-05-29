@@ -24,18 +24,18 @@ export class DisposalJournalEntryLineResponse {
  * `DisposalJournalEntrySummary` (cf. AssetsService).
  */
 export class DisposalJournalEntryResponse {
-  @ApiProperty({ description: 'UUID de l\'écriture journal', format: 'uuid' })
+  @ApiProperty({ description: "UUID de l'écriture journal", format: 'uuid' })
   id!: string;
 
   @ApiProperty({
     description:
-      'Type d\'écriture générée par la cession : dotation prorata, sortie de l\'actif, produit de cession',
+      "Type d'écriture générée par la cession : dotation prorata, sortie de l'actif, produit de cession",
     enum: DISPOSAL_ENTRY_TYPES,
   })
   type!: DisposalEntryType;
 
   @ApiProperty({
-    description: 'Lignes débit/crédit de l\'écriture (montants en number)',
+    description: "Lignes débit/crédit de l'écriture (montants en number)",
     type: () => [DisposalJournalEntryLineResponse],
   })
   lines!: DisposalJournalEntryLineResponse[];

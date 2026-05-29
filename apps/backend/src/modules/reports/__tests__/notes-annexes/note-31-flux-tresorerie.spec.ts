@@ -24,10 +24,18 @@ function buildReport(overrides: Partial<CashFlowReport> = {}): CashFlowReport {
       label: "Flux de trésorerie provenant des opérations d'investissement",
       subtotal: '-500.00',
       postes: [
-        { code: 'FF', label: "Décaissements liés aux acquisitions d'immobilisations", amount: '-700.00' },
-        { code: 'FG', label: "Décaissements immobilisations financières", amount: '0.00' },
+        {
+          code: 'FF',
+          label: "Décaissements liés aux acquisitions d'immobilisations",
+          amount: '-700.00',
+        },
+        { code: 'FG', label: 'Décaissements immobilisations financières', amount: '0.00' },
         { code: 'FH', label: "Encaissements cessions d'immobilisations", amount: '150.00' },
-        { code: 'FI', label: 'Encaissements cessions immobilisations financières', amount: '50.00' },
+        {
+          code: 'FI',
+          label: 'Encaissements cessions immobilisations financières',
+          amount: '50.00',
+        },
         { code: 'FJ', label: 'Variation des créances sur cessions', amount: '0.00' },
       ],
     },
@@ -113,7 +121,7 @@ describe('Note 31 — Tableau des Flux de Trésorerie (ventilé)', () => {
     );
   });
 
-  it("expose le comparatif N-1 sur la trésorerie et les sous-totaux quand disponible", async () => {
+  it('expose le comparatif N-1 sur la trésorerie et les sous-totaux quand disponible', async () => {
     const { service, cashFlowMock, request } = buildHarness();
     cashFlowMock.getCashFlow.mockResolvedValue(
       buildReport({
@@ -149,9 +157,7 @@ describe('Note 31 — Tableau des Flux de Trésorerie (ventilé)', () => {
 
   it('reporte le coherenceCheck du service sur la ligne ZG', async () => {
     const { service, cashFlowMock, request } = buildHarness();
-    cashFlowMock.getCashFlow.mockResolvedValue(
-      buildReport({ coherenceCheck: '12.34' }),
-    );
+    cashFlowMock.getCashFlow.mockResolvedValue(buildReport({ coherenceCheck: '12.34' }));
 
     const n31 = await service.getNote(request, 'N31' as NoteId);
     const zg = n31.rows.find((r) => r.key === 'ZG');

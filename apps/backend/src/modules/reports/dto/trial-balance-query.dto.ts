@@ -47,7 +47,7 @@ export class TrialBalanceQueryDto {
 
   @ApiProperty({
     required: false,
-    description: 'Type d\'axe analytique (CHANTIER, BU, ACTIVITE, PROJET)',
+    description: "Type d'axe analytique (CHANTIER, BU, ACTIVITE, PROJET)",
     example: 'CHANTIER',
   })
   @IsOptional()

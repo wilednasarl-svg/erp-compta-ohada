@@ -50,7 +50,7 @@ export class CreateImportSessionDto {
   @ApiPropertyOptional({
     enum: DOCUMENT_TYPES as readonly string[],
     description:
-      'Nature comptable du document (écritures, grand livre, balance, relevé bancaire, etc.). Guide l\'auto-mapping.',
+      "Nature comptable du document (écritures, grand livre, balance, relevé bancaire, etc.). Guide l'auto-mapping.",
   })
   @IsOptional()
   @IsIn(DOCUMENT_TYPES as readonly string[])

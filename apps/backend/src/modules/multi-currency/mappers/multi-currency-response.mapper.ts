@@ -3,14 +3,14 @@ import type { ExchangeRateEntity } from '../entities/exchange-rate.entity';
 import type { FxConvertResult } from '../services/fx-converter';
 import type { RateSource } from '../types/currency.types';
 import {
-  CurrencyEnvelopeResponse,
-  CurrencyResponse,
-  ExchangeRateEnvelopeResponse,
-  ExchangeRateResponse,
-  FxConversionEnvelopeResponse,
-  FxConversionResponse,
-  ListCurrenciesResponse,
-  ListExchangeRatesResponse,
+  type CurrencyEnvelopeResponse,
+  type CurrencyResponse,
+  type ExchangeRateEnvelopeResponse,
+  type ExchangeRateResponse,
+  type FxConversionEnvelopeResponse,
+  type FxConversionResponse,
+  type ListCurrenciesResponse,
+  type ListExchangeRatesResponse,
 } from '../dto/responses';
 
 /**
@@ -67,9 +67,7 @@ export function toFxConversionResponse(
 
 // ─── Enveloppes ───────────────────────────────────────────────────────
 
-export function toListCurrencies(
-  entities: ReadonlyArray<CurrencyEntity>,
-): ListCurrenciesResponse {
+export function toListCurrencies(entities: ReadonlyArray<CurrencyEntity>): ListCurrenciesResponse {
   return { currencies: entities.map(toCurrencyResponse) };
 }
 
@@ -83,9 +81,7 @@ export function toListExchangeRates(
   return { rates: entities.map(toExchangeRateResponse) };
 }
 
-export function toExchangeRateEnvelope(
-  entity: ExchangeRateEntity,
-): ExchangeRateEnvelopeResponse {
+export function toExchangeRateEnvelope(entity: ExchangeRateEntity): ExchangeRateEnvelopeResponse {
   return { rate: toExchangeRateResponse(entity) };
 }
 

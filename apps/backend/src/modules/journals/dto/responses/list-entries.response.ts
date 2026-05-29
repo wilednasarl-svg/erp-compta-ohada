@@ -11,13 +11,13 @@ import { JournalEntryListItemResponse } from './journal-entry.response';
  */
 export class ListEntriesResponse {
   @ApiProperty({
-    description: 'En-têtes d\'écritures de la page courante (sans les lignes)',
+    description: "En-têtes d'écritures de la page courante (sans les lignes)",
     type: () => [JournalEntryListItemResponse],
   })
   entries!: JournalEntryListItemResponse[];
 
   @ApiProperty({
-    description: 'Total absolu d\'écritures pour les filtres courants (toutes pages confondues)',
+    description: "Total absolu d'écritures pour les filtres courants (toutes pages confondues)",
     type: Number,
   })
   total!: number;

@@ -30,10 +30,7 @@ import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { AdjustEntryDto } from '../dto/adjust-entry.dto';
 import { ReclassifyEntryDto } from '../dto/reclassify-entry.dto';
-import {
-  TransformationEnvelopeResponse,
-  TransformationHistoryResponse,
-} from '../dto/responses';
+import { TransformationEnvelopeResponse, TransformationHistoryResponse } from '../dto/responses';
 import {
   toTransformationEnvelope,
   toTransformationHistory,
@@ -76,7 +73,7 @@ export class TransformationsController {
   @Post('reclassify')
   @RequirePermission('transformations.write')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Reclasser une écriture (changer compte, journal, analytique)" })
+  @ApiOperation({ summary: 'Reclasser une écriture (changer compte, journal, analytique)' })
   @ApiCreatedResponse({ type: TransformationEnvelopeResponse })
   async reclassify(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,

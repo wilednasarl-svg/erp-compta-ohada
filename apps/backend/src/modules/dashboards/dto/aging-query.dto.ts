@@ -33,7 +33,7 @@ export class AgingQueryDto {
 
   @ApiPropertyOptional({
     description:
-      'Date de référence pour le calcul de days_since. Défaut = endDate de l\'exercice. Format YYYY-MM-DD.',
+      "Date de référence pour le calcul de days_since. Défaut = endDate de l'exercice. Format YYYY-MM-DD.",
     example: '2026-05-25',
   })
   @IsOptional()

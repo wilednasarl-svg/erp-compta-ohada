@@ -9,12 +9,32 @@ import { computeAccountBreakdown, type BreakdownCategory } from './_account-brea
 import type { NoteHandler } from '../types';
 
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
-  { key: 'VCEAC', label: "Valeurs comptables des cessions d'immo (811, 812)", prefixes: ['811', '812'] },
-  { key: 'PROD_CESSIONS_IMMO', label: "Produits des cessions d'immobilisations (821, 822, 826)", prefixes: ['821', '822', '826'] },
-  { key: 'CHARGES_HAO', label: 'Charges HAO (831, 832, 834, 835, 836, 838)', prefixes: ['831', '832', '834', '835', '836', '838'] },
-  { key: 'PRODUITS_HAO', label: 'Produits HAO (841, 845, 846, 848)', prefixes: ['841', '845', '846', '848'] },
+  {
+    key: 'VCEAC',
+    label: "Valeurs comptables des cessions d'immo (811, 812)",
+    prefixes: ['811', '812'],
+  },
+  {
+    key: 'PROD_CESSIONS_IMMO',
+    label: "Produits des cessions d'immobilisations (821, 822, 826)",
+    prefixes: ['821', '822', '826'],
+  },
+  {
+    key: 'CHARGES_HAO',
+    label: 'Charges HAO (831, 832, 834, 835, 836, 838)',
+    prefixes: ['831', '832', '834', '835', '836', '838'],
+  },
+  {
+    key: 'PRODUITS_HAO',
+    label: 'Produits HAO (841, 845, 846, 848)',
+    prefixes: ['841', '845', '846', '848'],
+  },
   { key: 'DOTATIONS_HAO', label: 'Dotations HAO (851, 853, 854)', prefixes: ['851', '853', '854'] },
-  { key: 'REPRISES_HAO', label: 'Reprises HAO (861, 862, 864, 865)', prefixes: ['861', '862', '864', '865'] },
+  {
+    key: 'REPRISES_HAO',
+    label: 'Reprises HAO (861, 862, 864, 865)',
+    prefixes: ['861', '862', '864', '865'],
+  },
 ];
 
 export const handleN29Hao: NoteHandler = (ctx, deps) =>

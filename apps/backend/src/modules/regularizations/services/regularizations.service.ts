@@ -28,7 +28,7 @@ import {
  * `OD` (opérations diverses) est seedé par OrganizationsService pour
  * toute organisation SYSCOHADA.
  */
-const DEFAULT_JOURNAL_CODE = 'OD' as const;
+const DEFAULT_JOURNAL_CODE = 'OD';
 
 export interface ListRegularizationBatchesOptions {
   readonly status?: RegularizationBatchStatus;
@@ -142,11 +142,7 @@ export class RegularizationsService {
     });
   }
 
-  async removeEntry(
-    organizationId: TenantId,
-    batchId: string,
-    entryId: string,
-  ): Promise<void> {
+  async removeEntry(organizationId: TenantId, batchId: string, entryId: string): Promise<void> {
     assertTenantId(organizationId);
     const batch = await this.requireBatch(organizationId, batchId);
     this.assertDraft(batch);
@@ -232,18 +228,13 @@ export class RegularizationsService {
       reversedById: reversedBy,
       reversalJournalEntryId: entry.id,
     });
-    this.logger.log(
-      `Regularization batch ${batchId} reversed — entry=${entry.id}`,
-    );
+    this.logger.log(`Regularization batch ${batchId} reversed — entry=${entry.id}`);
     return updated;
   }
 
   // ─── Cancellation ──────────────────────────────────────────────────
 
-  async cancelBatch(
-    organizationId: TenantId,
-    batchId: string,
-  ): Promise<RegularizationBatchEntity> {
+  async cancelBatch(organizationId: TenantId, batchId: string): Promise<RegularizationBatchEntity> {
     assertTenantId(organizationId);
     const batch = await this.requireBatch(organizationId, batchId);
     if (batch.status !== 'draft') {

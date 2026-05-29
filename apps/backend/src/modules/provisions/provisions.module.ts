@@ -27,10 +27,7 @@ import { ProvisionsService } from './services/provisions.service';
  * module (ex. Module 21 Collaboration) de s y brancher.
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ProvisionEntity, ProvisionMovementEntity]),
-    JournalsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ProvisionEntity, ProvisionMovementEntity]), JournalsModule],
   providers: [ProvisionsRepository, ProvisionMovementsRepository, ProvisionsService],
   exports: [ProvisionsService],
 })

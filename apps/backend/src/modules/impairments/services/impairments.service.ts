@@ -10,10 +10,7 @@ import { OrganizationAccountRepository } from '../../accounting-plan/repositorie
 import { AssetsRepository } from '../../assets/repositories/assets.repository';
 import { DepreciationSchedulesRepository } from '../../assets/repositories/depreciation-schedules.repository';
 import { InventoryItemRepository } from '../../inventory/repositories/inventory-item.repository';
-import {
-  EntriesService,
-  type CreateLineInput,
-} from '../../journals/services/entries.service';
+import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { TestAssetImpairmentDto } from '../dto/test-asset-impairment.dto';
 import { TestInventoryImpairmentDto } from '../dto/test-inventory-impairment.dto';
 import { AssetImpairmentEntity } from '../entities/asset-impairment.entity';
@@ -93,10 +90,7 @@ export class ImpairmentsService {
       });
     }
 
-    const recoverable = this.parseAmount(
-      dto.recoverableAmount,
-      'recoverableAmount',
-    );
+    const recoverable = this.parseAmount(dto.recoverableAmount, 'recoverableAmount');
     const carrying = await this.computeAssetCarryingAmount(
       dto.assetId,
       organizationId,
@@ -154,10 +148,7 @@ export class ImpairmentsService {
     }
 
     // Comptes : 29x dépend de la classe d'immo.
-    const assetAccount = await this.accountsRepo.findById(
-      asset.assetAccountId,
-      organizationId,
-    );
+    const assetAccount = await this.accountsRepo.findById(asset.assetAccountId, organizationId);
     if (!assetAccount) {
       throw new AppException(ERROR_CODES.CHART_ACCOUNT_NOT_FOUND, {
         message: `Asset account ${asset.assetAccountId} not found in chart of accounts.`,
@@ -312,10 +303,7 @@ export class ImpairmentsService {
       });
     }
 
-    const stockAccount = await this.accountsRepo.findById(
-      item.stockAccountId,
-      organizationId,
-    );
+    const stockAccount = await this.accountsRepo.findById(item.stockAccountId, organizationId);
     if (!stockAccount) {
       throw new AppException(ERROR_CODES.CHART_ACCOUNT_NOT_FOUND, {
         message: `Stock account ${item.stockAccountId} not found in chart of accounts.`,
@@ -388,9 +376,7 @@ export class ImpairmentsService {
       });
 
       await this.emitAudit(
-        type === 'depreciation'
-          ? 'inventory_impairment_recorded'
-          : 'inventory_impairment_reversed',
+        type === 'depreciation' ? 'inventory_impairment_recorded' : 'inventory_impairment_reversed',
         persisted.id,
         {
           inventoryItemId: dto.inventoryItemId,
@@ -427,11 +413,7 @@ export class ImpairmentsService {
     limit = 100,
   ): Promise<InventoryImpairmentEntity[]> {
     assertTenantId(organizationId);
-    return this.inventoryImpairmentsRepo.listByOrganization(
-      organizationId,
-      inventoryItemId,
-      limit,
-    );
+    return this.inventoryImpairmentsRepo.listByOrganization(organizationId, inventoryItemId, limit);
   }
 
   // ─── Private helpers ──────────────────────────────────────────────

@@ -25,7 +25,11 @@ import { InventoryMovementEntity } from './inventory-movement.entity';
  */
 @Entity({ name: 'inventory_lots' })
 @Index('ix_inventory_lots_item_entry_date', ['inventoryItemId', 'entryDate', 'createdAt'])
-@Index('ix_inventory_lots_org_item_remaining', ['organizationId', 'inventoryItemId', 'remainingQty'])
+@Index('ix_inventory_lots_org_item_remaining', [
+  'organizationId',
+  'inventoryItemId',
+  'remainingQty',
+])
 export class InventoryLotEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

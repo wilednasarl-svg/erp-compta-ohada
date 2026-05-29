@@ -31,8 +31,7 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
     it('a tous ses parentGroup pointant vers un code existant', () => {
       const codes = new Set(BILAN_POSTES.map((p) => p.code));
       const orphans = BILAN_POSTES.filter(
-        (p): p is BilanPosteRef & { parentGroup: string } =>
-          p.parentGroup !== undefined,
+        (p): p is BilanPosteRef & { parentGroup: string } => p.parentGroup !== undefined,
       )
         .filter((p) => !codes.has(p.parentGroup))
         .map((p) => `${p.code} -> ${p.parentGroup}`);
@@ -52,25 +51,15 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
     it('a les libellés officiels exacts du Tome 3 p. 32 (spot-check 10 postes)', () => {
       const byCode = new Map(BILAN_POSTES.map((p) => [p.code, p.label]));
       expect(byCode.get('AE')).toBe('Frais de développement et de prospection');
-      expect(byCode.get('AF')).toBe(
-        'Brevets, licences, logiciels et droits similaires',
-      );
+      expect(byCode.get('AF')).toBe('Brevets, licences, logiciels et droits similaires');
       expect(byCode.get('AI')).toBe('IMMOBILISATIONS CORPORELLES');
-      expect(byCode.get('AP')).toBe(
-        'AVANCES ET ACOMPTES VERSÉS SUR IMMOBILISATIONS',
-      );
+      expect(byCode.get('AP')).toBe('AVANCES ET ACOMPTES VERSÉS SUR IMMOBILISATIONS');
       expect(byCode.get('BI')).toBe('Clients');
-      expect(byCode.get('BS')).toBe(
-        'Banques, chèques postaux, caisse et assimilés',
-      );
+      expect(byCode.get('BS')).toBe('Banques, chèques postaux, caisse et assimilés');
       expect(byCode.get('CA')).toBe('Capital');
-      expect(byCode.get('CJ')).toBe(
-        "Résultat net de l'exercice (bénéfice + / perte −)",
-      );
+      expect(byCode.get('CJ')).toBe("Résultat net de l'exercice (bénéfice + / perte −)");
       expect(byCode.get('DJ')).toBe("Fournisseurs d'exploitation");
-      expect(byCode.get('DR')).toBe(
-        'Banques, établissements financiers et crédits de trésorerie',
-      );
+      expect(byCode.get('DR')).toBe('Banques, établissements financiers et crédits de trésorerie');
     });
 
     /**
@@ -113,8 +102,7 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
     it('a tous ses parentGroup pointant vers un code existant', () => {
       const codes = new Set(PL_POSTES.map((p) => p.code));
       const orphans = PL_POSTES.filter(
-        (p): p is PlPosteRef & { parentGroup: string } =>
-          p.parentGroup !== undefined,
+        (p): p is PlPosteRef & { parentGroup: string } => p.parentGroup !== undefined,
       )
         .filter((p) => !codes.has(p.parentGroup))
         .map((p) => `${p.code} -> ${p.parentGroup}`);
@@ -132,33 +120,19 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
       expect(sigs).toHaveLength(9);
 
       const sigCodes = sigs.map((p) => p.code).sort();
-      expect(sigCodes).toEqual([
-        'XA',
-        'XB',
-        'XC',
-        'XD',
-        'XE',
-        'XF',
-        'XG',
-        'XH',
-        'XI',
-      ]);
+      expect(sigCodes).toEqual(['XA', 'XB', 'XC', 'XD', 'XE', 'XF', 'XG', 'XH', 'XI']);
     });
 
     it('a une computationFormula non vide pour chaque SIG', () => {
       const sigs = PL_POSTES.filter((p) => p.kind === 'SIG');
       const missing = sigs
-        .filter(
-          (p) =>
-            p.computationFormula === undefined ||
-            p.computationFormula.trim() === '',
-        )
+        .filter((p) => p.computationFormula === undefined || p.computationFormula.trim() === '')
         .map((p) => p.code);
 
       expect(missing).toEqual([]);
     });
 
-    it("classe tous les SIG dans la section « Soldes intermédiaires »", () => {
+    it('classe tous les SIG dans la section « Soldes intermédiaires »', () => {
       const sigs = PL_POSTES.filter((p) => p.kind === 'SIG');
       const misplaced = sigs
         .filter((p) => p.section !== SIG_SECTION_LABEL)
@@ -204,10 +178,9 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
       const offenders: string[] = [];
 
       for (const poste of BILAN_POSTES) {
-        const bad = [
-          ...poste.sourceAccountPrefixes,
-          ...poste.deductionPrefixes,
-        ].filter((prefix) => !validFirstChar.test(prefix));
+        const bad = [...poste.sourceAccountPrefixes, ...poste.deductionPrefixes].filter(
+          (prefix) => !validFirstChar.test(prefix),
+        );
 
         if (bad.length > 0) {
           offenders.push(`${poste.code}: [${bad.join(', ')}]`);
@@ -222,10 +195,9 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
       const offenders: string[] = [];
 
       for (const poste of PL_POSTES) {
-        const bad = [
-          ...poste.sourceAccountPrefixes,
-          ...poste.deductionPrefixes,
-        ].filter((prefix) => !validFirstChar.test(prefix));
+        const bad = [...poste.sourceAccountPrefixes, ...poste.deductionPrefixes].filter(
+          (prefix) => !validFirstChar.test(prefix),
+        );
 
         if (bad.length > 0) {
           offenders.push(`${poste.code}: [${bad.join(', ')}]`);

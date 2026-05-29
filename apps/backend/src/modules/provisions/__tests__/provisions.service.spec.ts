@@ -3,7 +3,7 @@ import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { AuditContext } from '../../audit/services/audit-trail.service';
 import type { EntriesService } from '../../journals/services/entries.service';
-import { CreateProvisionDto } from '../dto/create-provision.dto';
+import { type CreateProvisionDto } from '../dto/create-provision.dto';
 import type { ProvisionEntity } from '../entities/provision.entity';
 import type { ProvisionMovementEntity } from '../entities/provision-movement.entity';
 import type { ProvisionMovementsRepository } from '../repositories/provision-movements.repository';
@@ -68,9 +68,8 @@ function buildHarness(): Harness {
     }),
     findById: jest.fn(async (id: string, organizationId: string) => {
       return (
-        storedProvisions.find(
-          (p) => p.id === id && p.organizationId === String(organizationId),
-        ) ?? null
+        storedProvisions.find((p) => p.id === id && p.organizationId === String(organizationId)) ??
+        null
       );
     }),
     listByOrganization: jest.fn(async (organizationId: string, filters = {}) => {
@@ -124,12 +123,8 @@ function buildHarness(): Harness {
 
   const entries = {
     createDraft: jest.fn(async (organizationId, input) => {
-      const debitLine = input.lines.find(
-        (l: { debit: number; credit: number }) => l.debit > 0,
-      );
-      const creditLine = input.lines.find(
-        (l: { debit: number; credit: number }) => l.credit > 0,
-      );
+      const debitLine = input.lines.find((l: { debit: number; credit: number }) => l.debit > 0);
+      const creditLine = input.lines.find((l: { debit: number; credit: number }) => l.credit > 0);
       createDraftCalls.push({
         organizationId: String(organizationId),
         journalCode: input.journalCode,
@@ -253,14 +248,7 @@ describe('ProvisionsService', () => {
         AUDIT_CTX,
       );
       // Close by full reprise
-      await h.service.reprise(
-        ORG_ID,
-        provision.id,
-        '500.00',
-        '2026-04-01',
-        ACTOR_ID,
-        AUDIT_CTX,
-      );
+      await h.service.reprise(ORG_ID, provision.id, '500.00', '2026-04-01', ACTOR_ID, AUDIT_CTX);
 
       await expect(
         h.service.dotation(ORG_ID, provision.id, '100.00', '2026-04-02', ACTOR_ID, AUDIT_CTX),

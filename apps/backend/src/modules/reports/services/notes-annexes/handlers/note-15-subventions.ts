@@ -9,9 +9,17 @@ import { computeAccountBreakdown, type BreakdownCategory } from './_account-brea
 import type { NoteHandler } from '../types';
 
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
-  { key: 'SUBV_EQUIPEMENT', label: "Subventions d'équipement (141, 142)", prefixes: ['141', '142'] },
-  { key: 'SUBV_AUTRES_BIENS', label: "Subventions pour autres biens (143)", prefixes: ['143'] },
-  { key: 'AUTRES_SUBVENTIONS', label: "Autres subventions d'investissement (148)", prefixes: ['148'] },
+  {
+    key: 'SUBV_EQUIPEMENT',
+    label: "Subventions d'équipement (141, 142)",
+    prefixes: ['141', '142'],
+  },
+  { key: 'SUBV_AUTRES_BIENS', label: 'Subventions pour autres biens (143)', prefixes: ['143'] },
+  {
+    key: 'AUTRES_SUBVENTIONS',
+    label: "Autres subventions d'investissement (148)",
+    prefixes: ['148'],
+  },
 ];
 
 export const handleN15Subventions: NoteHandler = (ctx, deps) =>

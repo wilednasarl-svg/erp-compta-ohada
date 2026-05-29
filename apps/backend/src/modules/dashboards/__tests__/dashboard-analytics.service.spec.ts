@@ -5,10 +5,7 @@ import type {
   MonthlyPrefixRow,
   TopAccountFlowRow,
 } from '../repositories/dashboards.repository';
-import {
-  DashboardAnalyticsService,
-  listMonths,
-} from '../services/dashboard-analytics.service';
+import { DashboardAnalyticsService, listMonths } from '../services/dashboard-analytics.service';
 
 const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
 const EXERCISE_ID = '00000000-0000-4000-8000-000000000002';
@@ -29,12 +26,14 @@ const FAKE_PERIOD = {
   updatedAt: new Date(),
 } as unknown as AccountingPeriodEntity;
 
-function buildService(opts: {
-  cashflowRows?: MonthlyPrefixRow[];
-  evolutionRows?: MonthlyClassRow[];
-  topFlowRows?: TopAccountFlowRow[];
-  period?: AccountingPeriodEntity | null;
-} = {}) {
+function buildService(
+  opts: {
+    cashflowRows?: MonthlyPrefixRow[];
+    evolutionRows?: MonthlyClassRow[];
+    topFlowRows?: TopAccountFlowRow[];
+    period?: AccountingPeriodEntity | null;
+  } = {},
+) {
   const dashRepo = {
     aggregateByClass: jest.fn(),
     aggregateByCodePrefix: jest.fn(),
@@ -161,9 +160,27 @@ describe('DashboardAnalyticsService.getTopAccounts', () => {
   it('returns top expenses sorted by net debit desc with share %', async () => {
     const { service } = buildService({
       topFlowRows: [
-        { accountId: 'a1', accountCode: '6011', accountLabel: 'Achats', totalDebit: '3000000', totalCredit: '0' },
-        { accountId: 'a2', accountCode: '6111', accountLabel: 'Sous-traitance', totalDebit: '1500000', totalCredit: '0' },
-        { accountId: 'a3', accountCode: '6411', accountLabel: 'Salaires', totalDebit: '500000', totalCredit: '0' },
+        {
+          accountId: 'a1',
+          accountCode: '6011',
+          accountLabel: 'Achats',
+          totalDebit: '3000000',
+          totalCredit: '0',
+        },
+        {
+          accountId: 'a2',
+          accountCode: '6111',
+          accountLabel: 'Sous-traitance',
+          totalDebit: '1500000',
+          totalCredit: '0',
+        },
+        {
+          accountId: 'a3',
+          accountCode: '6411',
+          accountLabel: 'Salaires',
+          totalDebit: '500000',
+          totalCredit: '0',
+        },
       ],
     });
 
@@ -187,8 +204,20 @@ describe('DashboardAnalyticsService.getTopAccounts', () => {
   it('inverts sign for revenue: tri par crédit desc', async () => {
     const { service } = buildService({
       topFlowRows: [
-        { accountId: 'r1', accountCode: '7011', accountLabel: 'Ventes marchandises', totalDebit: '0', totalCredit: '8000000' },
-        { accountId: 'r2', accountCode: '7061', accountLabel: 'Services rendus', totalDebit: '500000', totalCredit: '2500000' },
+        {
+          accountId: 'r1',
+          accountCode: '7011',
+          accountLabel: 'Ventes marchandises',
+          totalDebit: '0',
+          totalCredit: '8000000',
+        },
+        {
+          accountId: 'r2',
+          accountCode: '7061',
+          accountLabel: 'Services rendus',
+          totalDebit: '500000',
+          totalCredit: '2500000',
+        },
       ],
     });
     const result = await service.getTopAccounts(ORG_ID, {
@@ -205,11 +234,29 @@ describe('DashboardAnalyticsService.getTopAccounts', () => {
   it('excludes accounts whose net is ≤ 0 (contra-entries cleared)', async () => {
     const { service } = buildService({
       topFlowRows: [
-        { accountId: 'a1', accountCode: '6011', accountLabel: 'Achats', totalDebit: '1000', totalCredit: '0' },
+        {
+          accountId: 'a1',
+          accountCode: '6011',
+          accountLabel: 'Achats',
+          totalDebit: '1000',
+          totalCredit: '0',
+        },
         // Contre-passé : débit == crédit → net 0, exclu
-        { accountId: 'a2', accountCode: '6012', accountLabel: 'Contre-passé', totalDebit: '500', totalCredit: '500' },
+        {
+          accountId: 'a2',
+          accountCode: '6012',
+          accountLabel: 'Contre-passé',
+          totalDebit: '500',
+          totalCredit: '500',
+        },
         // Net négatif (avoir > facture) — exclu de la catégorie expenses
-        { accountId: 'a3', accountCode: '6013', accountLabel: 'Avoir net', totalDebit: '100', totalCredit: '300' },
+        {
+          accountId: 'a3',
+          accountCode: '6013',
+          accountLabel: 'Avoir net',
+          totalDebit: '100',
+          totalCredit: '300',
+        },
       ],
     });
     const result = await service.getTopAccounts(ORG_ID, {

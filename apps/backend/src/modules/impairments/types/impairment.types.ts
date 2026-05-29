@@ -87,7 +87,7 @@ export function inventoryContraAccountFor(stockAccountCode: string): string {
  * fréquent ; gérer 6914 / 7914 pour terrains et fonds dans une wave
  * ultérieure si nécessaire). Pour stocks : 6593 / 7593.
  */
-export const ASSET_IMPAIRMENT_EXPENSE_ACCOUNT = '6917' as const;
-export const ASSET_IMPAIRMENT_REVERSAL_ACCOUNT = '7917' as const;
-export const INVENTORY_IMPAIRMENT_EXPENSE_ACCOUNT = '6593' as const;
-export const INVENTORY_IMPAIRMENT_REVERSAL_ACCOUNT = '7593' as const;
+export const ASSET_IMPAIRMENT_EXPENSE_ACCOUNT = '6917';
+export const ASSET_IMPAIRMENT_REVERSAL_ACCOUNT = '7917';
+export const INVENTORY_IMPAIRMENT_EXPENSE_ACCOUNT = '6593';
+export const INVENTORY_IMPAIRMENT_REVERSAL_ACCOUNT = '7593';

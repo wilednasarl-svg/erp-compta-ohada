@@ -26,7 +26,7 @@ export class TvaCodeResponse {
   id!: string;
 
   @ApiProperty({
-    description: 'Identifiant UUID v4 de l\'organisation propriétaire',
+    description: "Identifiant UUID v4 de l'organisation propriétaire",
     format: 'uuid',
   })
   organizationId!: string;

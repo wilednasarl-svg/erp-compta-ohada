@@ -588,9 +588,7 @@ export class ReportsRepository {
   ): Promise<Map<string, string>> {
     assertTenantId(organizationId);
     if (codes.length === 0) return new Map();
-    const rows = await this.lineRepo.manager.query<
-      Array<{ code: string; label: string }>
-    >(
+    const rows = await this.lineRepo.manager.query<Array<{ code: string; label: string }>>(
       `SELECT code, label
          FROM organization_chart_accounts
         WHERE organization_id = $1

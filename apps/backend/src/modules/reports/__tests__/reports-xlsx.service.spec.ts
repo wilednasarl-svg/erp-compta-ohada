@@ -128,9 +128,30 @@ const fakeProfitLoss = (): ProfitLossReport => ({
   ],
   // Séquence doctrinale Tome 3 p. 33 — fake minimal incluant les 9 SIG.
   lines: [
-    { ref: 'TA', label: 'Ventes de marchandises', note: '21', sign: '+', kind: 'PRODUIT', amountN: '8000000.00' },
-    { ref: 'RA', label: 'Achats de marchandises', note: '22', sign: '-', kind: 'CHARGE', amountN: '-4500000.00' },
-    { ref: 'RB', label: 'Variation de stocks de marchandises', note: '6', sign: '-/+', kind: 'CHARGE', amountN: '0.00' },
+    {
+      ref: 'TA',
+      label: 'Ventes de marchandises',
+      note: '21',
+      sign: '+',
+      kind: 'PRODUIT',
+      amountN: '8000000.00',
+    },
+    {
+      ref: 'RA',
+      label: 'Achats de marchandises',
+      note: '22',
+      sign: '-',
+      kind: 'CHARGE',
+      amountN: '-4500000.00',
+    },
+    {
+      ref: 'RB',
+      label: 'Variation de stocks de marchandises',
+      note: '6',
+      sign: '-/+',
+      kind: 'CHARGE',
+      amountN: '0.00',
+    },
     { ref: 'XA', label: 'MARGE COMMERCIALE', kind: 'SIG', amountN: '3500000.00' },
     { ref: 'XB', label: "CHIFFRE D'AFFAIRES", kind: 'SIG', amountN: '8000000.00' },
     { ref: 'XC', label: 'VALEUR AJOUTÉE', kind: 'SIG', amountN: '3500000.00' },
@@ -205,7 +226,7 @@ describe('ReportsXlsxService — Bilan W5.2 volet 2', () => {
     expect(buf.length).toBeGreaterThan(1024);
   });
 
-  it("contient les 6 colonnes contexture DGI (Brut N, Amort. & dépréc., Net N, Net N-1)", () => {
+  it('contient les 6 colonnes contexture DGI (Brut N, Amort. & dépréc., Net N, Net N-1)', () => {
     const buf = service.balanceSheetXlsx(fakeBilan(), 'ACME SARL');
     const wb = XLSX.read(buf, { type: 'buffer' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -230,7 +251,7 @@ describe('ReportsXlsxService — Bilan W5.2 volet 2', () => {
    * C2 — En-tête à 7 colonnes (Tome 3 p. 32) : la colonne « Note »
    * doit apparaître entre Libellé et Brut N pour le renvoi annexes.
    */
-  it("contient la colonne « Note » à 7 colonnes côté ACTIF", () => {
+  it('contient la colonne « Note » à 7 colonnes côté ACTIF', () => {
     const buf = service.balanceSheetXlsx(fakeBilan(), 'ACME SARL');
     const wb = XLSX.read(buf, { type: 'buffer' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -366,7 +387,16 @@ describe('ReportsXlsxService — Grand Livre D2 (doctrine OHADA)', () => {
     const wb = XLSX.read(buf, { type: 'buffer' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const cells = sheetStrings(sheet);
-    for (const header of ['Date', 'Journal', 'Pièce', 'Libellé', 'Débit', 'Crédit', 'Solde', 'D/C']) {
+    for (const header of [
+      'Date',
+      'Journal',
+      'Pièce',
+      'Libellé',
+      'Débit',
+      'Crédit',
+      'Solde',
+      'D/C',
+    ]) {
       expect(cells).toContain(header);
     }
   });

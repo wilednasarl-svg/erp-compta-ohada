@@ -7,7 +7,7 @@ import { TvaCodeResponse } from './tva-code.response';
  */
 export class ListTvaCodesResponse {
   @ApiProperty({
-    description: 'Liste des codes TVA actifs/inactifs pour l\'organisation',
+    description: "Liste des codes TVA actifs/inactifs pour l'organisation",
     type: () => [TvaCodeResponse],
   })
   codes!: TvaCodeResponse[];

@@ -41,9 +41,7 @@ export class SupabaseDocumentStorage implements DocumentStorage {
   private readonly bucket: string;
   private _client: SupabaseClient | null = null;
 
-  constructor(
-    @Inject(SUPABASE_STORAGE_CONFIG) config: SupabaseStorageConfig,
-  ) {
+  constructor(@Inject(SUPABASE_STORAGE_CONFIG) config: SupabaseStorageConfig) {
     this.config = config;
     this.bucket = config.bucket;
   }
@@ -63,12 +61,10 @@ export class SupabaseDocumentStorage implements DocumentStorage {
     const ext = this.extensionFor(input.originalName);
     const storageKey = `${input.organizationId}/${sha256}${ext}`;
 
-    const { error } = await this.client.storage
-      .from(this.bucket)
-      .upload(storageKey, buffer, {
-        contentType: input.mimeType,
-        upsert: true,
-      });
+    const { error } = await this.client.storage.from(this.bucket).upload(storageKey, buffer, {
+      contentType: input.mimeType,
+      upsert: true,
+    });
 
     if (error) {
       this.logger.warn(`save: Supabase upload failed: ${error.message}`);
@@ -82,9 +78,7 @@ export class SupabaseDocumentStorage implements DocumentStorage {
   }
 
   async getStream(storageKey: string): Promise<Readable> {
-    const { data, error } = await this.client.storage
-      .from(this.bucket)
-      .download(storageKey);
+    const { data, error } = await this.client.storage.from(this.bucket).download(storageKey);
 
     if (error !== null) {
       const isNotFound =
@@ -109,9 +103,7 @@ export class SupabaseDocumentStorage implements DocumentStorage {
   }
 
   async delete(storageKey: string): Promise<void> {
-    const { error } = await this.client.storage
-      .from(this.bucket)
-      .remove([storageKey]);
+    const { error } = await this.client.storage.from(this.bucket).remove([storageKey]);
 
     if (error !== null) {
       const isNotFound =
@@ -138,7 +130,9 @@ export class SupabaseDocumentStorage implements DocumentStorage {
       .list(orgFolder, { search: fileName });
 
     if (error !== null) return false;
-    return (data ?? []).some((obj) => obj.name === fileName || `${orgFolder}/${obj.name}` === storageKey);
+    return (data ?? []).some(
+      (obj) => obj.name === fileName || `${orgFolder}/${obj.name}` === storageKey,
+    );
   }
 
   private async toBuffer(body: Buffer | Readable): Promise<Buffer> {

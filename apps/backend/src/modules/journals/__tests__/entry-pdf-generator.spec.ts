@@ -54,10 +54,7 @@ describe('EntryPdfGenerator', () => {
       makeLine({ id: 'l1', accountId: 'acc-1', position: 1, debit: '100.00', credit: '0' }),
       makeLine({ id: 'l2', accountId: 'acc-2', position: 2, debit: '0', credit: '100.00' }),
     ];
-    const accountsById = new Map<
-      string,
-      Pick<OrganizationAccountEntity, 'id' | 'code' | 'label'>
-    >([
+    const accountsById = new Map<string, Pick<OrganizationAccountEntity, 'id' | 'code' | 'label'>>([
       ['acc-1', { id: 'acc-1', code: '606300', label: 'Fournitures de bureau' }],
       ['acc-2', { id: 'acc-2', code: '401000', label: 'Fournisseurs' }],
     ]);

@@ -43,11 +43,7 @@ export const PROVISION_TYPES: ReadonlyArray<ProvisionType> = [
   'perte_change',
 ];
 
-export const PROVISION_STATUSES: ReadonlyArray<ProvisionStatus> = [
-  'active',
-  'cancelled',
-  'closed',
-];
+export const PROVISION_STATUSES: ReadonlyArray<ProvisionStatus> = ['active', 'cancelled', 'closed'];
 
 export const PROVISION_MOVEMENT_KINDS: ReadonlyArray<ProvisionMovementKind> = [
   'dotation',

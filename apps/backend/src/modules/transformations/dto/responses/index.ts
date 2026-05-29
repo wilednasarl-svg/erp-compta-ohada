@@ -9,7 +9,9 @@ import type {
 export class TransformationSummaryResponse {
   @ApiProperty({ format: 'uuid' })
   id!: string;
-  @ApiProperty({ description: 'reclassification | adjustment | correction | ventilation | grouping' })
+  @ApiProperty({
+    description: 'reclassification | adjustment | correction | ventilation | grouping',
+  })
   type!: TransformationType;
   @ApiProperty({ enum: ['active', 'cancelled'] })
   status!: TransformationStatus;

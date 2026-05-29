@@ -12,9 +12,7 @@ import type { CashFlowService } from '../services/cash-flow.service';
 const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
 const EXERCISE_ID = '11111111-2222-4333-8444-555555555555';
 
-function annualPeriod(
-  overrides: Partial<AccountingPeriodEntity> = {},
-): AccountingPeriodEntity {
+function annualPeriod(overrides: Partial<AccountingPeriodEntity> = {}): AccountingPeriodEntity {
   return {
     id: EXERCISE_ID,
     organizationId: ORG_ID,
@@ -33,10 +31,12 @@ function annualPeriod(
   } as AccountingPeriodEntity;
 }
 
-function buildHarness(overrides: {
-  period?: AccountingPeriodEntity | null;
-  existingActive?: FiscalYearSnapshotEntity | null;
-} = {}) {
+function buildHarness(
+  overrides: {
+    period?: AccountingPeriodEntity | null;
+    existingActive?: FiscalYearSnapshotEntity | null;
+  } = {},
+) {
   const period = overrides.period === undefined ? annualPeriod() : overrides.period;
   const existingActive = overrides.existingActive ?? null;
 
@@ -46,9 +46,7 @@ function buildHarness(overrides: {
     getSig: jest.fn().mockResolvedValue({ fromDate: '2026-01-01', toDate: '2026-12-31' }),
   };
   const cashFlow = {
-    getCashFlow: jest
-      .fn()
-      .mockResolvedValue({ fromDate: '2026-01-01', toDate: '2026-12-31' }),
+    getCashFlow: jest.fn().mockResolvedValue({ fromDate: '2026-01-01', toDate: '2026-12-31' }),
   };
   const periodRepo = {
     findById: jest.fn().mockResolvedValue(period),
@@ -88,9 +86,9 @@ describe('FiscalYearSnapshotsService.takeSnapshot — guards', () => {
 
   it('throws NotFoundException when the period is not annual', async () => {
     const h = buildHarness({ period: annualPeriod({ kind: 'MONTHLY' }) });
-    await expect(
-      h.service.takeSnapshot(ORG_ID, EXERCISE_ID, 'BILAN', 'user-1'),
-    ).rejects.toThrow(/not an annual/);
+    await expect(h.service.takeSnapshot(ORG_ID, EXERCISE_ID, 'BILAN', 'user-1')).rejects.toThrow(
+      /not an annual/,
+    );
   });
 });
 
@@ -144,7 +142,7 @@ describe('FiscalYearSnapshotsService.takeSnapshot — dispatch per type', () => 
 });
 
 describe('FiscalYearSnapshotsService.takeSnapshot — persistance', () => {
-  it('délègue upsertActive avec le payload calculé et l\'actorId', async () => {
+  it("délègue upsertActive avec le payload calculé et l'actorId", async () => {
     const h = buildHarness();
 
     await h.service.takeSnapshot(ORG_ID, EXERCISE_ID, 'BILAN', 'user-1');

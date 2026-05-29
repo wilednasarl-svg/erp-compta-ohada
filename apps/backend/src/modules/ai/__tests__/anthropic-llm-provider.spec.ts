@@ -47,9 +47,7 @@ describe('AnthropicLlmProvider', () => {
         description: 'Loyer bureau Plateau',
         partner: 'SCI ABC',
         side: 'debit',
-        historicalSamples: [
-          { description: 'Loyer mai', accountCode: '6132', partner: 'SCI ABC' },
-        ],
+        historicalSamples: [{ description: 'Loyer mai', accountCode: '6132', partner: 'SCI ABC' }],
       });
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -93,9 +91,7 @@ describe('AnthropicLlmProvider', () => {
     });
 
     it('strips ```json code fences before parsing', async () => {
-      mockClaudeOk(
-        '```json\n{"accountCode":"6132","confidence":0.7,"reasoning":"ok"}\n```',
-      );
+      mockClaudeOk('```json\n{"accountCode":"6132","confidence":0.7,"reasoning":"ok"}\n```');
       const result = await provider.suggestAccount({
         description: 'Loyer',
         partner: null,

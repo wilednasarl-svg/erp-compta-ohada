@@ -28,9 +28,7 @@ export class ReferenceChartController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: ListReferenceAccountsResponse })
-  async list(
-    @Query() query: ListReferenceChartQueryDto,
-  ): Promise<ListReferenceAccountsResponse> {
+  async list(@Query() query: ListReferenceChartQueryDto): Promise<ListReferenceAccountsResponse> {
     const accounts = await this.references.listBySystem(query.system);
     return toListReferenceAccounts(accounts);
   }

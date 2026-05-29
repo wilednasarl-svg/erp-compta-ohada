@@ -101,8 +101,16 @@ function buildInventoryItem(overrides: Partial<InventoryItemEntity> = {}): Inven
 
 interface Harness {
   service: ImpairmentsService;
-  assetImpRepo: { create: jest.Mock; listByOrganization: jest.Mock; sumNetImpairmentsForAsset: jest.Mock };
-  invImpRepo: { create: jest.Mock; listByOrganization: jest.Mock; sumNetImpairmentsForItem: jest.Mock };
+  assetImpRepo: {
+    create: jest.Mock;
+    listByOrganization: jest.Mock;
+    sumNetImpairmentsForAsset: jest.Mock;
+  };
+  invImpRepo: {
+    create: jest.Mock;
+    listByOrganization: jest.Mock;
+    sumNetImpairmentsForItem: jest.Mock;
+  };
   assetsRepoFindById: jest.Mock;
   schedulesListByAsset: jest.Mock;
   inventoryFindById: jest.Mock;
@@ -403,10 +411,7 @@ describe('ImpairmentsService (W3.2)', () => {
 
       expect(h.assetsRepoFindById).toHaveBeenCalledWith('asset-1', ORG_ID);
       expect(h.schedulesListByAsset).toHaveBeenCalledWith('asset-1', ORG_ID);
-      expect(h.assetImpRepo.sumNetImpairmentsForAsset).toHaveBeenCalledWith(
-        'asset-1',
-        ORG_ID,
-      );
+      expect(h.assetImpRepo.sumNetImpairmentsForAsset).toHaveBeenCalledWith('asset-1', ORG_ID);
       expect(h.assetImpRepo.sumNetImpairmentsForAsset).not.toHaveBeenCalledWith(
         'asset-1',
         OTHER_ORG_ID,

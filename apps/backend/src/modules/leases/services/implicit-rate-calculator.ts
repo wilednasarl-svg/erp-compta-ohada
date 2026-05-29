@@ -204,7 +204,7 @@ function addPeriods(startDate: string, n: number, frequency: LeaseFrequency): st
   }
 
   // Calcul mois total en base 0 puis retour 1-12.
-  const totalMonthsZeroBased = (baseMonth - 1) + monthsToAdd;
+  const totalMonthsZeroBased = baseMonth - 1 + monthsToAdd;
   const newYear = baseYear + Math.floor(totalMonthsZeroBased / 12);
   const newMonth = (totalMonthsZeroBased % 12) + 1;
   // Gère les fins de mois (31 janvier + 1 mois → 28/29 fév.).

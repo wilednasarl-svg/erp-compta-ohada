@@ -337,15 +337,7 @@ export class ReportsXlsxService {
 
     rows.push([]);
     numericRowIndexes.push(rows.length);
-    rows.push([
-      '',
-      "Écart Actif − Passif",
-      '',
-      '',
-      '',
-      this.num(report.totals.difference),
-      '',
-    ]);
+    rows.push(['', 'Écart Actif − Passif', '', '', '', this.num(report.totals.difference), '']);
     if (report.netResultIncorporated !== null) {
       numericRowIndexes.push(rows.length);
       rows.push([
@@ -517,7 +509,7 @@ export class ReportsXlsxService {
 
     pushSection(
       report.operatingFlows,
-      "Flux de trésorerie provenant des activités opérationnelles",
+      'Flux de trésorerie provenant des activités opérationnelles',
       prev?.operatingFlow,
     );
     pushSection(
@@ -648,44 +640,24 @@ export class ReportsXlsxService {
     for (const section of report.actif.sections) {
       pushRow('', `  ${section.label}`, '', undefined);
       for (const group of section.groups) {
-        pushRow(
-          group.code,
-          `    ${group.label}`,
-          group.amount,
-          group.previousAmount,
-        );
+        pushRow(group.code, `    ${group.label}`, group.amount, group.previousAmount);
       }
       const code = sectionPostCodeActif[section.key] ?? '';
       pushRow(code, `  TOTAL ${section.label.toUpperCase()}`, section.total, section.previousTotal);
     }
-    pushRow(
-      'AZ',
-      'TOTAL GÉNÉRAL ACTIF',
-      report.actif.total,
-      report.previous?.totalActif,
-    );
+    pushRow('AZ', 'TOTAL GÉNÉRAL ACTIF', report.actif.total, report.previous?.totalActif);
 
     rows.push([]);
     rows.push(['', 'PASSIF']);
     for (const section of report.passif.sections) {
       pushRow('', `  ${section.label}`, '', undefined);
       for (const group of section.groups) {
-        pushRow(
-          group.code,
-          `    ${group.label}`,
-          group.amount,
-          group.previousAmount,
-        );
+        pushRow(group.code, `    ${group.label}`, group.amount, group.previousAmount);
       }
       const code = sectionPostCodePassif[section.key] ?? '';
       pushRow(code, `  TOTAL ${section.label.toUpperCase()}`, section.total, section.previousTotal);
     }
-    pushRow(
-      'DZ',
-      'TOTAL GÉNÉRAL PASSIF',
-      report.passif.total,
-      report.previous?.totalPassif,
-    );
+    pushRow('DZ', 'TOTAL GÉNÉRAL PASSIF', report.passif.total, report.previous?.totalPassif);
 
     rows.push([]);
     rows.push(['', `Écart Actif − Passif : ${this.num(report.difference)}`]);
@@ -711,9 +683,7 @@ export class ReportsXlsxService {
     rows.push([orgName]);
     rows.push([
       `Compte de Résultat OFFICIEL (Vol. 3 SYSCOHADA) — Du ${report.fromDate} au ${report.toDate}` +
-        (hasComp
-          ? ` (N-1 : ${report.previous.fromDate} → ${report.previous.toDate})`
-          : ''),
+        (hasComp ? ` (N-1 : ${report.previous.fromDate} → ${report.previous.toDate})` : ''),
     ]);
     rows.push([]);
     const header = hasComp
@@ -797,9 +767,7 @@ export class ReportsXlsxService {
     rows.push([orgName]);
     rows.push([
       `Soldes Intermédiaires de Gestion (SIG) — Du ${report.fromDate} au ${report.toDate}` +
-        (hasComp
-          ? ` (comparaison : ${report.previous.fromDate} → ${report.previous.toDate})`
-          : ''),
+        (hasComp ? ` (comparaison : ${report.previous.fromDate} → ${report.previous.toDate})` : ''),
     ]);
     rows.push([]);
 
@@ -939,7 +907,17 @@ export class ReportsXlsxService {
       `Ratios financiers — Au ${report.asAtDate} (exercice débutant le ${report.fiscalYearStartDate})`,
     ]);
     rows.push([]);
-    rows.push(['Code', 'Famille', 'Libellé', 'Formule', 'Numérateur', 'Dénominateur', 'Valeur', 'Unité', 'Interprétation']);
+    rows.push([
+      'Code',
+      'Famille',
+      'Libellé',
+      'Formule',
+      'Numérateur',
+      'Dénominateur',
+      'Valeur',
+      'Unité',
+      'Interprétation',
+    ]);
     for (const r of report.ratios) {
       rows.push([
         r.code,

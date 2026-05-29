@@ -103,9 +103,7 @@ export class AssetImpairmentsRepository {
     await repo.update({ id, organizationId }, patch);
     const updated = await repo.findOne({ where: { id, organizationId } });
     if (!updated) {
-      throw new Error(
-        `AssetImpairment ${id} disappeared after UPDATE in org ${organizationId}`,
-      );
+      throw new Error(`AssetImpairment ${id} disappeared after UPDATE in org ${organizationId}`);
     }
     return updated;
   }

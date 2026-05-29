@@ -30,13 +30,14 @@ export class TvaDeclarationLineResponse {
   declarationId!: string;
 
   @ApiProperty({
-    description: 'Sens d\'agrégation TVA (collectée / déductible biens & services / déductible immo)',
+    description:
+      "Sens d'agrégation TVA (collectée / déductible biens & services / déductible immo)",
     enum: TVA_LINE_DIRECTIONS,
   })
   direction!: TvaDeclarationLineDirection;
 
   @ApiProperty({
-    description: 'Préfixe de compte SYSCOHADA utilisé pour l\'agrégation (ex 443, 4452, 4451)',
+    description: "Préfixe de compte SYSCOHADA utilisé pour l'agrégation (ex 443, 4452, 4451)",
     example: '4452',
   })
   accountPrefix!: string;

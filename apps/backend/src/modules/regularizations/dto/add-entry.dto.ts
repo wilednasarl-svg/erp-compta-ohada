@@ -7,10 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
-import {
-  ALL_REGULARIZATION_TYPES,
-  type RegularizationType,
-} from '../types/regularization.types';
+import { ALL_REGULARIZATION_TYPES, type RegularizationType } from '../types/regularization.types';
 
 /**
  * W3.5 — Payload d'ajout d'une entrée à un batch en `draft`.

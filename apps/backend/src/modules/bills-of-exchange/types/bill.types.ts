@@ -35,18 +35,9 @@
 
 export type BillKind = 'receivable' | 'payable';
 
-export type BillStatus =
-  | 'issued'
-  | 'discounted'
-  | 'paid'
-  | 'unpaid'
-  | 'cancelled';
+export type BillStatus = 'issued' | 'discounted' | 'paid' | 'unpaid' | 'cancelled';
 
-export type BillEventType =
-  | 'issuance'
-  | 'discount'
-  | 'payment'
-  | 'unpaid_return';
+export type BillEventType = 'issuance' | 'discount' | 'payment' | 'unpaid_return';
 
 export const BILL_KINDS: ReadonlyArray<BillKind> = ['receivable', 'payable'];
 

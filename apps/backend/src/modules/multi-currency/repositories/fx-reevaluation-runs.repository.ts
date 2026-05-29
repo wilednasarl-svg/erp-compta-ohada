@@ -45,10 +45,7 @@ export class FxReevaluationRunsRepository {
     private readonly repo: Repository<FxReevaluationRunEntity>,
   ) {}
 
-  async create(
-    input: CreateFxRunInput,
-    manager?: EntityManager,
-  ): Promise<FxReevaluationRunEntity> {
+  async create(input: CreateFxRunInput, manager?: EntityManager): Promise<FxReevaluationRunEntity> {
     assertTenantId(input.organizationId);
     const repo = manager ? manager.getRepository(FxReevaluationRunEntity) : this.repo;
     const entity = repo.create({
@@ -67,11 +64,7 @@ export class FxReevaluationRunsRepository {
     return repo.save(entity);
   }
 
-  async update(
-    id: string,
-    patch: UpdateFxRunInput,
-    manager?: EntityManager,
-  ): Promise<void> {
+  async update(id: string, patch: UpdateFxRunInput, manager?: EntityManager): Promise<void> {
     const repo = manager ? manager.getRepository(FxReevaluationRunEntity) : this.repo;
     await repo.update({ id }, { ...patch });
   }

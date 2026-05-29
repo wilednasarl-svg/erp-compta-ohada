@@ -12,10 +12,7 @@ import { LeasePaymentEntity } from '../entities/lease-payment.entity';
 import { LeaseInstallmentsRepository } from '../repositories/lease-installments.repository';
 import { LeasePaymentsRepository } from '../repositories/lease-payments.repository';
 import { LeasesRepository } from '../repositories/leases.repository';
-import {
-  buildAmortizationSchedule,
-  findImplicitRate,
-} from './implicit-rate-calculator';
+import { buildAmortizationSchedule, findImplicitRate } from './implicit-rate-calculator';
 import {
   LEASE_ACCOUNTS,
   LEASE_DEFAULT_JOURNAL_CODE,
@@ -84,10 +81,7 @@ export class LeasesService {
 
   // ─── Queries ────────────────────────────────────────────────────────
 
-  async findById(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<LeaseWithDetails> {
+  async findById(organizationId: TenantId, id: string): Promise<LeaseWithDetails> {
     assertTenantId(organizationId);
     const lease = await this.requireLease(organizationId, id);
     const [installments, payments] = await Promise.all([
@@ -327,10 +321,7 @@ export class LeasesService {
       createdById: actorId,
     });
 
-    const updatedInstallment = await this.installmentsRepo.markPaid(
-      installmentId,
-      organizationId,
-    );
+    const updatedInstallment = await this.installmentsRepo.markPaid(installmentId, organizationId);
 
     // Si toutes les échéances sont payées, on clôt le contrat.
     const all = await this.installmentsRepo.listByLease(leaseId, organizationId);
@@ -368,10 +359,7 @@ export class LeasesService {
 
   // ─── Helpers ────────────────────────────────────────────────────────
 
-  private async requireLease(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<LeaseEntity> {
+  private async requireLease(organizationId: TenantId, id: string): Promise<LeaseEntity> {
     const lease = await this.leasesRepo.findById(id, organizationId);
     if (!lease) {
       throw new AppException(ERROR_CODES.LEASE_NOT_FOUND, {

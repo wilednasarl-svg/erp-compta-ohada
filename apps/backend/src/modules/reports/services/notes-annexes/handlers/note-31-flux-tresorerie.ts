@@ -26,10 +26,7 @@
  *   - `kind`             : 'tresorerie' | 'poste' | 'subtotal' | 'total'
  */
 
-import type {
-  CashFlowReport,
-  CashFlowSection,
-} from '../../cash-flow.service';
+import type { CashFlowReport, CashFlowSection } from '../../cash-flow.service';
 import type { NoteHandler, NoteRow } from '../types';
 
 const ZA_LABEL = 'Trésorerie nette au 1er janvier';
@@ -85,27 +82,10 @@ function pushSection(
   previousSubtotal: string | null,
 ): void {
   for (const poste of section.postes) {
-    rows.push(
-      row(
-        poste.code,
-        poste.label,
-        poste.code,
-        poste.amount,
-        null,
-        'poste',
-        poste.source,
-      ),
-    );
+    rows.push(row(poste.code, poste.label, poste.code, poste.amount, null, 'poste', poste.source));
   }
   rows.push(
-    row(
-      section.code,
-      section.label,
-      section.code,
-      section.subtotal,
-      previousSubtotal,
-      'subtotal',
-    ),
+    row(section.code, section.label, section.code, section.subtotal, previousSubtotal, 'subtotal'),
   );
 }
 

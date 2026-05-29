@@ -7,10 +7,7 @@ import { type TenantId, assertTenantId } from '../../../common/persistence/tenan
 import { CashFlowService } from './cash-flow.service';
 import { DsfFichesPdfService } from './dsf-fiches-pdf.service';
 import { DsfIdentificationService } from './dsf-identification.service';
-import {
-  NotesAnnexesService,
-  type GetNoteRequest,
-} from './notes-annexes/notes-annexes.service';
+import { NotesAnnexesService, type GetNoteRequest } from './notes-annexes/notes-annexes.service';
 import type { NoteContent } from './notes-annexes/types';
 import { ReportsPdfService } from './reports-pdf.service';
 import { ReportsService } from './reports.service';
@@ -250,9 +247,7 @@ export class ReportsPackageService {
       this.safeBuild('02-identification-R2.pdf', () =>
         this.dsfFichesPdf.identificationFichePdf(fiches.r2),
       ),
-      this.safeBuild('03-dirigeants-R3.pdf', () =>
-        this.dsfFichesPdf.directorsFichePdf(fiches.r3),
-      ),
+      this.safeBuild('03-dirigeants-R3.pdf', () => this.dsfFichesPdf.directorsFichePdf(fiches.r3)),
       this.safeBuild('04-applicabilite-R4.pdf', () =>
         this.dsfFichesPdf.notesApplicabilityFichePdf(fiches.r4),
       ),
@@ -347,8 +342,7 @@ export class ReportsPackageService {
       let computedCount = 0;
       let stubCount = 0;
       for (const note of notes) {
-        const isStub =
-          note.rows.length === 1 && note.rows[0]?.key === 'PENDING';
+        const isStub = note.rows.length === 1 && note.rows[0]?.key === 'PENDING';
         if (isStub) {
           stubCount += 1;
           notesManifestLines.push(`  [STUB]     ${note.id} — ${note.metadata.label}`);
@@ -384,7 +378,9 @@ export class ReportsPackageService {
       notesManifestLines.splice(3, 0, `  - COMPUTED : ${computedCount}`);
       notesManifestLines.splice(4, 0, `  - STUB     : ${stubCount}`);
       notesFolder.file('MANIFEST.txt', notesManifestLines.join('\n'));
-      fileEntries.push(`  + 20-notes-annexes/ (${notes.length} notes : ${computedCount} COMPUTED, ${stubCount} STUB)`);
+      fileEntries.push(
+        `  + 20-notes-annexes/ (${notes.length} notes : ${computedCount} COMPUTED, ${stubCount} STUB)`,
+      );
     }
 
     // ── 5. MANIFEST racine ──
@@ -444,25 +440,21 @@ export class ReportsPackageService {
     r4: NotesApplicabilityFicheData;
   }> {
     try {
-      const bundle = await this.dsfIdentification.buildAllFiches(
-        organizationId,
-        exerciseId,
-      );
+      const bundle = await this.dsfIdentification.buildAllFiches(organizationId, exerciseId);
       return bundle;
     } catch (err: unknown) {
       // Re-throw uniquement si la cause est un exercice introuvable —
       // sinon on bascule en mode "valeurs par défaut".
-      if (
-        err instanceof AppException &&
-        err.code === ERROR_CODES.DSF_PROFILE_NOT_FOUND
-      ) {
+      if (err instanceof AppException && err.code === ERROR_CODES.DSF_PROFILE_NOT_FOUND) {
         throw new AppException(ERROR_CODES.DSF_PACKAGE_PROFILE_INCOMPLETE, {
           message: `Cannot build DSF package — accounting period ${exerciseId} not found`,
           details: { exerciseId },
         });
       }
       const msg = err instanceof Error ? err.message : 'unknown error';
-      warnings.push(`Profile DSF incomplet : ${msg} — fiches R1-R4 generees avec valeurs par defaut`);
+      warnings.push(
+        `Profile DSF incomplet : ${msg} — fiches R1-R4 generees avec valeurs par defaut`,
+      );
       return {
         coverPage: {
           organizationName: orgName,

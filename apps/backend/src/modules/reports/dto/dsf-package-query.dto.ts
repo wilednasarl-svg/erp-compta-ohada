@@ -27,7 +27,7 @@ export class DsfPackageQueryDto {
 
   @ApiProperty({
     required: false,
-    description: "Début exercice fiscal (Bilan). Défaut = fromDate.",
+    description: 'Début exercice fiscal (Bilan). Défaut = fromDate.',
   })
   @IsOptional()
   @IsString()

@@ -50,7 +50,7 @@ const MAX_LIMIT = 200;
  * `OD` (operations diverses) est seede par OrganizationsService pour
  * toute organisation SYSCOHADA — voir JournalsModule wave 1.
  */
-const DEFAULT_JOURNAL_CODE = 'OD' as const;
+const DEFAULT_JOURNAL_CODE = 'OD';
 
 /**
  * W3.1 — Service applicatif des provisions pour risques et charges.
@@ -82,10 +82,7 @@ export class ProvisionsService {
 
   // ─── Queries ────────────────────────────────────────────────────────
 
-  async findById(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<ProvisionWithMovements> {
+  async findById(organizationId: TenantId, id: string): Promise<ProvisionWithMovements> {
     assertTenantId(organizationId);
     const provision = await this.requireProvision(organizationId, id);
     const movements = await this.movementsRepo.listByProvision(id, organizationId);
@@ -323,10 +320,7 @@ export class ProvisionsService {
 
   // ─── Helpers ────────────────────────────────────────────────────────
 
-  private async requireProvision(
-    organizationId: TenantId,
-    id: string,
-  ): Promise<ProvisionEntity> {
+  private async requireProvision(organizationId: TenantId, id: string): Promise<ProvisionEntity> {
     const provision = await this.provisionsRepo.findById(id, organizationId);
     if (!provision) {
       throw new AppException(ERROR_CODES.PROVISION_NOT_FOUND, {

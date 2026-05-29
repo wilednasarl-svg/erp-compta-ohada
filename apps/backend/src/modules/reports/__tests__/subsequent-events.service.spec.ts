@@ -13,9 +13,7 @@ const EVENT_ID = '22222222-3333-4444-8555-666666666666';
 const ACTOR_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const REVIEWER_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
-function annualPeriod(
-  overrides: Partial<AccountingPeriodEntity> = {},
-): AccountingPeriodEntity {
+function annualPeriod(overrides: Partial<AccountingPeriodEntity> = {}): AccountingPeriodEntity {
   return {
     id: EXERCISE_ID,
     organizationId: ORG_ID,
@@ -53,10 +51,12 @@ function event(overrides: Partial<SubsequentEventEntity> = {}): SubsequentEventE
   } as unknown as SubsequentEventEntity;
 }
 
-function buildHarness(overrides: {
-  period?: AccountingPeriodEntity | null;
-  existing?: SubsequentEventEntity | null;
-} = {}) {
+function buildHarness(
+  overrides: {
+    period?: AccountingPeriodEntity | null;
+    existing?: SubsequentEventEntity | null;
+  } = {},
+) {
   const period = overrides.period === undefined ? annualPeriod() : overrides.period;
   const existing = overrides.existing === undefined ? event() : overrides.existing;
 
@@ -67,12 +67,16 @@ function buildHarness(overrides: {
     create: jest.fn().mockImplementation(async (input) => event({ ...input })),
     findById: jest.fn().mockResolvedValue(existing),
     listByExercise: jest.fn().mockResolvedValue([]),
-    update: jest.fn().mockImplementation(async (_org, _id, patch) =>
-      existing ? event({ ...existing, ...patch }) : null,
-    ),
-    markReviewed: jest.fn().mockImplementation(async (_org, _id, reviewerId) =>
-      existing ? event({ ...existing, reviewedById: reviewerId, reviewedAt: new Date() }) : null,
-    ),
+    update: jest
+      .fn()
+      .mockImplementation(async (_org, _id, patch) =>
+        existing ? event({ ...existing, ...patch }) : null,
+      ),
+    markReviewed: jest
+      .fn()
+      .mockImplementation(async (_org, _id, reviewerId) =>
+        existing ? event({ ...existing, reviewedById: reviewerId, reviewedAt: new Date() }) : null,
+      ),
     delete: jest.fn().mockResolvedValue(true),
   };
 
@@ -107,7 +111,7 @@ describe('SubsequentEventsService.record', () => {
     );
   });
 
-  it('NotFound si la période n\'existe pas', async () => {
+  it("NotFound si la période n'existe pas", async () => {
     const h = buildHarness({ period: null });
     await expect(
       h.service.record(ORG_ID, EXERCISE_ID, ACTOR_ID, {
@@ -118,7 +122,7 @@ describe('SubsequentEventsService.record', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('NotFound si la période n\'est pas annuelle', async () => {
+  it("NotFound si la période n'est pas annuelle", async () => {
     const h = buildHarness({ period: annualPeriod({ kind: 'MONTHLY' }) });
     await expect(
       h.service.record(ORG_ID, EXERCISE_ID, ACTOR_ID, {
@@ -188,12 +192,12 @@ describe('SubsequentEventsService.update', () => {
 
   it('BadRequest si description vide', async () => {
     const h = buildHarness();
-    await expect(
-      h.service.update(ORG_ID, EVENT_ID, { description: '   ' }),
-    ).rejects.toThrow(/must not be empty/);
+    await expect(h.service.update(ORG_ID, EVENT_ID, { description: '   ' })).rejects.toThrow(
+      /must not be empty/,
+    );
   });
 
-  it('NotFound si l\'événement n\'existe pas', async () => {
+  it("NotFound si l'événement n'existe pas", async () => {
     const h = buildHarness({ existing: null });
     h.eventsRepo.update.mockResolvedValue(null);
     await expect(
@@ -203,11 +207,11 @@ describe('SubsequentEventsService.update', () => {
 });
 
 describe('SubsequentEventsService.markReviewed — four-eyes', () => {
-  it("BadRequest si le reviewer est le créateur (principe quatre yeux)", async () => {
+  it('BadRequest si le reviewer est le créateur (principe quatre yeux)', async () => {
     const h = buildHarness({ existing: event({ createdById: REVIEWER_ID }) });
-    await expect(
-      h.service.markReviewed(ORG_ID, EVENT_ID, REVIEWER_ID),
-    ).rejects.toThrow(/four-eyes/);
+    await expect(h.service.markReviewed(ORG_ID, EVENT_ID, REVIEWER_ID)).rejects.toThrow(
+      /four-eyes/,
+    );
   });
 
   it("marque reviewed quand l'utilisateur est différent du créateur", async () => {

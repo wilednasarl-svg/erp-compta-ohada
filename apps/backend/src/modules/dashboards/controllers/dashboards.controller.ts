@@ -16,10 +16,7 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
-import type {
-  CurrentOrgContext,
-  CurrentUserContext,
-} from '../../../common/types/request-context';
+import type { CurrentOrgContext, CurrentUserContext } from '../../../common/types/request-context';
 import { CurrentOrg } from '../../auth/decorators/current-org.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -176,14 +173,11 @@ export class DashboardsController {
   ): Promise<ComparisonEnvelopeResponse> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
-    
+
     // Ensure years is always an array of numbers
     const yearsArray = Array.isArray(query.years) ? query.years.map(Number) : [Number(query.years)];
-    
-    const result = await this.comparison.getComparisonSummary(
-      asTenantId(tokenOrgId),
-      yearsArray,
-    );
+
+    const result = await this.comparison.getComparisonSummary(asTenantId(tokenOrgId), yearsArray);
 
     void this.audit.record({
       module: DashboardsController.MODULE,
@@ -334,7 +328,11 @@ export class DashboardsController {
       action: 'view_top_accounts',
       entityType: 'accounting_period',
       entityId: query.exerciseId,
-      metadata: { category: query.category, limit: query.limit ?? 10, rowsCount: result.rows.length },
+      metadata: {
+        category: query.category,
+        limit: query.limit ?? 10,
+        rowsCount: result.rows.length,
+      },
       ctx: {
         ...buildAuditRequestContext(req),
         userId: actorUserId,
@@ -348,7 +346,9 @@ export class DashboardsController {
   @Get('day-summary')
   @RequirePermission('dashboards.read')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Comptages du jour : travail en attente, snapshot exercice, score, activité récente' })
+  @ApiOperation({
+    summary: 'Comptages du jour : travail en attente, snapshot exercice, score, activité récente',
+  })
   async getDaySummary(
     @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
     @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,

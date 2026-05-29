@@ -25,13 +25,11 @@ describe('NotesAnnexesService — smoke', () => {
     const { service, request, commentsMock, cashFlowMock } = buildHarness();
     // Forcer tous les stubs à être applicable=true pour que chaque handler
     // soit appelé (et qu'aucun ne retourne PENDING).
-    commentsMock.getOne.mockImplementation(
-      async (_org: string, _ex: string, noteId: string) => ({
-        applicable: true,
-        commentText: '',
-        noteId,
-      }),
-    );
+    commentsMock.getOne.mockImplementation(async (_org: string, _ex: string, noteId: string) => ({
+      applicable: true,
+      commentText: '',
+      noteId,
+    }));
     // N31 dépend de CashFlowService — minimal stub pour qu'il ne crash pas.
     cashFlowMock.getCashFlow.mockResolvedValue({
       fromDate: '2026-01-01',
@@ -56,7 +54,10 @@ describe('NotesAnnexesService — smoke', () => {
 
   it('respects user override applicable=false (no calc, no rows)', async () => {
     const { service, request, commentsMock } = buildHarness();
-    commentsMock.getOne.mockResolvedValue({ applicable: false, commentText: 'N/A pour cet exercice' });
+    commentsMock.getOne.mockResolvedValue({
+      applicable: false,
+      commentText: 'N/A pour cet exercice',
+    });
     const note = await service.getNote(request, 'N1' as NoteId);
     expect(note.applicable).toBe(false);
     expect(note.rows.length).toBe(0);
@@ -65,7 +66,13 @@ describe('NotesAnnexesService — smoke', () => {
 
   it('upsertComment delegates to the repo', async () => {
     const { service, commentsMock, request } = buildHarness();
-    await service.upsertComment(request.organizationId, request.exerciseId, 'N1' as NoteId, 'hello', true);
+    await service.upsertComment(
+      request.organizationId,
+      request.exerciseId,
+      'N1' as NoteId,
+      'hello',
+      true,
+    );
     expect(commentsMock.upsert).toHaveBeenCalledWith(
       request.organizationId,
       request.exerciseId,
@@ -84,7 +91,7 @@ describe('NotesAnnexesService — smoke', () => {
 });
 
 describe('NotesAnnexesService — N1 & N2 (doctrine Tome 3)', () => {
-  it("N1 (sûretés réelles) — freeComment, applicable=true par défaut côté handler", async () => {
+  it('N1 (sûretés réelles) — freeComment, applicable=true par défaut côté handler', async () => {
     const { service, request, commentsMock } = buildHarness();
     // applicableByDefault = false côté metadata ; on force via le repo
     // pour exercer le handler.

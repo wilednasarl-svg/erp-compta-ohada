@@ -11,7 +11,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -24,10 +30,7 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateInventoryItemDto } from '../dto/create-item.dto';
-import {
-  InventoryItemEnvelopeResponse,
-  ListInventoryItemsResponse,
-} from '../dto/responses';
+import { InventoryItemEnvelopeResponse, ListInventoryItemsResponse } from '../dto/responses';
 import { UpdateInventoryItemDto } from '../dto/update-item.dto';
 import {
   toInventoryItemEnvelope,

@@ -89,9 +89,7 @@ function buildHarness(): Harness {
       return entity;
     }),
     findById: jest.fn(async (id: string, organizationId: TenantId | string) => {
-      const row = store.find(
-        (x) => x.id === id && x.organizationId === String(organizationId),
-      );
+      const row = store.find((x) => x.id === id && x.organizationId === String(organizationId));
       return row ?? null;
     }),
     listByOrganization: jest.fn(
@@ -154,7 +152,7 @@ const BASE_CREATE: CreateActuarialCommitmentDto = {
 };
 
 describe('ActuarialCommitmentsService.create', () => {
-  it('persiste l\'évaluation et normalise les montants', async () => {
+  it("persiste l'évaluation et normalise les montants", async () => {
     const { service, repo, store } = buildHarness();
     const entity = await service.create(ORG_ID, BASE_CREATE, ACTOR_ID);
 
@@ -181,11 +179,7 @@ describe('ActuarialCommitmentsService.create', () => {
   it('rejette un montant négatif', async () => {
     const { service } = buildHarness();
     await expect(
-      service.create(
-        ORG_ID,
-        { ...BASE_CREATE, obligationAmount: '-1.00' },
-        ACTOR_ID,
-      ),
+      service.create(ORG_ID, { ...BASE_CREATE, obligationAmount: '-1.00' }, ACTOR_ID),
     ).rejects.toBeInstanceOf(AppException);
   });
 });
@@ -209,12 +203,12 @@ describe('ActuarialCommitmentsService.update', () => {
     const created = await service.create(ORG_ID, BASE_CREATE, ACTOR_ID);
     await service.expire(ORG_ID, created.id);
 
-    await expect(
-      service.update(ORG_ID, created.id, { label: 'noop' }),
-    ).rejects.toMatchObject({ code: ERROR_CODES.ACTUARIAL_COMMITMENT_NOT_ACTIVE });
+    await expect(service.update(ORG_ID, created.id, { label: 'noop' })).rejects.toMatchObject({
+      code: ERROR_CODES.ACTUARIAL_COMMITMENT_NOT_ACTIVE,
+    });
   });
 
-  it('rejette un patch qui pousse provisioned au-delà d\'obligation', async () => {
+  it("rejette un patch qui pousse provisioned au-delà d'obligation", async () => {
     const { service } = buildHarness();
     const created = await service.create(ORG_ID, BASE_CREATE, ACTOR_ID);
     await expect(
@@ -233,7 +227,7 @@ describe('ActuarialCommitmentsService.expire', () => {
     expect(expired.status).toBe('expired');
   });
 
-  it('rejette si l\'engagement n\'est pas trouvé', async () => {
+  it("rejette si l'engagement n'est pas trouvé", async () => {
     const { service } = buildHarness();
     await expect(service.expire(ORG_ID, 'unknown')).rejects.toMatchObject({
       code: ERROR_CODES.ACTUARIAL_COMMITMENT_NOT_FOUND,
@@ -246,9 +240,7 @@ describe('ActuarialCommitmentsService.listByOrg + tenant isolation', () => {
     const { service, store } = buildHarness();
     await service.create(ORG_ID, BASE_CREATE, ACTOR_ID);
     // Injecte un engagement d'un autre tenant via le store partagé.
-    store.push(
-      makeEntity({ id: 'commit-other', organizationId: String(OTHER_ORG_ID) }),
-    );
+    store.push(makeEntity({ id: 'commit-other', organizationId: String(OTHER_ORG_ID) }));
 
     const mine = await service.listByOrg(ORG_ID);
     expect(mine).toHaveLength(1);
@@ -324,7 +316,7 @@ describe('ActuarialCommitmentsService.toSnapshot', () => {
 });
 
 describe('ActuarialCommitmentsService.getLatestByType', () => {
-  it('renvoie l\'évaluation active la plus récente pour un type', async () => {
+  it("renvoie l'évaluation active la plus récente pour un type", async () => {
     const { service } = buildHarness();
     await service.create(ORG_ID, BASE_CREATE, ACTOR_ID);
     const latest = await service.getLatestByType(ORG_ID, 'retraite_ifc');

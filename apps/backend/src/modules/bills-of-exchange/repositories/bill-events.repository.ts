@@ -27,10 +27,7 @@ export class BillEventsRepository {
     private readonly repo: Repository<BillEventEntity>,
   ) {}
 
-  async create(
-    input: CreateBillEventInput,
-    manager?: EntityManager,
-  ): Promise<BillEventEntity> {
+  async create(input: CreateBillEventInput, manager?: EntityManager): Promise<BillEventEntity> {
     assertTenantId(input.organizationId);
     const repo = manager ? manager.getRepository(BillEventEntity) : this.repo;
     const entity = repo.create({
@@ -49,10 +46,7 @@ export class BillEventsRepository {
     return repo.save(entity);
   }
 
-  async listByBill(
-    billId: string,
-    organizationId: TenantId | string,
-  ): Promise<BillEventEntity[]> {
+  async listByBill(billId: string, organizationId: TenantId | string): Promise<BillEventEntity[]> {
     assertTenantId(organizationId);
     return this.repo.find({
       where: { billId, organizationId },

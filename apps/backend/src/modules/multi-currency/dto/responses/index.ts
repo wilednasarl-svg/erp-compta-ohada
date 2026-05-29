@@ -26,7 +26,7 @@ export class CurrencyResponse {
   label!: string;
 
   @ApiProperty({
-    description: 'Nombre de décimales d\'affichage (0|2|3)',
+    description: "Nombre de décimales d'affichage (0|2|3)",
     enum: [0, 2, 3],
   })
   decimalPlaces!: 0 | 2 | 3;
@@ -97,8 +97,7 @@ export class FxConversionResponse {
   appliedSource!: RateSource;
 
   @ApiProperty({
-    description:
-      'true si le taux a été inversé (paire inverse trouvée en base et 1/rate appliqué)',
+    description: 'true si le taux a été inversé (paire inverse trouvée en base et 1/rate appliqué)',
     type: Boolean,
   })
   inverted!: boolean;

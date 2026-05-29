@@ -450,10 +450,7 @@ export class DocumentsService {
    * OCR provider receives a stable `filePath`. The caller is
    * responsible for unlinking the temp file once the OCR run is done.
    */
-  private async stageStorageBytesToTempFile(
-    storageKey: string,
-    mimeType: string,
-  ): Promise<string> {
+  private async stageStorageBytesToTempFile(storageKey: string, mimeType: string): Promise<string> {
     const stream = await this.storage.getStream(storageKey);
     const ext = this.extensionForMime(mimeType);
     const tmpPath = path.join(

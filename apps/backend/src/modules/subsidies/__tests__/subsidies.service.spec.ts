@@ -75,10 +75,10 @@ function buildHarness(): Harness {
       storedSubsidies.push(row);
       return row;
     }),
-    findById: jest.fn(async (id: string, organizationId: string) =>
-      storedSubsidies.find(
-        (s) => s.id === id && s.organizationId === String(organizationId),
-      ) ?? null,
+    findById: jest.fn(
+      async (id: string, organizationId: string) =>
+        storedSubsidies.find((s) => s.id === id && s.organizationId === String(organizationId)) ??
+        null,
     ),
     listByOrganization: jest.fn(async (organizationId: string, filters = {}) =>
       storedSubsidies.filter((s) => {
@@ -89,11 +89,7 @@ function buildHarness(): Harness {
         return true;
       }),
     ),
-    update: jest.fn(async (
-      id: string,
-      organizationId: string,
-      patch: UpdateSubsidyInput,
-    ) => {
+    update: jest.fn(async (id: string, organizationId: string, patch: UpdateSubsidyInput) => {
       const idx = storedSubsidies.findIndex(
         (s) => s.id === id && s.organizationId === String(organizationId),
       );
