@@ -1175,6 +1175,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   <thead className="bg-sunk text-2xs uppercase tracking-wider text-ink-mute">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">Ligne</th>
+                      <th className="px-3 py-2 text-left font-medium">Pièce</th>
                       <th className="px-3 py-2 text-left font-medium">Compte</th>
                       <th className="px-3 py-2 text-left font-medium">Journal</th>
                       <th className="px-3 py-2 text-left font-medium">Date</th>
@@ -1197,6 +1198,11 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                         >
                           <td className="px-3 py-2 font-mono text-xs tabular-nums text-ink-mute">
                             {e.rowNumber}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs tabular-nums text-ink-soft">
+                            {e.mappedValues.pieceNumber ?? (
+                              <span className="text-ink-mute">—</span>
+                            )}
                           </td>
                           <td className="px-3 py-2 font-mono text-xs text-ink">
                             {e.mappedValues.account ?? (
@@ -1337,6 +1343,11 @@ const TARGET_LABEL: Record<TargetField, string> = {
   label: 'Libellé',
   partner: 'Tiers',
   currency: 'Devise',
+  pieceNumber: 'N° pièce',
+  invoiceNumber: 'N° facture',
+  reference: 'Référence',
+  taxCode: 'Code taxe',
+  dueDate: 'Date échéance',
 };
 
 const ALL_TARGETS: ReadonlyArray<TargetField> = [
@@ -1348,6 +1359,11 @@ const ALL_TARGETS: ReadonlyArray<TargetField> = [
   'label',
   'partner',
   'currency',
+  'pieceNumber',
+  'invoiceNumber',
+  'reference',
+  'taxCode',
+  'dueDate',
 ];
 
 const REQUIRED_TARGETS: ReadonlySet<TargetField> = new Set<TargetField>([
@@ -1355,6 +1371,7 @@ const REQUIRED_TARGETS: ReadonlySet<TargetField> = new Set<TargetField>([
   'journal',
   'date',
   'label',
+  'pieceNumber',
 ]);
 
 interface MappingOverridePanelProps {

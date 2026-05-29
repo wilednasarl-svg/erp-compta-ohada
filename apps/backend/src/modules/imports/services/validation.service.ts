@@ -85,10 +85,13 @@ export interface ValidationContext {
  *   6. exactement UN des deux montants doit être > 0 (l'autre = 0 ou
  *      absent) → `debit_credit_both_zero` / `debit_credit_both_nonzero`.
  *
+ * Équilibre par pièce : l'agrégation `somme débit = somme crédit` par
+ * `(journal, pieceNumber)` est vérifiée au moment du COMMIT
+ * (`ImportSessionService.collectUnbalancedGroups`), pas par ligne ici —
+ * `pieceNumber` étant désormais obligatoire pour `entries`, chaque pièce
+ * forme un groupe équilibré ou le commit est refusé.
+ *
  * NON appliqué au MVP :
- *   - équilibre global d'une pièce (somme debit = somme credit) — exige
- *     un champ `piece_number` pas toujours présent dans les sources.
- *     Sera ajouté en Module 3 vague 2 si le besoin client le justifie.
  *   - cohérence devise vs journal — sera ajouté quand `Currency` aura
  *     une entité dédiée.
  */
@@ -172,6 +175,18 @@ export class ValidationService {
           });
         }
       }
+    }
+
+    // 4bis. Date d'échéance (optionnelle) : si fournie, elle doit être
+    //    parseable. Pas de contrôle d'exercice — une échéance tombe
+    //    légitimement après la clôture (créance/dette à recouvrer).
+    const dueDateRaw = row.dueDate?.trim();
+    if (dueDateRaw !== undefined && dueDateRaw.length > 0 && parseImportDate(dueDateRaw) === null) {
+      errors.push({
+        code: 'invalid_date',
+        message: `Date d'échéance "${dueDateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY)`,
+        field: 'dueDate',
+      });
     }
 
     // 5 & 6. Debit / credit amounts.

@@ -67,24 +67,22 @@ describe('MappingService', () => {
         'Crédit',
       ]);
 
-      // Les colonnes comptables clés du modèle sont reconnues…
-      expect(proposal.headerToTarget).toMatchObject({
+      // Toutes les colonnes du modèle sont reconnues, y compris les
+      // métadonnées de pièce (décision produit : N° pièce obligatoire).
+      expect(proposal.headerToTarget).toEqual({
         Jo: 'journal',
         'Date saisie': 'date',
+        'N° pièce': 'pieceNumber',
+        'N° facture': 'invoiceNumber',
+        Référence: 'reference',
         'N° compte général': 'account',
         'N° compte tiers': 'partner',
+        'Code taxe': 'taxCode',
         'Libellé écriture': 'label',
+        'Date échéance': 'dueDate',
         Débit: 'debit',
         Crédit: 'credit',
       });
-
-      // …et les colonnes sans champ canonique restent non mappées
-      // (elles sont simplement ignorées à l'import, pas une erreur).
-      expect(proposal.headerToTarget).not.toHaveProperty('N° pièce');
-      expect(proposal.headerToTarget).not.toHaveProperty('N° facture');
-      expect(proposal.headerToTarget).not.toHaveProperty('Référence');
-      expect(proposal.headerToTarget).not.toHaveProperty('Code taxe');
-      expect(proposal.headerToTarget).not.toHaveProperty('Date échéance');
     });
 
     it('ignores empty / whitespace-only headers', () => {

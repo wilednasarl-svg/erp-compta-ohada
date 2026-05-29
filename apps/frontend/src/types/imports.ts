@@ -64,7 +64,14 @@ export type TargetField =
   | 'credit'
   | 'label'
   | 'partner'
-  | 'currency';
+  | 'currency'
+  // Métadonnées de pièce (modèle d'import journal). `pieceNumber` est
+  // obligatoire pour les écritures (clé de regroupement en pièce).
+  | 'pieceNumber'
+  | 'invoiceNumber'
+  | 'reference'
+  | 'taxCode'
+  | 'dueDate';
 
 export type ValidationErrorCode =
   | 'missing_required_field'

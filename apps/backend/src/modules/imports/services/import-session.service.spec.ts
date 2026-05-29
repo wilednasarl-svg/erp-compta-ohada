@@ -574,6 +574,126 @@ describe('ImportSessionService', () => {
       expect(result.entryIds).toEqual(['entry-vte', 'entry-ach']);
     });
 
+    it('groups by pieceNumber: same journal+date but two pieces → two entries', async () => {
+      const { service, sessionsRepo, stagingRepo, entries } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 4, withErrors: 0 });
+      stagingRepo.listBySession
+        .mockResolvedValueOnce([
+          // Pièce 1 — équilibrée
+          {
+            rowNumber: 1,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '601000',
+              label: 'Achat pièce 1',
+              debit: '100',
+              credit: '0',
+              pieceNumber: '1',
+            },
+          },
+          {
+            rowNumber: 2,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '401000',
+              label: 'Achat pièce 1',
+              debit: '0',
+              credit: '100',
+              pieceNumber: '1',
+            },
+          },
+          // Pièce 2 — même journal & même date, équilibrée séparément
+          {
+            rowNumber: 3,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '602000',
+              label: 'Achat pièce 2',
+              debit: '70',
+              credit: '0',
+              pieceNumber: '2',
+            },
+          },
+          {
+            rowNumber: 4,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '401000',
+              label: 'Achat pièce 2',
+              debit: '0',
+              credit: '70',
+              pieceNumber: '2',
+            },
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      entries.createDraft
+        .mockResolvedValueOnce({ id: 'entry-p1' })
+        .mockResolvedValueOnce({ id: 'entry-p2' });
+
+      const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      // Deux pièces distinctes → deux écritures (pas une agrégation par jour).
+      expect(entries.createDraft).toHaveBeenCalledTimes(2);
+      expect(result.entryIds).toEqual(['entry-p1', 'entry-p2']);
+      // Le n° de pièce devient la référence de l'écriture.
+      const firstDraft = entries.createDraft.mock.calls[0][1] as { reference: string | null };
+      expect(firstDraft.reference).toBe('1');
+    });
+
+    it('refuses commit when a single piece is unbalanced (per-piece balance)', async () => {
+      const { service, sessionsRepo, stagingRepo, entries } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
+      stagingRepo.listBySession
+        .mockResolvedValueOnce([
+          {
+            rowNumber: 1,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '601000',
+              label: 'Pièce déséquilibrée',
+              debit: '100',
+              credit: '0',
+              pieceNumber: '7',
+            },
+          },
+          {
+            rowNumber: 2,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '401000',
+              label: 'Pièce déséquilibrée',
+              debit: '0',
+              credit: '90',
+              pieceNumber: '7',
+            },
+          },
+        ])
+        .mockResolvedValueOnce([]);
+
+      await expect(
+        service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+          ipAddress: null,
+          userAgent: null,
+        }),
+      ).rejects.toMatchObject({
+        code: 'IMPORT_COMMIT_UNBALANCED_GROUP',
+        details: { groups: [{ journalCode: 'ACH', pieceNumber: '7' }] },
+      });
+      expect(entries.createDraft).not.toHaveBeenCalled();
+    });
+
     it('surfaces IMPORT_COMMIT_FAILED when createDraft fails after the atomic gate', async () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());

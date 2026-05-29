@@ -28,7 +28,17 @@ export type TargetField =
   | 'partner'
   | 'currency'
   | 'analyticAxisType'
-  | 'analyticAxisCode';
+  | 'analyticAxisCode'
+  // Métadonnées de pièce comptable (modèle d'import journal Sage).
+  // `pieceNumber` est la clé de regroupement des lignes en une écriture
+  // au commit (et obligatoire pour `entries` — décision produit). Les
+  // autres sont informatifs : mappés + persistés en staging mais non
+  // propagés aux lignes d'écriture (pas de colonne dédiée côté ledger).
+  | 'pieceNumber'
+  | 'invoiceNumber'
+  | 'reference'
+  | 'taxCode'
+  | 'dueDate';
 
 export const TARGET_FIELDS: readonly TargetField[] = [
   'account',
@@ -41,6 +51,11 @@ export const TARGET_FIELDS: readonly TargetField[] = [
   'currency',
   'analyticAxisType',
   'analyticAxisCode',
+  'pieceNumber',
+  'invoiceNumber',
+  'reference',
+  'taxCode',
+  'dueDate',
 ] as const;
 
 /**
@@ -58,6 +73,7 @@ export const REQUIRED_TARGET_FIELDS: readonly TargetField[] = [
   'journal',
   'date',
   'label',
+  'pieceNumber',
 ] as const;
 
 /**
@@ -72,12 +88,16 @@ export const REQUIRED_TARGET_FIELDS: readonly TargetField[] = [
  */
 export const DOCUMENT_TYPE_REQUIRED_FIELDS: Readonly<Record<DocumentType, readonly TargetField[]>> =
   {
-    entries: ['account', 'journal', 'date', 'label'],
+    // `pieceNumber` obligatoire sur les journaux d'écritures (décision
+    // produit 2026-05-29) : c'est la clé de regroupement en pièce au
+    // commit. Une balance / un grand livre / un relevé n'ont pas de
+    // pièce par ligne — on ne l'exige donc que sur entries & ventes/achats.
+    entries: ['account', 'journal', 'date', 'label', 'pieceNumber'],
     general_ledger: ['account', 'date', 'label'],
     trial_balance: ['account', 'label'],
     bank_statement: ['date', 'label'],
     auxiliary_ledger: ['account', 'partner', 'date', 'label'],
-    sales_purchases: ['account', 'date', 'label'],
+    sales_purchases: ['account', 'date', 'label', 'pieceNumber'],
   };
 
 /**
@@ -167,6 +187,24 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'centre de cout',
     'cost center',
   ],
+  // "N° pièce" du modèle d'import journal → "n piece". Clé de
+  // regroupement en écriture au commit.
+  pieceNumber: ['n piece', 'numero piece', 'no piece', 'num piece', 'piece', 'no de piece'],
+  // "N° facture" → "n facture".
+  invoiceNumber: [
+    'n facture',
+    'numero facture',
+    'no facture',
+    'num facture',
+    'facture',
+    'numero de facture',
+  ],
+  // "Référence" — référence libre de la ligne / pièce justificative.
+  reference: ['reference', 'ref', 'reference externe', 'ref piece'],
+  // "Code taxe" (entête tronquée "Code ta") — code TVA / taxe.
+  taxCode: ['code taxe', 'code tva', 'code ta', 'taxe', 'tva'],
+  // "Date échéance" → "date echeance".
+  dueDate: ['date echeance', 'echeance', 'date d echeance', 'date de reglement', 'date limite'],
 } as const;
 
 /**
