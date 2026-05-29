@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "size": "size-limit",
     "generate:api-types": "openapi-typescript http://localhost:3001/docs-json -o src/lib/api/openapi.types.ts"
   },
@@ -37,6 +38,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@size-limit/preset-app": "^12.1.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -49,7 +51,6 @@
     "eslint": "^9.13.0",
     "eslint-config-next": "^15.0.3",
     "happy-dom": "^20.9.0",
-    "jsdom": "^29.1.1",
     "openapi-typescript": "^7.4.4",
     "postcss": "^8.4.47",
     "size-limit": "^12.1.0",
