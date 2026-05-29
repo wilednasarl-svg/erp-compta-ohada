@@ -39,6 +39,7 @@ import { EmailModule } from './modules/email/email.module';
 // saisie via REST E2-bis en suivi.
 import { ActuarialCommitmentsModule } from './modules/actuarial-commitments/actuarial-commitments.module';
 import { CashFlowModule } from './modules/cash-flow/cash-flow.module';
+import { SyscohadaComplianceModule } from './modules/syscohada-compliance/syscohada-compliance.module';
 import { SyscohadaGuidanceModule } from './modules/syscohada-knowledge/syscohada-guidance.module';
 import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohada-knowledge.module';
 
@@ -113,6 +114,10 @@ import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohad
     // Module 9 — Financial reports. Balance générale + grand livre,
     // compte de résultat + bilan, exports PDF/Excel.
     ReportsModule,
+    // Conformité SYSCOHADA exécutable — exécute les contrôles bloquants sur
+    // les données réelles (bilan, écritures) et rattache chaque verdict à sa
+    // base doctrinale sourcée. Réutilise ReportsService + le catalogue @Global.
+    SyscohadaComplianceModule,
     // Module 13 wave 1 — TVA & Déclarations fiscales.
     TvaModule,
     // Module 12 wave 1 — Immobilisations & Amortissements SYSCOHADA.
