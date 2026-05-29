@@ -275,12 +275,18 @@ export class SyscohadaKnowledgeService {
 
   getModuleControls(domain: SyscohadaDomain): SyscohadaControlWithEvidence[] {
     return getControlsForDomain(domain).map((control) => {
-      const [citation] = this.search({
+      const results = this.search({
         query: control.evidenceQuery,
         domain,
-        limit: 1,
+        limit: 5,
       });
-      return { ...control, citation: citation ?? null };
+      // Pertinence doctrinale : on privilégie un extrait issu du tome déclaré
+      // du contrôle (ex. un contrôle « leases » rattaché au Tome 2 doit citer
+      // le Tome 2, pas un passage tangent d'un autre tome mieux scoré sur les
+      // mots-clés). À défaut, on retombe sur le meilleur résultat global.
+      const citation =
+        results.find((r) => r.tome === control.tome) ?? results[0] ?? null;
+      return { ...control, citation };
     });
   }
 
