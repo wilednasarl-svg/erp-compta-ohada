@@ -130,7 +130,7 @@ describe('SyscohadaKnowledgeService', () => {
       'subsidies',
       'actuarial-commitments',
       'regularizations',
-      'transformations',
+      'business-combinations',
       'bills-of-exchange',
       'multi-currency',
       'pledged-assets',
@@ -159,36 +159,5 @@ describe('SyscohadaKnowledgeService', () => {
     expect(balance?.legalBasis.join(' ')).toMatch(/art\.\s*8/i);
     // citation est soit un extrait sourcé, soit null si le corpus de test ne couvre pas le sujet
     expect(balance).toHaveProperty('citation');
-  });
-
-  it('prefers a citation from the control declared tome over a higher-scored other tome', () => {
-    // Régression : un contrôle « leases » est rattaché au Tome 2. Même si un
-    // autre tome score plus haut sur les mots-clés, la citation doit provenir
-    // du tome déclaré du contrôle (pertinence doctrinale), pas du tome tangent.
-    const root = mkdtempSync(join(tmpdir(), 'syscohada-tome-'));
-    const leaseTerms =
-      'contrat de location acquisition preneur bailleur dette redevance immobilisation';
-    // Tome 3 : mêmes termes répétés → score brut plus élevé.
-    writeFileSync(
-      join(
-        root,
-        "Guide d'application du SYSCOHADA REVISE 3_Présentation des états financiers annuels.pdf.1-end.txt",
-      ),
-      [`${leaseTerms} ${leaseTerms} ${leaseTerms} ${leaseTerms}`].join('\n'),
-      'utf8',
-    );
-    // Tome 2 (tome déclaré du contrôle leases) : mêmes termes, score plus bas.
-    writeFileSync(
-      join(root, "Guide d'application du SYSCOHADA REVISE 2_Opérations et problèmes spécifiques.pdf.1-end.txt"),
-      [`Chapitre 8 Contrat de location. ${leaseTerms}`].join('\n'),
-      'utf8',
-    );
-    const service = new SyscohadaKnowledgeService({ sourcesDir: root });
-
-    const leaseControl = service.getModuleControls('leases')[0];
-
-    expect(leaseControl.tome).toBe(2);
-    expect(leaseControl.citation).not.toBeNull();
-    expect(leaseControl.citation?.tome).toBe(2);
   });
 });

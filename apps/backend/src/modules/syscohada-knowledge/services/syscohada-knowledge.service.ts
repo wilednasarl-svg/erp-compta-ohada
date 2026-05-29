@@ -20,7 +20,7 @@ export type SyscohadaDomain =
   | 'subsidies'
   | 'actuarial-commitments'
   | 'regularizations'
-  | 'transformations'
+  | 'business-combinations'
   | 'bills-of-exchange'
   | 'multi-currency'
   | 'pledged-assets'
@@ -171,7 +171,7 @@ const DOMAIN_REFERENCES: ReadonlyArray<SyscohadaDomainReference> = [
     ],
   },
   {
-    domain: 'transformations',
+    domain: 'business-combinations',
     tome: 2,
     topic: 'Fusions, apports partiels d’actif, scissions et transformations de sociétés',
     keywords: [
@@ -275,18 +275,12 @@ export class SyscohadaKnowledgeService {
 
   getModuleControls(domain: SyscohadaDomain): SyscohadaControlWithEvidence[] {
     return getControlsForDomain(domain).map((control) => {
-      const results = this.search({
+      const [citation] = this.search({
         query: control.evidenceQuery,
         domain,
-        limit: 5,
+        limit: 1,
       });
-      // Pertinence doctrinale : on privilégie un extrait issu du tome déclaré
-      // du contrôle (ex. un contrôle « leases » rattaché au Tome 2 doit citer
-      // le Tome 2, pas un passage tangent d'un autre tome mieux scoré sur les
-      // mots-clés). À défaut, on retombe sur le meilleur résultat global.
-      const citation =
-        results.find((r) => r.tome === control.tome) ?? results[0] ?? null;
-      return { ...control, citation };
+      return { ...control, citation: citation ?? null };
     });
   }
 

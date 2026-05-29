@@ -40,7 +40,7 @@ const DOMAIN_LABELS: Record<SyscohadaDomain, string> = {
   subsidies: 'Subventions',
   'actuarial-commitments': 'Engagements de retraite',
   regularizations: 'Régularisations',
-  transformations: 'Transformations',
+  'business-combinations': 'Fusions et regroupements',
   'bills-of-exchange': 'Effets de commerce',
   'multi-currency': 'Multi-devises',
   'pledged-assets': 'Sûretés et nantissements',
