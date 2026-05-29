@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { ReportsModule } from '../reports/reports.module';
@@ -23,7 +24,7 @@ import { SyscohadaComplianceService } from './services/syscohada-compliance.serv
  *     (cf. memory `nest-useguards-requires-module-imports`).
  */
 @Module({
-  imports: [AuthModule, RbacModule, ReportsModule],
+  imports: [AuditModule, AuthModule, RbacModule, ReportsModule],
   controllers: [SyscohadaComplianceController],
   providers: [SyscohadaComplianceService],
   exports: [SyscohadaComplianceService],
