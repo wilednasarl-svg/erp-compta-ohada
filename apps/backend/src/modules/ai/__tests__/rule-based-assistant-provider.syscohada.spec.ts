@@ -40,4 +40,41 @@ describe('RuleBasedAssistantProvider with SYSCOHADA knowledge', () => {
       expect.arrayContaining([expect.objectContaining({ tome: 3 })]),
     );
   });
+
+  it('routes extended business topics to their SYSCOHADA domain', async () => {
+    const dataSource = { query: jest.fn() } as unknown as DataSource;
+    const knowledge = {
+      answerQuestion: jest.fn().mockResolvedValue({
+        answer: 'Extrait du Guide.',
+        citations: [{ tome: 2, sourceTitle: 't', sourceFile: 'f', lineStart: 1, lineEnd: 2 }],
+      }),
+    } as unknown as SyscohadaKnowledgeService;
+    const provider = new RuleBasedAssistantProvider(dataSource, knowledge);
+
+    const cases: ReadonlyArray<{ question: string; domain: string }> = [
+      { question: 'Comment comptabiliser une location-acquisition ?', domain: 'leases' },
+      {
+        question: 'Quand constituer une provision pour risques et charges ?',
+        domain: 'provisions',
+      },
+      { question: 'Comment traiter une subvention d’investissement ?', domain: 'subsidies' },
+      { question: 'Comment évaluer un engagement de retraite ?', domain: 'actuarial-commitments' },
+      { question: 'Comment escompter un effet de commerce ?', domain: 'bills-of-exchange' },
+      {
+        question: 'Comment comptabiliser un écart de conversion sur devise ?',
+        domain: 'multi-currency',
+      },
+      { question: 'Comment évaluer les apports d’une fusion ?', domain: 'transformations' },
+      { question: 'Où présenter une garantie hypothèque donnée ?', domain: 'pledged-assets' },
+      { question: 'Comment constater une charge constatée d’avance ?', domain: 'regularizations' },
+    ];
+
+    for (const { question, domain } of cases) {
+      (knowledge.answerQuestion as jest.Mock).mockClear();
+      const answer = await provider.ask(question, { organizationId: ORG_ID });
+      expect(knowledge.answerQuestion).toHaveBeenCalledWith(expect.objectContaining({ domain }));
+      expect(answer.matchedIntent).toBe('syscohada_knowledge');
+      expect(dataSource.query).not.toHaveBeenCalled();
+    }
+  });
 });

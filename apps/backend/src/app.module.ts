@@ -39,6 +39,7 @@ import { EmailModule } from './modules/email/email.module';
 // saisie via REST E2-bis en suivi.
 import { ActuarialCommitmentsModule } from './modules/actuarial-commitments/actuarial-commitments.module';
 import { CashFlowModule } from './modules/cash-flow/cash-flow.module';
+import { SyscohadaGuidanceModule } from './modules/syscohada-knowledge/syscohada-guidance.module';
 import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohada-knowledge.module';
 
 @Module({
@@ -67,6 +68,11 @@ import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohad
     // des Guides d'application partagés dans `.local/sources/` et expose
     // une source doctrinale commune à tous les modules métier.
     SyscohadaKnowledgeModule,
+    // Expose `<module>/syscohada-guidance` pour chaque domaine métier relié
+    // au Guide (références + contrôles sourcés). Regroupé ici car ces
+    // controllers ne dépendent que du service @Global, sans réveiller les
+    // modules métier dormants.
+    SyscohadaGuidanceModule,
     // Module 2 (couche données — services et controllers à venir).
     // Pose les entités + repositories du plan comptable OHADA SYSCOHADA
     // AUDCIF : référentiel global + plans personnalisés par organisation.

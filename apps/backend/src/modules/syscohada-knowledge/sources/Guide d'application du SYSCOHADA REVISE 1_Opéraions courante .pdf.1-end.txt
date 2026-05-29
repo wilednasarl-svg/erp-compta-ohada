@@ -1,0 +1,3036 @@
+11
+GUIDE
+D’APPLICATION
+PREMIERE PARTIE 	:
+SYSCOHADA
+
+-- 1 of 86 --
+
+12
+SECTION 1 : Plan de comptes
+Le « plan des comptes » n’est pas synonyme de « liste des comptes ». Le Plan comprend,
+outre la liste détaillée des comptes à 2, 3 et 4 chiffres :
+- la justification des critères retenus dans l’arborescence des classes, des comptes
+principaux et divisionnaires,
+- des indications sur la codification décimale, les constantes et les parallélismes
+retenus.
+1.1. Les Classes
+• 	L’Acte uniforme relatif au droit comptable et à l’information financière dispose, en
+son article 18, la distinction, dans la Comptabilité financière, entre les comptes de «
+situation » et les comptes de « gestion » :
+o 	les comptes de situation (ou de patrimoine ou de bilan) sont recensés en classes
+1 à 5,
+o 	les comptes de gestion (ou de résultat) sont recensés dans les classes 6, 7 et 8.
+• 	Dans les comptes de situation, les classes sont définies en fonction d’une lecture
+verticale puis horizontale du bilan :
+o 	en lecture « verticale », le « haut » du bilan comprend en principe les postes
+provenant des classes 1 et 2, le « bas » ceux des classes 3, 4 et 5,
+o 	en lecture « horizontale », de droite à gauche, le passif synthétise la classe 1
+et partiellement les classes « mixtes » 4 et 5, l’actif synthétise la classe 2 et
+partiellement les classes 4 et 5.
+BILAN
+Plan de comptes - subdivisions	Chapitre 1
+2- Actif immobilisé
+3- Stocks
+4- Tiers (débiteurs)
+5- Trésorerie (positive)
+1-Ressources stables
+4- Tiers (créditeurs)
+5- Trésorerie (négative)
+ACTIF 	PASSIF
+
+-- 2 of 86 --
+
+13
+• 	Dans les comptes de gestion, les classes sont définies :
+o 	par rapport à la fréquence de l’activité
+§ 	activité « ordinaire » : 6 et 7
+§ 	« hors activité ordinaire » : 8
+o 	puis, par rapport à la place de l’opération dans le circuit économique de
+l’entité,
+§ 	en amont de l’entité : « entrant » ou charge : classe 6 et comptes
+impairs de la classe 8 (81, 83, 85, 87, 89),
+§ 	en aval de l’entité : « sortant » ou produit : classe 7 et comptes pairs de
+la classe 8 (82, 84, 86, 88).
+1.2. Les Comptes principaux et divisionnaires
+• 	L’article 18 de l’Acte uniforme relatif au droit comptable et à l’information
+financière dispose : « chaque classe est subdivisée en comptes identifiés par des
+numéros à deux chiffres ou plus [...] dans le cadre d’une codification décimale ».
+Chaque classe comprend donc en règle générale 10 comptes à deux chiffres, que
+nous appellerons « comptes principaux », dont le premier se termine par 0 et le
+dernier par 9.
+EXEMPLE :
+La classe 5 - Trésorerie, est détaillée en :
+50 - Titres de placement, 51 - Valeurs à encaisser..., 58 - Régie d'avances,
+accréditifs et virements internes, 59 - Dépréciations et provisions pour risque à
+court terme.
+• 	Au-delà de deux chiffres, les subdivisions se limitent à 9 positions.
+Chaque compte principal peut être subdivisé en 9 comptes à 3 chiffres, et chacun de
+ses derniers en 9 comptes à 4 chiffres, tous appelés « comptes » (sans autre
+qualificatif). Le premier numéro se termine alors par 1 et le dernier par 9, le 0 gardant
+son caractère générique sauf 490 et 590.
+
+-- 3 of 86 --
+
+14
+EXEMPLE :
+Le compte 24 - Matériel est subdivisé en 241 - Matériel et outillage industriel et
+commercial... 245 - Matériel de transport... 249 - Matériels et actifs biologiques en
+cours.
+Le compte 245 - Matériel de transport est subdivisé à son tour en 2451 - Matériel
+automobile... 2458 - Autres (vélo, mobylette, moto).
+• 	Au-delà de quatre chiffres, la subdivision en sous comptes est laissée au choix de
+l’entité, 	dans 	le 	respect 	des 	nomenclatures 	nationales 	ou 	régionales 	ci-dessous
+exposées.
+1.3. Les Constantes
+Pour des raisons logiques et pédagogiques, des « constantes » sont retenues dans la
+numérotation des comptes. Ainsi :
+• 	le chiffre 8 en troisième ou quatrième position appelle souvent un compte résiduel ou
+« divers », destiné aux opérations qui n’ont pas trouvé leur place dans les sept
+catégories précédentes.
+EXEMPLES :
+168 - Autres emprunts et dettes, dans la subdivision de 16 - Emprunts et dettes
+assimilées.
+2458 – Autres matériels de transport, dans la subdivision de 245 - Matériel de
+transport.
+• 	Le chiffre 9 en deuxième position appelle un compte de provision, soit :
+o 	en gestion, une dotation (69) ou une reprise (79),
+o 	en situation (19, 29, 39, 49, 59), une provision ou une dépréciation existante.
+Les comptes 29, 39, 49 et 59 présentent un solde opposé à celui des principaux autres
+comptes de leur classe.
+
+-- 4 of 86 --
+
+15
+• 	Ce caractère « d’opposant » au sens du solde des autres comptes de la même famille
+est également attribué au chiffre 9 figurant en troisième ou quatrième position :
+EXEMPLE :
+- 109 - Apporteurs, capital souscrit, non appelé et 139 - Résultat net : perte présentent
+un solde débiteur, à l'encontre des autres comptes 10 et 13,
+- 409 réunit les fournisseurs débiteurs, à l'opposé des autres comptes 40,
+- 419 réunit les clients créditeurs, à l'opposé des autres comptes 41,
+- 60 x 9 réunit les réductions obtenues non ventilables, à l'opposé des autres comptes
+60 x.
+1.4. Les parallélismes
+Pour les mêmes raisons, une numérotation décimale parallèle est retenue pour des opérations
+de sens contraire, mais de même nature. Ainsi :
+• en 28 – Amortissements, la numérotation des comptes est parallèle à celle des comptes
+21 à 25,
+• en 77 - Revenus financiers et produits assimilés, la numérotation est sensiblement
+parallèle à celle du compte 67 - Frais financiers et charges assimilées,
+• en 79 - Reprises de provisions, la numérotation s’inspire fortement de celle du
+compte 69.
+
+-- 5 of 86 --
+
+16
+SECTION 2 : Subdivision en sous-comptes
+2.1. Du SYSCOHADA au plan comptable d’entité
+• Comme le SYSCOHADA fournit, en règle générale, des comptes à quatre chiffres, il
+appartient à l’entité de construire son propre « plan comptable d’entité » (P.C.E.),
+o 	en retenant les comptes du SYSCOHADA nécessaires à son activité,
+o 	et en les subdivisant selon ses besoins.
+• Cette subdivision obéit à deux impératifs :
+o 	une analyse plus fine de la nature de l’opération, sur la base d’au moins deux
+positions : le numéro de compte comportera alors six chiffres, comme le
+prévoient de nombreux logiciels.
+UUUU. UU
+SYSCOHADA. nature
+La subdivision par nature s’effectue en fonction des nomenclatures.
+EXEMPLE :
+les achats de papier pour photocopieur sont enregistrés en 6047.17(voir la nouvelle
+nomenclature P. 1083)
+6047 = achats fournitures de bureau (dans le SYSCOHADA)
+17= papier
+• Une analyse de la fonction de l’opération, sur la base d’une ou de deux positions : le
+numéro comportera alors sept ou huit chiffres.
+UUUU. 	UU. 	UU
+SYSCOHADA. nature. fonction
+La subdivision par fonction est liée à la comptabilité analytique de gestion de l’entité, si
+elle existe, ou au souci de déterminer :
+o 	des coûts, par regroupement de comptes de charges,
+o 	des marges analytiques, après regroupement des comptes de produits.
+Le numéro correspond soit à un centre de frais, soit à une activité déterminée de l’entité.
+
+-- 6 of 86 --
+
+17
+La subdivision par fonction n’a de sens que dans les comptes de charges et de produits
+(classes 6, 7 et 8). Elle demeure entièrement libre.
+EXEMPLE (SUITE) :
+Si le papier est destiné au service comptable, codé 02 dans l'organigramme, l'achat
+sera enregistré en 6047.17.02
+2.2. Notion et conditions d’emploi des nomenclatures
+• 	Les nomenclatures sont des relevés exhaustifs et codifiés de rubriques d’opérations ou
+d’agents, mis en place par les services nationaux ou régionaux de la Statistique ou de
+la Comptabilité nationale.
+• 	L’organisation comptable de l’entité doit permettre de renseigner ces rubriques, et
+prévoir en conséquence une subdivision des comptes intéressés en sous comptes
+correspondant à ces rubriques. Si des besoins de gestion exigent plusieurs sous
+comptes pour une même rubrique de nomenclature, ces derniers doivent pouvoir être
+regroupés facilement.
+• 	La numérotation de ces sous comptes demeure libre, si une grille de passage permet ce
+regroupement. Pour des raisons pédagogiques, le présent guide reprend cependant tel
+quel tous les numéros des nomenclatures citées.
+
+-- 7 of 86 --
+
+18
+SECTION 1 : Opérations brutes
+1.1. Achats
+Le SYSCOHADA distingue trois types d’achats de biens et de services :
+• 	Les 	acquisitions 	de 	biens 	durables, 	assimilées 	à 	des 	investissements 	(terme
+économique) 	ou 	à 	des 	immobilisations 	(terme 	comptable), 	seront 	exposées 	au
+chapitre 5 de la première partie.
+Ils 	sont 	crédités 	au 	compte 	481 	Fournisseurs 	d’investissements 	ou 	404
+Fournisseurs, acquisitions courantes d’immobilisations.
+• 	Les 	achats 	de 	biens 	consommables, 	crédités 	au 	compte 	401 	Fournisseurs
+d’exploitation constituent des charges, enregistrées en 60. Ils concernent les achats du
+« circuit ». Les achats sont inscrits au compte 60 pour le montant net de taxes
+récupérables auquel s’ajoutent les frais accessoires d’achats. Ces frais accessoires
+peuvent être enregistrés au sous compte achats concerné pour le montant net de taxes
+récupérables :
+o 	en 601 des marchandises : biens destinés à être revendus sans transformation,
+o 	en 602 des matières premières : biens destinés à être transformés, pour entrer
+dans la composition d’un produit traité ou fabriqué,
+o 	en 604 des matières consommables : biens destinés à être utilisés pour
+concourir à la fabrication ou à l’exploitation, sans se retrouver dans la
+composition du produit traité ou fabriqué,
+o 	en 602 des fournitures liées : matières premières de valeur unitaire non
+significative et servant d’accessoire à d’autres ( ex : vis et boulons),
+o 	en 604 des fournitures (non liées) : matières consommables de valeur unitaire
+non significative (ex : crayons, insecticides),
+o 	en 608 des emballages non immobilisés, qui sont traités à part.
+Achats et ventes de biens et de services	Chapitre 2
+
+-- 8 of 86 --
+
+19
+o 	les frais accessoires d’achats peuvent être inscrit directement dans les
+comptes 601, 602, 604, 608 ou dans les compte frais sur achats : 6015, 6025,
+6045, 6085.
+• 	Les achats de services constituent également des charges, enregistrées en 61, 62 et
+63 :
+o 	61 : services de transports (sauf courrier et télécommunications) de biens
+vendus, transport de personnels,
+o 	621 à 625 : services rattachés aux immobilisations de l’entité,
+o 	626 à 638 : services rattachés aux opérations d’exploitation et financières de
+l’entité.
+Ils sont supposés immédiatement consommés.
+Sachant que :
+a) - La caisse enregistreuse est conservée par le détaillant pour son équipement et constitue
+donc une immobilisation à l'achat, relevant de la rubrique 26 de la Nomenclature des Biens et
+Services,
+Acquisition de matériels et de fournitures de bureau
+Enregistrer la facture suivante :
+Fournisseur A en région OHADA
+Fabricant de matériel et fournitures en gros
+Doit : Client B en région OHADA
+Facture n°1
+Matériel et fournitures de bureau au détail
+- 	1 caisse enregistreuse à 300 	= 	300
+- 	10 ordinateurs de bureau à 200 	= 2 000
+- 	100 ramettes de ramettes photocopieur à 5 	= 	500
+____
+- 	Sous total 	= 	2 800
+- 	Frais de transport 10% 	= 	280
+- 	TVA 10% 	= 	308
+Net à payer 	= 3 388
+APPLICATION 1
+
+-- 9 of 86 --
+
+20
+b) - Les ordinateurs sont destinés à être revendus et constituent donc des marchandises
+(N.B.S. 26).
+c) - Le papier photocopieur (N.B.S. 17) est destiné au magasin, donc à la revente, à raison de
+90 paquets. 10 ramettes constituent pour le client des matières consommables, considérées
+non stockées.
+d) - la TVA est récupérable.
+Ecritures
+_______________ 	________________
+2443.26 	Matériel bureautique (300 + 10% x 300) 	330
+6011.26 	Achats marchandise ordinateurs 	2 000
+6015.26 	Frais sur achats ordinateurs 	200
+6011.17 	Achats marchandises papier 	450
+6055.17 	Fourniture de bureau non stockables 	50
+6015.17 	Frais sur achats papier 	50
+4451 	T.V.A. récupérable sur immobilisations (330 x 10%) 	33
+4452 	TVA récupérable sur achats 	275(1)
+4812 	Fournisseurs d’investissements A (330 + 33) 	363
+4011.. 	Fournisseurs A 	3 025
+______________ 	________________
+(1) [(2 000 + 200 + 450 + 50 +50) x 10%]
+Ou
+________________ 	______________
+2443.26 	Matériel bureautique (300 + 10% x 300) 	330
+6011.26 	Achats marchandise ordinateurs (2000 + 10% x 2000) 	2 200
+6011.17 	Achats marchandises papier (450 + 10% x 450) 	495
+6055.17 	Fourniture de bureau non stockables (50 + 10% x 50) 	55
+4451 	T.V.A. récupérable sur immobilisations (330 x 10%) 	33
+4452 	TVA récupérable sur achats [(2 200 +495 +55) x 10%] 	275
+4812 	Fournisseurs d’investissements A (330 + 33) 	363
+4011.. 	Fournisseurs A 	3025
+________________ 	_______________
+F 	Remarque : 	Pour 	faciliter, 	l’élaboration 	du 	tableau 	des 	flux 	de 	trésorerie 	le
+SYSCOHADA recommande d’utiliser systématiquement comme contrepartie :
+• 	des comptes d’achats de biens et services (autres que les immobilisations) le compte
+401 Fournisseur ;
+• 	des comptes d’achats d’immobilisations, les comptes 481 ou 404.
+
+-- 10 of 86 --
+
+21
+1.2. Ventes
+Les ventes sont enregistrées au crédit du compte principal 70 et au débit d’un compte de
+client.
+Le SYSCOHADA distingue à cet effet :
+• 	en 701, les marchandises : biens revendus sans transformation (ou « en l’état ») dans
+le cadre d’une opération commerciale,
+• 	en 702 à 704, les produits : biens traités ou fabriqués par l’entité, dans le cadre
+d’une opération agricole, artisanale ou industrielle. Selon leur degré de finition, le plan
+distingue :
+o 	en 702, le produit fini, stocké en magasin de fin de cycle de traitement ou de
+fabrication, et vendu,
+o 	en 703, le produit intermédiaire, stocké en magasin après un premier
+traitement ou fabrication, et normalement destiné à une nouvelle phase de
+production, mais parfois vendu séparément,
+o 	en 704, le produit résiduel : chute, déchet ou rebut récupérés en atelier ou en
+magasin, à n’importe quel stade de traitement ou de fabrication du produit
+principal, et ayant une valeur marchande,
+• 	en 705, les ventes de travaux, qui occupent, dans le secteur du bâtiment et des
+travaux publics, une place intermédiaire entre les catégories de biens et de services,
+comme dans la Nomenclature des Biens et Services (N.B.S.),
+• 	en 706, les ventes d’autres services,
+• 	le SYSCOHADA a enfin repris, en 707, la notion hybride de produits accessoires, qui
+groupe, au détriment d’un strict classement par nature, à la fois des biens (ex : 7071
+emballages) et des services (ex : 7073 locations), qui ne correspondent pas à l’objet
+principal de l’entité et présentent donc un caractère accessoire (mais pas occasionnel
+pour autant).
+Certains produits ont toujours, dans les diverses entités, un caractère accessoire (ex : Bonis
+sur reprises, cessions d’emballages, ou services exploités dans l’intérêt du personnel).
+D’autres, accessoires dans la majorité des entités, peuvent constituer l’activité principale de
+certaines filmes (ex : commissions et courtages chez un commissionnaire-courtier ; locations
+dans une société immobilière ; redevances pour brevets dans une société d’ingénierie...); dans
+ce cas, ils sont à classer dans le compte 706 Services vendus.
+
+-- 11 of 86 --
+
+22
+Ecriture
+_______________ 	______________
+4111.. 	Client B 	3 388
+7011.26 	Ventes marchandises 	300
+7021.26 	Ventes Produits finis 	2 000
+7011.17 	Ventes marchandises 	500
+7071.. 	Ports facturés 	280
+4431 	TVA facturée sur ventes 	308
+______________ 	______________
+SECTION 2 : Stocks
+En pure logique comptable, les achats entraînent une entrée en stock dans des comptes de la
+classe 3 et les ventes, une sortie de stock.
+Le SYSCOHADA :
+• 	déroge cependant à cette règle dans le temps, en admettant la pratique généralisée de
+l’inventaire intermittent,
+• 	la nuance dans l’espace, en supposant la consommation immédiate de certains achats.
+2.1. Méthode d’inventaire
+• 	La méthode de l’inventaire intermittent autorise la neutralisation des comptes de la
+classe 3 en cours d’exercice, et leur régularisation en fin d’exercice seulement, par le
+jeu des comptes :
+o 	603, s’il s’agit de marchandises, de matières et de fournitures, d’autres
+approvisionnements,
+o 	73, s’il s’agit de produits.
+Ventes de marchandises et de produits finis
+Enregistrer la facture n°1 précédente, sachant que le fournisseur
+a) - a lui-même acheté la caisse enregistreuse et le papier, qui constituent donc des
+marchandises,
+b) - a fabriqué les ordinateurs, qui sont donc des produits finis.
+APPLICATION 2
+
+-- 12 of 86 --
+
+23
+Le nombre d’écritures est donc limité à deux par catégorie :
+o 	l’une destinée à annuler le stock initial ou de début d’exercice,
+o 	l’autre destinée à constater le stock final ou de fin d’exercice.
+Ces deux écritures peuvent même se ramener à une seule, constatant la variation de
+l’exercice, qui est soit une augmentation (débit du compte 3...), soit une diminution
+(crédit du compte 3).
+Écritures
+_______________ 	______________
+6031 	Variations des stocks de marchandises 	10
+31.. 	Marchandises 	10
+(Annulation du stock de début d’exercice)
+______________ 	______________
+31.. 	Marchandises 	11
+6031 	Variations des stocks de marchandises 	11
+(Constatation du stock de fin d’exercice)
+______________ 	_______________
+Ou encore une seule écriture pour la variation de +1
+_______________ 	______________
+31.. 	Marchandises 	1
+6031 	Variations des stocks de marchandises 	1
+(Ajustement du stock de fin d’exercice)
+______________ 	_______________
+Inventaire intermittent - régularisation de stock de
+marchandises
+Stock de marchandises : 	10 en début d'exercice,
+11 en fin d'exercice (stockage : + 1)
+APPLICATION 3
+Inventaire intermittent - régularisation de stock de
+produits finis
+Stock de produits finis : 	15 en début d'exercice,
+12 en fin d'exercice (déstockage - 3)
+APPLICATION 4
+
+-- 13 of 86 --
+
+24
+Écritures
+_______________ 	______________
+736 	Variations des stocks de produits finis 	15
+36.. 	Produits finis 	15
+(Annulation du stock de début d’exercice)
+______________ 	______________
+36.. 	Produits finis 	12
+736 	Variations des stocks de produits finis 	12
+(Constatation du stock de fin d’exercice)
+______________ 	_______________
+Ou encore une seule écriture pour la variation de -3
+_______________ 	______________
+736 	Variations des stocks de produits finis 	3
+36.. 	Produits finis 	3
+(Ajustement du stock de fin d’exercice)
+______________ 	_______________
+Les comptes de gestion 603 figureront dans le Compte de résultat parmi les charges,
+en soustraction en cas de stockage, et les comptes 73 parmi les produits, en
+soustraction en cas de déstockage.
+• 	Les mêmes écritures sont prévues en cas d’inventaire permanent, mais elles sont
+passées en cours d’exercice, à chaque entrée et à chaque sortie. Elles demeurent donc
+également séparées des écritures d’achat et de vente, et les deux méthodes ne différent
+que par la fréquence des écritures, et non pas par leur nature.
+2.2. Opportunité des comptes de stocks
+• 	Certains biens sont obligatoirement « stockés », à savoir qu’ils transitent par un
+compte de la classe 3, en inventaire permanent ou intermittent. Tel est le cas :
+o 	des marchandises, achetées en 601, stockées en 31, et revendues en 701,
+o 	des matières premières, achetées en 602 et stockées en 32,
+o 	des produits finis, stockés en 36 et vendus en 702,
+o 	des produits intermédiaires, stockés en 37 et vendus en 703,
+o 	des produits résiduels, stockés en 37 et vendus en 704,
+o 	les produits en cours, stockés en 34, et normalement non vendus à ce stade.
+• 	Le SYSCOHADA prévoit que les autres approvisionnements peuvent être :
+o 	soit « stockés » en 33, et achetés dans ce cas en 604,
+
+-- 14 of 86 --
+
+25
+o 	soit considérés comme immédiatement consommés, sans inscription dans un
+compte de stock, et enregistrés dans ce cas dans le compte 605 Autres achats.
+La décision incombe à l’entité, en fonction de la valeur des biens, et des
+besoins de contrôle de leur consommation.
+EXEMPLE :
+L’eau amenée par citerne en zone désertique, le carburant acheté en fûts ou réservoirs, les
+fournitures de bureau peuvent être stockés, c’est-à-dire contrôlés en inventaire permanent par
+des mouvements de stocks, si on craint les vols.
+Par contre, le carburant acheté à la pompe par chaque utilisateur de véhicule, les fournitures
+de 	bureau 	ou 	d’entretien 	dans 	le 	cas 	habituel 	sont 	considérés 	comme 	des 	achats
+« non stockés ».
+Bien qu’il s’agisse d’une dérive de la règle, le SYSCOHADA maintient, en cas de non-
+stockage, la possibilité de régulariser en fin d’exercice les achats supposés immédiatement
+consommés, par la constatation d’un stock de fin d’exercice enregistré en 476 Charges
+constatées d’avance.
+Écritures
+_______________ 27/06/N______________
+6055 	Fournitures de bureau non stockables 	15
+4011 	Fournisseurs 	15
+(Achat ………..)
+______________ 	31/12/N ______________
+476 	Charges constatées d’avance 	3
+6055 	Fournitures de bureau non stockables 	3
+(Stock de fin d’exercice)
+______________ 	_______________
+• 	En revanche, les matières et fournitures non « stockables » physiquement sont
+obligatoirement considérées comme immédiatement consommées.
+Achat de fournitures de bureau – régularisation en
+fin d’exercice
+Des fournitures de bureau ont été achetées le 27 juin N pour 15, en consommation
+immédiate. En fin d'exercice N, il en reste 3, à consommer au cours de l'exercice
+APPLICATION 5
+
+-- 15 of 86 --
+
+26
+EXEMPLES : Energie électrique au compteur, eau courante du robinet.
+• 	Les Services en cours constatent les montants d’études et de prestations déjà engagés
+et non encore facturés (cas de prestations d’une certaine durée ; exemples : étude
+d’organisation ; transport international...). En fonction de l’organisation de l’entité,
+ils peuvent être suivis en inventaire permanent, ou seulement constatés en inventaire
+intermittent.
+Compte 35 : Services en cours.
+SECTION 3 : Eléments soustractifs de la facture
+Achats et ventes sont comptabilisés au prix net indiqué sur la facture DOIT. Un retour ou une
+réduction inclus dans cette facture initiale ne sont donc pas enregistrés séparément. Ils le sont,
+en revanche, s’ils font l’objet d’une facture d’AVOIR.
+L’escompte est par contre enregistré dans les deux cas, en principe au moment du règlement.
+Par contre, l’escompte sur acquisition d’immobilisations n’est pas enregistré séparément, il
+vient directement en déduction du coût d’acquisition de l’immobilisation.
+3.1. Les retours
+Lorsque des marchandises, matières ou fournitures, sont retournées au fournisseur, la facture
+d’avoir 	est 	simplement 	contre-passée 	au 	crédit 	des 	comptes 	d’achats 	et 	de 	ventes
+correspondants.
+• 	Chez le client, les retours sur achats font donc l’objet d’une écriture de type :
+_______________ 	______________
+401. 	Fournisseurs dettes en compte 	x
+60.. 	Achats 	x
+______________ 	_______________
+• 	Chez le fournisseur, l’émission de la facture d’avoir est enregistrée comme suit :
+_______________ 	______________
+70.. 	Ventes 	x
+411 	Clients 	X
+______________ 	_______________
+
+-- 16 of 86 --
+
+27
+3.2. Les réductions commerciales
+Le rabais est défini comme une réduction pour défaut de qualité ou de conformité. Il se
+rapporte au bien acheté ou vendu.
+La remise est une réduction obtenue ou accordée en raison de l’importance de l’opération ou
+de la profession du client. Elle se rapporte à la personne acheteuse.
+La ristourne est une réduction calculée sur un ensemble d’opérations traitées durant une
+période déterminée. Elle rémunère la fidélité de l’acheteur, dans une économie de marché.
+Lorsque la réduction peut être rattachée avec précision à un bien ou à un service suivi dans un
+sous compte, elle est contre-passée, comme le sont les retours.
+Tel doit toujours être le cas chez le fournisseur, qui émet la facture et qui sait donc à quels
+éléments la réduction se rattache, même en cas de ristourne, car il tient des statistiques par
+produit. En conséquence, le SYSCOHADA ne prévoit pas de comptes de « R.R.R. accordés ».
+En revanche, le SYSCOHADA admet que, lorsque la ventilation par catégorie d’achat s’avère
+impossible, le client puisse enregistrer les réductions obtenues dans les comptes à terminaison
+9, soit : 6019 à 6089 pour les réductions obtenues sur des achats de biens 601 à 608
+En revanche, le SYSCOHADA n’a pas prévu de comptes spécifiques de réductions obtenues
+sur les achats de services : elles sont inscrites directement au crédit des comptes 61, 62, 63 (au
+crédit de leurs sous comptes).
+Toutefois, il est toujours possible à l’entité de créer des sous comptes ad hoc, notamment au
+cas où l’imputation détaillée par nature de service s’avérerait impossible. Par exemple,
+comptes 619, 629 et 639, etc.
+3.3. Les réductions financières (escompte)
+• 	L’escompte de règlement est une réduction due au règlement anticipé par rapport à
+l’échéance indiquée ou au délai de paiement habituel. Il est calculé en pourcentage
+simple du montant net, à l’opposé de l’escompte des effets de commerce, calculé
+prorata temporis.
+• 	Considéré comme une opération financière (différente des opérations d’exploitation),
+il est enregistré quel que soit son mode de présentation (sur facture DOIT en
+diminution, ou sur facture AVOIR), mais, en principe, seulement lors du paiement, en
+673, s’il s’agit d’un escompte accordé et 773, s’il s’agit d’un escompte obtenu (voir
+chapitre 4, première partie).
+
+-- 17 of 86 --
+
+28
+Ecritures chez le fournisseur A
+_______________ 	______________
+4111.. 	Clients B 	2 690
+7011.26 	Ventes de marchandises dans la Région 	290
+7021.26 	Ventes de produits finis dans la Région 	2 000
+7011.17 	Ventes de marchandises dans la Région 	400
+(Facture de Doit n°…)
+______________ 	______________
+7011.26 	Ventes de marchandises dans la Région 	29
+7021.26 	Ventes de produits finis dans la Région 	200
+4111.. 	Clients B 	229
+(Facture d’Avoir n°…)
+______________ 	_______________
+Remise et retour de marchandises
+Le client B ci-dessus cité a :
+- 	obtenu immédiatement une remise de 20 % sur le papier, figurant sur la facture I,
+- 	ultérieurement une remise de 10 % sur la caisse enregistreuse, qui fait l'objet
+d'une facture d'avoir II,
+- 	retourné au fournisseur un ordinateur défectueux.
+1. Facture - Fournisseur A en Région OHADA
+Fabricant de Matériel et fournitures en gros
+DOIT Client B en Région OHADA
+Matériel et fournitures de bureau au détail
+a - 1 caisse enregistreuse à 290 	290
+b - 10 ordinateurs de bureau à 200 	2 000
+c - 100 ramettes de papier photocopieur à 5, réduction 20 % 	400
+_____
+Total 	2 690
+2. Avoir - Fournisseur A
+AVOIR Client B
+g - Remise 10 % sur caisse enregistreuse 	29
+h - Reprise d'un ordinateur défectueux 	200
+____
+Total 	229
+APPLICATION 6
+
+-- 18 of 86 --
+
+29
+Écritures chez le client B
+_______________ 	______________
+2442.26 	Matériel informatique 	290
+6011.26 	Achats marchandises ordinateurs 	2 000
+6011.17 	Achats marchandises papier 	360
+6055.17 	Achats fournitures de bureau (non stockés) 	40
+4812.. 	Fournisseurs d’investissements 	290
+4011.. 	Fournisseurs A 	2 400
+(Facture de Doit n°…)
+______________ 	______________
+4812.. 	Fournisseurs d’investissements 	29
+4011.. 	Fournisseurs A 	200
+2442.26 	Matériel informatique 	29
+6011.26 	Achats marchandises ordinateurs 	200
+(Facture d’Avoir n°…)
+______________ 	_______________
+SECTION 4 : Eléments additifs de la facture
+Les majorations susceptibles de figurer sur la facture sont de quatre types : les ports et
+emballages facturés, les emballages consignés, les taxes sur le chiffre d’affaires non
+récupérables, et la taxe sur la valeur ajoutée, supposée récupérable.
+4.1. Ports et emballages facturés
+• 	Chez le fournisseur, les majorations de facture pour port « avancé » par le vendeur ou
+pour 	emballage 	perdu 	sont 	considérées 	comme 	des 	produits 	accessoires, 	et
+enregistrées en 7071, quel que soit leur mode de calcul (forfaitaire ou au coût réel).
+En raison du principe de non-compensation, il n’y a pas lieu de créditer un compte de
+charge, même si cette dernière vient d’être enregistrée pour le même montant.
+• 	Chez le client, ces majorations accroissent le coût d’achat et doivent être ventilées
+dans les comptes d’immobilisations ou d’achats correspondant à l’opération. Elles sont
+enregistrées dans les comptes de la classe 2 immobilisations ou les comptes 60
+Achats.
+4.2. Emballages consignés
+• 	Lorsque l’emballage est récupérable, que le vendeur le facture mais accepte de le
+reprendre après utilisation, le montant de la consignation est enregistré :
+
+-- 19 of 86 --
+
+30
+o 	en 4194 chez le fournisseur, car le prix de consignation constituera une dette
+envers le client,
+_______________ 	______________
+41.. 	Clients 	X
+4194 	Clients, dettes pour emballages et
+matériels consignés 	X
+______________ 	_______________
+o 	en 4094 chez le client, car il constituera une créance sur le fournisseur.
+_______________ 	______________
+4094 	Fournisseurs, créances pour emballages et 	X
+matériels à rendre
+40.. 	Fournisseurs 	X
+______________ 	_______________
+• L’écriture est contre-passée lors du retour de l’emballage, dûment constaté par facture
+d’avoir. Le cas échéant, il est constaté :
+o 	un boni chez le fournisseur, enregistré en 7074.
+_______________ 	______________
+4194 	Clients, dettes pour emballages et matériels
+consignés 	brut
+7074 	Bonis sur reprises d’emballages 	boni
+41… 	Clients 	net
+______________ 	_______________
+o 	un mali chez le client, enregistré en 6224 (car assimilé à une location).
+_______________ 	______________
+6224 	Malis sur emballage 	mali
+40.. 	Fournisseurs 	net
+4094 	Fournisseurs, créances pour
+emballages et matériels à rendre 	brut
+______________ 	_______________
+L'usage a « francisé » les termes latins bonus/malus au singulier et boni/mali au
+pluriel, en parlant au singulier d’un boni ou mali, mais au pluriel de bonis ou malis.
+• En revanche, lorsque l’emballage n’est pas retourné dans les délais d’usage, ou lorsque
+les parties s’accordent sur un non-retour, il est considéré comme :
+o 	vendu par le fournisseur, qui réalise le produit en 7074, bien qu’il s’agisse le
+plus souvent d’une « revente en l’état », normalement traitée en 701.
+_______________ 	______________
+4194 	Clients, dettes pour emballages et matériels 	X
+consignés
+7074 	Cessions d’emballages 	X
+______________ 	_______________
+
+-- 20 of 86 --
+
+31
+o 	acheté par le client, qui réalise la charge en 6082, s’il compte l’utiliser à son
+tour dans ses ventes, ou en majoration du coût d’achat du bien emballé dans le
+cas contraire.
+_______________ 	______________
+6082 	Achats d’emballages récupérables non
+identifiables 	X
+4094 	Fournisseurs, créances pour
+emballages et matériels à rendre 	X
+______________ 	_______________
+4.3. Taxes sur le chiffre d’affaires non récupérables
+Les taxes uniques, taxe à la production, taxe sur les prestations de services, taxes spécifiques
+et autres taxes sur le chiffre d’affaires collectées par le vendeur à l’occasion de la facturation
+o 	ne 	constituent 	pas 	un 	produit 	pour 	le 	fournisseur, 	mais 	une 	dette 	envers
+l’administration fiscale chargée du recouvrement, et sont en conséquence portées au
+crédit d’un compte 446,
+o 	mais constituent pour le client une charge qui majore les coûts d’achat.
+Au besoin, l’acheteur devra ventiler la taxe globale dans les sous comptes ayant servi à
+enregistrer les achats.
+4.4. Taxes sur la Valeur Ajoutée (T.V.A.)
+• 	Chez le fournisseur, la taxe sur la valeur ajoutée est enregistrée par le fournisseur
+comme dit ci-dessus, mais dans un compte spécifique réservé à cette importante taxe,
+443.
+L’écriture sera du type :
+___________ 	____________
+41.. 	Clients 	taxe comprise
+70.. 	Ventes 	hors taxes
+443. 	Etat, T.V.A. facturée 	taxe
+____________ 	____________
+
+-- 21 of 86 --
+
+32
+• 	Si le client est autorisé à récupérer la T.VA., il considérera son montant comme une
+créance sur l’État, enregistrée en 445. Dans ce cas la T.V.A. n’affectera pas le montant
+de l’achat.
+____________ 	_____________
+60.. 	Achats 	hors taxe
+445. 	Etat T.V.A. récupérable 	taxe
+40.. 	Fournisseurs 	taxe comprise
+____________ 	___________
+Dans le cas contraire, la T.VA. est traitée comme les autres taxes sur le chiffre
+d’affaires.
+
+-- 22 of 86 --
+
+33
+SECTION 1 : Conception et terminologie
+1.1. Principe
+Dans la logique du « circuit de l’entité », qui préside à la conception du SYSCOHADA,
+l’entité échange :
+• 	en aval, des flux de production avec les clients,
+• 	en amont :
+o 	des flux de consommation avec les fournisseurs de biens et services, y
+compris les services publics ;
+o 	des flux de répartition de la valeur ajoutée avec les agents constituant les
+autres facteurs de la production :
+§ 	les 	pouvoirs 	publics 	(État, 	collectivités 	publiques 	et 	organismes
+internationaux) qui apportent l’environnement et la sécurité,
+§ 	le personnel de l’entité qui apporte le travail, et les organismes
+sociaux qui l’accompagnent,
+§ 	les prêteurs qui apportent les capitaux.
+1.2. Flux d’amont ou charges
+Le coût de ces apports à l’entité est enregistré au débit des comptes de charges (classe 6) et
+au crédit des comptes de tiers (classe 4) :
+• 	60 à 63 : Consommations de biens et de services, sur la base de factures dues à des
+fournisseurs (40) (voir chapitre précédent),
+• 	64 : Impôts et taxes, sur la base de déclarations ou d’avertissements, dus à l’État ou
+aux collectivités publiques (44), ou encore aux organismes internationaux (45),
+assimilés par le SYSCOHADA à des consommations de services,
+• 	66 : Charges de personnel, sur la base de bulletins de paie et de déclarations, dues au
+personnel (42) et aux organismes sociaux (43),
+Autres Operations d’exploitation	Chapitre 3
+
+-- 23 of 86 --
+
+34
+• 	67 : Frais financiers et charges assimilées, sur la base de relevés d’agios, d’intérêts ou
+de tableaux d’amortissement, dus aux prêteurs (16 et 56),
+• 	65 : Autres charges, lorsque leur nature ne rentre pas clairement dans l’une des
+rubriques 	précédentes, 	également 	rattachées 	aux 	consommations 	par 	le
+SYSCOHADA.
+1.3. Flux d’aval ou produits
+Inversement, lorsque ces agents sont sources de recettes pour l’entité, les opérations sont
+enregistrées au crédit d’un compte de produit (classe 7) et au débit des comptes de tiers
+(classe 4) :
+• 	70 : Ventes, sur la base des factures émises sur des clients (41) (voir chapitre 2),
+• 	71 : Subventions d’exploitation, obtenues sur la base de décisions d’attribution auprès
+de 	l’État 	ou 	des 	collectivités 	publiques 	(44), 	ou 	encore 	d’organismes
+internationaux (45),
+• 	77 : Revenus financiers et produits assimilés, obtenus sur la base de relevés auprès des
+emprunteurs ou dépositaires (27 et 5),
+• 	75 : Autres produits, lorsque leur nature ne rentre pas clairement dans l’une des
+rubriques précédentes.
+1.4. Enregistrement
+• 	En règle générale, ces opérations sont enregistrées en deux temps :
+o 	le flux juridique, lors de la réception (débit classe 6, crédit classe 4) ou de
+l’émission de la pièce comptable (débit classe 4, crédit classe 7),
+o 	le flux financier, lors de l’émission du titre de paiement (débit classe 4, crédit
+classe 5) ou de réception de l’avis de paiement (débit classe 5, crédit
+classe 4).
+• 	Le SYSCOHADA autorise cependant la contraction des deux écritures en une
+seule, dans une opération traitée au comptant. Mais il la déconseille même dans ce
+cas, car les entités ont avantage à conserver dans les comptes de tiers la trace de toutes
+les opérations, quelle que soit la modalité de paiement.
+• 	En revanche, la contraction sera généralisée dans le Système minimal de trésorerie
+(S.M.T.) et dans les comptabilités « recettes-dépenses ».
+
+-- 24 of 86 --
+
+35
+SECTION 2 : Impôts et taxes
+2.1. Droits de douane
+Les droits de douane ne sont pas enregistrés dans le compte 64 :
+• 	Les droits d’entrée ne sont pas considérés comme un impôt, mais comme une
+composante du coût d’achat de l’immobilisation ou du bien consommable importé : on
+débite les comptes 23, 24 ou 60, et crédite 4426 Etat, droits de douane.
+Si 	l’Administration 	accorde 	un 	délai 	de 	paiement 	sous 	forme 	d’obligation
+cautionnée, l’entité crédite 4491 Etat, obligations cautionnées.
+• 	En revanche, les droits de sortie éventuels sont mis à la charge du client : débit 41 et
+crédit 4426.
+2.2. Taxes sur le chiffre d’affaires
+• 	Chez le fournisseur, les taxes sur le chiffre d’affaires facturées au client ne
+constituent pas un produit, car le vendeur est censé se substituer au fisc pour percevoir
+ces taxes. Elles sont enregistrées, dès l’émission de la facture, dans un compte de
+dettes envers l’État (voir 1ere partie du présent ouvrage, chapitre 1, Plan de comptes -
+Subdivisions - Nomenclatures) :
+o 	443, s’il s’agit de la taxe sur la valeur ajoutée,
+o 	446, s’il s’agit d’une autre taxe sur le chiffre d’affaires.
+• 	Chez le client, les taxes supportées à l’achat sont traitées comme suit :
+o 	s’il s’agit d’une taxe sur la valeur ajoutée déductible, elle est enregistrée au
+débit de 445 Etat, T.V.A. récupérable,
+o 	si la T.VA. n’est pas déductible, ou s’il s’agit d’une autre T.C.A., elle est en
+principe incorporée dans le coût d’achat du bien ou service acheté. Si la
+ventilation ne s’avère pas possible, elle est enregistrée par nature en 645
+Impôts et taxes indirects.
+• 	En fin de période d’imposition, les comptes 443 et 445 sont virés à 444 Etat, T.V.A.
+due ou crédit de T.V.A., dont le solde :
+o 	créditeur représente la T.VA. due, compte 4441,
+o 	débiteur représente le crédit éventuel, compte 4449.
+Les comptes de T.V.A. peuvent être subdivisés par période d’imposition : de 01 à 12 si elle
+est mensuelle, de 1 à 4 si elle est trimestrielle.
+
+-- 25 of 86 --
+
+36
+Écritures
+______________ Début avril_____________
+4441.1 	Etat, T.V.A. due 	44
+4451.1 	Etat, T.V.A. récupérable sur
+immobilisations 	15
+4452.1 	Etat, T.V.A. récupérable sur achats 	18
+4453.1 	Etat, T.V.A. récupérable sur transport 	11
+______________ 	d° 	______________
+4431.1 	Etat, T.V.A. facturée sur ventes 	35
+4434.1 	Etat, T.V.A. facturée sur production livrée
+à soi-même 	6
+4432.1 	Etat, T.V.A. facturée sur prestations de
+services 	19
+4441.1 	Etat T.V.A. due 	60
+Le solde correspond à la T.V.A à régler :
+60-44=16
+___________ début décembre ____________
+4441.4 	Etat, T.V.A. due 	40
+4451.4 	Etat, T.V.A. récupérable sur
+immobilisations 	10
+4452.4 	Etat, T.V.A. récupérable sur achats 	12
+4453.4 	Etat, T.V.A. récupérable sur transport 	18
+___________ 	d° 	_____________
+4433.4 	Etat, T.V.A. facturée sur travaux 	16
+4431.4 	Etat, T.V.A. facturée sur ventes 	12
+4432.4 	Etat, T.V.A. facturés sur prestations de
+services 	7
+4441.4 	Etat, T.V.A. due 	35
+____________ 	______________
+4449 	Etat, crédit de T.V.A. à reporter 	5
+4441.4 	Etat, T.V.A. due 	5
+La TVA à reporter est de : 40-35=5
+______________ 	______________
+Centralisation de la T.V.A.
+a - début avril : T.V.A. du 1er trimestre : récupérable 44 (dont 15 sur immobilisations,
+18 sur achats et 11 sur transport), collectée 60 (dont 35 sur ventes et 6 sur livraisons à
+soi-même, le solde sur services vendus),
+b - début décembre : T. V.A. du 4e trimestre réduit à novembre et décembre :
+récupérable 40 (dont 10 sur immobilisations, 12 sur achats et le solde sur transport),
+facturée 35 (dont 16 sur travaux, 12 sur ventes, le solde sur services vendus).
+APPLICATION 7
+
+-- 26 of 86 --
+
+37
+2.3. Impôts sur les bénéfices
+Parmi les impôts directs, les prélèvements assis sur le résultat de l’entité ne sont pas
+considérés comme un impôt, mais comme une participation au bénéfice.
+• 	Ils sont donc enregistrés en fin d’exercice, au compte 891 Impôts sur les bénéfices de
+l’exercice.
+• 	En revanche, les acomptes versés en cours d’année représentent une créance sur l’État
+et sont portés au débit du compte 441 Etat, impôt sur les bénéfices.
+• 	Ces comptes peuvent être « millésimés » (subdivisés par année fiscale), lorsque les
+échéances de l’année n et son reliquat de l’année (n - 1) s’enchevêtrent.
+Écritures
+____________ 	a 	___________
+441.n 	Etat, impôt sur les bénéfices 	35
+5... 	Trésorerie 	35
+______________ 	b 	______________
+441.n 	Etat, impôt sur les bénéfices 	45
+5… 	Trésorerie 	45
+______________ 	c et d 	_____________
+441.n 	Etat, impôt sur les bénéfices 	40
+5… 	Trésorerie 	40
+______________ 	e 	_____________
+891.n 	Impôts sur les bénéfices de l’exercice 	180
+441.n 	Etat, impôt sur les bénéfices 	180
+le solde de l’impôt restant à payer s’élève à
+180 – (35+45+40+40) =20
+______________ 	_____________
+Impôts sur les bénéfices
+a - en février : 1er acompte d'impôt sur le résultat de n : le quart de 120, représentant
+l'impôt de (n - 2), minimum 35,
+b - en mai : 2e acompte d'impôt sur le résultat de n : le quart de 160, représentant
+l'impôt sur le bénéfice de (n – 1), ainsi que la régularisation du 1er acompte :
+40 - 35 = 5,
+c, d - en septembre et novembre : 3e et 4e acomptes d'impôt sur le résultat (supposé
+constant),
+e - 31 décembre : constatation de l'impôt dû au titre de l’année n : 180.
+APPLICATION 8
+
+-- 27 of 86 --
+
+38
+2.4. Autres impôts
+Les 	autres 	impôts, 	directs 	ou 	indirects, 	à 	la 	charge 	de 	l’entité, 	ainsi 	que 	les 	droits
+d’enregistrement sont enregistrés selon leur nature au débit des comptes de charges 645 et
+646, et selon leur bénéficiaire au crédit des comptes de tiers 442 et 446, si celui-ci est
+national, 451 et 452, s’il est international ou extérieur à l’État de résidence.
+2.5. Majoration d’impôts
+Les majorations d’impôts (pénalités, amendes et même intérêts de retard) sont enregistrées
+dans 647 Pénalités, amendes fiscales, donc en charges courantes (Activités ordinaires).
+SECTION 3 : Subventions d’exploitation et subvention
+d’équilibre
+Les subventions d’exploitation et les subventions d’équilibre accordées par les pouvoirs
+publics sont des « ressources » susceptibles de figurer en produits dans des comptes de la
+classe 7, si la subvention d’exploitation couvre une activité ordinaire, dans la classe 8, dans le
+cas contraire, et dans celui des subventions d’équilibre.
+• 	Le SYSCOHADA distingue :
+o 	d’une part les subventions d’exploitation assises sur des biens achetés, produits ou
+vendus, 	notamment 	celles 	qui 	sont 	accordées 	par 	les 	fonds 	de 	stabilisation,
+enregistrées au crédit des comptes :
+711 Subventions sur produits à l’exportation,
+712 Subventions sur produits à l’importation,
+713 Subventions sur produits de péréquation ;
+Remarque : Dans le cadre des « Groupes », des subventions peuvent être reçues
+d’autres sociétés du Groupe.
+o 	d’autre part, les subventions d’exploitation accordées à d’autres fins, telles que la
+«prime » d’embauche ou de création d’emploi, la participation aux frais de formation,
+
+-- 28 of 86 --
+
+39
+l’ouverture d’un établissement dans des quartiers défavorisés..., enregistrées au crédit
+de 718 Autres subventions d’exploitation et classées par organisme verseur ;
+o 	enfin, les subventions d’équilibre, censées compenser des pertes et enregistrées au
+crédit du compte 88 Subventions d’équilibre.
+• 	Les subventions sont enregistrées, dès réception de la lettre d’octroi, au débit du
+compte 4495 ou 4496 lorsqu’elles proviennent de l’État (ou, à notre avis, d’un
+organisme national), 4582 lorsqu’elles proviennent d’un organisme international.
+Ecritures
+____________ 	a 	___________
+4495 	Etat, subventions d’exploitation à recevoir 	80
+711. 	Subventions sur produits à l’exportation 	80
+______________ 	b 	______________
+4582 	Organismes internationaux, subventions
+à recevoir 	150
+7182 	Autres subv. d’expl. versées par les
+organismes internationaux 	150
+______________ 	c 	_____________
+4495 	Etat, subventions d’exploitation à recevoir 	100
+7181 	Autres subv. d’expl. versées par
+l’Etat et les collectivités publiques 	100
+______________ 	d 	_____________
+4496 	Etat, subventions d’équilibre à recevoir 	25
+881. 	Etat, subventions d’équilibre 	25
+______________ 	_____________
+Produits liés aux subventions d’exploitation et
+d’équilibre
+a - aide accordée par le Fonds de soutien aux cultures vivrières exportées : 80
+b - subvention accordée par l'ONUDI, en compensation de l'engagement de ne pas
+dépasser les prix fixés par les pouvoirs publics (prestations de service) : 150
+c - subvention octroyée par le ministère du Développement rural pour l'ouverture d'une
+agence à l'intérieur du pays : 100
+d - subvention accordée par l'Etat pour compenser la perte de l'exercice précédent : 25
+APPLICATION 9
+
+-- 29 of 86 --
+
+40
+SECTION 4 : Charges de personnel
+4.1. Rémunération directe
+Sur la base des bulletins de salaires et des décomptes de commissions, les rémunérations
+versées aux salariés (salaires, appointements, traitements, soldes, commissions, primes et
+indemnités forfaitaires) sont enregistrées pour leur montant brut au crédit de 422 Personnel,
+rémunérations dues, par le débit des comptes 661 à 663.
+Les retenues sociales ou « cotisations salariales » pratiquées sont ensuite virées de 422 aux
+comptes des organismes sociaux intéressés, 431 à 433, de sorte que le solde de 422 représente
+le salaire net.
+L’indemnité compensatrice de congés payés suit la même règle.
+4.2. Rémunération indirecte
+Sur la base des bordereaux déclaratifs mensuels, trimestriels ou annuels, les rémunérations
+indirectes ou « cotisations patronales » sont débitées en 6641 et 6642, et créditées selon leur
+bénéficiaire dans les comptes d’organismes sociaux 431 à 433.
+4.3. Retenue sur salaires
+Les retenues sur salaires, autres que sociales, sont virées du compte 422 au crédit de :
+o 	421 s’il s’agit d’avances ou d’acomptes,
+o 	l’avance est consentie au salarié avant toute prestation, à son arrivée dans
+l’entité par exemple,
+o 	l’acompte l’est après fourniture de prestations, mais avant l'établissement du
+bulletin de paie, en fin de semaine ou de quinzaine par exemple, si la paie est
+mensuelle ;
+o 	423 s’il s’agit d’oppositions ou de saisies arrêts ;
+o 	447 s’il s’agit d’impôts retenus à la source ;
+de sorte que le compte 422 fasse finalement ressortir le « net à payer ».
+
+-- 30 of 86 --
+
+41
+4.4. Remboursements de frais
+Les remboursements de frais réels engagés par le salarié pour le compte de l’entité sont
+débités par nature dans les consommations de biens et services, 60 à 63, même s’ils figurent
+sur le bulletin de paie.
+4.5. Avantages en nature
+Les avantages en nature consentis aux salariés sont également débités par nature, en :
+- 614 Transports du personnel,
+- 622 Locations et charges locatives,
+- 624 Entretien, réparations et maintenance,
+- 628 Frais de télécommunications,
+- etc.
+mais régularisés globalement en fin d’exercice par le débit des comptes 6617 et 6627
+Avantages en nature et le crédit de 781 Transferts de charges d’exploitation.
+4.6. Rémunération de personnel extérieur
+Les rémunérations de personnel salarié extérieur à l’entité, versées à titre d’honoraires ou
+facturées par des sociétés de « personnel temporaire », constituent des services extérieurs
+enregistrés en 637 Rémunérations de personnel extérieur a l’entité. Mais en fin d’exercice,
+leur montant global fait l’objet d’un transfert :
+Débit - 667 Rémunération transférée de personnel extérieur, ...
+Crédit - 637 Rémunérations de personnel extérieur a l’entité, ...
+de manière qu’elles soient incluses dans les charges de personnel.
+4.7. Rémunération de l’exploitant
+Le 	SYSCOHADA 	prévoit 	également 	un 	compte 	de 	rémunération 	pour 	l’entrepreneur
+individuel (6661 Rémunération du travail de l’exploitant). Son emploi demeure facultatif si
+le patrimoine de l’entité se confond avec celui de l’exploitant. En revanche, ses charges
+sociales 	sont 	obligatoirement 	enregistrées 	en 	6662 	Charges 	sociales 	de 	l’exploitant
+individuel.
+
+-- 31 of 86 --
+
+42
+Ecritures
+Comptabilisation du bulletin de paie
+____________ 	a et b 	___________
+6611 	Appointements et salaires personnel 	110
+6612 	Primes 	10
+422. 	Personnel rémunérations dues 	120
+______________ 	c et d 	______________
+422. 	Personnel rémunérations dues 	19
+431. 	Sécurité sociale 	12
+432. 	Caisses de retraite complémentaire 	7
+______________ 	e, f et g 	_____________
+422. 	Personnel rémunérations dues 	65
+4212 	Personnel acomptes 	40
+4232 	Personnel, saisies arrêts 	20
+447. 	Etat, impôts retenus à la source 	5
+______________ 	h 	_____________
+6055 	Fournitures de bureau non stockables 	2
+422. 	Personnel, rémunérations dues 	2
+______________ 	_____________
+Comptabilisation des charges patronales :
+______________ 	_____________
+6641 	Charges sociales sur rémunération
+du personnel national 	29
+431. 	Sécurité sociale 	18
+432. 	Caisses de retraite complémentaire 	11
+______________ 	_____________
+Charges de personnel
+Bulletin de paie (schématisé) d’un cadre national :
+a - Appointements 	110
+b - Prime 	10
+Salaire brut 	120
+c - Cotisation salariale (sécurité sociale) 	-12
+d - Cotisation salariale (retraite complémentaire) 	-7
+Salaire net 	101
+e - Impôt retenu à la source 	-5
+f - Saisie-arrêt 	-20
+g - Acompte versé 	-40
+Net à payer salaire 	36
+h - Remboursement frais 	+ 2
+(Sur justificatifs ramettes papier)
+Net à payer 	38
+i - Loyer logement 	8
+j - Cotisation patronale (sécurité sociale) 	18
+k - Cotisation patronale (retraite Complémentaire) 	11
+APPLICATION 10
+
+-- 32 of 86 --
+
+43
+Comptabilisation des avantages en nature : loyer
+• Réception appel loyer
+______________ 	_____________
+622. 	Locations et charges locatives 	8
+401. 	Fournisseurs, dettes en compte 	8
+______________ 	_____________
+• en fin d’exercice
+______________ 	_____________
+6617 	Avantages en nature 	8
+781. 	Transferts de charges d’exploitation 	8
+______________ 	_____________
+SECTION 5 : Frais financiers et charges assimilées
+1- Les escomptes accordés aux clients sont enregistrés en 673, même s’ils figurent en
+déduction sur la facture initiale.
+2- Lorsque dans une société les associés disposent de comptes courants créditeurs, les
+intérêts correspondants servis par l’entité sont débités en 6741 ou 6742, selon leur caractère,
+et crédités le cas échéant en 4626 Associés, intérêts courus. Les comptes 462 sont
+subdivisés par associé ou par catégorie d’associés.
+3- Les intérêts des emprunts, y compris la prime d’assurance éventuelle, sont enregistrés en
+671 Intérêts des emprunts. Les agios liés aux découverts bancaires sont inscrits au compte
+6745 Intérêts bancaires... . En revanche, les commissions bancaires liées à un service
+(tenue de compte, effets de commerce, cartes bancaires, systèmes électroniques) relèvent du
+compte 631 Frais bancaires.
+4- Les intérêts sur obligations cautionnées souscrites en faveur du Trésor sont enregistrés en
+6743. En revanche, les intérêts de retard de paiement d’impôt relèvent du compte 647
+Pénalités et amendes fiscales.
+5- Les intérêts dus aux tiers autres que les établissements de crédit, les associés ou porteurs
+d’obligations, sont enregistrés en :
+- 6744 s’il s’agit de fournisseurs ou de clients,
+- 6748 s’il s’agit d’autres prêteurs.
+
+-- 33 of 86 --
+
+44
+6- Le SYSCOHADA incorpore aux charges financières les charges assimilées suivantes :
+o 	en 672 une fraction de la redevance de crédit-bail ou de location-vente, analysée
+comme un intérêt du prêt consenti par le bailleur,
+o 	en 676 les pertes de change supportées, ainsi que les écarts de conversion constatés
+en fin d’exercice sur les disponibilités,
+o 	en 6771 les pertes sur cessions de titres de placement,
+o 	en 678 les pertes encourues sur risques financiers.
+SECTION 6 : Revenus financiers et produits assimilés
+1- Les escomptes obtenus des fournisseurs (à l’exception des fournisseurs d’investissements)
+sont enregistrés en 773, même s’ils figurent en déduction sur la facture initiale.
+2- Les revenus mobiliers (intérêts, dividendes) sont enregistrés en :
+- 772 Revenus de participations, s’il s’agit de titres de participation,
+- 774 Revenus de titres de placement, s’il s’agit de titres de placement.
+Les comptes peuvent être subdivisés selon l’origine nationale ou étrangère de ces revenus.
+3- Les intérêts obtenus sur des montants prêtés par l’entité au personnel ou aux tiers sont
+enregistrés en 771 Intérêts de prêts.
+4- Le SYSCOHADA incorpore aux revenus financiers les produits assimilés suivants, dans
+les conditions décrites ci-dessus pour les charges assimilées :
+- en 776 les gains de change obtenus, ainsi que les écarts de conversion constatés en
+fin d’exercice sur les disponibilités,
+- en 777 les gains sur cessions de titres de placement,
+- en 778 les gains obtenus sur risques financiers.
+
+-- 34 of 86 --
+
+45
+SECTION 1 : Conception et terminologie
+1.1. Terminologie
+A l’exception du Système minimal de trésorerie (S.M.T.), qui n’enregistre que les recettes et
+les dépenses, le SYSCOHADA prévoit, en Système normal, l’enregistrement séparé :
+- des flux juridiques « a », qui traduisent l’obligation contractée ou le droit constaté,
+sur la base des factures, bulletins de paie, déclarations, etc.,
+- et des flux financiers « b », qui traduisent les mouvements de trésorerie qui en
+résultent (cas général), ou qui les précèdent (cas des avances et acomptes), sur la base
+des pièces de caisse, chéquiers, bordereaux, ordres de virement, extraits de compte,
+etc.
+Ces flux financiers donnent lieu à un encaissement chez le créancier, à un paiement chez le
+débiteur, que la pratique réunit dans les termes génériques « règlements » ou « opérations de
+trésorerie »
+1.2. Enregistrement de base
+a) 	En règle générale, les flux juridiques sont enregistrés dans des comptes des classes 6-
+7-8 et 4, les flux financiers dans ceux des classes 4 et 5, selon le schéma suivant :
+o 	En cas de charge et de dépense 	6 et 8 (impairs) 	classe 4 	classe 5
+a…………………….a
+b………………….b
+o 	En cas de produit et de recette 	7 et 8 (pairs)
+a……………...a
+b………….b
+b) 	L’enregistrement des flux financiers diffère selon les modalités de règlement, dans
+lesquelles il convient de distinguer :
+- 	les modes de règlement, par effets de commerce ou autres,
+- 	les délais de règlement.
+Operations de trésorerie	Chapitre 4
+
+-- 35 of 86 --
+
+46
+SECTION 2 : Modes de règlement autres que par effets
+2.1. Règlement en espèces
+a) Le règlement en « espèces » s’effectue en pièces et en billets de banque, sur la base des
+pièces de caisse et des tickets de retraits ou de versements bancaires :
+- au débit d’un compte 57 Caisse, en cas d’entrée ou de recette,
+- à son crédit, en cas de sortie ou de dépense.
+b) Si l’entité tient plusieurs caisses, le compte principal est subdivisé, par succursale ou
+par bureau.
+c) Si elle est autorisée à détenir des devises, celles-ci font l’objet de comptes séparés,
+tenus en devises et en unité monétaire légale (F CFA par exemple) à cours fixe, sous
+réserve de régularisation en fin de période ou d’exercice.
+d) Les espèces peuvent être gérées en « caisse constante » ou variable.
+2.2. Règlement par chèque
+a) En application de la règle de prudence, le débiteur doit enregistrer le chèque signé dès
+son « émission » (c’est-à-dire sa mise en circulation), que la pratique confond avec sa
+«création» (c’est-à-dire sa signature), par une écriture du type :
+______________ 	_____________
+4... 	Tiers 	X
+52.. / 53.. 	Banques ou établissements financiers
+et assimilés 	X
+______________ 	_____________
+Le SYSCOHADA ne s’oppose cependant pas à la pratique courante de n’enregistrer les
+chèques émis qu’à la réception de l’avis de débit, à condition que la régularisation de fin
+de période ou d’exercice tienne compte, après état de rapprochement, des chèques en
+circulation non encore débités.
+
+-- 36 of 86 --
+
+47
+b) En revanche, le créancier ne peut enregistrer le chèque reçu dans un compte bancaire
+52 ou 53 qu’à réception de l’avis de crédit. Auparavant le chèque doit transiter par deux
+comptes de « valeurs à encaisser » :
+- 513 Chèques à encaisser, lorsqu’il arrive dans l’entité, pour limiter les risques de
+détournement interne,
+- 514 Chèques à l’encaissement, lorsqu’il est adressé à l’établissement financier, en
+général sur bordereau numéroté, pour faciliter les contrôles de transmission et limiter
+les risques de détournement externe.
+Ces comptes peuvent être subdivisés par banque destinatrice des bordereaux.
+Les écritures seront du type :
+________Réception du chèque 	___________
+513. 	Chèques à encaisser 	X
+4... 	Tiers 	X
+________Envoi chèque à la banque 	_______
+514. 	Chèques à l’encaissement 	X
+513. 	Chèques à encaisser 	X
+________Réception avis de crédit 	_________
+52.. / 53.. 	Banques ou établissements financiers
+et assimilés 	X
+514 	Chèques à l’encaissement 	X
+______________ 	_____________
+F 	Remarque : Le SYSCOHADA admet cependant que cette ventilation ne soit
+effectuée que pour les « en-cours » de fin de période ou d’exercice.
+2.3. Règlement par carte bancaire ou de crédit
+a) Le paiement par carte bancaire ou de crédit obéit aux mêmes régies que le paiement
+par chèque.
+b) L’encaissement transite comme suit par le compte 515 Cartes de crédit à encaisser :
+___Passage en machine de la carte________
+515. 	Cartes de crédit à encaisser 	X
+4...ou 70.. 	Tiers ou Ventes 	X
+________Réception avis de crédit_________
+52.. / 53.. 	Banques ou établissements financiers
+et assimilés 	net
+6315 	Commissions sur cartes de crédit 	frais
+515. 	Cartes de crédit à encaisser 	brut
+______________ 	_____________
+
+-- 37 of 86 --
+
+48
+2.4. Règlement par virement
+a) Le débiteur qui signe un ordre de virement traite l'opération comme s’il signait un
+chèque (voir ci-dessus).
+b) Le créancier n’enregistrera le règlement qu’à réception de l’avis de virement valant
+avis de crédit, même s’il en est avisé auparavant par le débiteur.
+c) Il est rappelé que le « chèque postal », qui n’est à l’origine qu’un « ordre de virement
+postal », est comptabilisé :
+- comme un chèque bancaire, lorsque le créancier reçoit les trois volets,
+- comme un virement bancaire, lorsque celui-ci ne reçoit que le volet « avis de crédit».
+SECTION 3 : Règlement par effets de commerce
+3.1. Traites et billets
+a) Le SYSCOHADA limite la notion d’effet de commerce aux traites (historiquement
+appelées « lettres de change ») et aux billets à ordre, en particulier les billets de fonds.
+La traite est établie par le créancier « tireur ». Bien que l’acceptation ne soit pas une
+mention obligatoire, celui-ci la fait en général d’abord accepter par le débiteur « tiré »,
+avant même de la signer et de l’émettre. En revanche, le billet est établi par le débiteur
+«souscripteur » et adressé au créancier « bénéficiaire ».
+Mais s’ils diffèrent par leur signataire, traites et billets sont comptabilisés de la même façon :
+o 	dans un compte particulier de tiers, 402, 412 lors de leur émission, bien qu’il
+s’agisse d’une opération de trésorerie,
+o 	dans les comptes 51 à 56 lors de leur règlement ou des opérations intermédiaires.
+3.2. Effets à payer et à recevoir
+a) 	Lorsque le débiteur accepte la traite ou souscrit le billet, y compris l’obligation
+cautionnée,
+
+-- 38 of 86 --
+
+49
+- il transfère la dette commerciale du compte fournisseurs, dettes en compte à
+celui des effets à payer, par une écriture du type :
+_______________ 	____________
+401. 	Fournisseurs, dettes en compte 	X
+402. 	Fournisseurs, effets à payer 	X
+______________ 	____________
+481. 	Fournisseurs d’investissements 	X
+482. 	Fournisseurs d’investissement,
+effets à payer 	X
+______________ 	_____________
+- ou il là constate à l’importation du bien soumis à droit de douane par
+l’écriture :
+_______________ 	____________
+60.. 	Achats 	X
+4491 	Etat, obligations cautionnées 	X
+______________ 	____________
+Ces comptes 402, 482, 4491 peuvent être subdivisés par échéance.
+- Le règlement de l’effet à l’échéance est constaté comme suit
+_______________ 	____________
+402. 	Fournisseurs, Effets à payer 	X
+482. 	Fournisseurs d’investissements,
+effets à payer 	X
+4494 	Etat, obligations cautionnées 	X
+52.. 	Trésorerie 	X
+______________ 	____________
+b) 	Lorsque le créancier signe la traite ou reçoit le billet, il transfère la créance
+commerciale du compte Clients au compte des effets à recevoir, par une écriture du
+type :
+_______________ 	____________
+412. 	Clients, effets à recevoir en portefeuille 	X
+411. 	Clients 	X
+______________ 	____________
+4852 	Créances sur cessions d’immobilisations,
+effets à recevoir 	X
+4851 	Créances sur cessions
+d’immobilisations, en compte 	X
+______________ 	_____________
+Les comptes 412. et 4852 peuvent être subdivisés par échéance.
+
+-- 39 of 86 --
+
+50
+3.3. Effets à encaisser
+a) Lorsque le créancier confie à l’échéance l’encaissement de l’effet à un tiers, il
+transfère la créance de change dans un compte transitoire 512 Effets à l’encaissement,
+sur la base d’un bordereau de remise à l’encaissement :
+_______________ 	____________
+512. 	Effets à l’encaissement 	X
+412. 	Clients, effets à recevoir 	X
+4852 	Créances sur cessions
+d’immobilisations, effets à recevoir 	X
+______________ 	____________
+On ne confondra pas ce compte avec 511 Effets à encaisser, qui recense les effets éventuels
+en portefeuille autres que ceux concernant les clients.
+b) Lorsqu’après l’échéance la banque avise le créancier de la bonne fin de l’opération sur
+un bordereau d’encaissement (qui peut être un duplicata du bordereau de remise,
+accompagné de l’avis de crédit), celui-ci passe l’écriture suivante :
+_______________ 	____________
+52.. / 53.. 	Banques ou établissements financiers 	net
+6312 	Frais sur effets 	commissions
+512. 	Effets à l’encaissement 	brut
+______________ 	____________
+3.4. Effets à l’escompte
+a) 	Lorsque le créancier négocie l’effet avant l’échéance, c’est-à-dire le remet à,
+l’escompte, il transfère la créance cambiaire du compte 412 au compte 415, sur la
+base du bordereau de remise à l’escompte :
+_______________ 	____________
+415. 	Clients, effets escomptés non échus 	X
+412. 	Clients, effets à recevoir 	X
+______________ 	____________
+4855 	Créances sur cessions d’immobilisations,
+effets escomptés non échus 	X
+4852 	Créances sur cessions
+d’immobilisations, effets à recevoir 	X
+______________ 	_____________
+
+-- 40 of 86 --
+
+51
+b) 	Lorsque la banque accepte d’escompter l’effet, le bordereau d’escompte est
+enregistré comme suit, compte tenu de l’agio retenu. Le SYSCOHADA admet que
+la totalité de l’agio hors taxe soit considéré comme frais financiers, qu’il s’agisse
+d’escompte ou de commissions et frais.
+_______________ 	____________
+52.. 	Banques ou établissements financiers 	net
+675. 	Escomptes des effets de commerce 	agios
+565. 	Banques, escompte de crédit ordinaire 	brut
+564. 	Banques, escompte de crédit de campagne 	brut
+______________ 	____________
+c) 	Après l’échéance, et en cas de bonne fin de l’opération seulement, la créance
+sur le client et la dette envers la banque sont compensées par l’écriture :
+_______________ 	____________
+565. 	Banques, escompte de crédit ordinaire 	X
+564. 	Banques, escompte de crédit de campagne 	X
+415. 	Clients, effets escomptés non échus 	X
+4855 	Créances sur cessions d’immobilisations,
+effets escomptés non échus 	X
+______________ 	____________
+Il faut bien noter que :
+- 	les effets escomptés non échus restent à l’actif du bilan de l’entité,
+- 	le crédit accordé par la banque figure au passif du bilan (compte 56) pour le
+même montant.
+Par ce procédé, le compte « Clients » représente l’encours de créances (crédits
+Clients) à la date du bilan.
+3.5. Effets impayés
+a) En cas de non-paiement à l’échéance, l’établissement financier retourne au créancier
+l’effet, que celui-ci ait été remis à l’encaissement ou à l’escompte. Le créancier peut
+alors:
+- soit transférer à nouveau le montant de 415 en 411,
+- soit tirer une nouvelle traite ou exiger un nouveau billet, à vue ou à échéance
+nouvelle, et reprendre, à partir du compte 415, les écritures ci-dessus décrites.
+b) Le nouvel effet comprendra, outre le principal
+- 	les frais de retour récupérés
+o 	chez le créancier : débit compte de charges par nature lors de l’engagement
+de la charge et crédit du compte 7078 lors de l’émission du nouvel effet ;
+
+-- 41 of 86 --
+
+52
+o 	chez le débiteur : débit du compte 6312 frais sur effets
+- 	les intérêts de retard : compte 7713 intérêts sur créances diverses chez le
+créancier et compte 6744 intérêts sur dettes commerciales chez le débiteur
+- 	les frais de « retraite » (timbre fiscal éventuel compris) compte 7078 autres
+produits accessoires chez le créancier et 6312 frais sur effets chez le débiteur.
+SECTION 4 : Instruments de monnaie électronique
+L’instrument de monnaie électronique est constitué d’une valeur monétaire stockée sous
+forme électronique, y compris magnétique, représentant une créance sur l’émetteur qui est
+remise contre remise de fonds aux fins d’opération de paiement ou de transfert d’argent. Pour
+tout chargement et paiement par instruments de monnaie électronique, l’entité doit réclamer
+un justificatif pour l’enregistrement des écritures suivantes :
+a) 	Le chargement de l’instrument de monnaie électronique se fait par une sortie de fonds
+par chèque ou par caisse comme suit :
+_______________ 	____________
+55.. 	Instruments de monnaie électronique 	X
+52.. / 53.. 	Banques ou établissements financiers 	X
+57.. 	Caisses 	X
+______________ 	____________
+b) 	Les frais éventuels relatifs au chargement de l’instrument de monnaie électronique
+seront enregistrés ainsi :
+_______________ 	______________
+6317 	Frais sur instruments, monnaie électronique 	X
+52.. / 53.. 	Banques ou établissements financiers 	X
+57.. 	Caisses 	X
+______________ 	______________
+c) 	Les règlements ou les transferts de fonds par instruments de monnaie électronique sont
+constatés par l’écriture suivante :
+_______________ 	______________
+4… 	Tiers 	X
+55.. 	Instruments de monnaie électronique 	X
+______________ 	______________
+d) 	En fin de période, il est indispensable de rapprocher le solde comptable avec le solde
+réel qui pourra être confirmé par l’émetteur de l’instrument de monnaie électronique.
+
+-- 42 of 86 --
+
+53
+SECTION 5 : Délais de règlement
+Toute opération comporte normalement une échéance ou date de règlement, constatée sur la
+facture, le bulletin de paie, la déclaration, l’avertissement fiscal ou le bordereau. Il convient
+évidemment de prévoir le cas où cette date est modifiée.
+5.1. Règlement anticipé
+a) 	En cas de règlement avant l’échéance, le client débiteur peut bénéficier (sur accord du
+fournisseur) d’une réduction financière appelée escompte de règlement. Ce dernier
+diffère de l’escompte des effets de commerce, non seulement par sa nature juridique,
+mais également par son mode de calcul : il est déterminé en pourcentage simple (de 1
+à 	3 	% 	selon 	les 	usages), 	et 	non 	pas 	prorata 	temporis 	comme 	les 	intérêts 	;
+son niveau est cependant corrélé à celui des taux usuels du crédit. Il figure quelquefois
+sur les factures, mais ne peut être pratiqué normalement qu’en cas de règlement
+effectivement anticipé.
+b) 	Quel que soit son mode de présentation (sur facture ordinaire ou DOIT en diminution,
+ou sur facture d’AVOIR, ou encore nulle part), l’escompte de règlement est enregistré,
+mais en principe seulement lors du paiement, en 673 s’il s’agit d’un escompte accordé,
+ou en 773 s’il s’agit d’un escompte obtenu pour les marchandises, les matières
+premières et autres biens d’approvisionnement ou en classe 2 s ‘il s’agit d’un
+escompte obtenu sur un bien immobilier. Si l’opération est soumise à une taxe sur le
+chiffre d’affaires, l’assiette de cette taxe est réduite d’autant, et le montant récupérable
+également.
+Ecriture chez le client débiteur s’il s’agit de biens d’exploitation
+_______________ 	______________
+401. 	Fournisseurs dettes en compte 	X
+773. 	Escomptes obtenus 	X
+445. 	Etat T.V.A. récupérable 	X
+5… 	Trésorerie 	X
+______________ 	______________
+
+-- 43 of 86 --
+
+54
+Ecriture chez le client débiteur s’il s’agit de biens immobiliers
+_______________ 	______________
+481 . 	Fournisseurs d’investissements 	X
+404. 	Fournisseurs, acquisitions courantes d’immob. 	X
+2…. 	Immobilisations 	X
+445. 	Etat T.V.A. récupérable 	X
+5… 	Trésorerie 	X
+______________ 	______________
+Ecriture chez le fournisseur créancier
+_______________
+5... 	Trésorerie 	X
+673. 	Escomptes accordés 	X
+443. 	Etat T.V.A. facturée 	X
+446. 	Etat autres T.C.A. 	X
+411. 	Clients 	X
+______________ 	______________
+5.2. Règlement retardé
+a) 	Si un chèque, une carte bancaire ou un effet de commerce reviennent impayés,
+l’entité :
+• 	débite le compte 6318 Autres frais bancaires (pour les frais d’impayés) par le crédit
+du compte 521 Banques ;
+6318
+521
+Autres frais bancaires
+Banques
+(Selon bordereau d’impayé)
+X
+X
+• 	ensuite, débite le compte 413 Clients, chèques, effets et autres valeurs impayés
+(pour le montant principal majoré des frais d’impayés) pour le crédit du compte 51
+Valeurs à encaisser (montant principal) et le compte 7078 Autres frais accessoires
+(récupération des frais d’impayés).
+
+-- 44 of 86 --
+
+55
+4131
+4132
+4133
+51
+7078
+Clients, chèques impayés
+Clients effets impayés
+Clients, cartes de crédit impayées
+Valeurs à encaisser
+Autres produits accessoires
+(Imputation du montant principal majoré des frais
+d’impayés)
+X
+X
+X
+X
+X
+Le SYSCOHADA n’admet pas la compensation des frais en classe 6.
+b) Selon les conditions de vente, et l’accord réalisé avec le client, la créance est également
+majorée des intérêts de retard, calculés au taux légal ou à un taux contractuel, de l’ancienne
+échéance à la nouvelle date de règlement convenue.
+L’écriture sera :
+_______________ 	______________
+4131 	Clients, chèques impayés 	X
+4132 	Clients, effets impayés 	X
+771. 	Intérêts des prêts 	X
+______________ 	______________
+15/12/N
+513
+411
+Chèques à encaisser
+Clients
+(Réception du chèque)
+42 500 000
+42 500 000
+18/12/N
+514
+513
+Chèques à l’encaissement
+Chèques à encaisser
+(Remise à l’encaissement du chèque)
+42 500 000
+42 500 000
+Chèques impayés
+Le client Gambiss de l’entité Guerdass a remis le 15 décembre N un chèque de
+42 500 000 en paiement pour solde. Le chèque est remis à l’encaissement le 18
+décembre N. Il revient impayé le 21 décembre N.
+Les frais d’impayés s’élèvent à 50 000 et sont à la charge du client.
+APPLICATION 11
+
+-- 45 of 86 --
+
+56
+21/12/N
+6318
+521
+Autres frais bancaires
+Banques
+(Selon bordereau d’impayé)
+50 000
+50 000
+4131
+514
+7078
+Clients, chèques impayés
+Chèques à l’encaissement
+Autres produits accessoires
+(Imputation du montant du chèque majoré des frais
+d’impayés)
+42 550 000
+42 500 000
+50 000
+Ces deux écritures peuvent être regroupées en une seule :
+21/12 / N
+4131
+514
+521
+Clients, chèques impayés
+Chèques à l’encaissement
+Banques
+(Réception du bordereau d’impayé de la banque)
+42 550 000
+42 000 000
+50 000
+
+-- 46 of 86 --
+
+57
+SECTION 6 : Exemple de synthèse
+1. Ecritures chez le client (débiteur)
+_______________ 	a 	______________
+401. 	Fournisseurs dettes en compte 	600
+773. 	Escomptes obtenus (500 X 2%) 	10
+445. 	Etat T.V.A. récupérable (10 X 20%) 	2
+554. 	Porte-monnaie électronique 	588
+______________ 	b 	______________
+401 	Fournisseurs dettes en compte 	600
+402.1 	Fournisseurs, effets à payer au.. 	300
+402.3 	Fournisseurs, effets à payer au .. 	300
+____________ 	c 	______________
+402.1 	Fournisseurs effet à payer au….. 	300
+5211 	Banques 	300
+____________ 	f 	______________
+402.3 	Fournisseurs effets à payer au.. 	300
+6744 	Intérêts sur dettes commerciales (300 X 12% X 60/360) 	6
+6312 	frais sur effets (3+1) 	4
+445. 	Etat T.V.A. récupérable (3 X 20%) 	1
+402.5 	Fournisseurs effets à payer au.. 	311
+______________ 	_________________
+Synthèse sur les instruments de règlement
+Une créance-dette d’exploitation (relation Client/Fournisseur) de 1 200 T.T.C. soit
+1 000 H.T. doit être réglée comme suit :
+a) 	La moitié est payée au comptant par monnaie électronique, moyennant un
+escompte de 2 % (T.V.A. 20%).
+b) 	Le solde l’est par deux traites A et B de même valeur nominale, à échéance de
+30 jours (fin du mois 1) et 90 jours (fin du mois 3).
+c) 	La traite A est conservée en portefeuille, puis encaissée sans incident à
+l’échéance, moyennant une commission de 5 H.T.
+d) 	La traite B est négociée 45 jours avant l’échéance, moyennant un taux
+d’escompte (plus commission d’endos.) de 8 % et une commission de 5 H.T.
+e) 	Elle revient impayée, avec des frais de retour de 3.
+f) 	Elle fait l’objet d’une nouvelle traite à 60 jours (fin du mois 5), pour laquelle le
+créancier facture un timbre fiscal de 1 et des intérêts de retard à 12 % l’an.
+APPLICATION 12
+
+-- 47 of 86 --
+
+58
+2. Ecritures chez le fournisseur (créancier)
+_______________ 	a 	______________
+513. 	Chèques à encaisser 	588
+673. 	Escomptes accordés (500 X 2%) 	10
+443. 	Etat T.V.A. facturée (10 X 20%) 	2
+411. 	clients 	600
+________________ 	a1 	______________
+514 	chèques à l’encaissement 	588
+513. 	Chèques à encaisser 	588
+________________ 	a2 	_______________
+5212 	Banque Y 	588
+514. 	Chèques à l’encaissement 	588
+______________ 	b 	______________
+4121.1 	Clients, effets à recevoir au.. 	300
+4121.3 	Clients, effets à recevoir au.. 	300
+411. 	Clients 	600
+____________ 	c 	______________
+512. 	Effets à l’encaissement 	300
+4121.1 	clients effets à recevoir au.. 	300
+_____________ 	c 	______________
+5212 	Banques Y 	294
+6312 	Frais sur effets 	5
+445. 	Etat, T.V.A. récupérable (5 X 20%) 	1
+512. 	Effets à l’encaissement 	300
+______________ 	d 	_____________
+415. 	Clients, effets escomptés non échus 	300
+4121.3 	Clients, effets à recevoir au.. 	300
+_______________ 	d1 	_____________
+5212 	Banque Y 	291
+675. 	Escomptes des effets de commerce (300X8%X45/360) +5 	8
+445. 	Etat T.V.A. récupérable (5 X 20%) 	1
+565. 	Banques, escompte de crédits ordinaires 	300
+_______________ 	e 	______________
+6312 	frais sur effets 	3
+5212 	Banque Y 	3
+_______________ 	e1 	______________
+565. 	Banques, escompte de crédits ordinaires 	300
+415. 	Clients, effets escomptés non échus 	300
+(Si l’opération était dénouée normalement)
+____________ 	f 	______________
+4121.5 	Clients, effets à recevoir au.. 	311
+7712 	Intérêts de prêts (300 X 12% X 60/360) 	6
+7078 	Autres produits accessoires (3+1) 	4
+443. 	Etat T.V.A. facturée (3 X 20%) 	1
+415. 	Clients, effets escomptés non échus 	300
+______________ 	_________________
+
+-- 48 of 86 --
+
+59
+SECTION 1 : Conception et terminologie
+1.1 Notion d’immobilisation
+a) 	Comme l’indique le circuit de l’entité, les opérations d’exploitation étudiées dans les
+trois chapitres précédents ne sont possibles que si l’entité dispose par ailleurs d’une
+infrastructure, constituée d’investissements (terme économique), et pour laquelle le
+SYSCOHADA a retenu le terme comptable d’immobilisations.
+b) 	Les immobilisations sont ainsi définies comme les « éléments corporels et incorporels
+destinés à servir de façon durable à l’activité de l’entité ». Comme le SYSCOHADA
+prévoit par ailleurs un arrêté annuel des comptes, à l’issue d’un exercice comptable, le
+terme « durable » doit s’entendre au sens « qui dure plus d’une année ». Stricto sensu,
+le taille-crayon ou le câble électrique de raccordement devraient donc être considérés
+comme des immobilisations et faire l’objet d’un plan d’amortissement, puisqu’ils «
+durent » en règle générale plus d’une année.
+c) 	Mais la pratique comptable, appliquant en ce domaine le principe d’importance
+significative, admet que les biens durables dont la valeur unitaire ne dépasse pas un
+certain seuil soient considérés comme des consommations. Le SYSCOHADA admet
+dans 	la 	« 	terminologie 	» 	que 	« 	certains 	biens 	de 	peu 	de 	valeur 	ou 	dont 	la
+consommation est très rapide peuvent être considérés comme entièrement consommés
+dans l’exercice de leur mise en service, et par conséquent ne peuvent pas être classés
+dans les immobilisations ». Il ne fixe pas, en revanche, de seuil de valeur.
+d) 	Par ailleurs, la notion initiale d’immobilisation physique, ou corporelle, a été étendue :
+§ 	aux droits détenus par l’entité, ayant une valeur juridique et économique, mais
+sans consistance physique, et appelés de ce fait « immobilisations incorporelles » :
+brevet, logiciel….
+§ 	aux valeurs mobilières, autres titres financiers, et prêts, que l'entité souhaite ou est
+obligée de conserver durant plus d’un an, qui sont certes quelquefois représentés
+par un « titre » en papier (du moins avant leur dématérialisation), mais qui ne sont
+pas « corporels » pour autant, et que le SYSCOHADA désigne par un terme
+intermédiaire « immobilisations financières » : Actions de sociétés que l'entité
+entend contrôler, fonds de placement imposés à l'entité, prêts au personnel,
+cautionnements.
+Opérations d’investissement et de désinvestissement
+Chapitre 5
+
+-- 49 of 86 --
+
+60
+1.2. Vie d’une immobilisation
+Pour être « durables », les immobilisations sont néanmoins tributaires des aléas de la vie
+économique :
+- 	elles naissent ou entrent : l’entité acquiert les immobilisations ou les produit elle-
+même, à une valeur déterminée ;
+- 	elles servent et s’usent : l’entité les met en service, repartit le montant amortissable
+des biens sur leur durée d’utilité et constate éventuellement leur dépréciation;
+- 	elles meurent ou sortent : l’entité les met au rebut, les détruit, les vend ou les
+échange.
+SECTION 2 : Comptabilisation de l’immobilisation
+2.1. Processus de comptabilisation
+a) 	Les immobilisations sont enregistrées en classe 2 « comptes d’actif immobilisé », à
+savoir :
+- 	les immobilisations incorporelles en 21..
+- 	les immobilisations corporelles dans les comptes 22.. à 24..,
+- 	les immobilisations financières dans les comptes 25.. à 27..
+Lorsque la subdivision à 4 chiffres du SYSCOHADA s’avère insuffisante, l’entité peut
+faire appel à la nomenclature des actifs non financiers.
+L’écriture varie selon le mode d’acquisition.
+b) 	Si le bien est acheté auprès d’un tiers, achat précédé d’un acompte, l’écriture sera :
+- 	au versement
+_______________ 	______________
+25.. 	Avances et acomptes versés sur immobilisations 	X
+5… 	Trésorerie 	X
+________________ 	______________
+
+-- 50 of 86 --
+
+61
+- 	à la réception de la facture
+_______________ 	______________
+2... 	Immobilisations 	X
+4451 	Etat, T.V.A. récupérable sur immobilisations 	X
+25.. 	Avances et acomptes versées sur immobilisations 	X
+481. 	Fournisseurs d’investissements 	X
+404 	Four., acquisitions courantes d’immo. 	X
+________________ 	______________
+c) 	Si le bien est produit par l’entité, sur une durée dépassant l’exercice n, l’écriture sera :
+- 	à l’issue de N
+_______________ 	______________
+219. 	Immobilisations incorporelles en cours 	X
+229. 	Aménagement de terrains en cours 	X
+239. 	Bâtiments, A.A.I. en cours 	X
+249. 	Matériels et actifs biologiques en cours 	X
+72.. 	Production immobilisée 	X
+787 	Transferts de charges financières 	X
+___________ 	_____________
+- 	à l’achèvement de N
+_______________ 	______________
+2… 	Immobilisations 	X
+4451 	Etat, T.V.A. récupérable sur immobilisations 	X
+219. 	Immobilisations incorporelles en cours 	X
+229. 	Aménagement de terrains en cours 	X
+239. 	Bâtiments, A.A.I. en cours 	X
+249. 	Matériels et actifs biologiques en cours 	X
+72.. 	Production immobilisée 	X
+787 	Transfert de charges financières 	X
+4434 	Etat, sur T.V.A. facturée sur production
+livrée à soi-même 	X
+________________ 	______________
+d) 	Si le bien est acquis à titre gratuit, Il sera enregistré à la valeur actuelle comme suit :
+_______________ 	______________
+2... 	Comptes d’actif immobilisé 	X
+148 	Autres subventions d’investissement (1) 	X
+________________ 	______________
+(1) Lorsque le montant du bien acquis à titre gratuit n’est pas significatif le compte 841
+Produits HAO constatés peut être utilisé.
+
+-- 51 of 86 --
+
+62
+2.2. Valeur comptabilisée
+a) 	L’Acte 	uniforme 	relatif 	au 	droit 	comptable 	prescrit, 	en 	son 	article 	36,
+l’enregistrement des biens au coût (historique, constitué :
+- 	soit du « coût réel d’acquisition », en cas d’achat,
+- 	soit du « coût réel de production », en cas de production immobilisée,
+- 	soit de la « valeur d’apport » en cas d’apport en société,
+- 	soit de la « valeur actuelle », en cas d’acquisition à titre gratuit,
+- 	soit à la « valeur actuelle » de celui des deux éléments dont l’estimation est la
+plus fiable, en cas d’échange.
+b) 	Le coût réel d’acquisition est formé, selon l’article 37 dudit Acte Uniforme :
+- 	du prix d’achat définitif indiqué par la facture net de remises et de rabais
+commerciaux, d’escompte de règlement;
+- 	des « charges accessoires rattachables directement à l’opération d’achat » :
+§ 	frais de transport et d’assurances, droits de douane et de transit,
+§ 	commissions, honoraires d’architecte,
+§ 	droits d’enregistrement, honoraires de notaires, frais d’actes ;
+- 	des 	« 	charges 	d’installation 	nécessaires 	pour 	mettre 	le 	bien 	en 	état
+d’utilisation» : préparation, montage et mise en route ;
+- 	de l’estimation initiale des coûts relatifs au démantèlement, à l’enlèvement de
+l’immobilisation et à la remise en état du site sur lequel elle est située si cette
+obligation incombe à l’entité.
+Ces éléments s’entendent taxes comprises si l’entité n’est pas habilitée à déduire la
+T.V.A., mais hors T.V.A. dans le cas contraire.
+c) 	Le SYSCOHADA définit comme suit le coût réel de production :
+- 	coût d’acquisition des matières et fournitures consommées,
+- 	charges directes de production,
+- 	charges indirectes de production, « dans la mesure où elles peuvent être
+raisonnablement rattachées à la production du bien ».
+
+-- 52 of 86 --
+
+63
+Les coûts d’emprunt nécessaires au financement de l’acquisition ou de la production
+d’un actif qualifié, immobilisation incorporelle, corporelle ou stock, font partie du coût
+du bien lorsqu’ils concernent la période de production de cet actif, jusqu’à la date
+d’acquisition ou la date de réception définitive.
+d) 	La valeur d’apport et la valeur actuelle sont normalement précisées dans les actes
+correspondants. Si non, elles sont évaluées en fonction de l’utilité du bien apporté,
+échangé ou obtenu.
+Tous les frais accessoires encourus sont inclus dans le coût d’acquisition ou de
+production du bien jusqu’à son lieu d’exploitation et à sa mise en état de
+fonctionner.
+EXEMPLE :
+22.. Terrain A
+acheté
+23.. Bâtiment B
+construit
+24.. Matériel C
+acheté
+H.T. 	T.V.A 	H.T. 	T.V.A. 	H.T. 	T.V.A.
+Coût de production 	900 	180
+Prix facturé 	400 	800 	160
+Commission 5% 	20 	4 	40 	8
+Transport 	300 	60
+Assurance 	6
+Douane 	15
+Transit 	10 	2
+Montage 	100 	20
+Mise en route 	20 	4
+Honoraires Architecte 	45 	9
+Honoraires Notaire 	15 	3
+Droits de mutation 	50
+Cout emprunt jusqu’à réception
+définitive du bien
+35
+Estimation des coûts relatifs au
+démantèlement et à la remise en
+état du site
+200
+Total valeur comptabilisée 	485 	7 	1 180 	189 	1 291 	254
+Coût de l’emprunt au-delà de la réception définitive du bien (compte 671) 	70
+
+-- 53 of 86 --
+
+64
+SECTION 3 : Immobilisation en service
+3.1. Mise en service
+a) 	L’immobilisation entre dans le patrimoine de l’entité dès son acquisition, sur la base
+de la facture, ou dès sa livraison à elle-même, sur la base d’un constat. Mais elle ne
+coïncide pas nécessairement avec la mise en service.
+b) 	La date de mise en service est la date à laquelle l'actif immobilisé est en l'état et en lieu
+d'utilisation prévue par l'entité. Elle n’entraîne en principe aucune écriture comptable,
+mais constitue, en principe, le point de départ de l’amortissement.
+3.2. Amortissement
+3.2.1. Principes généraux
+a) 	L’amortissement consiste pour l’entité à répartir le montant amortissable du bien sur
+sa durée d’utilité selon un plan prédéfini.
+Le montant du bien amortissable s'entend de la différence entre le coût d'entrée d’un
+actif et sa valeur résiduelle prévisionnelle.
+La valeur résiduelle prévisionnelle d'un actif est le montant estimé, à la date de mise
+en service, qu'une entité obtiendrait de la sortie de l'actif, après déduction des coûts de
+sortie estimés.
+b) 	La durée d'utilité est définie en fonction de l'utilité attendue de cet actif pour l’entité.
+Tous les facteurs suivants sont pris en considération pour déterminer la durée d’utilité
+d’un actif :
+- 	l'usage attendu de cet actif par l'entité, évalué par référence à la capacité ou à la
+production physique attendue de cet actif ;
+- 	l'usure physique attendue dépendant notamment des cadences de production et de
+la maintenance ;
+- 	l'obsolescence 	technique 	ou 	commerciale 	découlant 	de 	changements 	ou
+d'améliorations dans la production ou d’une évolution de la demande du marché
+pour le produit ou le service fourni par l’actif ;
+- 	les limites juridiques ou similaires sur l'usage de l'actif, telles que les dates
+d'expiration des contrats de location.
+
+-- 54 of 86 --
+
+65
+3.2.2. Modes d’amortissement
+Différents modes d'amortissement peuvent être utilisés pour répartir de façon systématique le
+montant amortissable d'un actif sur sa durée d'utilité. Ces modes incluent :
+• 	le mode linéaire qui conduit à une charge constante sur la durée d'utilité de l'actif ;
+• 	le mode dégressif à taux décroissant qui conduit à une charge décroissante sur la durée
+d'utilité de l'actif;
+• 	le mode des unités de production ou unités d’œuvre (nombre de pièces produites,
+heures de fonctionnement, nombre de kilomètres parcourus, nombre d’heures de
+travail etc.) qui donne lieu à une charge basée sur l'utilisation ou la production prévue
+de l'actif ;
+• 	et tout autre mode mieux adapté.
+Un mode d’amortissement basé sur les revenus générés par l'utilisation de l'actif est interdit
+pour les immobilisations corporelles. De même, 	l’amortissement financier 	qui consiste à
+amortir une immobilisation au même rythme que le coût de son financement n’est pas
+autorisé.
+3.2.2.1. Amortissement dégressif à taux décroissant
+Le mode d’amortissement dégressif à taux décroissant ou méthode SOFTY (Sum Of The
+Year’s digits) consiste à amortir l’immobilisation selon une suite arithmétique décroissante
+par l’application d’un taux décroissant à la base amortissable.
+L’amortissement dégressif à taux décroissant est utilisé lorsqu’il permet au mieux de traduire
+le rythme de consommation des avantages économiques attendus. Ce mode d'amortissement
+comptable ou économiquement justifié conduit à une charge décroissante sur la durée d'utilité
+de l’immobilisation.
+• 	Taux décroissant
+Le taux décroissant (TD) est obtenu en faisant le rapport entre le nombre d’années restant à
+courir jusqu’à la fin de la durée d’utilité du bien et de la somme des numéros d’ordre de
+l’ensemble des années :
+!" = $%&'() +’-..é)0 ()01-.1 à 3%4(5( 64074’à 8- 95. +) 8- +4(é) +’415851é +4 '5).
+:%&&) +)0 .4&é(%0 +’%(+() +) 8;).0)&'8) +)0 -..é)0
+
+-- 55 of 86 --
+
+66
+Ainsi, pour une durée d’utilité 	de 5 ans par exemple, on fait la somme des numéros
+d’années :1 + 2 + 3 + 4 + 5 = 15 ;
+et ensuite, on détermine les taux décroissants de la façon suivante :
+Année 1 = 5/15 ; Année 2 = 4/15 ; Année 3 = 3/15 ; Année 4 = 2/15 ; Année 5 = 1/15.
+• 	Annuité d’amortissement= base amortissable x taux décroissant de l’exercice.
+La base d’amortissable reste constante d’un exercice à l’autre.
+Remarque : si l’on désigne par n le nombre d’année, V la valeur à amortir et p une année
+quelconque, la dotation aux amortissements de l’année p s’obtient grâce à la formule.
+Annuité d’amortissement = <=(?@ABC)
+?(?@A)
+La suite des dotations est en progression arithmétique décroissante.
+Plan d'amortissement
+Date
+Base
+amortissable
+Taux
+d'amortissement Annuité
+d'amortissement
+Amortissements
+cumulés
+Valeur nette
+comptable
+31/12/N 	500 000 	5/15 	166 667(1) 166 667 	383 333
+31/12/N+1 	500 000 	4/15 	133 333(2) 300 000 	250 000
+31/12/N+2 	500 000 	3/15 	100 000(3) 400 000 	150 000
+31/12/N+3 	500 000 	2/15 	66 667(4) 466 667 	83 333
+31/12/N+4 	500 000 	1/15 	33 333(5) 500 000 	50 000 (6)
+(1) 500 000 x (5/15) = 166 666,67
+ou 2V(n + 1 – p) / n(n + 1) = 2x500 000x(5+1-1) / 5x6 = 166 666,67
+(2) 500 000 x (4/15) = 133 333,33
+(3) 500 000 x (3/15) = 100 000
+(4) 500 000 x (2/15) = 66 666,67
+(5) 500 000 x (1/15) = 33 333,33
+(6) Valeur comptable nette = valeur brute au bilan - amortissements cumulés.
+Amortissement dégressif à taux décroissant
+Le 01/01/N, une entité a acquis une machine-outil dont le coût d’acquisition est de
+550 000. La valeur résiduelle est estimée à 50 000. La durée d’utilité de la machine est
+estimée à 5 ans.
+APPLICATION 13
+
+-- 56 of 86 --
+
+67
+3.2.2.2. Amortissement par unités d’œuvre
+Ce mode d’amortissement consiste à repartir le montant amortissable en fonction d’unités
+d’œuvre qui peuvent être le nombre de de produits fabriqués, le nombre de kilomètres
+parcourus, le nombre d’heures de fonctionnement d’une machine, nombre d’heure de travail,
+etc.
+L’annuité d’amortissement est obtenue en multipliant la base amortissable par le rapport entre
+le nombre d’unités d’œuvre consommés pendant l’exercice et le nombre total d’unités
+d’œuvre prévues.
+Annuité d’amortissement = base amortissable X ?TUVWX Y′[?\]é^ Y′TX[_WX `T?^TUUé^
+]T]ab Y′[?\]é^ Y′TX[_WX CWé_[X^
+Le nombre total d’unités d’œuvre prévues est déterminé en fonction de la durée d’utilité de
+l’immobilisation.
+Remarque : pour le calcul des annuités d’amortissement, on n’applique pas de prorata
+temporis car les annuités se calculent en fonction des unités d’œuvre consommés et non en
+fonction du temps ;
+Base d’amortissement = 550 000 -50 000 = 500 000
+Date Base
+amortissable 	Amortissement Amortissements
+cumulées
+Valeur nette
+comptable
+31/12/N 	500 000 	100 000 (1) 100 000 	450000
+31/12/N+1 	500 000 	166 667 	266 667 	283 333
+31/12/N+2 	500 000 	166 667 	433 334 	116 666
+31/12/N+3 	500 000 	33 333 	466 667 	83 333
+31/12/N+4 	500 000 	33 333 	500 000 	50 000 (2)
+(1) (550 000 – 50 000) x 150 000 /750 000 = 100 000.
+(2) Valeur comptable nette = valeur brute au bilan - Amortissements cumulés.
+Amortissement par unités d’œuvre
+Le 01/01/N, une entité a acquis une machine-outil dont le coût d’acquisition est de
+550 000. La valeur résiduelle est estimée à 50 000. La durée d’utilité de la machine est
+estimée à 5 ans.
+On vous indique que 	les avantages économiques attendus sur les 5 exercices sont
+mesurés en fonction des unités fabriquées soit respectivement :
+Années 	N+1 	N+2 	N+3 	N+4 	N+5 	Total
+Unités fabriquées 	150 000 	250 000 	250 000 	50 000 	50 000 	750 000
+APPLICATION 14
+
+-- 57 of 86 --
+
+68
+3.2.3. Comptabilisation
+Pour que l’amortissement n’affecte pas les comptes d’immobilisations 21 à 24 eux-mêmes, le
+SYSCOHADA 	préconise 	l’amortissement 	indirect, 	c’est-à-dire 	l’utilisation 	de 	comptes
+d’amortissements qui sont des démembrements des comptes d’immobilisations, sur la base de
+l’écriture suivante:
+_______________ 	______________
+681. 	Dotations aux amortissements d’exploitation 	X
+852. 	Dotations aux amortissements H.A.O. 	X
+28.. 	Amortissements 	X
+________________ 	______________
+a) 	Le compte principal 28 est subdivisé à l’image des comptes 21 à 24. Ses soldes
+créditeurs figureront à l’actif du Bilan, en soustraction.
+b) 	En règle générale, les dotations relèvent du compte 681, même si elles concernent un
+exercice antérieur, et cela malgré le principe de la spécialisation des exercices. Seules
+relèvent du compte 852 les dotations dues à la restructuration de l’entité, ou à des
+événements extraordinaires.
+c) 	Les 	amortissements 	dérogatoires 	sont 	des 	provisions 	réglementées 	; 	ils 	ne
+correspondent à une répartition du montant amortissable du bien sur sa durée d’utilité
+et sont enregistrés comme suit :
+_______________ 	______________
+851. 	Dotations H.A.O. aux provisions réglementées 	X
+151. 	Amortissements dérogatoires 	X
+________________ 	______________
+d) 	Toute 	modification 	significative 	dans 	l'environnement 	juridique, 	technique,
+économique de l’entité et dans les conditions d'utilisation du bien est susceptible
+d'entraîner la révision du plan d'amortissement en cours d'exécution. En cas de
+révision d’un plan d’amortissement (cas a priori très rare), les reprises éventuelles sont
+enregistrées comme suit, selon le cas :
+_______________ 	______________
+28.. 	Amortissements 	X
+798. 	Reprises d’amortissements 	X
+862. 	Reprises H.A.O. d’amortissements 	X
+________________ 	______________
+
+-- 58 of 86 --
+
+69
+SECTION 4 : Décomptabilisation de l’immobilisation
+4.1. Principes
+a) 	Le SYSCOHADA rappelle d’abord que la décomptabilisation d’une immobilisation
+donne en principe lieu à trois écritures :
+- 	la comptabilisation de la valeur de sortie, si celle-ci est « supérieure à zéro » au
+compte 82 ;
+- 	la constatation de l’amortissement complémentaire pour la période écoulée entre
+l'ouverture de l'exercice et la date de cession du bien ;
+- 	l’enregistrement de la décomptabilisation du bien 	pour sa valeur nette des seuls
+amortissements 	au 	compte 	81 	(car 	les 	provisions 	pour 	dépréciation 	sont
+«reprises»).
+F 	Remarque : En pratique, la première écriture est enregistrée en cours d’exercice,
+au moment d’établissement de la facture de vente. Les deux dernières sont en
+général comptabilisées en fin d’exercice, dans le cadre des travaux d’inventaire.
+b) 	Les décomptabilisations d'immobilisations considérées comme courantes (fréquentes
+et récurrentes) ne sont pas enregistrées aux comptes 81 et 82, mais dans les comptes
+654 (Valeur comptable) et 754 (Prix de cession) ; exemples : transporteurs ; loueurs de
+matériels ...
+c) 	Le SYSCOHADA distingue ensuite quatre cas de décomptabilisation, résumés dans le
+terme générique de « cession » : la mise au rebut, la destruction, la vente et l’échange.
+4.2. Mise au rebut
+a) 	L’immobilisation mise au rebut est retirée du patrimoine sans aucune contrepartie. Si
+l’épave est cédée, même pour une somme minime, il s’agit d’une vente, et non d’une
+mise au rebut.
+b) 	La comptabilisation se limite donc aux deux opérations suivantes :
+- 	l’amortissement complémentaire de l’exercice
+_______________ 	______________
+681. 	Dotations aux amortissements d’exploitation 	X
+28.. 	Amortissements 	X
+________________ 	______________
+
+-- 59 of 86 --
+
+70
+- 	la détermination de la valeur nette après amortissements, dans le compte hors
+activité courante 81 ou dans le compte 654 en cas de cession courante (fréquente
+et récurrente) :
+o 	la reprise de la valeur brute ou d’entrée
+_______________ 	______________
+81.. 	Valeurs comptables des cessions d’immobilisations 	X
+654. 	Valeur comptable des cessions courantes
+d’immobilisations 	X
+22.. à 24.. 	Actif immobilisé 	X
+________________ 	______________
+o 	le cumul des amortissements pratiqués sur le bien
+_______________ 	______________
+28.. 	Amortissements 	X
+81.. 	Valeurs comptables des cessions
+d’immobilisations 	X
+654. 	Valeur comptable des cessions courantes
+d’immobilisations 	X
+________________ 	______________
+4.3. Destruction
+Le traitement de l’immobilisation détruite, en général accidentellement, dépend de son
+régime d’assurance.
+a) 	Si elle n’est pas assurée, ou si l’assurance ne couvre pas la destruction, elle est traitée
+comme la mise au rebut ci-dessus expliquée.
+b) 	Si l'entité sinistrée bénéficie d’une indemnité, l’opération est assimilée à une vente,
+l’indemnité d’assurance formant le prix de cession.
+4.4. Vente
+a) 	En cas de vente, les écritures ci-dessus passées au §1- mise au rebut sont à enregistrer,
+à l’identique, mais sont complétées par l’enregistrement de la créance sur cession :
+_______________ 	______________
+485. 	Créances sur cessions d’immobilisations 	X
+82.. 	Produits des cessions d’immobilisations 	X
+________________ 	______________
+
+-- 60 of 86 --
+
+71
+ou en cas de cession courante
+______________ 	______________
+414. 	Créances sur cessions d’immobilisations 	X
+754. 	Produits des cessions courantes
+d’immobilisations 	X
+________________ 	______________
+b) 	La plus ou moins-value de cession n’apparaît pas en comptabilité. Elle devra être
+déterminée par comparaison des soldes correspondants des comptes 82 et 81 ou 754 et
+654.
+4.5. Echange
+a) Dans 	l’opération 	d’échange, 	l’ancienne 	immobilisation 	est 	remplacée 	par 	une
+nouvelle, en général moyennant le paiement d’une soulte. L’achat d’un véhicule avec
+reprise d’un ancien peut être assimilé à une opération d’échange dont le supplément de
+prix est important.
+b) Dans ces cas, il ne suffit évidemment pas de comptabiliser l’entrée d’une nouvelle
+immobilisation 	à 	la 	valeur 	correspondant 	à 	la 	soulte. 	Il 	convient 	d’enregistrer
+séparément :
+- 	la vente de l’ancien bien au prix de reprise :
+_______________ 	a 	______________
+681. 	Dotations aux amortissements 	X
+28.. 	Amortissements 	X
+______________ 	b 	______________
+81.. 	Valeurs comptables des cessions d’immobilisations 	X
+22.. à 24.. 	Actif immobilisé 	X
+____________ 	d° 	______________
+28.. 	Amortissements 	X
+81.. 	Valeurs comptables des cessions
+d’immobilisations 	X
+____________ 	c 	______________
+485. 	Créances sur cessions d’immobilisations 	X
+82.. 	Produits des cessions d’immobilisations 	X
+______________ 	_________________
+NB : s’il s’agit d’une cession courante, le compte 654 sera utilisé à la place de 81 et
+754 à la place de 82.
+- 	l’acquisition du nouveau bien à sa valeur actuelle ( prix de reprise majoré de la
+soulte) :
+_______________ 	d 	______________
+2... 	Actif immobilisé 	X
+481. 	Fournisseurs d’investissements 	X
+________________ 	______________
+
+-- 61 of 86 --
+
+72
+4.6. Vente ou échange avec plus-value à réinvestir
+a) 	La plus-value de cession, constituée de la différence entre les soldes des comptes 82 et
+81 ou des comptes 754 et 654, augmente le résultat, et accroît par conséquent la charge
+d’impôts sur les bénéfices.
+En vue d’encourager les entités à remplacer d’anciennes immobilisations par de
+nouvelles, certaines législations fiscales exonèrent d’impôt cette plus-value, sous
+condition 	de 	réinvestissement, 	dans 	un 	délai 	déterminé, 	dans 	une 	nouvelle
+immobilisation, dont la base d’amortissement sera diminuée d’autant. La mesure
+revient à exonérer d’impôt un produit dans l’année n, mais à ne pas permettre la
+déductibilité d’une charge équivalente durant les années postérieures (n + k), donc à
+retarder dans le temps une charge d’impôt.
+b) 	Cette « plus-value de cession à réinvestir » est constituée, comme toute « provision
+réglementée », à la fin de l’exercice durant lequel la cession a eu lieu, sans que les
+enregistrements en 81 et en 82 ou encore en 654 et en 754 soient modifiés :
+_______________ 	______________
+851. 	Dotations H.A.O. aux provisions réglementées 	X
+152. 	Plus-values de cession à réinvestir 	X
+________________ 	______________
+Ces comptes peuvent être subdivisés par nature, ou par année de formation de la plus-
+value.
+c) 	Au cours des exercices suivants, la plus-value doit être reprise (comme toute provision
+réglementée) en cas de remploi total ou partiel, par l’écriture suivante :
+_______________ 	______________
+152. 	Plus-values de cession à réinvestir 	X
+861. 	Reprises H.A.O. de provisions règlementées 	X
+________________ 	______________
+Décomptabilisation d’un matériel informatique
+Le 30 juin N+5, une entité cède à crédit un matériel informatique acquis au cours de
+l’exercice N au prix de 500. Le prix d’achat de ce matériel informatique en N est de 10
+000. Les amortissements cumulés au 30 juin N+5 s’élèvent à 9 800 dont 1 800 de
+dotation complémentaire.
+APPLICATION 15
+
+-- 62 of 86 --
+
+73
+Ecritures de décomptabilisation
+30/06/N+5
+4852 	Créances sur cessions
+d’immobilisations corporelles 	500
+822 	Produits des cessions d’immobilisations
+corporelles
+(Prix de vente du matériel informatique)
+500
+31/12/N+5
+6812 	Valeurs nettes comptables des cessions d’immo.
+corporelles
+1 800
+28442 	Amortissement du matériel informatique
+(Dotation complémentaire)
+1 800
+d°
+812
+28442
+Valeurs nettes comptables des cessions d’immo.
+corporelles
+Amortissement du matériel informatique
+200
+9 800
+2442 	Matériel informatique
+(décomptabilisation du matériel informatique)
+10 000
+Plus-value à réinvestir
+Un matériel de transport automobile de 1 200 H.T. (T.V.A. de 20 %), acquis le 2/1/N et
+amorti au taux linéaire de 15 % est cédé le 30 septembre N + 2 au prix de 1 105.
+L'entité prend l'engagement de réinvestir la plus-value, et acquiert à ce titre le
+2/1/N + 3 un nouveau matériel de 1 500 H.T., amorti au taux annuel de 25 %.
+APPLICATION 16
+
+-- 63 of 86 --
+
+74
+Ecritures
+_______________ 	02/01/N ______________
+2451 	Matériel automobile 	1 200
+4451 	Etat, T.V.A. récupérable sur immobilisations 	240
+4812 	Fournisseurs d’immobilisations 	1 440
+_____________ 31/12/N et N+1 ____________
+6813 	Dotations aux amortissements des immob. 	180
+2845 	Amort. du matériel de transport 	180
+____________ 	30/09/N+2 _____________
+6813 	Dotations aux amortissements des immob. 	135
+2845 	Amort. du matériel de transport 	135
+180 X 9/12=135
+____________ 	d° 	______________
+2845 	Amort. du matériel de transport 	495
+812. 	Val. Compt. des cessions d’immob. corp. 	495
+180+180+135=495
+______________ 	d° 	______________
+812 	Val. Compt. des cessions d’immob. corp. 	1200
+2451. 	Matériel automobile 	1200
+______________ 	d° 	______________
+4851 	Créances sur cessions d’immobilisations 	1 105
+822. 	Produits des cessions d’immob. corp. 	1 105
+851. 	Dotations H.A.O. aux provisions réglementées 	400
+152. 	Plus-values de cession à réinvestir 	400
+1 105 – (1 200-495) =
+____________ 	02/01/N+3 _____________
+2451 	Matériel automobile 	1 500
+4451 	Etat, T.V.A. récupérable sur immobilisations 	300
+4812 	Fournisseurs d’immobilisations corp. 	1 800
+____________ 	31/12/N+3 	____________
+6813 	Dotations aux amortissements des immob. 	375
+2845 	Amort. du matériel de transport 	375
+1 500 X 25% = 375
+______________ 	d° 	________________
+152. 	Plus-values de cession à réinvestir 	100
+861. 	Reprises H.A.O. de provisions règlementées 	100
+400 X 25% = 100
+Remarque : Les deux écritures de sortie du matériel de transport du patrimoine peuvent être
+regroupées en une seule :
+30/09/N+2
+812
+2845
+Val. Compt. des cessions d’immob. corp.
+Amort. du matériel de transport
+705
+495
+2451 	Matériel automobile 	1 200
+31/12/N+2
+
+-- 64 of 86 --
+
+75
+Les « écritures d’inventaire » ou « régularisations périodiques » sont passées :
+- 	à l’issue de chaque période dans le cas où l’entité établit des situations intermédiaires,
+- 	au plus tard la fin d’un exercice comptable assimilé par le SYSCOHADA à l’année
+civile.
+Elles consistent à :
+- 	régulariser les stocks de l’entité,
+- 	constater les dépréciations survenues en cours de période ou d’exercice,
+- 	effectuer d’autres régularisations de charges et de produits qui entraînent des créances
+et des dettes.
+SECTION 1 : Régularisation des stocks
+1.1. Inventaire intermittent
+a) 	Le SYSCOHADA reconnaît, comme les autres plans comptables, la tenue de
+comptabilité en inventaire intermittent. Les stocks de fin de période ou d’exercice
+sont constatés par un inventaire physique, et substitués aux stocks de début de
+période par l’intermédiaire d’un compte de « variation de stock » :
+- 	603 pour les biens provenant d’une opération située en amont dans le circuit de
+l’entité : marchandises (6031), matières premières et fournitures liés (6032),
+autres approvisionnements (6033),
+- 	73 pour les biens et services provenant d’une opération située en aval dans ledit
+circuit : produits en cours (734), services en cours (735), produits finis (736),
+produits intermédiaires et résiduels (737).
+Ces comptes peuvent être subdivisés par rubriques de nomenclature.
+b) 	Si le nouveau stock est supérieur à l’ancien, il y a « stockage », et les soldes de ces
+comptes de variations seront créditeurs.
+Régularisations périodiques	Chapitre 6
+
+-- 65 of 86 --
+
+76
+EXEMPLE :
+Stock initial : 10, stock final : 12, soit un stockage de 2
+3… stock 	603 ou 73.. variation
+- 	report du stock initial 	10
+- 	annulation du stock initial 	10 …………..10
+- 	constatation stock final 	12 …………………………..12
+Solde 	débiteur : 12 	créditeur : 2
+On peut aussi « mettre à jour » le stock par le seul enregistrement de la variation de
+l’exercice (ici augmentation de 2) :
+3… stock 	603 ou 73.. variation
+- 	report du stock initial 	10
+- 	ajustement du stock final 	2 ……………………………2
+Solde 	débiteur : 12 	créditeur : 2
+c) 	Si le nouveau stock est inférieur à l’ancien, il y a « déstockage », et les soldes des
+comptes variations des stocks seront débiteurs.
+1.2. Inventaire permanent
+a) 	Le SYSCOHADA prévoit également la tenue des comptes en inventaire permanent.
+Il reconnaît ainsi la conception de base qui justifie l’existence de la classe 3 : des
+comptes « à part entière » qui enregistrent toutes les entrées et toutes les sorties,
+donc les flux bruts. L’inventaire permanent permet à l’entité de connaître à chaque
+instant :
+- 	le montant de ses stocks,
+- 	le coût d’achat des marchandises vendues,
+- 	le coût des matières premières et fournitures liées engagées dans le processus de
+fabrication.
+b) 	Dans cette conception, les achats seraient enregistrés directement en classe 3, et les
+comptes 	603 	et 	73 	serviraient 	normalement 	à 	enregistrer 	: 	les 	différences
+d’inventaire constatées en fin de période ou d’exercice :
+- 	les manquants au débit,
+- 	les excédents au crédit.
+
+-- 66 of 86 --
+
+77
+c) 	Cependant, pour ne pas déroger au jeu des comptes d’achats 601, 602, 604 et 608,
+qui intéressent les gestionnaires comme les services statistiques et de vérification
+fiscale, le SYSCOHADA étend le schéma d’écriture de l’inventaire intermittent à
+toutes les entrées en stock, et à toutes les sorties, quel qu’en soit le motif :
+3… stock 	603 ou 73.. variation
+a- 	Reports (début d’exercice) 	a
+b- 	sorties (consommation, manquants) 	b………………b
+c- 	entrées (achats, excédents) 	c……………………………... c
+1.3. Charges constatées d’avance
+Le principe de spécialisation des exercices exige que la partie non consommée en fin
+d’exercice soit extraite des charges, et portée à un compte d’actif 476 Charges
+constatées d’avance, qui représente une créance sur l’exercice suivant.
+EXEMPLE :
+Des 	fournitures 	d'entretien 	enregistrées 	en 	cours 	d'exercice 	pour 	60 	ne 	sont
+consommées que pour les 3/4, et des fournitures administratives facturées 50 que pour
+moitié.
+6054 	6055 	___476____
+a- 	cumul de l’exercice 	60 	50
+b- 	stock final : 60 X 1/4 	15………………………...15
+c- 	Stock final : 50 /2 	25 ……...25
+Charge réelle de l’exercice 	débiteur : 45 	débiteur : 25
+SECTION 2 : Amortissements
+2.1. Dotations
+a) 	L’article 45 de l’acte uniforme définit l’amortissement comme la répartition du
+montant amortissable du coût du bien sur sa durée d’utilité probable d'utilisation
+selon un plan prédéfini.
+Cet amortissement est constaté :
+- 	par une dotation, charge non suivie d’une dépense, à l’opposé d’un frais,
+- 	par une diminution de valeur de l’immobilisation correspondante.
+
+-- 67 of 86 --
+
+78
+b) 	La dotation est enregistrée, selon son caractère, au débit de :
+- 	681 	Dotations 	aux 	amortissements 	d’exploitation, 	s’il 	s’agit 	d’une
+immobilisation incorporelle ou corporelle destinée à l’activité courante,
+- 	852 Dotations aux amortissements H.A.O., si la dépréciation est due à une
+destruction accidentelle, à une restructuration de l’entité ou à un abandon du
+bien.
+c) 	La diminution de valeur est enregistrée au crédit d’un compte 281 à, 284 s’il s’agit
+d’une immobilisation incorporelle ou corporelle (pratique de l’amortissement
+indirect).
+Les comptes 28 présenteront un solde créditeur, et figureront à l’actif du bilan en
+soustraction.
+_______________ 	a 	______________
+6812 	Dotations aux amort. des immob. incorp. 	5
+2812 	Amortissements des brevets 	5
+______________ 	b 	______________
+6813 	Dotations aux amort. des immob. corp. 	15
+2845 	Amortissements du matériel de transport 	15
+____________ 	c 	______________
+812 	Val. Compt. des cessions d’immob. corp. 	20
+2841 	Amort. du matériel et outillage comm. et indus. 	30
+2411 	Matériel industriel 	50
+____________ 	d 	______________
+6813 	Dotations aux amort. des immob. corp. 	30
+2844 	Amortissements du matériel et mobilier 	30
+Dotation exercice en cours : 120 X 25%
+______________ exercice N+1 	___________
+852. 	Dotations aux amortissements H.A.O. 	15
+2844 	Amortissements du matériel et mobilier 	15
+Dotation du bien abandonné maintenu dans
+les immobilisations
+____________ 	____________
+Dotations aux amortissements
+En fin d'exercice, il convient d'amortir :
+a - à 10 % un brevet enregistré pour 50,
+b - à 20 % un matériel de transport acquis le 1er juillet pour 150,
+c - un matériel industriel acquis pour 50, cumul des amortissements en fin d’exercice
+30, mais mis au rebut,
+d - un ensemble informatique acquis pour 120, déjà amorti à 25 % l'an durant 30 mois,
+utilisé durant l'année, et abandonné en fin d'exercice à la suite d'une fusion.
+APPLICATION 17
+
+-- 68 of 86 --
+
+79
+2.2. Amortissements dérogatoires
+a) 	Lorsque la dotation fiscalement autorisée dépasse la dotation économique, la
+différence est enregistrée :
+- 	au débit de 851 Dotations aux provisions règlementées, qui est une dotation
+H.A.O.,
+- 	au 	crédit 	du 	compte 	de 	Provisions 	réglementées 	: 	151 	Amortissements
+dérogatoires, 	avec 	une 	subdivision 	adéquate, 	permettant 	de 	suivre 	les
+amortissements dérogatoires par catégories d’immobilisation.
+b) 	Lorsque 	la 	dotation 	fiscale 	devient 	inférieure 	à 	la 	dotation 	économique, 	la
+différence est reprise :
+- 	au débit de 151 Amortissements dérogatoires,
+- 	au crédit de 861 Reprises de provisions règlementées, qui est une reprise
+H.A.O.
+___151__ 	__2845__ 	___6313_ 	___851_ 	__861___
+n 	240 	150 	90 	150 	150 	90
+n + 1 	144 	150 	6 	150 	150 	6
+n + 2 	108 	150 	42 	150 	150 	42
+n + 3 	108 	150 	42 	150 	150 	42
+___ 	___ 	_____ 	_______ 	______ 	_______ 	______
+Total ou solde 600 	600 	0 	600 	600 	90 	90
+2.3. Reprises d’amortissement
+a) 	les reprises d’amortissement dérogatoires sont traitées comme dit ci-dessus, et
+celles qui intéressent les plus-values à réinvestir sont étudiées au chapitre 5,
+section 4.
+Attention 	! 	Malgré 	leur 	nom, 	« 	Dotations 	et 	Reprises 	d’amortissements
+dérogatoires » sont des dotations et reprises de provisions (réglementées, donc
+H.A.O.).
+Amortissements dérogatoires
+Un matériel de transport de 600, mis en service en début d'exercice n, fait l'objet d'un
+amortissement économique linéaire sur 4 ans, mais d'un amortissement fiscal dégressif
+de 40 %.
+APPLICATION 18
+
+-- 69 of 86 --
+
+80
+b) 	Les autres reprises d’amortissements éventuelles, consécutives à une révision du
+plan d’amortissement initial, font l’objet d’une écriture du type
+_______________ 	______________
+28.. 	Amortissements 	X
+798. 	Reprises d’amortissements 	X
+________________ 	______________
+Elles ont un caractère tout à fait exceptionnel.
+SECTION 3 : Dépréciations
+Le SYSCOHADA fait la distinction entre la dépréciation et la provision définies par les
+articles 46 et 48 de l’Acte uniforme relatif au droit comptable. Désormais, les dotations ou
+charges pour dépréciations indiqueront d’une perte de valeur d’un élément d’actif alors que
+les dotations ou charges pour provisions constituent un passif externe (dette) dont l'échéance
+ou le montant est incertain.
+3.1. Dotations ou charges pour dépréciations
+a) 	L’article 46 de l’Acte uniforme relatif au Droit comptable définit la dépréciation
+comme la perte de valeur d’un actif. A la clôture de chaque exercice une entité doit
+apprécier, s’il existe un quelconque indice qu’un actif a subi une perte de valeur.
+S’il existe un tel indice, l’entité doit estimer la valeur actuelle de l’actif concerné et
+la comparer avec la valeur nette comptable.
+b) 	Après la comptabilisation d'une perte de valeur, l'amortissement de l'actif doit être
+calculé sur la base de la valeur comptable brute diminuée de la valeur résiduelle
+prévisionnelle et de la dépréciation.
+c) 	Pour les immobilisations, cette dépréciation est constatée par une dotation et pour
+les autres éléments de l'actif, par une charge pour dépréciations
+3.2. Dotations aux dépréciations
+a) 	Selon leur caractère, les dotations sont enregistrées au débit des comptes :
+- 	691 	Dotations 	aux 	dépréciations 	d’exploitation, 	s’il 	s’agit 	d’une
+immobilisation incorporelle (6913) ou corporelle (6914),
+- 	697 Dotations aux dépréciations financières, s’il s’agit d’une immobilisation
+financière (6972),
+
+-- 70 of 86 --
+
+81
+- 	853 Dotations aux dépréciations H.A.O., si la dépréciation est due à un
+événement extraordinaire ou à la restructuration de l’entité.
+b) 	Selon leur nature, les dépréciations correspondantes sont enregistrées au crédit des
+comptes 291 à 297 Dépréciations d’actif immobilisé, qui présenteront un solde
+créditeur et figureront à l’actif du bilan, en soustraction, au même titre que les
+amortissements.
+3.3. Charges pour dépréciations
+a) 	Selon leur caractère, les charges pour dépréciations sont enregistrées au débit des
+comptes :
+- 	659 Charges pour dépréciations d’exploitation, si elles intéressent des
+valeurs d’exploitation (stocks et créances),
+- 	679 Charges pour dépréciations financières (principalement compte 6795,
+pour dépréciation des titres de placement),
+- 	839 	Charges 	pour 	dépréciations 	H.A.O., 	si 	elles 	se 	rapportent 	à 	des
+événements extraordinaires ou de restructuration.
+b) 	Selon leur nature, les provisions correspondantes sont enregistrées au crédit des
+comptes :
+- 	391 à 398 Dépréciations des stocks,
+- 	490 à 499 Dépréciations (tiers), si elles intéressent des comptes de Tiers,
+- 	590 à 599 Dépréciations (trésorerie), si elles intéressent des comptes de
+Trésorerie.
+Leurs montants figureront à l’actif du bilan, en soustraction des éléments d’actif
+concernés.
+3.4. Reprises de dépréciations
+a) 	Le caractère réversible d’une dépréciation constituée en fin d’exercice « n »
+entraînera à la fin de « n + 1 » :
+- 	soit une annulation systématique du montant à fin « n » et une nouvelle
+dépréciation calculée à fin « n + 1 »,
+
+-- 71 of 86 --
+
+82
+- soit un ajustement en augmentation ou en diminution pouvant aller jusqu’à
+l’annulation.
+b) 	L’augmentation de la dépréciation est traitée comme la dotation ou comme la
+création de charge pour dépréciations (voir ci-dessus).
+c) 	Les diminutions ou les annulations sont traitées comme des reprises,
+- 	Reprises de dépréciations : Crédit des comptes de produits,
+o 	Reprises « d’exploitation » :
+§ 	7913 Reprises de dépréciations d’exploitation des immobilisations
+incorporelles,
+§ 	7914 Reprises de dépréciations d’exploitation des immobilisations
+corporelles.
+o 	Reprises « financières » :
+§ 	7972 	Reprises 	de 	dépréciations 	financières 	des 	immobilisations
+financières.
+o 	Reprises « H.A.O. » :
+§ 	863 Reprises de dépréciations H.A.O.
+... par le débit des comptes de dépréciations 29.
+- 	Reprise de charges pour dépréciations : Crédit des comptes de produits,
+o 	Reprises 	« 	d’exploitation 	» : 	759 	Reprises 	de 	charges 	pour
+dépréciations d’exploitation (7593, sur stocks, 7594 sur créances),
+o 	Reprises « financières » : 779 Reprises de charges pour dépréciations
+financières (7795 sur titres de placement),
+o 	Reprises « H.A.O. » : 849 reprises de charges pour dépréciations HAO.
+... par le débit des comptes de dépréciations 39, 49, 59.
+Dépréciations
+Intéressant les exercices : 	« n » 	« n + 1 »
+a - Dépréciation du fonds commercial 	100 	150
+b - Dépréciation des titres de participation 	(avec influence notable) 	20 	18
+c - Dépréciation des stocks de marchandises 	40 	35
+d - Dépréciation d’une créance de 12 sur le client A 	75 % 	50%
+e - Dépréciation d’une créance de 10 sur débiteur divers B 	60% 	100 %
+f - Dépréciation de titres de placement 	17 	11
+APPLICATION 19
+
+-- 72 of 86 --
+
+83
+Ecritures en fin d’exercice « n »
+_______________ 	a 	______________
+6913 	Dot. aux dépréc. d’exploit. des immo. incorp. 	100
+2915 	Dépréciations du fonds commercial 	100
+_____________ 	b 	____________
+6972 	Dotations aux dépréc. des immob. financières 	20
+2963 	Dépréciations des titres de participations 	20
+____________ 	c 	_____________
+6593 	Charges pour dépréciations sur stocks 	40
+391. 	Dépréciations des stocks de marchandises 	40
+____________ 	d & e 	______________
+6594 	Charges pour dépréciations sur créances 	15
+4912 	Dépréciations des comptes clients 	9
+497. 	Dépréciations des comptes débiteurs divers 	6
+______________ 	f 	______________
+6795 	Charges pour dépréciations sur titres de placement 	17
+590. 	Dépréciations des titres de placement 	17
+_____________ 	____________
+Ecritures en fin d’exercice « n + 1 »
+_______________ 	a 	______________
+6913 	Dot. aux dépréc. d’exploit. des immo. incorp. 	50
+2915 	Dépréciations du fonds commercial 	50
+_____________ 	b 	____________
+2963 	Dépréciations des titres de participations 	2
+7972 	Reprises de dépréc. des immo. financières 	2
+____________ 	c 	_____________
+391. 	Dépréciations des stocks de marchandises 	5
+7593 	Reprises de charges pour dépréc. sur stocks 	5
+____________ 	d 	______________
+4912 	Dépréciations des comptes clients 	3
+7594 	Reprises de charges pour dépréc. sur créances 	3
+______________ 	e 	______________
+6594 	Charges pour dépréciations sur créances 	4
+497. 	Dépréciations des comptes débiteurs divers 	4
+______________ 	f 	______________
+590. 	Dépréciations des titres de placement 	6
+7795 	Reprises de charges pour dépréc. Fin. sur
+titres de placement 	6
+_____________ 	____________
+F 	Remarque :
+Charges et produits ont été enregistrés ci-dessus dans les comptes à quatre chiffres prévus par
+le SYSCOHADA. Toutefois, pour « servir » le Compte de résultat, l’utilisation de comptes à
+trois chiffres est suffisante :
+Dotations aux dépréc. d’exploitation (691) 	Reprises de depréc. d’exploitation (791)
+Dotations aux dépréc. financières (697) 	Reprises de dépréc. financières (797)
+
+-- 73 of 86 --
+
+84
+Dotations aux dépréciations H.A.O. (853) 	Reprises de dépréciations H.A.O. (863)
+et, pour les charges pour dépréciations ( C.D.)
+Charges pour dépréc. d’exploitation (659) 	Reprises de C.D. d’exploitation (759)
+Charges pour dépréc. financières (679) 	Reprises de C.D. financières (779)
+Charges pour dépréc. H.A.O. (839) 	Reprises de C.D. H.A.O. (849)
+(Noter le parallélisme des codifications)
+SECTION 4 : Provisions pour risques et charges
+4.1. Dotations et charges pour provisions
+a) 	A l’opposé des dépréciations, attachées à la perte de valeur d’un élément
+d’actif, les provisions sont un passif externe (dette) dont l'échéance ou le
+montant est incertain. Le terme « provision » désigne les provisions pour
+risques et charges. Un passif externe est une obligation actuelle de l’entité de
+transférer une ressource économique à la suite d’événements passés.
+Les dotations aux provisions pour risques et charges à plus d’un an sont
+inscrites dans un compte de dotation aux provisions tandis que celles qui sont
+liées à un risque à moins d’un an sont enregistrées au compte charges pour
+provisions pour risques à court terme selon l’article 48 de l’Acte Uniforme
+relatif au droit comptable.
+b) 	Dans le premier cas, le SYSCOHADA préconise une dotation, enregistrée
+- 	au débit de :
+o 	6911(risques et charges) s’il s’agit d’une provision d’exploitation,
+o 	6971, s’il s’agit d’une provision à caractère financier,
+o 	854, s’il s’agit d’une provision hors activités ordinaires ;
+- 	au crédit d’un compte de passif, 19 Provisions pour risques et charges,
+Ce compte est subdivisé par nature de risque (191 à 194 et 1983) ou de
+charge (195 à 1981, 1984, 1985).
+c) 	Dans le second cas, le SYSCOHADA les considère comme des charges « pour
+dépréciations », classées dans les charges « constatées » :
+- 	au débit du compte :
+o 	659, s’il s’agit de risques et charges d’exploitation,
+
+-- 74 of 86 --
+
+85
+o 	679, s’il s’agit de risques et charges financiers,
+o 	839, s’il s’agit de risques et charges hors activités ordinaires (H.A.O.),
+- 	au crédit d’un compte de passif
+o 	499 Provisions pour risques à court terme (Tiers), qui sera intégré à
+la masse bilantielle des dettes circulantes,
+o 	599 Provisions pour risques à caractère financier, intégré lui-aussi,
+par simplification opérée par le SYSCOHADA, dans le passif circulant.
+4.2. Reprises
+a) 	La nature réversible des provisions pour risques et charges constatées à la fin
+de l’exercice « n » entraîne à la fin de l’exercice « n + 1 » :
+- 	soit une augmentation de provision, traitée comme une nouvelle dotation
+ou une nouvelle charge pour provisions,
+- 	soit l’ouverture, en classes 7 et 8, de comptes de reprises, destinés à
+annuler ou à réduire la provision existante.
+b) 	Les provisions à plus d’un an, enregistrées en 19, sont débitées par le crédit
+de:
+- 	7911 (risques et autres charges), s’il s’agit d’une reprise d’exploitation,
+- 	7971, s’il s’agit d’une reprise à caractère financier,
+- 	864, s’il s’agit d’une reprise hors activités ordinaires.
+c) 	Les provisions à moins d'un an, enregistrées en 499 et 599, sont débitées par
+le crédit de :
+- 	759, s’il s’agit d’une charge pour provisions d’exploitation,
+- 	779, s’il s’agit d’une charge pour provisions financière,
+- 	849, s’il s’agit d’une charge pour provisions hors activités ordinaires.
+Provisions
+Intéressant les exercices : 	« n » 	« n + 1 »
+a - prov. pour litige avec un ancien salarié (à moins d’un an) 	10 	15
+b - prov. pour service après-vente (réduite de 10 %) (à plus d’un an) 	20 	18
+c - prov. pour difficulté d’exécution d’un marché, 	non prévue dans
+le devis (à moins d’un an) 	0 	7
+d - prov. pour dette fournisseurs en $, suite hausse du cours 	3 	4
+e - prov. pour dette emprunt en monnaie étrangère, suite hausse du cours 	11 	8
+f - prov. pour indemnités de départ à la retraite 	27 	26
+g - prov. pour rappels d’impôts (à plus d’un an) suite changement
+législation 	8 	0
+h - prov. pour intérêts de retard sur impôts courants (à moins d’un an) 	1 	0
+i - prov. pour pénalités sur impôts courants (à plus d’un an) 	2 	0
+APPLICATION 20
+
+-- 75 of 86 --
+
+86
+Ecritures en fin d’exercice « N »
+_______________ 	a 	______________
+6591 	Charges pour prov. pour risques à C.T. d’exploitation 	10
+4991 	Provisions pour risques à court terme 	10
+_____________ 	b 	____________
+6911 	Dotations aux provisions d’exploitation 	20
+192 	Prov. pour garanties données aux clients 	20
+____________ 	d 	_____________
+6591 	Charges pour prov. pour risques à C.T. d’exploitation 	3
+4991 	Prov. pour risques à C.T. d’exploitation 	3
+____________ 	e 	______________
+6971 	Dotations aux provisions financières 	11
+194 	Provisions pour pertes de change 	11
+______________ 	f 	______________
+6911 	Dotations aux provisions d’exploitation 	27
+1961 	Prov. pour pensions et obligations similaires 	27
+_____________ 	g 	____________
+854 	Dotations aux prov. pour risques et charges H.A.O. 	8
+195 	Provisions pour impôts 	8
+_____________ 	h 	____________
+6591 	Charges pour prov. pour risques à C.T. d’exploitation 	1
+4991 	Provisions pour risques à court terme 	1
+____________ 	i 	_____________
+6911 	Dotations aux provisions d’exploitation 	2
+1981 	Provisions pour amendes et pénalités 	2
+____________ 	______________
+Ecritures en fin d’exercice « n + 1 »
+_______________ 	a 	______________
+6591 	Charges pour prov. pour risques à C.T. d’exploitation 	5
+4991 	Provisions pour risques à court terme 	5
+_____________ 	b 	____________
+192 	Prov. pour garanties données aux clients 	2
+7911 	Reprise de provisions d’exploitation 	2
+_______________ 	c 	_____________
+6591 	Charges pour prov. pour risques à C.T. d’exploitation 	7
+4991 	Provisions pour risques à court terme 	7
+____________ 	d 	_____________
+6591 	Charges pour prov. pour risques à C.T.d’exploitation 	1
+4991 	Prov. pour risques à C.T. à caractère d’exploitation 	1
+____________ 	e 	______________
+194 	Provisions pour pertes de change 	3
+7971 	Reprises de provisions financières 	3
+______________ 	f 	______________
+1961 	Prov. pour pensions et obligations similaires 	1
+7911 	Reprises de provisions d’exploitation 	1
+_____________ 	g 	____________
+195 	Provisions pour impôts 	8
+864 	Reprises de provisions pour risques H.A.O. 	8
+
+-- 76 of 86 --
+
+87
+_____________ 	h 	____________
+4991 	Provisions pour risques à court terme 	1
+7591 	Reprises de provisions pour risques à C.T. 	1
+____________ 	i 	_____________
+1981 	Provisions pour amendes et pénalités 	2
+7911 	Reprise de provisions d’exploitation 	2
+____________ 	______________
+SECTION 5 : Autres régularisations de charges
+5.1. Principe
+L’article 59 de l’Acte uniforme dispose que « le résultat de chaque exercice est indépendant
+de celui qui le précède et de celui qui le suit », et qu’il convient « de lui rattacher et de lui
+imputer les événements et opérations qui lui sont propres et ceux-là seulement ».
+Il convient en conséquence de corriger les comptes de charges (classe 6 et comptes principaux
+impairs de la classe 8), de manière qu’ils n’incluent que les montants intéressant l’exercice
+(d’où élimination nécessaire des montants se rattachant à des exercices ultérieurs), mais sans
+aucune omission (d’où addition des montants omis ou non encore enregistrés).
+5.2. Charges constatées d’avance
+a) 	Lorsque 	des 	charges 	enregistrées 	en 	cours 	d’exercice 	« 	n 	» 	concernent
+partiellement l’exercice suivant « n + 1 » (ou des exercices ultérieurs), la partie
+concernant ce dernier doit être créditée par le débit d’un compte 476 Charges
+constatées d’avance. Au Bilan, ce compte d’actif représentera en quelque sorte la
+créance sur l’exercice suivant. Tel est le cas :
+- des « autres achats », enregistrés en 605, en vue d’être immédiatement
+consommés, mais dont une partie subsiste en fait à la fin de l’exercice,
+- des charges périodiques enregistrées durant l’exercice, mais dont la fin de
+période est postérieure à la date de clôture : primes d’assurances, abonnements
+souscrits, intérêts d’emprunts payés d’avance.
+b) 	En revanche, les achats déjà enregistrés sur facture, mais non encore livrés, n’ont
+pas à être régularisés au niveau des charges, car le bien acheté appartient déjà à
+
+-- 77 of 86 --
+
+88
+l’entité. Leur montant figurera après inventaire dans le compte 38 Stocks en
+cours de route, en consignation ou en dépôt.
+Attention ! Les charges constatées d’avance n’apparaissent pas directement à
+l’actif du Bilan ; elles sont incluses dans les « Autres créances ».
+c) Ces régularisations s’effectuent hors T.V.A. récupérable.
+Ecritures en fin d’exercice
+_______________ 	______________
+476 	Charges constatées d’avance 	28
+6054 	Fournitures d’entretien non stockables 	5
+6055 	Fournitures de bureau non stockables 	6
+6252 	Assurances matériel de transport 	12
+6265 	Documentation générale 	4
+6712 	Intérêts auprès établissement de crédit 	1
+_____________ 	____________
+381 	Marchandises en cours de route 	20
+6031 	Variations des stocks de marchandises 	20
+____________ 	_____________
+5.3. Charges à payer
+a) 	Lorsque apparaissent en fin d’exercice « n » des charges certaines le concernant,
+mais qui n’ont pas encore été enregistrées faute de paiement ou de pièce
+comptable, elles doivent être évaluées et enregistrées :
+• 	au débit de comptes de charges intéressés,
+• au crédit des comptes de la catégorie de tiers auxquels elles sont dues, dans
+un compte divisionnaire à terminaison 8 :
+Charges constatées d’avance
+a - produits d'entretien enregistrés en 6054 pour 20, et consommés à 75 %
+b - fournitures de bureau enregistrées en 6055 pour 30 et consommées à 80 %
+c - prime annuelle d'assurance automobile échue le 30 avril : 36
+d – abonnement annuel à une revue échu le 31 mars : 16
+e - intérêts trimestriels payés d'avance le 1er novembre : 3
+f - facture fournisseur déjà enregistrée, mais marchandise non encore livrée : 20
+APPLICATION 21
+
+-- 78 of 86 --
+
+89
+- 	408 Fournisseurs, factures non parvenues, s’il s’agit d’achats de
+biens et de services livrés, mais non encore connus sur factures,
+- 	4818 Fournisseurs d’investissements, factures non parvenues, s’il
+s’agit d’achats d’immobilisations livrées, mais non encore connus sur
+facture,
+- 	4281 et 4286 Personnel, charges à payer, s’il s’agit de congés payés,
+de rappels de salaires, de droits à participation,
+- 	4381 à 4386 Organismes sociaux, charges à payer, s’il s’agit de
+rappels de cotisation, ou de cotisations assises sur les droits à congé, ou
+à participation s’ils sont imposables,
+- 	4486 Etat, charges à payer, s’il s’agit d’impositions certaines mais
+non encore exactement connues, ou de droits de douane dont l’échéance
+est retardée par obligation cautionnée,
+- 	4198 Rabais, remises, ristournes, et autres avoirs à accorder, s’il
+s’agit de réductions promises aux clients, mais non encore constatées
+sur facture d’avoir.
+b) 	Les intérêts courus sur emprunts sont crédités en 166 Intérêts courus, car ils
+majorent le montant de la dette financière.
+c) 	Il est tenu compte de la T.V.A. probable :
+- 	en général, au débit du compte 4455 T.V.A. récupérable sur factures non
+parvenues,
+- 	dans le dernier cas, au débit de 4435 T.V.A. facturée sur factures à établir.
+
+-- 79 of 86 --
+
+90
+Ecritures en fin d’exercice
+_______________ 	a 	______________
+6013 	Achats de march. aux entités du gpe dans la région 	50
+4455 	Etat T.V.A récupérable sur fact. non parvenues 	5
+4082 	Fournisseurs groupe fact. non parvenues 	55
+_____________ 	b 	____________
+2451 	Matériel automobile 	120
+4818 	Fournisseurs d’invest. fact. non parvenues 	120
+____________ 	c 	_____________
+701. 	Ventes de marchandises 	10
+4435 	Etat T.V.A. sur factures à établir 	1
+4198 	R.R.R. et autres avoirs à accorder 	11
+____________ 	d 	_____________
+6611 	Appointements salaires 	140
+4281 	Dettes provisionnées pour congés payer 	140
+____________ 	e 	______________
+6641 	Charges sociales sur rémunération du pers. nat. 	35
+4382 	Charges sociales sur congés à payer 	35
+______________ 	______________
+Ecritures en fin d’exercice (suite)
+_____________ 	f 	______________
+6412 	Patentes licences et taxes annexes 	21
+4486 	Etat charges à payer 	21
+_____________ 	g 	____________
+6012 	Achats de marchandises hors région 	49
+6743 	Intérêts sur obligations cautionnées 	3
+4491 	Etat, obligations cautionnées 	52
+_____________ 	h 	____________
+Charges à payer
+a - entrée de marchandises (avec bon de livraison uniquement) achetées dans une région
+de l’espace OHADA à un fournisseur du groupe situé dans la même région de l’espace
+OHADA, pour 50 H.T., T.V.A. 10%
+b - entrée d'un matériel de transport automobile (avec bon de livraison uniquement)
+pour 100 H.T., T.V.A. 20 % (non récupérable)
+c - ristourne sur marchandise promise à un client : 10 H.T., T.V.A. 10 %
+d - droit à congé annuel de salariés nationaux à compter du 1er juin : 7/12e de 240
+e - cotisations sociales correspondantes : 25 %
+f - patente à prévoir au titre de l'exercice n : 21
+g - obligation cautionnée souscrite pour marchandises importées : 52, dont 3 d'intérêts
+h - intérêts annuels d'emprunt échus les 31 mars : 10 % de 1 000
+i - intérêts de retard dus à un fournisseur : 7
+APPLICATION 22
+
+-- 80 of 86 --
+
+91
+6712 	Intérêts emprunts auprès des établissements
+de crédit 	75
+1662 	Intérêts courus sur emprunts auprès
+étab. crédit 	75
+____________ 	i 	_____________
+6744 	Intérêts sur dettes commerciales 	7
+4086 	Fournisseurs, intérêts courus 	7
+____________ 	______________
+5.4. Charges antérieures
+a) 	L’article 61 de l’Acte uniforme stipule que les charges « antérieures », c’est-à-dire
+enregistrées en cours d’exercice « n », mais concernant l’exercice « n - 1 »,
+demeurent incluses dans le résultat « n », ordinaire ou H.A.O., selon leur nature.
+Elles font l’objet d’une mention spécifique les Notes annexes.
+b) 	Pour respecter cette disposition, les entités sont amenées :
+- 	soit à ouvrir en classe 6 des sous comptes de charges « sur exercices
+antérieures »,
+- 	soit à dresser en annexe un tableau extra comptable desdites charges.
+5.5. La contre-passation
+a) 	Les charges constatées d’avance seront contre-passées au cours de l’exercice
+suivant, dans le cadre :
+- 	soit des écritures d’ouverture (contre-passation immédiate),
+- 	soit des nouvelles écritures de régularisation de fin d’exercice.
+b) 	Les charges à payer peuvent être contre-passées :
+- 	également 	au 	début 	ou 	à 	la 	fin 	de 	l’exercice 	suivant 	(contre-passation
+immédiate ou différée),
+- 	ou 	encore 	au 	fur 	et 	à 	mesure 	de 	l’arrivée 	des 	pièces 	comptables
+correspondantes (contre-passation progressive).
+Pour le contrôle et l’analyse des flux de l’exercice, la contre-passation à
+l’ouverture de l’exercice suivant est vivement recommandée.
+
+-- 81 of 86 --
+
+92
+SECTION 6 : Autres régularisations de produits
+6.1. Principe
+L’article 59 de l’Acte Uniforme dispose que « le résultat de chaque exercice est indépendant
+de celui qui le précède et de celui qui le suit », et qu’il convient « de lui rattacher et de lui
+imputer les événements et opérations qui lui sont propres et ceux-là seulement ».
+Il convient en conséquence de corriger les comptes de produits (classe 7 et comptes
+principaux pairs de la classe 8), de manière qu’ils n’incluent que les montants intéressant
+l’exercice (d’où élimination des montants se rattachant à des exercices ultérieurs) mais sans
+aucune omission (d’où addition des montants non encore enregistrés).
+6.2. Produits constatés d’avance
+a) 	Lorsque des produits enregistrés en cours d’exercice « n » se rapportent partiellement à
+l’exercice suivant « n + 1 », la partie concernant ce dernier doit être débitée par le crédit
+d’un 	compte 	477 	Produits 	constatés 	d’avance. 	Au 	Bilan, 	ce 	compte 	de 	passif
+représentera en quelque sorte la dette envers l’exercice suivant. Tel est le cas :
+- 	des factures déjà émises et enregistrées, alors que la livraison du bien ou du service a
+été retardée,
+- des produits périodiques enregistrés durant l’exercice, mais dont la fin de période est
+postérieure à la date de clôture : abonnements demandés aux clients, intérêts de prêts
+payés d’avance.
+b) 	En revanche, les ventes déjà constatées par facture, mais non encore livrées, n’ont pas à
+être régularisées au niveau des produits, car le bien vendu appartient déjà au client. Leur
+coût est à défalquer du stock.
+c) 	Ces régularisations s’effectuent hors T.V.A. récupérable.
+
+-- 82 of 86 --
+
+93
+Ecritures en fin d’exercice
+_______________ 	a 	______________
+6031 	variations des stocks de marchandises 	5
+3111 	Marchandises A1 	5
+_____________ 	b , c 	____________
+7063 	Services vendus aux entités du gpe dans la région 	9
+7713 	Intérêts sur créances diverses 	4
+477 	Produits constatés d’avance 	13
+____________ 	_____________
+6.3. Produits à recevoir
+a) 	Lorsqu’apparaissent, en fin d’exercice « n », des produits certains le concernant, mais qui
+n’ont pas encore été enregistrés faute de paiement ou de pièce comptable, ils doivent être
+évalués et comptabilisés :
+• 	au crédit des comptes de produits intéressés,
+• 	au débit des comptes de la catégorie de Tiers qui les doivent, dans un compte
+divisionnaire à terminaison 8 (sauf 449) :
+- 	4098 Fournisseurs, rabais, remises, ristournes et autres avoirs à obtenir, s’il s’agit
+de réductions promises par les fournisseurs, mais non encore confirmées sur facture
+d’avoir,
+- 	4181 Clients, factures à établir et 4186 Clients, intérêts courus, s’il s’agit de ventes
+livrées mais non encore facturées,
+- 	4858 Créances sur cessions d’immobilisations, factures à établir, s’il s’agit d’une
+vente d’immobilisation,
+- 	4287 Personnel, produits à recevoir, s’il s’agit d’une rémunération indue,
+- 	4387 Organismes sociaux, produits à recevoir, s’il s’agit d’une cotisation indue,
+- 	4493 à 4496 Etat, fonds et subventions à recevoir, s’il s’agit d’une dotation ou
+d’une subvention attendue de la part des pouvoirs publics nationaux,
+- 	458 Organismes internationaux, fonds de dotation et subventions à recevoir, si
+ces éléments sont attendus de la part d’un organisme international.
+Produits constatés d’avance
+a - facture client déjà émise, mais marchandise A 1 non livrée : 10 H. T., marge 50 %
+b - facture client groupe, pour service de maintenance du 1/10 au 30/9 : 12 H. T.
+c - intérêt semestriel sur titres immobilisés, versé d'avance pour période du 1/11 au 30/4 : 6
+APPLICATION 23
+
+-- 83 of 86 --
+
+94
+b) 	Les intérêts courus sur prêts sont rattachés aux créances et titres qui les génèrent, et
+débités en :
+- 	506 Intérêts courus, s’il s’agit de titres de placement,
+- 	276 Intérêts courus, s’il s’agit d’autres titres ou de créances.
+c) 	Il est tenu compte de la T.V.A. facturée probable :
+- 	au crédit du compte 4455 Etat, T.V.A. récupérable sur factures non parvenues,
+pour l’avoir attendu du fournisseur,
+- 	au crédit de 4435 Etat, T.V.A. sur factures à établir, pour la facture à adresser au
+client.
+Ecritures en fin d’exercice
+_______________ 	a 	______________
+4098 	Fournisseurs, R.R.R. et autres avoirs à obtenir 	22
+6019 	R.R.R. obtenus 	20
+4455 	Etat, T.V.A. récupérable sur factures non
+parvenues 	2
+_____________ 	b 	____________
+4181 	Clients, factures à établir 	44
+7023 	Ventes de produits finis. aux entités du
+groupe dans la région 	40
+4435 	Etat, T.V.A. sur factures à établir 	4
+Produits à recevoir
+a - ristourne promise par un fournisseur de marchandises (non ventilable) : 2 % de
+1 000, T.V.A. 10 %
+b - produit fini adressé à un client du groupe, mais facture non établie : 40 H. T.,
+T. V.A. 10 %
+c - terrain à bâtir déjà cédé, mais facture non encore établie : 30 H.T., T.V.A. 20 %
+d - retenue de prime à effectuer, sur personnel national : 4
+e - cotisations sociales correspondantes à réduire : 25 %
+f - subvention d'exploitation à recevoir : Etat 15, Fonds des Nations unies : 25
+g - intérêts à recevoir : 6 % sur prêt de 100 effectué à un membre du personnel, le 30
+juin.
+APPLICATION 24
+
+-- 84 of 86 --
+
+95
+____________ 	c 	_____________
+4858 	Créances sur cessions d’immobilisations,
+factures à établir 	36
+2221 	Terrain à bâtir 	30
+4435 	Etat, T.V.A. sur factures à établir 	6
+____________ 	d 	______________
+4287 	Personnel, produits à recevoir 	4
+6612 	Primes et gratifications 	4
+______________ 	e 	______________
+4387 	Organismes sociaux, produits à recevoir 	1
+6641 	charges sociales sur rémunération du
+personnel national 	1
+_____________ 	f 	____________
+4495 	Etat, subventions d’exploitation à recevoir 	15
+7181 	Autres subventions d’exploitations versées
+par l’Etat et les collectivités publiques 	15
+_____________ 	d° 	____________
+4582 	Organismes internationaux, subventions à
+recevoir 	25
+7182 	Autres subventions d’exploitations versées
+par les organismes internationaux 	25
+____________ 	g 	_____________
+4287 	Personnel, produits à recevoir 	3
+7712 	Intérêts de prêts 	3
+____________ 	______________
+6.4. Produits antérieurs
+a) 	L’article 61 de l’Acte Uniforme dispose que les produits « antérieurs », c’est-à-dire
+enregistrés en cours d’exercice « n », mais concernant l’exercice « n - 1 », demeurent
+inclus dans le résultat « n », ordinaire ou H.A.O., selon leur nature. Ils font l’objet
+d’une mention spécifique dans les Notes annexes.
+b) 	Pour respecter cette disposition, les entités sont amenées :
+- soit à ouvrir en classe 7 des sous comptes de produits « sur exercices antérieurs »,
+- soit à dresser en annexe un tableau extra comptable desdits produits.
+6.5. La contre-passation
+a) 	Les produits constatés d’avance seront contre-passés au cours de l’exercice suivant, dans
+le cadre :
+- 	soit des écritures d’ouverture (contre-passation immédiate),
+
+-- 85 of 86 --
+
+96
+- 	soit des nouvelles écritures de régularisation de fin d’exercice (contre-passation
+différée).
+b) 	Les produits à recevoir peuvent être contre-passés :
+- 	également au début ou à la fin de l’exercice suivant (contre-passation immédiate ou
+différée),
+- 	ou encore au fur et à mesure de l’arrivée des pièces comptables correspondantes
+(contre-passation progressive).
+Pour permettre le contrôle et l’analyse des flux de l’exercice (débits et crédits des
+comptes hors régularisation de contre-passation), il est recommandé de procéder
+aux contre- passations à l’ouverture de l’exercice suivant.
+
+-- 86 of 86 --
+
