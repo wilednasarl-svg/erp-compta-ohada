@@ -15,19 +15,30 @@ import { AppShell } from '@/components/app-shell';
 import { cn } from '@/lib/utils';
 import { useCurrentOrg } from '@/stores/auth-store';
 
+import { AnnexeConsole } from '../_console/annexe-console';
 import { BalanceConsole } from '../_console/balance-console';
 import { BilanConsole } from '../_console/bilan-console';
 import { CrConsole } from '../_console/cr-console';
+import { RatiosConsole } from '../_console/ratios-console';
 import { SigConsole } from '../_console/sig-console';
 import { TftConsole } from '../_console/tft-console';
 
-type ConsoleReport = 'balance-sheet' | 'profit-loss' | 'sig' | 'tft' | 'trial-balance';
+type ConsoleReport =
+  | 'balance-sheet'
+  | 'profit-loss'
+  | 'sig'
+  | 'tft'
+  | 'annexe'
+  | 'ratios'
+  | 'trial-balance';
 
 const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: string }> = [
   { key: 'balance-sheet', label: 'Bilan' },
   { key: 'profit-loss', label: 'Compte de résultat' },
   { key: 'sig', label: 'SIG' },
   { key: 'tft', label: 'TFT' },
+  { key: 'annexe', label: 'Annexe' },
+  { key: 'ratios', label: 'Ratios' },
   { key: 'trial-balance', label: 'Balance générale' },
 ];
 
@@ -82,6 +93,10 @@ export default function ReportConsolePage() {
           <SigConsole orgId={orgId} />
         ) : active === 'tft' ? (
           <TftConsole orgId={orgId} />
+        ) : active === 'annexe' ? (
+          <AnnexeConsole orgId={orgId} />
+        ) : active === 'ratios' ? (
+          <RatiosConsole orgId={orgId} />
         ) : (
           <BalanceConsole orgId={orgId} />
         )}

@@ -20,6 +20,17 @@ import type { PeriodValidity } from './types';
 /** Seuil d'arrondi : un écart < 1 FCFA est considéré équilibré (cents/arrondis). */
 const BALANCE_EPSILON = 1;
 
+/**
+ * Validité minimale pour un état sans invariant débit=crédit (Annexe, Ratios…) :
+ * pas d'`imbalance`, seulement la date de référence et la fraîcheur. L'indicateur
+ * d'équilibre est alors masqué plutôt qu'affiché à tort.
+ */
+export const validityAsOf = (dateIso: string): PeriodValidity => ({
+  lastMovementDate: dateIso,
+  computedAt: new Date().toISOString(),
+  periodClosed: false,
+});
+
 export const validityFromBalanceSheet = (report: BalanceSheetReport): PeriodValidity => {
   const difference = Math.abs(Number(report.totals.difference));
   return {
