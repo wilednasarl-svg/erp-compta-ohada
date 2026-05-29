@@ -79,12 +79,67 @@ export class RuleBasedAssistantProvider implements AssistantProvider {
   }
 
   private isDoctrineQuestion(q: string): boolean {
-    return /\b(syscohada|ohada|guide|doctrine|referentiel|audcif|dsf|bilan|tft|flux|note annexe|immobilisation|amortissement|stock|tva)\b/.test(
+    return /\b(syscohada|ohada|guide|doctrine|referentiel|audcif|dsf|bilan|tft|flux|note annexe|immobilisation|amortissement|stock|tva|location[ -]acquisition|credit[ -]bail|redevance|provision|subvention|retraite|indemnite de depart|avantages du personnel|fusion|apport|scission|effet de commerce|traite|escompte|endossement|devise|monnaie etrangere|ecart de conversion|garantie|gage|hypotheque|caution|nantissement|perte de valeur|valeur recouvrable|regularisation|rattachement|constat\w* d avance|charges a payer|produits a recevoir|rapprochement bancaire)\b/.test(
       q,
     );
   }
 
   private inferDomain(q: string): SyscohadaDomain {
+    // Domaines métier spécifiques d'abord (mots-clés sans ambiguïté), puis les
+    // domaines historiques. L'ordre garantit qu'une question sur un sujet
+    // précis (location, fusion, devise…) n'est pas captée par une règle plus
+    // générale, tout en conservant « TFT/flux → reports » (le TFT est un état
+    // financier).
+    if (
+      /\b(location[ -]acquisition|location simple|credit[ -]bail|redevance|preneur|bailleur|bail)\b/.test(
+        q,
+      )
+    )
+      return 'leases';
+    if (/\b(provision|risques et charges|litige|dotation aux provisions)\b/.test(q))
+      return 'provisions';
+    if (/\b(subvention)\b/.test(q)) return 'subsidies';
+    if (
+      /\b(retraite|indemnite de depart|indemnites de fin de carriere|avantages du personnel|engagement social)\b/.test(
+        q,
+      )
+    )
+      return 'actuarial-commitments';
+    if (
+      /\b(constat\w* d avance|charges a payer|produits a recevoir|regularisation|rattachement|abonnement)\b/.test(
+        q,
+      )
+    )
+      return 'regularizations';
+    if (/\b(fusion|scission|apport partiel|absorption|transformation de societe)\b/.test(q))
+      return 'transformations';
+    if (
+      /\b(effet de commerce|effets de commerce|traite|lettre de change|billet a ordre|escompte|endossement)\b/.test(
+        q,
+      )
+    )
+      return 'bills-of-exchange';
+    if (
+      /\b(devise|devises|monnaie etrangere|ecart de conversion|cours de change|operation en devise)\b/.test(
+        q,
+      )
+    )
+      return 'multi-currency';
+    if (
+      /\b(garantie|gage|hypotheque|caution|aval|nantissement|surete|engagement hors bilan)\b/.test(
+        q,
+      )
+    )
+      return 'pledged-assets';
+    if (/\b(perte de valeur|valeur recouvrable|valeur actuelle|impairment)\b/.test(q))
+      return 'impairments';
+    if (
+      /\b(previsionnel|prevision de tresorerie|budget de tresorerie|flux previsionnel|forecast)\b/.test(
+        q,
+      )
+    )
+      return 'cash-flow';
+    if (/\b(rapprochement bancaire|etat de rapprochement)\b/.test(q)) return 'bank-reconciliation';
     if (/\b(bilan|resultat|tft|flux|dsf|note|annexe|etat financier)\b/.test(q)) return 'reports';
     if (/\b(immobilisation|amortissement|cession|depreciation)\b/.test(q)) return 'assets';
     if (/\b(stock|inventaire|cmp|fifo)\b/.test(q)) return 'inventory';
@@ -326,13 +381,17 @@ export class RuleBasedAssistantProvider implements AssistantProvider {
   // ─── Helpers ────────────────────────────────────────────────────────
 
   private normalise(s: string): string {
-    return s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '')
-      .replace(/[?!.,;:]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return (
+      s
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        // Ponctuation et apostrophes (droites/typographiques) → espace, pour que
+        // « d'avance », « location-acquisition » matchent les motifs métier.
+        .replace(/[?!.,;:'’\-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
   }
 
   private fmtAmount(n: number): string {

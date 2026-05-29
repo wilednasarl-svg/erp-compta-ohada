@@ -9,6 +9,18 @@ describe('SYSCOHADA control catalog', () => {
     'inventory',
     'tva',
     'reports',
+    'leases',
+    'provisions',
+    'impairments',
+    'subsidies',
+    'actuarial-commitments',
+    'regularizations',
+    'transformations',
+    'bills-of-exchange',
+    'multi-currency',
+    'pledged-assets',
+    'cash-flow',
+    'bank-reconciliation',
     'ai',
   ];
 

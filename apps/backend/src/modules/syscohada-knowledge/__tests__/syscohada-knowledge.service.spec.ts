@@ -115,6 +115,39 @@ describe('SyscohadaKnowledgeService', () => {
     expect(results[0].excerpt.length).toBeGreaterThan(0);
   });
 
+  it('grounds every extended business domain in the bundled Guide PDFs', () => {
+    // Corpus réel embarqué (src/.../sources) : on vérifie que les domaines métier
+    // ajoutés ramènent bien des extraits sourcés du Guide, sinon ils n'ont aucune
+    // valeur doctrinale pour les DAF/comptables.
+    const service = new SyscohadaKnowledgeService();
+
+    const groundedDomains: ReadonlyArray<
+      Parameters<SyscohadaKnowledgeService['getModuleGuidance']>[0]
+    > = [
+      'leases',
+      'provisions',
+      'impairments',
+      'subsidies',
+      'actuarial-commitments',
+      'regularizations',
+      'transformations',
+      'bills-of-exchange',
+      'multi-currency',
+      'pledged-assets',
+      'cash-flow',
+    ];
+
+    for (const domain of groundedDomains) {
+      const guidance = service.getModuleGuidance(domain);
+      expect(guidance.references.length).toBeGreaterThan(0);
+      expect(guidance.controls.length).toBeGreaterThan(0);
+      // Au moins un extrait verbatim du Guide remonte pour le domaine.
+      expect(guidance.evidence.length).toBeGreaterThan(0);
+      // Au moins un contrôle du domaine est corroboré par une citation sourcée.
+      expect(guidance.controls.some((c) => c.citation !== null)).toBe(true);
+    }
+  });
+
   it('exposes named controls with legal basis and attached citation', () => {
     const service = makeService();
 
