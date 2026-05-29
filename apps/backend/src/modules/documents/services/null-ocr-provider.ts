@@ -14,8 +14,8 @@ import type { OcrExtractionResult, OcrProvider } from './ocr-provider';
 export class NullOcrProvider implements OcrProvider {
   private readonly logger = new Logger(NullOcrProvider.name);
 
-  async extract(_filePath: string, mimeType: string): Promise<OcrExtractionResult | null> {
+  extract(_filePath: string, mimeType: string): Promise<OcrExtractionResult | null> {
     this.logger.debug(`NullOcrProvider.extract: skipped (OCR disabled) mime=${mimeType}`);
-    return null;
+    return Promise.resolve(null);
   }
 }

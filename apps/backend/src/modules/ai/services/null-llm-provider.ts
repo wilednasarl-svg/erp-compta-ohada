@@ -19,13 +19,11 @@ import type {
 export class NullLlmProvider implements LlmProvider {
   public readonly id = 'null_v1';
 
-  async suggestAccount(_input: LlmSuggestAccountInput): Promise<LlmSuggestAccountOutput | null> {
-    return null;
+  suggestAccount(_input: LlmSuggestAccountInput): Promise<LlmSuggestAccountOutput | null> {
+    return Promise.resolve(null);
   }
 
-  async detectSemanticAnomaly(
-    _input: LlmSemanticAnomalyInput,
-  ): Promise<LlmSemanticAnomalyOutput | null> {
-    return null;
+  detectSemanticAnomaly(_input: LlmSemanticAnomalyInput): Promise<LlmSemanticAnomalyOutput | null> {
+    return Promise.resolve(null);
   }
 }

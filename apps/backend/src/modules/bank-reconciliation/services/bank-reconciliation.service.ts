@@ -71,10 +71,7 @@ export class BankReconciliationService {
     const unmatched = await this.linesRepo.listUnmatchedByAccount(bankAccountId, organizationId);
     if (unmatched.length === 0) return [];
 
-    const candidates = await this.fetchCandidateEntryLines(
-      organizationId,
-      account.chartAccountId,
-    );
+    const candidates = await this.fetchCandidateEntryLines(organizationId, account.chartAccountId);
     if (candidates.length === 0) return [];
 
     const stInputs: AutoMatchInputStatementLine[] = unmatched.map((l) => ({
@@ -171,7 +168,7 @@ export class BankReconciliationService {
       let signedSum = 0;
       for (let i = 0; i < queryResult.entities.length; i++) {
         const line = queryResult.entities[i];
-        const entryStatus = queryResult.raw[i]?.e_status as string | undefined;
+        const entryStatus = (queryResult.raw[i] as { e_status?: string } | undefined)?.e_status;
 
         if (entryStatus !== 'validated') {
           throw new AppException(ERROR_CODES.BANK_RECONCILIATION_ENTRY_LINE_NOT_VALIDATED, {
@@ -387,7 +384,13 @@ export class BankReconciliationService {
         'l.debit AS debit',
         'l.credit AS credit',
       ])
-      .getRawMany();
+      .getRawMany<{
+        line_id: string;
+        entry_date: Date | string;
+        description: string | null;
+        debit: string;
+        credit: string;
+      }>();
 
     return rows.map((r) => ({
       lineId: r.line_id,

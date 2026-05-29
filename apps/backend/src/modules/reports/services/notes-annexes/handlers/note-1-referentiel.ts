@@ -14,6 +14,7 @@
 
 import type { NoteHandler, NoteRow } from '../types';
 
+// eslint-disable-next-line @typescript-eslint/require-await -- conforms to the async NoteHandler contract; builds rows synchronously.
 export const handleN1Referentiel: NoteHandler = async () => {
   const rows: ReadonlyArray<NoteRow> = [
     {

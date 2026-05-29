@@ -13,6 +13,7 @@
  */
 import type { NoteHandler } from '../types';
 
+// eslint-disable-next-line @typescript-eslint/require-await -- conforms to the async NoteHandler contract; returns a static row set.
 export const freeCommentNote: NoteHandler = async () => ({
   rows: [],
   applicable: true,

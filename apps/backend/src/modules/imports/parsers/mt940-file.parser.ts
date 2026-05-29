@@ -1,7 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { Injectable } from '@nestjs/common';
 
-import { FileParseError, type IFileParser, type ParseContext, type ParsedRow, type ParseResult } from './types';
+import {
+  FileParseError,
+  type IFileParser,
+  type ParseContext,
+  type ParsedRow,
+  type ParseResult,
+} from './types';
 
 /**
  * Driver MT940 (SWIFT Statement Message) — relevés bancaires format SWIFT.
@@ -155,7 +161,10 @@ export class Mt940FileParser implements IFileParser {
     const slashIdx = remainder.indexOf('//');
     // Strip optional 1-char type id + optional 3-char code from front of reference
     const refPart = slashIdx >= 0 ? remainder.slice(0, slashIdx) : remainder;
-    const reference = refPart.replace(/^[A-Z]{1,4}/i, '').trim().slice(0, 35);
+    const reference = refPart
+      .replace(/^[A-Z]{1,4}/i, '')
+      .trim()
+      .slice(0, 35);
 
     const isCredit = sign === 'C' || sign === 'CR' || sign === 'RC';
 
@@ -188,6 +197,9 @@ export class Mt940FileParser implements IFileParser {
     };
   }
 
+  // Async generator by contract (consumed via `for await`); the body yields
+  // synchronously parsed rows and has nothing to await.
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async *toRows(trns: Mt940Trn[]): AsyncGenerator<ParsedRow> {
     for (let i = 0; i < trns.length; i++) {
       const t = trns[i];

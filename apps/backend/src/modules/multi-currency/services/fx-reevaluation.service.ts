@@ -31,8 +31,8 @@ const BASE_CURRENCY = 'XOF';
  * comptes pourra réaffecter sur un sous-compte plus fin (4781/4791)
  * si l'organisation a customisé son plan.
  */
-const ACCOUNT_LOSS_LATENT = '478' as const;
-const ACCOUNT_GAIN_LATENT = '479' as const;
+const ACCOUNT_LOSS_LATENT = '478';
+const ACCOUNT_GAIN_LATENT = '479';
 
 /**
  * Journal cible pour les écritures de réévaluation. SYSCOHADA recommande
@@ -252,13 +252,10 @@ export class FxReevaluationService {
   ): Promise<ReadonlyArray<FxReevaluationRunView>> {
     assertTenantId(organizationId);
     const runs = await this.runsRepo.list(organizationId, filters);
-    return runs.map(FxReevaluationService.toView);
+    return runs.map((run) => FxReevaluationService.toView(run));
   }
 
-  async findById(
-    organizationId: TenantId,
-    runId: string,
-  ): Promise<FxReevaluationRunView> {
+  async findById(organizationId: TenantId, runId: string): Promise<FxReevaluationRunView> {
     assertTenantId(organizationId);
     const run = await this.runsRepo.findById(organizationId, runId);
     if (!run) {
@@ -359,9 +356,7 @@ export class FxReevaluationService {
 
   // ─── pures (statiques) — testables sans I/O ─────────────────────────
 
-  static buildClosingLines(
-    details: ReadonlyArray<FxReevaluationAccountDetail>,
-  ): ReadonlyArray<{
+  static buildClosingLines(details: ReadonlyArray<FxReevaluationAccountDetail>): ReadonlyArray<{
     accountCode: string;
     debit: number;
     credit: number;
@@ -407,9 +402,7 @@ export class FxReevaluationService {
     return lines;
   }
 
-  static buildReversalLines(
-    details: ReadonlyArray<FxReevaluationAccountDetail>,
-  ): ReadonlyArray<{
+  static buildReversalLines(details: ReadonlyArray<FxReevaluationAccountDetail>): ReadonlyArray<{
     accountCode: string;
     debit: number;
     credit: number;
@@ -423,10 +416,7 @@ export class FxReevaluationService {
     }));
   }
 
-  static pickContraAccount(
-    _originalAmountCurrency: string,
-    ecart: string,
-  ): '478' | '479' {
+  static pickContraAccount(_originalAmountCurrency: string, ecart: string): '478' | '479' {
     // L'écart algébrique signé porte déjà l'information :
     //   ecart > 0 → l'actif net algébrique a augmenté → GAIN LATENT (479).
     //   ecart < 0 → l'actif net algébrique a diminué  → PERTE LATENTE (478).

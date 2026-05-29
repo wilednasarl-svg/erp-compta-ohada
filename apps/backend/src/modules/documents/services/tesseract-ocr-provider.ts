@@ -132,6 +132,9 @@ export class TesseractOcrProvider implements OcrProvider {
    * not installed so the type-check + non-tesseract tests pass on
    * environments without the dep.
    */
+  // Kept async to expose a stable Promise-returning lazy loader; the cached
+  // fast path returns synchronously and has nothing to await.
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async loadTesseractModule(): Promise<unknown> {
     if (this.tesseractModule !== null) {
       return this.tesseractModule;

@@ -293,7 +293,15 @@ export class ReportsPdfService {
   private crDoctrinalRow(
     doc: PDFKit.PDFDocument,
     cols: Array<{ label: string; width: number; align?: 'right' | 'center' }>,
-    line: { ref: string; label: string; note?: string; sign?: string; kind: string; amountN: string; amountPrevious?: string },
+    line: {
+      ref: string;
+      label: string;
+      note?: string;
+      sign?: string;
+      kind: string;
+      amountN: string;
+      amountPrevious?: string;
+    },
     y: number,
     hasComparison: boolean,
   ): number {
@@ -364,18 +372,32 @@ export class ReportsPdfService {
 
     // ── Bandeau d'en-tête coloré ──────────────────────────────────────
     doc.rect(0, 0, pageW, 62).fill('#1e3a5f');
-    doc.fontSize(7).fillColor('#93c5fd').font('Helvetica')
-      .text('SYSCOHADA · AUDCIF · Bilan consolidé', M, 10);
-    doc.fontSize(13).fillColor('#ffffff').font('Helvetica-Bold')
+    doc
+      .fontSize(7)
+      .fillColor('#93c5fd')
+      .font('Helvetica')
+      .text('SYSCOHADA · AUDCIF · Bilan consolidé · Devise : XOF', M, 10);
+    doc
+      .fontSize(13)
+      .fillColor('#ffffff')
+      .font('Helvetica-Bold')
       .text(orgName.toUpperCase(), M, 22, { width: contentW * 0.55 });
-    doc.fontSize(11).fillColor('#e0f2fe').font('Helvetica-Bold')
+    doc
+      .fontSize(11)
+      .fillColor('#e0f2fe')
+      .font('Helvetica-Bold')
       .text(`BILAN  —  AU ${report.asAtDate}`, M + contentW * 0.55, 18, {
-        width: contentW * 0.45, align: 'right',
+        width: contentW * 0.45,
+        align: 'right',
       });
     if (hasComparison) {
-      doc.fontSize(8).fillColor('#93c5fd').font('Helvetica')
+      doc
+        .fontSize(8)
+        .fillColor('#93c5fd')
+        .font('Helvetica')
         .text(`Comparaison N-1 : ${report.previous.asAtDate}`, M + contentW * 0.55, 36, {
-          width: contentW * 0.45, align: 'right',
+          width: contentW * 0.45,
+          align: 'right',
         });
     }
     doc.fillColor('#000000');
@@ -391,7 +413,8 @@ export class ReportsPdfService {
       { label: 'Net N', width: 85, align: 'right' as const },
       ...(hasComparison ? [{ label: 'Net N-1', width: 85, align: 'right' as const }] : []),
     ];
-    const tableW = cols.reduce((s, c) => s + c.width, 0) + (cols.length - 1) * ReportsPdfService.COL_GAP;
+    const tableW =
+      cols.reduce((s, c) => s + c.width, 0) + (cols.length - 1) * ReportsPdfService.COL_GAP;
 
     // ── Section ACTIF ─────────────────────────────────────────────────
     y = this.bilanSectionBand(doc, 'ACTIF', '#1e40af', '#dbeafe', M, y, tableW);
@@ -400,10 +423,17 @@ export class ReportsPdfService {
       y = this.bilanMasseRows(doc, cols, masse, y, 'ACTIF', tableW);
     }
     y = this.bilanGrandTotal(
-      doc, cols, 'BZ', 'TOTAL GÉNÉRAL ACTIF', '#dbeafe', '#1e40af',
+      doc,
+      cols,
+      'BZ',
+      'TOTAL GÉNÉRAL ACTIF',
+      '#dbeafe',
+      '#1e40af',
       report.totals.actif,
       hasComparison ? report.previous.totalActif : undefined,
-      M, y, tableW,
+      M,
+      y,
+      tableW,
     );
 
     // ── Section PASSIF ────────────────────────────────────────────────
@@ -418,10 +448,17 @@ export class ReportsPdfService {
       y = this.bilanMasseRows(doc, cols, masse, y, 'PASSIF', tableW);
     }
     y = this.bilanGrandTotal(
-      doc, cols, 'DZ', 'TOTAL GÉNÉRAL PASSIF', '#d1fae5', '#065f46',
+      doc,
+      cols,
+      'DZ',
+      'TOTAL GÉNÉRAL PASSIF',
+      '#d1fae5',
+      '#065f46',
       report.totals.passif,
       hasComparison ? report.previous.totalPassif : undefined,
-      M, y, tableW,
+      M,
+      y,
+      tableW,
     );
 
     // ── Indicateur d'équilibre ────────────────────────────────────────
@@ -431,19 +468,27 @@ export class ReportsPdfService {
     const balBg = isBalanced ? '#d1fae5' : '#fee2e2';
     const balFg = isBalanced ? '#065f46' : '#991b1b';
     doc.rect(M, y, tableW, 20).fill(balBg);
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(balFg)
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(8)
+      .fillColor(balFg)
       .text(
         isBalanced
           ? `Equilibre verifie  —  Actif = Passif = ${this.fmtAmt(report.totals.actif)}`
           : `Ecart Actif - Passif : ${this.fmtAmt(report.totals.difference)}  (verifier les ecritures)`,
-        M + 8, y + 6,
+        M + 8,
+        y + 6,
       );
     if (report.netResultIncorporated !== null) {
       y += 24;
-      doc.font('Helvetica').fontSize(7).fillColor('#555555')
+      doc
+        .font('Helvetica')
+        .fontSize(7)
+        .fillColor('#555555')
         .text(
           `Resultat de l'exercice incorpore dans les capitaux propres : ${this.fmtAmt(report.netResultIncorporated)}`,
-          M, y,
+          M,
+          y,
         );
     }
     doc.fillColor('#000000');
@@ -462,7 +507,10 @@ export class ReportsPdfService {
     w: number,
   ): number {
     doc.rect(x, y, w, 18).fill(bgDark);
-    doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff')
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(9)
+      .fillColor('#ffffff')
       .text(title, x + 8, y + 5);
     doc.fillColor('#000000');
     return y + 22;
@@ -497,32 +545,47 @@ export class ReportsPdfService {
     const M = ReportsPdfService.MARGIN;
     const LH = ReportsPdfService.LINE_HEIGHT;
 
-    if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+    if (y > doc.page.height - 60) {
+      doc.addPage();
+      y = M;
+    }
 
     // En-tête masse — fond légèrement grisé
     doc.rect(M, y, tableW, LH).fill('#f8fafc');
-    doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE).fillColor('#111111')
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(ReportsPdfService.FONT_SIZE_TABLE)
+      .fillColor('#111111')
       .text(masse.code, M + 2, y + 2);
-    doc.text(masse.label.toUpperCase(), M + 2 + cols[0]!.width + ReportsPdfService.COL_GAP, y + 2, {
-      width: cols[1]!.width,
+    doc.text(masse.label.toUpperCase(), M + 2 + cols[0].width + ReportsPdfService.COL_GAP, y + 2, {
+      width: cols[1].width,
     });
     doc.fillColor('#000000');
     y += LH;
 
     for (const rubrique of masse.rubriques) {
-      if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = M;
+      }
 
       // Titre rubrique — italique indentée
-      doc.font('Helvetica-Oblique').fontSize(7).fillColor('#555555')
-        .text(`  ${rubrique.label}`, M + 2 + cols[0]!.width + ReportsPdfService.COL_GAP, y + 1, {
-          width: cols[1]!.width,
+      doc
+        .font('Helvetica-Oblique')
+        .fontSize(7)
+        .fillColor('#555555')
+        .text(`  ${rubrique.label}`, M + 2 + cols[0].width + ReportsPdfService.COL_GAP, y + 1, {
+          width: cols[1].width,
         });
       doc.fillColor('#000000');
       y += LH - 2;
 
       let rowIdx = 0;
       for (const poste of rubrique.postes) {
-        if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+        if (y > doc.page.height - 60) {
+          doc.addPage();
+          y = M;
+        }
         // Alternance de fond blanc / très léger gris
         if (rowIdx % 2 === 1) doc.rect(M, y, tableW, LH).fill('#f9fafb');
         rowIdx++;
@@ -530,7 +593,7 @@ export class ReportsPdfService {
         const vals = this.posteValues(poste, side);
         let cx = M;
         for (let i = 0; i < cols.length; i++) {
-          const col = cols[i]!;
+          const col = cols[i];
           doc.text(vals[i] ?? '', cx, y + 2, { width: col.width, align: col.align });
           cx += col.width + ReportsPdfService.COL_GAP;
         }
@@ -539,15 +602,31 @@ export class ReportsPdfService {
       }
 
       // Ligne de séparation fine
-      doc.moveTo(M, y).lineTo(M + tableW, y).lineWidth(0.3).strokeColor('#cccccc').stroke();
+      doc
+        .moveTo(M, y)
+        .lineTo(M + tableW, y)
+        .lineWidth(0.3)
+        .strokeColor('#cccccc')
+        .stroke();
 
       // Sous-total rubrique
-      if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+      if (y > doc.page.height - 60) {
+        doc.addPage();
+        y = M;
+      }
       doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE).fillColor('#333333');
       let cx = M;
-      const stVals = ['', `  Sous-total ${rubrique.label}`, '', '', '', this.fmtAmt(rubrique.subtotal), rubrique.subtotalPrevious !== undefined ? this.fmtAmt(rubrique.subtotalPrevious) : ''];
+      const stVals = [
+        '',
+        `  Sous-total ${rubrique.label}`,
+        '',
+        '',
+        '',
+        this.fmtAmt(rubrique.subtotal),
+        rubrique.subtotalPrevious !== undefined ? this.fmtAmt(rubrique.subtotalPrevious) : '',
+      ];
       for (let i = 0; i < cols.length; i++) {
-        const col = cols[i]!;
+        const col = cols[i];
         doc.text(stVals[i] ?? '', cx, y + 2, { width: col.width, align: col.align });
         cx += col.width + ReportsPdfService.COL_GAP;
       }
@@ -556,13 +635,24 @@ export class ReportsPdfService {
     }
 
     // Total de masse
-    if (y > doc.page.height - 60) { doc.addPage(); y = M; }
+    if (y > doc.page.height - 60) {
+      doc.addPage();
+      y = M;
+    }
     doc.rect(M, y, tableW, LH + 2).fill('#e2e8f0');
     doc.font('Helvetica-Bold').fontSize(ReportsPdfService.FONT_SIZE_TABLE).fillColor('#111111');
     let cx = M;
-    const totalVals = [masse.code, `TOTAL ${masse.label.toUpperCase()}`, '', '', '', this.fmtAmt(masse.total), masse.totalPrevious !== undefined ? this.fmtAmt(masse.totalPrevious) : ''];
+    const totalVals = [
+      masse.code,
+      `TOTAL ${masse.label.toUpperCase()}`,
+      '',
+      '',
+      '',
+      this.fmtAmt(masse.total),
+      masse.totalPrevious !== undefined ? this.fmtAmt(masse.totalPrevious) : '',
+    ];
     for (let i = 0; i < cols.length; i++) {
-      const col = cols[i]!;
+      const col = cols[i];
       doc.text(totalVals[i] ?? '', cx, y + 3, { width: col.width, align: col.align });
       cx += col.width + ReportsPdfService.COL_GAP;
     }
@@ -583,7 +673,10 @@ export class ReportsPdfService {
     y: number,
     w: number,
   ): number {
-    if (y > doc.page.height - 40) { doc.addPage(); y = ReportsPdfService.MARGIN; }
+    if (y > doc.page.height - 40) {
+      doc.addPage();
+      y = ReportsPdfService.MARGIN;
+    }
     const LH = ReportsPdfService.LINE_HEIGHT + 4;
     doc.rect(x, y, w, LH).fill(bg);
     doc.font('Helvetica-Bold').fontSize(9).fillColor(fg);
@@ -591,7 +684,7 @@ export class ReportsPdfService {
     const netCol = cols.findIndex((c) => c.label.startsWith('Net N') && !c.label.includes('N-1'));
     const prevCol = cols.findIndex((c) => c.label.includes('N-1'));
     for (let i = 0; i < cols.length; i++) {
-      const col = cols[i]!;
+      const col = cols[i];
       let val = '';
       if (i === 0) val = ref;
       else if (i === 1) val = label;
@@ -623,8 +716,7 @@ export class ReportsPdfService {
     const label = `  ${poste.label}`;
     const note = poste.note ?? '';
     const netN = this.fmtAmt(poste.net);
-    const netN1 =
-      poste.netPrevious !== undefined ? this.fmtAmt(poste.netPrevious) : '';
+    const netN1 = poste.netPrevious !== undefined ? this.fmtAmt(poste.netPrevious) : '';
     if (side === 'PASSIF') {
       return [code, label, note, '', '', netN, netN1];
     }
@@ -662,7 +754,8 @@ export class ReportsPdfService {
     let y = this.tableHeader(doc, cols);
     y = this.sectionTitle(doc, 'PRODUITS', y);
     for (const p of report.produits) {
-      if (Number(p.amount) < 0.005 && (!hasComp || Number(p.previousAmount ?? '0') < 0.005)) continue;
+      if (Number(p.amount) < 0.005 && (!hasComp || Number(p.previousAmount ?? '0') < 0.005))
+        continue;
       y = this.tableRow(
         doc,
         cols,
@@ -678,7 +771,8 @@ export class ReportsPdfService {
     }
     y = this.sectionTitle(doc, 'CHARGES', y);
     for (const c of report.charges) {
-      if (Number(c.amount) < 0.005 && (!hasComp || Number(c.previousAmount ?? '0') < 0.005)) continue;
+      if (Number(c.amount) < 0.005 && (!hasComp || Number(c.previousAmount ?? '0') < 0.005))
+        continue;
       y = this.tableRow(
         doc,
         cols,
@@ -699,7 +793,13 @@ export class ReportsPdfService {
         doc,
         cols,
         hasComp
-          ? [s.code, `${s.label}  [${s.formula}]`, this.fmtAmt(s.amount), this.fmtAmt(s.previousAmount), pct === '' ? '' : `${pct}%`]
+          ? [
+              s.code,
+              `${s.label}  [${s.formula}]`,
+              this.fmtAmt(s.amount),
+              this.fmtAmt(s.previousAmount),
+              pct === '' ? '' : `${pct}%`,
+            ]
           : [s.code, `${s.label}  [${s.formula}]`, this.fmtAmt(s.amount)],
         y,
         true,
@@ -910,9 +1010,27 @@ export class ReportsPdfService {
       }
     }
     y += 10;
-    y = this.tableRow(doc, cols, ['', 'Trésorerie actuelle', '', '', this.fmtAmt(report.currentNetCash), ''], y, true);
-    y = this.tableRow(doc, cols, ['', 'Trésorerie min', '', '', this.fmtAmt(report.minNetCash), ''], y, true);
-    y = this.tableRow(doc, cols, ['', 'Trésorerie max', '', '', this.fmtAmt(report.maxNetCash), ''], y, true);
+    y = this.tableRow(
+      doc,
+      cols,
+      ['', 'Trésorerie actuelle', '', '', this.fmtAmt(report.currentNetCash), ''],
+      y,
+      true,
+    );
+    y = this.tableRow(
+      doc,
+      cols,
+      ['', 'Trésorerie min', '', '', this.fmtAmt(report.minNetCash), ''],
+      y,
+      true,
+    );
+    y = this.tableRow(
+      doc,
+      cols,
+      ['', 'Trésorerie max', '', '', this.fmtAmt(report.maxNetCash), ''],
+      y,
+      true,
+    );
     this.footer(doc);
     return this.finalize(doc);
   }
@@ -1017,7 +1135,7 @@ export class ReportsPdfService {
 
     renderSection(
       report.operatingFlows,
-      "Flux de trésorerie provenant des activités opérationnelles",
+      'Flux de trésorerie provenant des activités opérationnelles',
       prev?.operatingFlow,
     );
     renderSection(
@@ -1156,7 +1274,7 @@ export class ReportsPdfService {
       .text(
         report.verdict.canCommit
           ? "✓ Le fichier peut être commite en l'etat. Les avertissements ne sont pas bloquants."
-          : "✗ Le fichier ne peut PAS etre commite. Corriger les anomalies critiques listees plus bas avant de re-tenter.",
+          : '✗ Le fichier ne peut PAS etre commite. Corriger les anomalies critiques listees plus bas avant de re-tenter.',
         ReportsPdfService.MARGIN + 10,
         verdictY + 40,
       );

@@ -4,7 +4,7 @@ import { Type, Transform } from 'class-transformer';
 
 export class ConsolidatedQueryDto {
   @ApiProperty({ type: [String], description: 'List of organization UUIDs to aggregate' })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => (Array.isArray(value) ? (value as string[]) : [value as string]))
   @IsArray()
   @IsUUID('4', { each: true })
   organizationIds!: string[];

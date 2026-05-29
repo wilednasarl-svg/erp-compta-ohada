@@ -51,6 +51,22 @@ module.exports = {
         // — fixture code pays no cost from suppressing them.
         '@typescript-eslint/no-unsafe-member-access': 'off',
         '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+        // Mock implementations conform to async interfaces (e.g. a repository
+        // method typed `findById(): Promise<X>`) and so must stay `async`
+        // even when the stub body has nothing to await. Same rationale as the
+        // unsafe-* family: the rule guards production correctness, not fixtures.
+        '@typescript-eslint/require-await': 'off',
+        // Tests legitimately reach for `require(...)` to lazily pull a module
+        // at runtime (avoiding circular import order) and for inline
+        // `import('...').Type` annotations in `as unknown as` mock casts.
+        // These are organizational/strictness rules with no fixture payoff.
+        '@typescript-eslint/no-var-requires': 'off',
+        '@typescript-eslint/no-require-imports': 'off',
+        '@typescript-eslint/consistent-type-imports': 'off',
       },
     },
   ],

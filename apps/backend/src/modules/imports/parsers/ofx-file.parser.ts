@@ -1,7 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { Injectable } from '@nestjs/common';
 
-import { FileParseError, type IFileParser, type ParseContext, type ParsedRow, type ParseResult } from './types';
+import {
+  FileParseError,
+  type IFileParser,
+  type ParseContext,
+  type ParsedRow,
+  type ParseResult,
+} from './types';
 
 /**
  * Driver OFX (Open Financial Exchange) — relevés bancaires.
@@ -98,6 +104,9 @@ export class OfxFileParser implements IFileParser {
     return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
   }
 
+  // Async generator by contract (consumed via `for await`); the body yields
+  // synchronously parsed rows and has nothing to await.
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async *toRows(trns: OfxTrn[]): AsyncGenerator<ParsedRow> {
     for (let i = 0; i < trns.length; i++) {
       const t = trns[i];

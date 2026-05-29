@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CashFlowForecastEntity, CashFlowForecastStatus } from '../entities/cash-flow-forecast.entity';
+import { Repository, type QueryDeepPartialEntity } from 'typeorm';
+import {
+  CashFlowForecastEntity,
+  CashFlowForecastStatus,
+} from '../entities/cash-flow-forecast.entity';
 
 @Injectable()
 export class CashFlowForecastRepository {
@@ -19,8 +22,12 @@ export class CashFlowForecastRepository {
     return this.repo.findOne({ where: { id, organizationId } });
   }
 
-  async findAllForOrganization(organizationId: string, status?: CashFlowForecastStatus): Promise<CashFlowForecastEntity[]> {
-    const query = this.repo.createQueryBuilder('cff')
+  async findAllForOrganization(
+    organizationId: string,
+    status?: CashFlowForecastStatus,
+  ): Promise<CashFlowForecastEntity[]> {
+    const query = this.repo
+      .createQueryBuilder('cff')
       .where('cff.organization_id = :organizationId', { organizationId })
       .orderBy('cff.expected_date', 'ASC');
 
@@ -32,7 +39,7 @@ export class CashFlowForecastRepository {
   }
 
   async update(id: string, data: Partial<CashFlowForecastEntity>): Promise<void> {
-    await this.repo.update({ id }, data as any);
+    await this.repo.update({ id }, data as QueryDeepPartialEntity<CashFlowForecastEntity>);
   }
 
   async delete(id: string, organizationId: string): Promise<void> {

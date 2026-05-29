@@ -319,7 +319,12 @@ export interface BalanceSheetReport {
   readonly previous?: BalanceSheetPreviousSummary;
 }
 
-export type BilanDiagnosticClassRole = 'BILAN_PASSIF' | 'BILAN_ACTIF' | 'PL_CHARGES' | 'PL_PRODUITS' | 'AUTRES';
+export type BilanDiagnosticClassRole =
+  | 'BILAN_PASSIF'
+  | 'BILAN_ACTIF'
+  | 'PL_CHARGES'
+  | 'PL_PRODUITS'
+  | 'AUTRES';
 
 export interface BilanDiagnosticYearEndEntry {
   readonly present: boolean;
@@ -364,7 +369,11 @@ export interface BilanDiagnosticReport {
   }>;
   readonly yearEnd: {
     readonly amortissements: BilanDiagnosticYearEndEntry & {
-      readonly accounts: ReadonlyArray<{ readonly code: string; readonly label: string; readonly amount: string }>;
+      readonly accounts: ReadonlyArray<{
+        readonly code: string;
+        readonly label: string;
+        readonly amount: string;
+      }>;
     };
     readonly depreciations: BilanDiagnosticYearEndEntry;
     readonly chargesConstateesAvance: BilanDiagnosticYearEndEntry;
@@ -565,12 +574,7 @@ export interface SigReport {
 // ─── Ratios financiers ──────────────────────────────────────────────
 
 /** Famille d'un ratio pour le regroupement dans l'UI et l'export. */
-export type RatioCategory =
-  | 'STRUCTURE'
-  | 'LIQUIDITE'
-  | 'SOLVABILITE'
-  | 'RENTABILITE'
-  | 'ACTIVITE';
+export type RatioCategory = 'STRUCTURE' | 'LIQUIDITE' | 'SOLVABILITE' | 'RENTABILITE' | 'ACTIVITE';
 
 /**
  * Un ratio calculé. `value` est en `string` pour préserver la précision
@@ -907,7 +911,7 @@ const ANOMALY_META: Record<
     description:
       "Une ou plusieurs lignes n'ont pas tous les champs requis (compte, journal, date, libellé, débit ou crédit).",
     remediation:
-      "Compléter les champs manquants directement dans le fichier source puis ré-uploader, ou éditer manuellement les lignes concernées.",
+      'Compléter les champs manquants directement dans le fichier source puis ré-uploader, ou éditer manuellement les lignes concernées.',
     autoFixable: false,
   },
   unknown_account: {
@@ -950,7 +954,7 @@ const ANOMALY_META: Record<
     severity: 'critical',
     title: 'Montant illisible',
     description:
-      "Le montant débit ou crédit ne peut pas être parsé en nombre (espaces, séparateur décimal incohérent, devise mêlée au chiffre).",
+      'Le montant débit ou crédit ne peut pas être parsé en nombre (espaces, séparateur décimal incohérent, devise mêlée au chiffre).',
     remediation:
       "Nettoyer le format des montants : séparateur décimal point ou virgule, pas d'unité de devise ni d'espace dans la cellule.",
     autoFixable: false,
@@ -959,9 +963,9 @@ const ANOMALY_META: Record<
     severity: 'warning',
     title: 'Ligne à zéro (D=0 et C=0)',
     description:
-      "La ligne ne porte ni débit ni crédit (0/0). Sans incidence comptable mais probablement parasite.",
+      'La ligne ne porte ni débit ni crédit (0/0). Sans incidence comptable mais probablement parasite.',
     remediation:
-      "Supprimer ces lignes du fichier source si elles sont parasites, ou compléter les montants si elles devaient porter une opération.",
+      'Supprimer ces lignes du fichier source si elles sont parasites, ou compléter les montants si elles devaient porter une opération.',
     autoFixable: false,
   },
   debit_credit_both_nonzero: {
@@ -970,7 +974,7 @@ const ANOMALY_META: Record<
     description:
       'Une même ligne porte simultanément un montant débit ET crédit — impossible en partie double OHADA.',
     remediation:
-      'Splitter chaque ligne en deux : une ligne de débit, une ligne de crédit, sur le même compte ou comptes distincts selon la nature de l\'opération.',
+      "Splitter chaque ligne en deux : une ligne de débit, une ligne de crédit, sur le même compte ou comptes distincts selon la nature de l'opération.",
     autoFixable: false,
   },
   negative_amount: {
@@ -1425,12 +1429,7 @@ export class ReportsService {
       analyticAxisType: query.analyticAxisType,
       analyticAxisCode: query.analyticAxisCode,
     };
-    const current = await this.computeSigBare(
-      organizationId,
-      query.fromDate,
-      query.toDate,
-      axis,
-    );
+    const current = await this.computeSigBare(organizationId, query.fromDate, query.toDate, axis);
     if (query.compareWith === undefined) {
       return current;
     }
@@ -1570,10 +1569,8 @@ export class ReportsService {
       }),
     ]);
 
-    const sectionTotal = (
-      sections: BalanceSheetReport['actif']['sections'],
-      key: string,
-    ): number => Number(sections.find((s) => s.key === key)?.total ?? '0');
+    const sectionTotal = (sections: BalanceSheetReport['actif']['sections'], key: string): number =>
+      Number(sections.find((s) => s.key === key)?.total ?? '0');
 
     const totalActif = Number(bilan.actif.total);
     const totalPassif = Number(bilan.passif.total);
@@ -1630,7 +1627,11 @@ export class ReportsService {
         denominator: actifImmobilise,
         unit: 'RATIO',
         interpret: (v) =>
-          v === null ? undefined : v >= 1 ? 'fonds de roulement positif' : 'fonds de roulement négatif',
+          v === null
+            ? undefined
+            : v >= 1
+              ? 'fonds de roulement positif'
+              : 'fonds de roulement négatif',
       }),
       ReportsService.makeRatio({
         code: 'LG',
@@ -1729,8 +1730,7 @@ export class ReportsService {
         numerator: fondsRoulement,
         denominator: 1, // valeur absolue, pas un quotient
         unit: 'RATIO',
-        interpret: () =>
-          fondsRoulement >= 0 ? 'positif' : 'négatif (déséquilibre structurel)',
+        interpret: () => (fondsRoulement >= 0 ? 'positif' : 'négatif (déséquilibre structurel)'),
       }),
     ];
 
@@ -1749,10 +1749,7 @@ export class ReportsService {
    * Implémentation : N appels parallèles à `accountBalancesAsAt`. Garde-
    * fou à 60 mois ; au-delà demander un découpage.
    */
-  async getCashTrend(
-    organizationId: TenantId,
-    query: CashTrendQuery,
-  ): Promise<CashTrendReport> {
+  async getCashTrend(organizationId: TenantId, query: CashTrendQuery): Promise<CashTrendReport> {
     assertTenantId(organizationId);
     if (
       !ReportsService.isYearMonth(query.fromMonth) ||
@@ -1837,6 +1834,7 @@ export class ReportsService {
    * créances, dettes, capitaux) sont marquées COMPUTED avec lien vers le
    * rapport source. Les notes purement narratives sont marquées MANUAL.
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- public async contract; assembles the annexe from already-resolved inputs.
   async getAnnexe(
     organizationId: TenantId,
     query: { asAtDate: string; fiscalYearStartDate: string },
@@ -1868,34 +1866,134 @@ export class ReportsService {
         status: 'COMPUTED',
         source: 'sig (RL, TJ)',
       },
-      { code: 'Note 3D', title: "Cessions d'immobilisations", status: 'PARTIAL', source: 'sig (TN, RO)' },
+      {
+        code: 'Note 3D',
+        title: "Cessions d'immobilisations",
+        status: 'PARTIAL',
+        source: 'sig (TN, RO)',
+      },
       { code: 'Note 3E', title: 'Crédit-bail et contrats assimilés', status: 'MANUAL' },
-      { code: 'Note 3F', title: 'Subventions d\'investissement', status: 'COMPUTED', source: 'balance-sheet (compte 14)' },
-      { code: 'Note 4', title: 'Stocks et en-cours', status: 'COMPUTED', source: 'balance-sheet (classe 3)' },
-      { code: 'Note 5', title: 'Créances et emplois assimilés', status: 'COMPUTED', source: 'aging-balance (CLIENT)' },
-      { code: 'Note 6', title: 'Variations de stocks', status: 'COMPUTED', source: 'sig (RB, RD, RF, TG)' },
-      { code: 'Note 7', title: "Charges constatées d'avance", status: 'COMPUTED', source: 'balance-sheet (compte 476)' },
-      { code: 'Note 8', title: 'Trésorerie actif', status: 'COMPUTED', source: 'balance-sheet (classe 5 débit)' },
+      {
+        code: 'Note 3F',
+        title: "Subventions d'investissement",
+        status: 'COMPUTED',
+        source: 'balance-sheet (compte 14)',
+      },
+      {
+        code: 'Note 4',
+        title: 'Stocks et en-cours',
+        status: 'COMPUTED',
+        source: 'balance-sheet (classe 3)',
+      },
+      {
+        code: 'Note 5',
+        title: 'Créances et emplois assimilés',
+        status: 'COMPUTED',
+        source: 'aging-balance (CLIENT)',
+      },
+      {
+        code: 'Note 6',
+        title: 'Variations de stocks',
+        status: 'COMPUTED',
+        source: 'sig (RB, RD, RF, TG)',
+      },
+      {
+        code: 'Note 7',
+        title: "Charges constatées d'avance",
+        status: 'COMPUTED',
+        source: 'balance-sheet (compte 476)',
+      },
+      {
+        code: 'Note 8',
+        title: 'Trésorerie actif',
+        status: 'COMPUTED',
+        source: 'balance-sheet (classe 5 débit)',
+      },
       { code: 'Note 9', title: 'Écarts de conversion', status: 'MANUAL' },
-      { code: 'Note 10', title: 'Capital social', status: 'COMPUTED', source: 'balance-sheet (compte 10)' },
-      { code: 'Note 11', title: 'Primes, réserves, report à nouveau', status: 'COMPUTED', source: 'balance-sheet (comptes 11, 12)' },
-      { code: 'Note 12', title: 'Subventions d\'investissement', status: 'COMPUTED', source: 'balance-sheet (compte 14)' },
-      { code: 'Note 13', title: 'Provisions pour risques et charges', status: 'COMPUTED', source: 'balance-sheet (compte 19)' },
-      { code: 'Note 14', title: 'Emprunts et dettes financières', status: 'COMPUTED', source: 'balance-sheet (classe 16)' },
-      { code: 'Note 15', title: 'Fournisseurs et dettes assimilées', status: 'COMPUTED', source: 'aging-balance (FOURNISSEUR)' },
-      { code: 'Note 16', title: 'Dettes sociales et fiscales', status: 'COMPUTED', source: 'balance-sheet (comptes 42, 43, 44)' },
-      { code: 'Note 17', title: 'Autres dettes', status: 'COMPUTED', source: 'balance-sheet (autres 4x crédit)' },
-      { code: 'Note 18', title: 'Trésorerie passif', status: 'COMPUTED', source: 'balance-sheet (classe 5 crédit)' },
+      {
+        code: 'Note 10',
+        title: 'Capital social',
+        status: 'COMPUTED',
+        source: 'balance-sheet (compte 10)',
+      },
+      {
+        code: 'Note 11',
+        title: 'Primes, réserves, report à nouveau',
+        status: 'COMPUTED',
+        source: 'balance-sheet (comptes 11, 12)',
+      },
+      {
+        code: 'Note 12',
+        title: "Subventions d'investissement",
+        status: 'COMPUTED',
+        source: 'balance-sheet (compte 14)',
+      },
+      {
+        code: 'Note 13',
+        title: 'Provisions pour risques et charges',
+        status: 'COMPUTED',
+        source: 'balance-sheet (compte 19)',
+      },
+      {
+        code: 'Note 14',
+        title: 'Emprunts et dettes financières',
+        status: 'COMPUTED',
+        source: 'balance-sheet (classe 16)',
+      },
+      {
+        code: 'Note 15',
+        title: 'Fournisseurs et dettes assimilées',
+        status: 'COMPUTED',
+        source: 'aging-balance (FOURNISSEUR)',
+      },
+      {
+        code: 'Note 16',
+        title: 'Dettes sociales et fiscales',
+        status: 'COMPUTED',
+        source: 'balance-sheet (comptes 42, 43, 44)',
+      },
+      {
+        code: 'Note 17',
+        title: 'Autres dettes',
+        status: 'COMPUTED',
+        source: 'balance-sheet (autres 4x crédit)',
+      },
+      {
+        code: 'Note 18',
+        title: 'Trésorerie passif',
+        status: 'COMPUTED',
+        source: 'balance-sheet (classe 5 crédit)',
+      },
       { code: 'Note 19', title: 'Engagements donnés et reçus (hors bilan)', status: 'MANUAL' },
-      { code: 'Note 20', title: 'Ventilation du chiffre d\'affaires', status: 'COMPUTED', source: 'sig (TA-TD)' },
-      { code: 'Note 21', title: 'Produits, charges hors activités ordinaires (HAO)', status: 'COMPUTED', source: 'sig (TN, TO, RO, RP)' },
-      { code: 'Note 22', title: 'Charges et produits financiers', status: 'COMPUTED', source: 'sig (TK-TM, RM)' },
-      { code: 'Note 23', title: 'Effectifs, masse salariale, personnel extérieur', status: 'PARTIAL', source: 'sig (RK)' },
+      {
+        code: 'Note 20',
+        title: "Ventilation du chiffre d'affaires",
+        status: 'COMPUTED',
+        source: 'sig (TA-TD)',
+      },
+      {
+        code: 'Note 21',
+        title: 'Produits, charges hors activités ordinaires (HAO)',
+        status: 'COMPUTED',
+        source: 'sig (TN, TO, RO, RP)',
+      },
+      {
+        code: 'Note 22',
+        title: 'Charges et produits financiers',
+        status: 'COMPUTED',
+        source: 'sig (TK-TM, RM)',
+      },
+      {
+        code: 'Note 23',
+        title: 'Effectifs, masse salariale, personnel extérieur',
+        status: 'PARTIAL',
+        source: 'sig (RK)',
+      },
       { code: 'Note 24', title: 'Rémunérations et avantages des dirigeants', status: 'MANUAL' },
       { code: 'Note 25', title: 'Transactions avec parties liées', status: 'MANUAL' },
       { code: 'Note 26', title: 'Événements postérieurs à la clôture', status: 'MANUAL' },
       { code: 'Note 27', title: 'Honoraires des commissaires aux comptes', status: 'MANUAL' },
-      { code: 'Note 28', title: "Impôt sur les bénéfices", status: 'COMPUTED', source: 'sig (RS)' },
+      { code: 'Note 28', title: 'Impôt sur les bénéfices', status: 'COMPUTED', source: 'sig (RS)' },
       { code: 'Note 29', title: 'Activités abandonnées ou cédées', status: 'MANUAL' },
       { code: 'Note 30', title: 'Information sectorielle', status: 'MANUAL' },
       { code: 'Note 35', title: 'Tableau des engagements financiers', status: 'MANUAL' },
@@ -1955,7 +2053,7 @@ export class ReportsService {
           total: '0.00',
           coverage: 'UNSUPPORTED',
           methodology:
-            'Cette note n\'a pas encore de calcul détaillé. Voir la liste générale via /annexe pour le statut COMPUTED/PARTIAL/MANUAL et la source.',
+            "Cette note n'a pas encore de calcul détaillé. Voir la liste générale via /annexe pour le statut COMPUTED/PARTIAL/MANUAL et la source.",
         };
     }
   }
@@ -2025,7 +2123,8 @@ export class ReportsService {
     // 418 (factures à établir) + autres créances 42x débit, 44x débit,
     // 47x débit. V1 : se limiter à 411 pour rester actionnable.
     const filtered = balances.filter(
-      (b) => b.accountCode.startsWith('411') && Number(b.totalDebit) - Number(b.totalCredit) > 0.005,
+      (b) =>
+        b.accountCode.startsWith('411') && Number(b.totalDebit) - Number(b.totalCredit) > 0.005,
     );
     const rows: AnnexeNoteDetailRow[] = filtered.map((b) => ({
       code: b.accountCode,
@@ -2042,7 +2141,7 @@ export class ReportsService {
       total: total.toFixed(2),
       coverage: 'PARTIAL',
       methodology:
-        "V1 : sous-comptes 411 (clients) avec solde débiteur positif. À étendre : 416 (clients douteux), 418 (factures à établir), 425-427 (avances personnel). Pour le détail âge des créances, voir /aging-balance?side=CLIENT.",
+        'V1 : sous-comptes 411 (clients) avec solde débiteur positif. À étendre : 416 (clients douteux), 418 (factures à établir), 425-427 (avances personnel). Pour le détail âge des créances, voir /aging-balance?side=CLIENT.',
     };
   }
 
@@ -2053,7 +2152,8 @@ export class ReportsService {
   ): Promise<AnnexeNoteDetailReport> {
     const balances = await this.repo.accountBalancesAsAt(organizationId, asAtDate);
     const filtered = balances.filter(
-      (b) => b.accountCode.startsWith('401') && Number(b.totalCredit) - Number(b.totalDebit) > 0.005,
+      (b) =>
+        b.accountCode.startsWith('401') && Number(b.totalCredit) - Number(b.totalDebit) > 0.005,
     );
     const rows: AnnexeNoteDetailRow[] = filtered.map((b) => ({
       code: b.accountCode,
@@ -2173,7 +2273,7 @@ export class ReportsService {
       total: (amortTotal + deprTotal).toFixed(2),
       coverage: 'COMPLETE',
       methodology:
-        "Solde net créditeur des comptes 28 (amortissements) et 29 (dépréciations). Pour les dotations de la période, voir Note 3C (basée sur le poste RL du SIG).",
+        'Solde net créditeur des comptes 28 (amortissements) et 29 (dépréciations). Pour les dotations de la période, voir Note 3C (basée sur le poste RL du SIG).',
     };
   }
 
@@ -2187,9 +2287,7 @@ export class ReportsService {
     // établissements financiers, dettes financières diverses, dépôts et
     // cautionnements reçus).
     const filtered = balances.filter(
-      (b) =>
-        b.accountCode.startsWith('16') &&
-        Number(b.totalCredit) - Number(b.totalDebit) > 0.005,
+      (b) => b.accountCode.startsWith('16') && Number(b.totalCredit) - Number(b.totalDebit) > 0.005,
     );
     const rows: AnnexeNoteDetailRow[] = filtered.map((b) => ({
       code: b.accountCode,
@@ -2224,7 +2322,7 @@ export class ReportsService {
     const rows: AnnexeNoteDetailRow[] = [
       {
         code: 'XG',
-        label: "Résultat des activités ordinaires (avant impôt et participation)",
+        label: 'Résultat des activités ordinaires (avant impôt et participation)',
         amount: xg?.amount ?? '0.00',
       },
       {
@@ -2234,7 +2332,7 @@ export class ReportsService {
       },
       {
         code: 'RS',
-        label: "Impôt sur le résultat (charge)",
+        label: 'Impôt sur le résultat (charge)',
         amount: rs?.amount ?? '0.00',
       },
       {
@@ -2245,7 +2343,7 @@ export class ReportsService {
     ];
     return {
       noteCode: 'Note 28',
-      title: "Impôt sur les bénéfices",
+      title: 'Impôt sur les bénéfices',
       asAtDate,
       fiscalYearStartDate: fyStart,
       rows,
@@ -2347,7 +2445,7 @@ export class ReportsService {
         //   31..60         → 31-60j
         //   61..90         → 61-90j
         //   ageDays > 90   → >90j
-        const bucketAmounts = new Array(bucketCount).fill(0);
+        const bucketAmounts: number[] = new Array<number>(bucketCount).fill(0);
         for (const o of opens) {
           const ageDays = Math.max(0, Math.floor((asAt - o.date) / (1000 * 60 * 60 * 24)));
           let placed = false;
@@ -2377,7 +2475,7 @@ export class ReportsService {
     );
     const filtered = rows.filter((r) => Number(r.total) > 0.005);
     filtered.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
-    const bucketTotals = new Array(bucketCount).fill(0);
+    const bucketTotals: number[] = new Array<number>(bucketCount).fill(0);
     for (const r of filtered) {
       r.buckets.forEach((b, i) => {
         bucketTotals[i] += Number(b.amount);
@@ -2552,13 +2650,15 @@ export class ReportsService {
     };
     const perPeriodRows = await Promise.all(
       query.periods.map((p) =>
-        this.repo.trialBalance(organizationId, { ...filters, fromDate: p.fromDate, toDate: p.toDate }),
+        this.repo.trialBalance(organizationId, {
+          ...filters,
+          fromDate: p.fromDate,
+          toDate: p.toDate,
+        }),
       ),
     );
     const lastIdx = perPeriodRows.length - 1;
-    const indexByAccount = perPeriodRows.map(
-      (rows) => new Map(rows.map((r) => [r.accountId, r])),
-    );
+    const indexByAccount = perPeriodRows.map((rows) => new Map(rows.map((r) => [r.accountId, r])));
     const allAccountIds = new Set<string>();
     for (const rows of perPeriodRows) {
       for (const r of rows) allAccountIds.add(r.accountId);
@@ -2980,6 +3080,7 @@ export class ReportsService {
    * Génère Bilan + CR directement depuis une balance uploadée (lignes CSV),
    * sans passer par les écritures validées en base.
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- public async contract; computes synchronously from the uploaded balance rows.
   async getReportsFromBalance(
     _organizationId: TenantId,
     input: {
@@ -3397,10 +3498,10 @@ export class ReportsService {
     const builtPostes = new Map<string, BilanPoste>();
     for (const ref of BILAN_POSTES) {
       if (ref.section === '_TOTAL_') continue;
-      
+
       const acc = posteAccs.get(ref.code) ?? { brut: 0, deduction: 0 };
       const net = (acc.brut - acc.deduction) * ref.sign;
-      
+
       const poste: BilanPoste = {
         code: ref.code,
         label: ref.label,
@@ -3461,35 +3562,31 @@ export class ReportsService {
       const key = `${masseCode}::${ref.section}`;
       const existing = rubriquesByKey.get(key);
       if (existing) existing.postes.push(built);
-      else
-        rubriquesByKey.set(key, { label: ref.section, postes: [built], masseCode });
+      else rubriquesByKey.set(key, { label: ref.section, postes: [built], masseCode });
     }
 
     // Construction finale des masses, dans l'ordre du référentiel.
     const buildMasses = (side: 'ACTIF' | 'PASSIF'): BilanMasse[] => {
-      const masseRefs = BILAN_POSTES.filter(
-        (p) => p.section === '_TOTAL_' && p.side === side,
-      );
-      return masseRefs
-        .map((ref) => {
-          const rubs: BilanRubrique[] = [];
-          for (const [key, rub] of rubriquesByKey) {
-            if (rub.masseCode !== ref.code) continue;
-            // Tri des postes par code lettré (AE < AF < AG…).
-            const sortedPostes = [...rub.postes].sort((a, b) => a.code.localeCompare(b.code));
-            const subtotal = sortedPostes.reduce((s, p) => s + Number(p.net), 0);
-            rubs.push({ label: rub.label, postes: sortedPostes, subtotal: subtotal.toFixed(2) });
-            // Suppression du marquer 'key' inutilisé (lint).
-            void key;
-          }
-          const total = masseTotals.get(ref.code) ?? 0;
-          return {
-            code: ref.code,
-            label: ref.label,
-            rubriques: rubs,
-            total: total.toFixed(2),
-          };
-        });
+      const masseRefs = BILAN_POSTES.filter((p) => p.section === '_TOTAL_' && p.side === side);
+      return masseRefs.map((ref) => {
+        const rubs: BilanRubrique[] = [];
+        for (const [key, rub] of rubriquesByKey) {
+          if (rub.masseCode !== ref.code) continue;
+          // Tri des postes par code lettré (AE < AF < AG…).
+          const sortedPostes = [...rub.postes].sort((a, b) => a.code.localeCompare(b.code));
+          const subtotal = sortedPostes.reduce((s, p) => s + Number(p.net), 0);
+          rubs.push({ label: rub.label, postes: sortedPostes, subtotal: subtotal.toFixed(2) });
+          // Suppression du marquer 'key' inutilisé (lint).
+          void key;
+        }
+        const total = masseTotals.get(ref.code) ?? 0;
+        return {
+          code: ref.code,
+          label: ref.label,
+          rubriques: rubs,
+          total: total.toFixed(2),
+        };
+      });
       // On expose toutes les masses du référentiel (y compris les masses
       // racine BZ/DZ et les masses parents BK/DF qui n'ont pas de
       // rubriques propres mais dont le total agrège leurs enfants).
@@ -3918,7 +4015,10 @@ export class ReportsService {
 
     // 2. By-class breakdown
     const CLASS_META: Record<number, { label: string; role: BilanDiagnosticClassRole }> = {
-      1: { label: 'Ressources durables (capitaux propres, dettes financières)', role: 'BILAN_PASSIF' },
+      1: {
+        label: 'Ressources durables (capitaux propres, dettes financières)',
+        role: 'BILAN_PASSIF',
+      },
       2: { label: 'Immobilisations', role: 'BILAN_ACTIF' },
       3: { label: 'Stocks', role: 'BILAN_ACTIF' },
       4: { label: 'Comptes de tiers (actif et passif)', role: 'BILAN_ACTIF' },
@@ -3941,7 +4041,10 @@ export class ReportsService {
     const byClass = Array.from(classMap.entries())
       .sort(([a], [b]) => a - b)
       .map(([cls, acc]) => {
-        const meta = CLASS_META[cls] ?? { label: `Classe ${cls}`, role: 'AUTRES' as BilanDiagnosticClassRole };
+        const meta = CLASS_META[cls] ?? {
+          label: `Classe ${cls}`,
+          role: 'AUTRES' as BilanDiagnosticClassRole,
+        };
         return {
           class: cls,
           label: meta.label,
@@ -3963,17 +4066,17 @@ export class ReportsService {
     // 4. Réconciliation avec convention de signe passif
     // Les comptes passif hors-référentiel ont net = débit - crédit (négatif pour un passif normal).
     // On inverse le signe pour que le montant passif ajusté s'additionne positivement.
-    const unclActif = bilanReport.unclassified.filter(p => p.side !== 'PASSIF');
-    const unclPassif = bilanReport.unclassified.filter(p => p.side === 'PASSIF');
+    const unclActif = bilanReport.unclassified.filter((p) => p.side !== 'PASSIF');
+    const unclPassif = bilanReport.unclassified.filter((p) => p.side === 'PASSIF');
     const actifUnclassifiedNet = unclActif.reduce((s, p) => s + Number(p.net), 0);
-    const passifUnclassifiedNet = unclPassif.reduce((s, p) => s + (-Number(p.net)), 0);
+    const passifUnclassifiedNet = unclPassif.reduce((s, p) => s + -Number(p.net), 0);
     const adjActif = Number(bilanReport.totals.actif) + actifUnclassifiedNet;
     const adjPassif = Number(bilanReport.totals.passif) + passifUnclassifiedNet;
     const adjDifference = adjActif - adjPassif;
 
     // 5. Checklist travaux de fin d'exercice
     const matchesPrefix = (code: string, prefixes: string[]): boolean =>
-      prefixes.some(p => code.startsWith(p));
+      prefixes.some((p) => code.startsWith(p));
 
     const yearEndCheck = (prefixes: string[]): { present: boolean; totalAmount: string } => {
       let total = 0;
@@ -3981,7 +4084,10 @@ export class ReportsService {
       for (const row of rows) {
         if (matchesPrefix(row.accountCode, prefixes)) {
           const net = Math.abs(Number(row.totalDebit) - Number(row.totalCredit));
-          if (net >= 0.005) { total += net; count += 1; }
+          if (net >= 0.005) {
+            total += net;
+            count += 1;
+          }
         }
       }
       return { present: count > 0, totalAmount: total.toFixed(2) };
@@ -3995,14 +4101,18 @@ export class ReportsService {
         const net = Math.abs(Number(row.totalDebit) - Number(row.totalCredit));
         if (net >= 0.005) {
           amortTotal += net;
-          amortAccounts.push({ code: row.accountCode, label: row.accountLabel, amount: net.toFixed(2) });
+          amortAccounts.push({
+            code: row.accountCode,
+            label: row.accountLabel,
+            amount: net.toFixed(2),
+          });
         }
       }
     }
 
     // Enrichir les hors-référentiel avec totalDebit/totalCredit depuis les soldes bruts
-    const rowByCode = new Map(rows.map(r => [r.accountCode, r]));
-    const unclassifiedEnriched = bilanReport.unclassified.map(p => {
+    const rowByCode = new Map(rows.map((r) => [r.accountCode, r]));
+    const unclassifiedEnriched = bilanReport.unclassified.map((p) => {
       const row = rowByCode.get(p.code);
       return {
         code: p.code,
@@ -4047,7 +4157,20 @@ export class ReportsService {
         chargesAPayer: yearEndCheck(['408']),
         produitsARecevoir: yearEndCheck(['418']),
         provisionImpots: yearEndCheck(['444']),
-        variationStocks: yearEndCheck(['603', '604', '605', '731', '732', '733', '734', '735', '736', '737', '738', '739']),
+        variationStocks: yearEndCheck([
+          '603',
+          '604',
+          '605',
+          '731',
+          '732',
+          '733',
+          '734',
+          '735',
+          '736',
+          '737',
+          '738',
+          '739',
+        ]),
       },
     };
   }

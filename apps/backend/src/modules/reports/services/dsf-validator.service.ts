@@ -102,10 +102,7 @@ export class DsfValidatorService {
    * pour le tenant — toutes les autres incohérences sont accumulées
    * comme issues dans le rapport.
    */
-  async validate(
-    organizationId: TenantId,
-    exerciseId: string,
-  ): Promise<DsfValidationReport> {
+  async validate(organizationId: TenantId, exerciseId: string): Promise<DsfValidationReport> {
     const period = await this.periodRepo.findById(exerciseId, organizationId);
     if (!period) {
       throw new NotFoundException(`Accounting period ${exerciseId} not found.`);
@@ -134,20 +131,14 @@ export class DsfValidatorService {
       issues,
     );
     await this.checkNotesCompleteness(organizationId, period.id, issues);
-    await this.checkUnclassifiedAccounts(
-      organizationId,
-      period.startDate,
-      period.endDate,
-      issues,
-    );
+    await this.checkUnclassifiedAccounts(organizationId, period.startDate, period.endDate, issues);
 
     const counts = {
       block: issues.filter((i) => i.severity === 'BLOCK').length,
       warn: issues.filter((i) => i.severity === 'WARN').length,
       info: issues.filter((i) => i.severity === 'INFO').length,
     };
-    const verdict: DsfVerdict =
-      counts.block > 0 ? 'BLOCK' : counts.warn > 0 ? 'WARN' : 'PASS';
+    const verdict: DsfVerdict = counts.block > 0 ? 'BLOCK' : counts.warn > 0 ? 'WARN' : 'PASS';
 
     this.logger.log(
       `DSF validation org=${organizationId} exercise=${exerciseId} verdict=${verdict} ` +
@@ -167,6 +158,9 @@ export class DsfValidatorService {
     };
   }
 
+  // Async by contract — sits alongside sibling async validators and will
+  // perform DB lookups in a later wave; current body resolves synchronously.
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async checkAnnualPeriodClosed(
     periodId: string,
     status: 'open' | 'closed',

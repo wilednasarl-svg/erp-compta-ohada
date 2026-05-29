@@ -21,15 +21,16 @@ import type { CollaborationStatus } from '../types/collaboration-status';
 export class CollaborationNotificationsService {
   private readonly logger = new Logger(CollaborationNotificationsService.name);
 
-  async notifyRequestCreated(request: CollaborationRequestEntity): Promise<void> {
+  notifyRequestCreated(request: CollaborationRequestEntity): Promise<void> {
     this.logger.log(
       `notifyRequestCreated: org=${request.organizationId} request=${request.id} ` +
         `requester=${request.requesterId} assignee=${request.assigneeId ?? 'none'} ` +
         `title="${request.title}"`,
     );
+    return Promise.resolve();
   }
 
-  async notifyStatusChanged(
+  notifyStatusChanged(
     request: CollaborationRequestEntity,
     from: CollaborationStatus,
     to: CollaborationStatus,
@@ -39,9 +40,10 @@ export class CollaborationNotificationsService {
       `notifyStatusChanged: org=${request.organizationId} request=${request.id} ` +
         `${from} → ${to} by user=${actorUserId}`,
     );
+    return Promise.resolve();
   }
 
-  async notifyCommentAdded(
+  notifyCommentAdded(
     request: CollaborationRequestEntity,
     comment: CollaborationCommentEntity,
   ): Promise<void> {
@@ -49,5 +51,6 @@ export class CollaborationNotificationsService {
       `notifyCommentAdded: org=${request.organizationId} request=${request.id} ` +
         `comment=${comment.id} author=${comment.authorId}`,
     );
+    return Promise.resolve();
   }
 }

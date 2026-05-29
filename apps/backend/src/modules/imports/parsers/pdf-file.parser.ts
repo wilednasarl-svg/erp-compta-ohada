@@ -102,14 +102,17 @@ export class PdfFileParser implements IFileParser {
    * Import dynamique du wrapper pdf-parse. Isolé pour pouvoir être
    * stubé dans les tests sans toucher au fs du sandbox jest.
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
+  // Lazy dynamic import isolates pdf-parse from the static graph; the wrapper
+  // has nothing to await and the `import('pdf-parse')` return type is
+  // intentionally inline to avoid eagerly type-importing the module.
+  // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/consistent-type-imports
   private async loadPdfParse(): Promise<typeof import('pdf-parse')> {
     return import('pdf-parse');
   }
 
-  private async tryStructuredTable(
-    parser: { getTable(): Promise<{ mergedTables: string[][][]; pages: Array<{ tables: string[][][] }> }> },
-  ): Promise<ParseResult | null> {
+  private async tryStructuredTable(parser: {
+    getTable(): Promise<{ mergedTables: string[][][]; pages: Array<{ tables: string[][][] }> }>;
+  }): Promise<ParseResult | null> {
     let result;
     try {
       result = await parser.getTable();
@@ -167,7 +170,12 @@ export class PdfFileParser implements IFileParser {
     // Découpage de chaque ligne sur 2+ espaces consécutifs. C'est
     // l'heuristique standard pour les PDF "textuels" exportés depuis
     // un logiciel comptable qui aligne ses colonnes par padding spaces.
-    const rows = lines.map((line) => line.split(/ {2,}/).map((c) => c.trim()).filter((c) => c.length > 0));
+    const rows = lines.map((line) =>
+      line
+        .split(/ {2,}/)
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0),
+    );
     const matrix = rows.filter((cells) => cells.length >= PdfFileParser.MIN_COLUMNS);
 
     if (matrix.length < 2) {
@@ -208,6 +216,7 @@ export class PdfFileParser implements IFileParser {
 
     const dataRows = matrix.slice(1);
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     const rows = (async function* (): AsyncGenerator<ParsedRow> {
       let rowNumber = 0;
       for (const raw of dataRows) {
