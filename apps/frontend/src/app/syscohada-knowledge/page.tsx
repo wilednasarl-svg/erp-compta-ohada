@@ -34,6 +34,18 @@ const DOMAIN_LABELS: Record<SyscohadaDomain, string> = {
   inventory: 'Inventaire et stocks',
   tva: 'TVA et fiscalité',
   reports: 'États financiers',
+  leases: 'Contrats de location',
+  provisions: 'Provisions',
+  impairments: 'Dépréciations',
+  subsidies: 'Subventions',
+  'actuarial-commitments': 'Engagements de retraite',
+  regularizations: 'Régularisations',
+  transformations: 'Transformations',
+  'bills-of-exchange': 'Effets de commerce',
+  'multi-currency': 'Multi-devises',
+  'pledged-assets': 'Sûretés et nantissements',
+  'cash-flow': 'Flux de trésorerie',
+  'bank-reconciliation': 'Rapprochement bancaire',
   ai: 'Assistance métier',
 };
 
