@@ -82,6 +82,22 @@ export class JournalEntryLineEntity {
   @Column({ name: 'analytic_axis_code', type: 'varchar', length: 50, nullable: true })
   analyticAxisCode!: string | null;
 
+  // Métadonnées de pièce portées par l'import journal (Migration 0110).
+  // Toutes optionnelles : N° facture (lettrage par facture), date
+  // d'échéance (échéancier), code taxe (ventilation TVA) et référence
+  // libre de ligne (distincte de la référence d'écriture = N° pièce).
+  @Column({ name: 'invoice_number', type: 'varchar', length: 50, nullable: true })
+  invoiceNumber!: string | null;
+
+  @Column({ name: 'due_date', type: 'date', nullable: true })
+  dueDate!: string | null;
+
+  @Column({ name: 'tax_code', type: 'varchar', length: 20, nullable: true })
+  taxCode!: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  reference!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

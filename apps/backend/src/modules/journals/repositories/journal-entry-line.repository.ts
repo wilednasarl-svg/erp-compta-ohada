@@ -14,6 +14,13 @@ export interface CreateLineInput {
   readonly description?: string | null;
   readonly debit: string;
   readonly credit: string;
+  readonly analyticAxisType?: string | null;
+  readonly analyticAxisCode?: string | null;
+  /** Métadonnées de pièce (Migration 0110). */
+  readonly invoiceNumber?: string | null;
+  readonly dueDate?: string | null;
+  readonly taxCode?: string | null;
+  readonly reference?: string | null;
 }
 
 @Injectable()
@@ -39,6 +46,12 @@ export class JournalEntryLineRepository {
         debit: l.debit,
         credit: l.credit,
         lineLetter: null,
+        analyticAxisType: l.analyticAxisType ?? null,
+        analyticAxisCode: l.analyticAxisCode ?? null,
+        invoiceNumber: l.invoiceNumber ?? null,
+        dueDate: l.dueDate ?? null,
+        taxCode: l.taxCode ?? null,
+        reference: l.reference ?? null,
       })),
     );
     return repo.save(entities);

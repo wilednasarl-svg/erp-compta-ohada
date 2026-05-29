@@ -24,6 +24,11 @@ export interface CreateLineInput {
   /** Axe analytique optionnel (Migration 0092 — Option A). */
   readonly analyticAxisType?: string | null;
   readonly analyticAxisCode?: string | null;
+  /** Métadonnées de pièce optionnelles (Migration 0110). */
+  readonly invoiceNumber?: string | null;
+  readonly dueDate?: string | null;
+  readonly taxCode?: string | null;
+  readonly reference?: string | null;
 }
 
 export interface CreateEntryInput {
@@ -57,6 +62,12 @@ export interface EntryView {
     description: string | null;
     debit: string;
     credit: string;
+    analyticAxisType: string | null;
+    analyticAxisCode: string | null;
+    invoiceNumber: string | null;
+    dueDate: string | null;
+    taxCode: string | null;
+    reference: string | null;
   }>;
 }
 
@@ -160,6 +171,10 @@ export class EntriesService {
           credit: l.credit.toFixed(2),
           analyticAxisType: l.analyticAxisType ?? null,
           analyticAxisCode: l.analyticAxisCode ?? null,
+          invoiceNumber: l.invoiceNumber ?? null,
+          dueDate: l.dueDate ?? null,
+          taxCode: l.taxCode ?? null,
+          reference: l.reference ?? null,
         })),
         manager,
       );
@@ -268,6 +283,14 @@ export class EntriesService {
           description: l.description,
           debit: l.credit,
           credit: l.debit,
+          // Contre-passation fidèle : on conserve axes analytiques et
+          // métadonnées de pièce sur les lignes inversées (traçabilité).
+          analyticAxisType: l.analyticAxisType,
+          analyticAxisCode: l.analyticAxisCode,
+          invoiceNumber: l.invoiceNumber,
+          dueDate: l.dueDate,
+          taxCode: l.taxCode,
+          reference: l.reference,
         })),
         manager,
       );
@@ -338,6 +361,12 @@ export class EntriesService {
         description: l.description,
         debit: l.debit,
         credit: l.credit,
+        analyticAxisType: l.analyticAxisType,
+        analyticAxisCode: l.analyticAxisCode,
+        invoiceNumber: l.invoiceNumber,
+        dueDate: l.dueDate,
+        taxCode: l.taxCode,
+        reference: l.reference,
       })),
     };
   }
@@ -372,6 +401,10 @@ export class EntriesService {
       description?: string | null;
       analyticAxisType?: string | null;
       analyticAxisCode?: string | null;
+      invoiceNumber?: string | null;
+      dueDate?: string | null;
+      taxCode?: string | null;
+      reference?: string | null;
     }>
   > {
     const out = [];
@@ -403,6 +436,10 @@ export class EntriesService {
         description: line.description,
         analyticAxisType: axisCoherent ? axisType : null,
         analyticAxisCode: axisCoherent ? axisCode : null,
+        invoiceNumber: line.invoiceNumber ?? null,
+        dueDate: line.dueDate ?? null,
+        taxCode: line.taxCode ?? null,
+        reference: line.reference ?? null,
       });
     }
     return out;
@@ -417,6 +454,12 @@ export class EntriesService {
       debit: number;
       credit: number;
       description?: string | null;
+      analyticAxisType?: string | null;
+      analyticAxisCode?: string | null;
+      invoiceNumber?: string | null;
+      dueDate?: string | null;
+      taxCode?: string | null;
+      reference?: string | null;
     }>,
   ): EntryView {
     return {
@@ -440,6 +483,12 @@ export class EntriesService {
         description: l.description ?? null,
         debit: l.debit.toFixed(2),
         credit: l.credit.toFixed(2),
+        analyticAxisType: l.analyticAxisType ?? null,
+        analyticAxisCode: l.analyticAxisCode ?? null,
+        invoiceNumber: l.invoiceNumber ?? null,
+        dueDate: l.dueDate ?? null,
+        taxCode: l.taxCode ?? null,
+        reference: l.reference ?? null,
       })),
     };
   }

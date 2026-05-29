@@ -75,6 +75,11 @@ interface StagingLineDraft {
    * sur un regroupement par date.
    */
   readonly pieceNumber: string;
+  /** Métadonnées de pièce propagées à la ligne d'écriture (Migration 0110). */
+  readonly invoiceNumber: string | null;
+  readonly dueDate: string | null;
+  readonly taxCode: string | null;
+  readonly reference: string | null;
 }
 import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
@@ -1072,6 +1077,10 @@ export class ImportSessionService {
           description: row.label,
           analyticAxisType: row.analyticAxisType,
           analyticAxisCode: row.analyticAxisCode,
+          invoiceNumber: row.invoiceNumber,
+          dueDate: row.dueDate,
+          taxCode: row.taxCode,
+          reference: row.reference,
         }));
         const pieceLabel =
           group.pieceNumber !== '' ? `pièce ${group.pieceNumber}` : group.entryDate;
@@ -1207,6 +1216,10 @@ export class ImportSessionService {
       analyticAxisType,
       analyticAxisCode,
       pieceNumber: (mapped.pieceNumber ?? '').trim(),
+      invoiceNumber: emptyToNull(mapped.invoiceNumber),
+      dueDate: emptyToNull(mapped.dueDate),
+      taxCode: emptyToNull(mapped.taxCode),
+      reference: emptyToNull(mapped.reference),
     };
   }
 
@@ -1671,4 +1684,15 @@ function detectSuggestedDocumentType(
   }
 
   return null;
+}
+
+/**
+ * Normalise une valeur mappée optionnelle : trim puis `null` si vide.
+ * Garde les métadonnées de pièce (facture, échéance, taxe, référence)
+ * propres avant de les écrire sur la ligne d'écriture.
+ */
+function emptyToNull(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
 }

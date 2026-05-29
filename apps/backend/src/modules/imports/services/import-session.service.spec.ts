@@ -649,6 +649,71 @@ describe('ImportSessionService', () => {
       expect(firstDraft.reference).toBe('1');
     });
 
+    it('propagates invoice / due date / tax code to the committed entry lines', async () => {
+      const { service, sessionsRepo, stagingRepo, entries } = buildService();
+      sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
+      stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
+      stagingRepo.listBySession
+        .mockResolvedValueOnce([
+          {
+            rowNumber: 1,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '601000',
+              label: 'Achat ciment',
+              debit: '100',
+              credit: '0',
+              pieceNumber: '1',
+              invoiceNumber: '1553602408',
+              dueDate: '2026-02-15',
+              taxCode: '02',
+              reference: 'BELIER',
+            },
+          },
+          {
+            rowNumber: 2,
+            mappedValues: {
+              journal: 'ACH',
+              date: '2026-01-15',
+              account: '401000',
+              label: 'Fournisseur LAFARGE',
+              debit: '0',
+              credit: '100',
+              pieceNumber: '1',
+            },
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      entries.createDraft.mockResolvedValue({ id: 'entry-piece-1' });
+
+      await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
+        ipAddress: null,
+        userAgent: null,
+      });
+
+      const draftArg = entries.createDraft.mock.calls[0][1] as {
+        lines: Array<{
+          invoiceNumber?: string | null;
+          dueDate?: string | null;
+          taxCode?: string | null;
+          reference?: string | null;
+        }>;
+      };
+      expect(draftArg.lines[0]).toMatchObject({
+        invoiceNumber: '1553602408',
+        dueDate: '2026-02-15',
+        taxCode: '02',
+        reference: 'BELIER',
+      });
+      expect(draftArg.lines[1]).toMatchObject({
+        invoiceNumber: null,
+        dueDate: null,
+        taxCode: null,
+        reference: null,
+      });
+    });
+
     it('refuses commit when a single piece is unbalanced (per-piece balance)', async () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
