@@ -49,6 +49,8 @@ import { cn } from '@/lib/utils';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
 
+import { PeriodFilter } from './_components/period-filter';
+import { usePersistedPeriod } from './_components/period-store';
 import { ReportNav, getReportHint, getReportLabel, type ReportMode } from './_components/report-nav';
 import type {
   AgingBalanceReport,
@@ -1210,8 +1212,8 @@ function VariationMicroChip({ percent }: { readonly percent: string }) {
  * ici on a 2 colonnes côte à côte avec totaux et résultat net.
  */
 function ProfitLossPanel({ orgId }: { readonly orgId: string }) {
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
+  const [period, setPeriod] = usePersistedPeriod();
+  const { fromDate, toDate } = period;
   const [submitted, setSubmitted] = useState<{ fromDate: string; toDate: string } | null>(null);
 
   const buildParams = (s: NonNullable<typeof submitted>): URLSearchParams =>
@@ -1250,34 +1252,7 @@ function ProfitLossPanel({ orgId }: { readonly orgId: string }) {
           }}
         >
           <FilterGroup title="Période" subtitle="Exercice à analyser">
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="pl-from" className="text-2xs uppercase tracking-wider text-ink-soft">
-                  Du
-                </Label>
-                <Input
-                  id="pl-from"
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  required
-                  className="h-9 w-40 font-mono tabular-nums"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="pl-to" className="text-2xs uppercase tracking-wider text-ink-soft">
-                  Au
-                </Label>
-                <Input
-                  id="pl-to"
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  required
-                  className="h-9 w-40 font-mono tabular-nums"
-                />
-              </div>
-            </div>
+            <PeriodFilter idPrefix="pl" fromDate={fromDate} toDate={toDate} onChange={setPeriod} />
           </FilterGroup>
 
           <div className="flex flex-col items-stretch gap-1 lg:items-end">
@@ -1462,8 +1437,8 @@ function ProfitLossDoctrinalTable({
 // ─── Marge par axe analytique ──────────────────────────────────────────
 
 function MarginByAxisPanel({ orgId }: { readonly orgId: string }) {
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
+  const [period, setPeriod] = usePersistedPeriod();
+  const { fromDate, toDate } = period;
   const [axisType, setAxisType] = useState<string>('CHANTIER');
   const [submitted, setSubmitted] = useState<{
     fromDate: string;
@@ -1560,26 +1535,7 @@ function MarginByAxisPanel({ orgId }: { readonly orgId: string }) {
               </datalist>
             ) : null}
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="mba-from">Du</Label>
-            <Input
-              id="mba-from"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="mba-to">Au</Label>
-            <Input
-              id="mba-to"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              required
-            />
-          </div>
+          <PeriodFilter idPrefix="mba" fromDate={fromDate} toDate={toDate} onChange={setPeriod} />
           <div className="flex items-end">
             <Button type="submit" disabled={query.isFetching}>
               {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -1711,8 +1667,8 @@ function MarginByAxisTable({ report }: { readonly report: MarginByAxisReport }) 
 // ─── Balance générale ───────────────────────────────────────────────────
 
 function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
+  const [period, setPeriod] = usePersistedPeriod();
+  const { fromDate, toDate } = period;
   const [accountClass, setAccountClass] = useState<string>('');
   const [codeFrom, setCodeFrom] = useState<string>('');
   const [codeTo, setCodeTo] = useState<string>('');
@@ -1784,34 +1740,7 @@ function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
           }}
         >
           <FilterGroup title="Période" subtitle="Bornes de l'arrêté">
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="tb-from" className="text-2xs uppercase tracking-wider text-ink-soft">
-                  Du
-                </Label>
-                <Input
-                  id="tb-from"
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  required
-                  className="h-9 w-40 font-mono tabular-nums"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="tb-to" className="text-2xs uppercase tracking-wider text-ink-soft">
-                  Au
-                </Label>
-                <Input
-                  id="tb-to"
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  required
-                  className="h-9 w-40 font-mono tabular-nums"
-                />
-              </div>
-            </div>
+            <PeriodFilter idPrefix="tb" fromDate={fromDate} toDate={toDate} onChange={setPeriod} />
           </FilterGroup>
 
           <FilterGroup title="Périmètre" subtitle="Filtres sur le plan comptable">
@@ -1849,6 +1778,7 @@ function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
                   placeholder="411"
                   value={codeFrom}
                   onChange={(e) => setCodeFrom(e.target.value)}
+                  title="Borne basse d'une tranche de comptes — ex. 411 à 418 pour les clients."
                   className="h-9 w-24 font-mono tabular-nums"
                 />
               </div>
@@ -1864,6 +1794,7 @@ function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
                   placeholder="419"
                   value={codeTo}
                   onChange={(e) => setCodeTo(e.target.value)}
+                  title="Borne haute de la tranche — laisser vide pour aller jusqu'à la fin de la classe."
                   className="h-9 w-24 font-mono tabular-nums"
                 />
               </div>
@@ -1877,6 +1808,10 @@ function TrialBalancePanel({ orgId }: { readonly orgId: string }) {
                 Masquer comptes inactifs
               </label>
             </div>
+            <p className="mt-1.5 text-2xs leading-snug text-ink-mute">
+              « Code de / à » filtre une tranche de comptes du plan (ex. 411 → 418 pour les
+              clients). Laisser vide pour tous les comptes de la classe choisie.
+            </p>
           </FilterGroup>
 
           <div className="flex flex-col items-stretch gap-1 lg:items-end">
@@ -2228,8 +2163,8 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
   const [accountClass, setAccountClass] = useState<string>('');
   const [codeFrom, setCodeFrom] = useState<string>('');
   const [codeTo, setCodeTo] = useState<string>('');
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
+  const [period, setPeriod] = usePersistedPeriod();
+  const { fromDate, toDate } = period;
   const [submitted, setSubmitted] = useState<{
     accountId: string;
     fromDate: string;
@@ -2425,26 +2360,7 @@ function GeneralLedgerPanel({ orgId }: { readonly orgId: string }) {
               ))}
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="gl-from">Du</Label>
-            <Input
-              id="gl-from"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="gl-to">Au</Label>
-            <Input
-              id="gl-to"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              required
-            />
-          </div>
+          <PeriodFilter idPrefix="gl" fromDate={fromDate} toDate={toDate} onChange={setPeriod} />
           <div className="sm:col-span-2 lg:col-span-6">
             <Button type="submit" disabled={ledgerQuery.isFetching || effectiveAccountId === ''}>
               {ledgerQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -2666,8 +2582,8 @@ function GeneralLedgerTable({ report }: { readonly report: GeneralLedgerReport }
 // ─── Balance comparative N / N-1 ───────────────────────────────────────
 
 function ComparativeBalancePanel({ orgId }: { readonly orgId: string }) {
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
+  const [period, setPeriod] = usePersistedPeriod();
+  const { fromDate, toDate } = period;
   const [previousFromDate, setPreviousFromDate] = useState<string>(previousYearStartIso());
   const [previousToDate, setPreviousToDate] = useState<string>(previousYearEndIso());
   const [accountClass, setAccountClass] = useState<string>('');
@@ -2781,7 +2697,7 @@ function ComparativeBalancePanel({ orgId }: { readonly orgId: string }) {
               id="cb-from"
               type="date"
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
+              onChange={(e) => setPeriod({ fromDate: e.target.value, toDate })}
               required
             />
           </div>
@@ -2791,7 +2707,7 @@ function ComparativeBalancePanel({ orgId }: { readonly orgId: string }) {
               id="cb-to"
               type="date"
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
+              onChange={(e) => setPeriod({ fromDate, toDate: e.target.value })}
               required
             />
           </div>
@@ -3041,8 +2957,8 @@ function ComparativeBalanceTable({
 // ─── SIG (Soldes Intermédiaires de Gestion) ────────────────────────────
 
 function SigPanel({ orgId }: { readonly orgId: string }) {
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
+  const [period, setPeriod] = usePersistedPeriod();
+  const { fromDate, toDate } = period;
   const [compare, setCompare] = useState<boolean>(false);
   const [compareFromDate, setCompareFromDate] = useState<string>(previousYearStartIso());
   const [compareToDate, setCompareToDate] = useState<string>(previousYearEndIso());
@@ -3109,26 +3025,7 @@ function SigPanel({ orgId }: { readonly orgId: string }) {
             });
           }}
         >
-          <div className="space-y-1">
-            <Label htmlFor="sig-from">Du</Label>
-            <Input
-              id="sig-from"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="sig-to">Au</Label>
-            <Input
-              id="sig-to"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              required
-            />
-          </div>
+          <PeriodFilter idPrefix="sig" fromDate={fromDate} toDate={toDate} onChange={setPeriod} />
           <div className="flex items-end gap-2">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -4349,8 +4246,8 @@ type CashFlowSubmitted = {
 };
 
 function TftPanel({ orgId }: { readonly orgId: string }) {
-  const [fromDate, setFromDate] = useState<string>(yearStartIso());
-  const [toDate, setToDate] = useState<string>(todayIso());
+  const [period, setPeriod] = usePersistedPeriod();
+  const { fromDate, toDate } = period;
   const [compareEnabled, setCompareEnabled] = useState<boolean>(true);
   const [previousFromDate, setPreviousFromDate] = useState<string>(previousYearStartIso());
   const [previousToDate, setPreviousToDate] = useState<string>(previousYearEndIso());
@@ -4423,34 +4320,7 @@ function TftPanel({ orgId }: { readonly orgId: string }) {
           }}
         >
           <FilterGroup title="Période" subtitle="Exercice de référence">
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="tft-from" className="text-2xs uppercase tracking-wider text-ink-soft">
-                  Du
-                </Label>
-                <Input
-                  id="tft-from"
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  required
-                  className="h-9 w-40 font-mono tabular-nums"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="tft-to" className="text-2xs uppercase tracking-wider text-ink-soft">
-                  Au
-                </Label>
-                <Input
-                  id="tft-to"
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  required
-                  className="h-9 w-40 font-mono tabular-nums"
-                />
-              </div>
-            </div>
+            <PeriodFilter idPrefix="tft" fromDate={fromDate} toDate={toDate} onChange={setPeriod} />
           </FilterGroup>
 
           <FilterGroup title="Comparaison N-1" subtitle="Période antérieure">
