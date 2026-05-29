@@ -5,6 +5,8 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "tsConfigPath": "tsconfig.build.json",
+    "assets": [{ "include": "modules/syscohada-knowledge/sources/**/*.txt" }],
+    "watchAssets": true,
     "plugins": [
       {
         "name": "@nestjs/swagger",

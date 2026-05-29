@@ -250,6 +250,14 @@ export class SyscohadaKnowledgeService {
     const explicit = this.options.sourcesDir ?? process.env.SYSCOHADA_KNOWLEDGE_DIR;
     if (explicit && existsSync(explicit)) return resolve(explicit);
 
+    // Sources embarquées dans le module (copiées dans dist via nest-cli assets).
+    // Fonctionne en production (dist/modules/syscohada-knowledge/sources) comme
+    // en dev/test (src/modules/syscohada-knowledge/sources), sans dépendre de
+    // .local ni d'une variable d'environnement.
+    const bundled = join(__dirname, '..', 'sources');
+    if (existsSync(bundled)) return bundled;
+
+    // Repli historique pour le développement local : remonter vers .local/sources.
     let current = process.cwd();
     for (let i = 0; i < 6; i += 1) {
       const candidate = join(current, '.local', 'sources');

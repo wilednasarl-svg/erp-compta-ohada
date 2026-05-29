@@ -100,6 +100,18 @@ describe('SyscohadaKnowledgeService', () => {
     );
   });
 
+  it('resolves the sources bundled in the module when no path is provided', () => {
+    // Garde le chemin de production : sans sourcesDir ni .local, le service doit
+    // lire les textes embarqués dans src/.../sources (copiés dans dist au build).
+    const service = new SyscohadaKnowledgeService();
+
+    const results = service.search({ query: 'bilan compte de resultat etats financiers', limit: 1 });
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].tome).toBeGreaterThanOrEqual(1);
+    expect(results[0].excerpt.length).toBeGreaterThan(0);
+  });
+
   it('exposes named controls with legal basis and attached citation', () => {
     const service = makeService();
 

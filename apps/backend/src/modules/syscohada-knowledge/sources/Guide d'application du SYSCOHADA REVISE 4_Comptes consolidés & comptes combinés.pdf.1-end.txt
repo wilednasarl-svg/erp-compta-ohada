@@ -1,0 +1,1796 @@
+395
+GUIDE
+D’APPLICATION
+QUATRIEME 	PARTIE 	:
+SYSCOHADA
+
+-- 1 of 43 --
+
+396
+Chapitre 1 PERIMETRE ET METHODES DE CONSOLIDATION
+Organigramme du groupe, pourcentages de contrôle
+et pourcentages d’intérêts
+Présentation du groupe
+Soit un groupe dont l’activité essentielle est la distribution de produits alimentaires à
+travers une chaîne de magasins à son enseigne.
+Ce groupe est constitué des sociétés suivantes :
+- 	La société holding 	H qui n’a pas d’autres activités que de détenir des
+participations dans les autres sociétés et de gérer la trésorerie du groupe ;
+- 	La société A qui constitue une centrale d’achat pour l’ensemble des magasins
+de la chaine, mais également pour la société D dans laquelle la société H
+possède une participation minoritaire (25%) ;
+- 	La société B constituée de 18 établissements correspondant à 18 magasins ;
+- 	La société C fabricant des produits congelés qui n’a comme unique client que la
+société B ;
+- 	La société D qui est également une chaîne de magasins indépendante, mais dans
+laquelle la société H possède des participations et qui utilise la centrale d’achat
+A, détenue par le groupe H.
+Répartition du capital de chaque société
+- 	Société H, capital de 20 000 actions détenues par des personnes physiques ;
+- 	Société A, capital de 100 000 actions possédées par H (90%), et divers ;
+- 	Société B, capital de 50 000 actions possédées par H (90%), et divers ;
+- 	Société C capital de 40 000 actions possédées par H (90%), et divers ;
+- 	Société D, capital de 120 000 actions possédées par H (30 000) et trois autres
+actionnaires détenant chacun 25%.
+- 	Société A détient 60% de E
+- 	Société B détient 30% de F
+- 	Société C détient 55% de G
+- 	Société D détient 70% de I
+(Les actions de chaque société ont un nominal de 10 000 F)
+APPLICATION 128
+
+-- 2 of 43 --
+
+397
+1. Principe
+• 	Pourcentage de contrôle
+Le pourcentage de contrôle représente la capacité d’un groupe à contrôler une entité,
+directement ou indirectement, grâce aux droits de vote substantiels détenus.
+Les droits substantiels ou substantifs sont les droits de vote ou autres droits contractuels qui
+donnent à l'investisseur la capacité de diriger les activités clés de l’entité.
+Les droits de vote résultant de la détention juridique sont déterminés à partir du pourcentage
+de contrôle. Le contrôle indirect n’existe que par l’intermédiaire d’entités sous contrôle.
+- 	Actions sans droit de vote
+Cette catégorie d’actions qui ne donnent pas droit de vote lors des assemblées est à exclure du
+calcul des pourcentages de contrôle.
+- 	Actions à droit de vote double
+Lorsqu’il existe des actions permettant d’obtenir dans les assemblées un droit de vote double
+par rapport aux autres actions, il faut en tenir compte dans le calcul du pourcentage de
+contrôle.
+- 	Droits de vote potentiels
+Les droits de vote potentiels sont des droits permettant d’obtenir des droits de vote dans
+l’entité contrôlée ou sous influence notable, par exemple ceux qui découlent d’instruments
+convertibles ou d’options, y compris de contrats à terme de gré à gré. Ils ne sont pris en
+compte que si les droits sont substantifs. Ces droits confèrent à l’entité mère la capacité
+pratique de diriger la politique financière et opérationnelle de la filiale.
+• 	Pourcentage d’intérêt
+Il représente la part du groupe, directe ou indirecte, dans les capitaux propres d’une entité. Ce
+pourcentage est celui qui servira dans toutes les écritures de consolidation,
+Le pourcentage d'intérêt est égal au pourcentage de participation directe majoré du produit
+des pourcentages de participation indirecte sur toute la longueur de la chaîne de participation.
+En cas de participation indirecte par plusieurs chaînes, il convient de procéder comme suit :
+• 	pour chaque chaîne, on multiplie le pourcentage de chaque entité constituant la
+chaîne ;
+• 	ensuite, on effectue la somme des pourcentages ainsi obtenus pour chaque chaîne.
+
+-- 3 of 43 --
+
+398
+2. Organigramme du groupe
+(1) 30 000/120 000 = 25%
+3. Détermination des pourcentages de contrôle et d’intérêts
+Nom des entités Pourcentages
+de contrôle
+Nature du contrôle 	Pourcentages d’intérêt
+H 	100% 	Contrôle exclusif 	100%
+A 	90% 	Contrôle exclusif 	90%
+B 	90% 	Contrôle exclusif 	90%
+C 	90% 	Contrôle exclusif 	90%
+D 	25% 	Contrôle conjoint 	25%
+E 	60% 	Contrôle exclusif 	90% x 60% = 54%
+F 	30% 	Influence notable 	90% x 30% = 27%
+G 	55% 	Contrôle exclusif 	90% x 55% = 49,5%
+I 	0% 	Pas de contrôle 	25% x 70% = 17,5%
+A 	C	B
+Holding H
+D
+90% 	90%	90% 	25% (1)
+E 	F 	G 	I
+60% 	30% 	55% 	70%
+
+-- 4 of 43 --
+
+399
+Périmètre de consolidation et méthodes de
+consolidation
+La société MERAS est société mère d’un ensemble de sociétés et, à ce titre présente
+des comptes consolidés. L’organigramme du groupe se présente comme suit :
+Le capital de H est composé de :
+- 	40 000 actions ordinaires ;
+- 	4 000 actions à vote double
+- 	8 000 actions sans droit de vote.
+La société mère MERAS détient 12 000 actions ordinaires et 3 800 actions à vote
+double. Elle est également propriétaire de 20 000 obligations convertibles en actions
+(OCA) de l’entité H (une action H pour 2 obligations). L’entité H a émis 20 000
+obligations convertibles en actions. Les droits de vote potentiels sont considérés
+comme substantifs
+Le capital de H est détenu par deux autres actionnaires à part égale.
+APPLICATION 129
+MERAS
+B
+90% 	15%
+60%
+A 	C
+D
+25% 	80%
+45% 	25%
+10%
+E 	F
+10%
+20% 	5%
+G
+70% 	25%
+H
+(1)
+
+-- 5 of 43 --
+
+400
+1. Principe
+• 	Périmètre de consolidation
+On appelle périmètre de consolidation l’ensemble des entités dont les comptes annuels sont
+pris en considération pour l’établissement des comptes du groupe.
+Il est délimité en fonction de la nature et de l’importance des liens existants entre l’entité
+consolidante et les entités sur lesquelles elles peuvent exercer un contrôle exclusif, un
+contrôle conjoint ou une influence notable.
+• 	Méthode de consolidation
+Le dispositif comptable relatif aux comptes consolidés et combinés préconise les trois
+méthodes de consolidation suivantes :
+- 	l’intégration globale ;
+- 	l’intégration proportionnelle ;
+- 	la mise en équivalence.
+־ 	Méthode de l’intégration globale
+Les comptes des entités placées sous le contrôle exclusif de l'entité consolidante sont
+consolidés par intégration globale.
+־ 	Méthode de l’intégration proportionnelle
+Les comptes des entités contrôlées conjointement avec d'autres associés ou actionnaires par
+l'entité consolidante sont consolidés par intégration proportionnelle (art. 80 alinéa 2 de l’Acte
+uniforme relatif au droit comptable).
+־ 	Mise en équivalence
+Les comptes des entités sur lesquelles l’entité consolidante exerce une influence notable sont
+consolidés par mise en équivalence (art. 80, alinéa 3 de l’Acte uniforme relatif au droit
+comptable).
+
+-- 6 of 43 --
+
+401
+2. Pourcentages de contrôle, pourcentages d’intérêts et méthodes de consolidation
+Nom des
+entités
+% de contrôle 	Nature du
+contrôle
+Méthode de
+consolidation
+% d’intérêt
+Direct 	Indirect 	Total 	Direct 	Indirect 	Total
+A 	90% 	- 	90% 	Contrôle
+exclusif
+Intégration
+globale
+90% - 90%
+B 	60% 	25% 	85% 	Contrôle
+exclusif
+Intégration
+globale
+60% 	90%x25%
+=22,5%
+82,5%
+C 	15% 	80% 	95% 	Contrôle
+exclusif
+Intégration
+globale
+15% 	82,5%x80%
+=66%
+81%
+D 	10% 	45%
++25%
+80% 	Contrôle
+exclusif
+Intégration
+globale
+10% 	(82,5%x45%) +
+(81x25%)= 57,37%
+67,37%
+E 	- 	10% 	10% 	Pas de
+contrôle
+Non
+consolidée
+- 	67,37%x10%
+=6,73%
+6,73%
+F 	5% 	20% 	25% 	Influence
+notable
+Mise en
+équivalence
+5% 	67,37%x20%
+=13,47%
+18,47%
+G 	25% 	- 	25% 	Influence
+notable
+Mise en
+équivalence
+25% 	18,47%x70%
+= 12,92%
+37,92%
+H 	(1)
+51,03% 	- 	51,03%
+Contrôle
+exclusif
+Intégration
+globale
+(2)
+30,38% - 30,38%
+(1) Le pourcentage de contrôle de la mère dans H est de:
+(12 000 x 1) + (3 800 x 2) + (10 000x1)
+(40 000x1) + (4 000 x 2) + (8 000 x 0 ) + (10 000x1) = 51,03%
+(2) Le pourcentage d’intérêt de la mère dans H est de :
+12 000 	+ 3 800
+40 000 + 4 000 + 8 000 = 30,38%
+3. Périmètre de consolidation
+Le périmètre de consolidation est constitué des entités MERAS, A, B, C, D, F, G, H.
+Participations circulaires
+L'organigramme du groupe G1 se présente comme suit :
+La société F2 est sous contrôle conjoint.
+APPLICATION 130
+M
+F1 	F2
+30%	70%
+40%
+
+-- 7 of 43 --
+
+402
+Intérêts des actionnaires de l'entité mère M :
+Dans M 	= 012,32
+01(2,4 5 2,6 5 2,3) =76,42%
+Dans F1 	= 012,3 5 2,4
+01 2,4 5 2,6 5 2,3 = 53,49%
+Dans F2 	= 012,3 5 2,4 5 2,6
+01(2,4 5 2,6 5 2,3) = 21,39%
+F 	Remarque : Il est également possible de formaliser le problème sous forme d’un
+système d'équations. Pour ce faire, on intègre dans l’organigramme du groupe une entité
+"mère fictive".
+(1) 100% - 30% = 70%
+M = 0,7 + 0,3 x F2
+F1 = 0,7 x M
+F2 = 0,4 x F1
+M = 0,7 + 0,3 x (0,4 x 0,7 x M) = 0,7 + 0,084 M
+M - 0,084 M = 0,7
+0,916 M = 0,7
+Soit M = 0,7/0,916 = 76,42%
+F1 = 0,7 x 76,42% = 53,49%
+F2 = 0,4 x 53,49% = 21,39%
+M
+F2	F1
+30%	70%
+40%
+Mère fictive
+70% (1)
+
+-- 8 of 43 --
+
+403
+1. Critères d’appréciation du contrôle d’une entité ad hoc
+• 	Critère 1 : 	l’entité consolidante dispose en réalité des pouvoirs de décision, assortis
+ou non des pouvoirs de gestion sur l’entité ad hoc ou sur les actifs qui la composent,
+même si ces pouvoirs ne sont pas effectivement exercés.
+Elle a, par exemple, la capacité de dissoudre l’entité ad hoc, d’en changer les statuts,
+ou, au contraire, de s’opposer formellement à leur modification,
+• 	Critère 2 : l’entité consolidante a, de fait, la capacité de bénéficier de la majorité des
+avantages économiques de l’entité ad hoc, que ce soit sous forme de flux de trésorerie
+ou de droit à une quote-part d’actif net, de droit de disposer d’un ou de plusieurs
+actifs, de droit à la majorité des actifs résiduels en cas de liquidation,
+• 	Critère 3 : l’entité consolidante supporte la majorité des risques relatifs à l’entité ad
+hoc ; tel est le cas si les investisseurs extérieurs bénéficient d’une garantie, de la part
+de l’entité ad hoc ou de l’entité consolidante, leur permettant de limiter de façon
+importante leur prise de risques
+Une entité ad hoc est consolidée si les conditions du premier et du deuxième critère ou du
+premier et du troisième critère sont remplies. En outre, dès lors que les deuxième et troisième
+critères se trouvent réunis, l’entité ad hoc est également consolidée, car considérée comme
+contrôlée.
+La prédominance du critère des pouvoirs de décision ne s’applique qu’aux entités ad hoc
+issues d’opérations de cession de créances.
+2. Appréciation du contrôle exercée sur l’entité A
+Il s’agit d’un contrôle exclusif. En effet, l’entité A a été créée spécifiquement, l’entité
+consolidante C détient les pouvoirs de décisions (majorité en AGE) et elle s’est portée
+garante. Il s’agit donc d’une entité ad hoc (son intégration doit se faire de manière globale).
+Appréciation du contrôle d’une entité ad hoc
+Une entité A a été créée spécialement par les dirigeants de l’entité consolidante C.
+L’activité de l’entité A consiste en l’acquisition d’équipements très performants
+destinés à être loués aux filiales de l’entité consolidante C. Les dirigeants de l’entité
+consolidante détiennent la majorité en AGE de l’entité A et ils se sont portés garants
+auprès de la banque.
+APPLICATION 131
+
+-- 9 of 43 --
+
+404
+Chapitre 2 MISE EN ŒUVRE DES METHODES DE CONSOLIDATION
+Consolidation par intégration globale
+Une entité M a acquis lors de la création de la filiale F le 10 février 	N-2, 	45% des
+titres. Les titres détenus par l'entité M lui confère depuis cette acquisition un contrôle
+exclusif sur la filiale F.
+Les comptes de l'entité M (10 000 actions de 10 000) et d'une filiale F (500 actions de
+10 000) se présentent ainsi au 31 décembre N :
+Bilan de M
+Actif 	Passif
+Immobilisations
+Titres F (225 actions à 10 000)
+Actifs circulants
+135 000 000
+2 250 000
+12 750 000
+Capital
+Réserves
+Résultat
+Dettes
+100 000 000
+25 000 000
+5 000 000
+20 000 000
+150 000 000 	150 000 000
+Compte de résultat de M
+Charges
+Résultat
+395 000 000
+5 000 000
+Produits 	400 000 000
+400 000 000 	400 000 000
+Bilan de F
+Actif 	Passif
+Immobilisations
+Actifs circulants
+10 000 000
+5 500 000
+Capital
+Réserves
+Résultat
+Dettes
+5 000 000
+4 000 000
+1 500 000
+5 000 000
+15 500 000 	15 500 000
+Compte de résultat de F
+Charges
+Résultat
+43 500 000
+1 500 000
+Produits 	45 000 000
+45 000 000 	45 000 000
+APPLICATION 132
+
+-- 10 of 43 --
+
+405
+Dès lors que l'entité mère exerce un contrôle exclusif sur la filiale F, la méthode de
+consolidation est celle de l'intégration globale.
+1. 	Approche méthodologique
+L'intégration globale consiste à reprendre :
+- 	au bilan de l'entité mère, l'intégralité (100%) de tous les postes de l'actif et du passif
+du bilan de la filiale,
+- 	au compte de résultat de l’entité mère, l'intégralité (100%) de tous les postes de
+charges et de produits qui participent à la formation du résultat net de la filiale.
+Ensuite, on procède :
+• 	à l’élimination de l'actif du bilan de l’entité mère, des 	titres de participation détenus
+dans la filiale par imputation sur les réserves,
+• 	au partage des capitaux propres (y compris le résultat) de la filiale qui seront répartis
+entre :
+- 	la part du groupe correspondant aux intérêts de l'entité mère et ;
+- 	la part correspondant aux intérêts minoritaires.
+2. 	Reprise des comptes des deux entités
+• 	Ecritures de consolidation du bilan :
+31/12/N
+Immobilisations
+Titres F
+Actifs circulants
+135 000 000
+2 250 000
+12 750 000
+Capital M
+Réserves M
+Résultat M
+Dettes
+100 000 000
+25 000 000
+5 000 000
+20 000 000
+(Reprise des comptes de bilan de l’entité mère M)
+Immobilisations
+Actifs circulants
+10 000 000
+5 500 000
+Capital F
+Réserves F
+Résultat F
+Dettes
+5 000 000
+4 000 000
+1 500 000
+5 000 000
+(Reprise des comptes de bilan de la filiale F)
+
+-- 11 of 43 --
+
+406
+• 	Ecritures de consolidation du compte de résultat :
+31/12/N
+Charges
+Résultat global
+395 000 000
+5 000 000
+Produits 	400 000 000
+(Reprise des comptes de gestion de la mère M)
+Charges
+Résultat global
+43 500 000
+1 500 000
+Produits 	45 000 000
+(Reprise des comptes de gestion de la filiale F)
+3. 	Tableau et écritures de partage des capitaux propres
+• 	Tableau de partage des capitaux propres de la filiale F
+Eléments 	Total de F Part du groupe
+(45%)
+Part des minoritaires
+(55%)
+Capital
+Réserves
+Total
+Titres de participation
+Réserves consolidées
+Résultat consolidé
+5 000 000 	2 250 000 	2 750 000
+4 000 000 	1 800 000 	2 200 000
+9 000 000 	4 050 000 	4 950 000
+-2 250 000
+1 800 000
+1 500 000 	675 000 	825 000
+• 	Ecritures de partage des capitaux propres
+Capital M
+Réserves M
+Résultat M
+100 000 000
+25 000 000
+5 000 000
+Capital
+Réserves consolidées
+Résultat consolidé
+100 000 000
+25 000 000
+5 000 000
+(Partage des capitaux propres de la mère M)
+Capital F
+Réserves F
+5 000 000
+4 000 000
+Titres F
+Réserves consolidées
+Intérêts minoritaires
+2 250 000
+1 800 000
+4 950 000
+(Partage des capitaux propres hors résultat de la filiale F)
+Résultat F 	1 500 000
+Réserves consolidées
+Intérêts minoritaires
+675 000
+825 000
+(Partage du résultat de la filiale F)
+
+-- 12 of 43 --
+
+407
+4. 	Présentation du bilan et du compte de résultat consolidés
+Bilan consolidé au 31 décembre N
+Immobilisations
+(135 000 000 + 10 000 000)
+Actifs circulants
+(12 750 000 + 5 500 000)
+Total
+145 000 000
+18 250 000
+Capital
+Réserves consolidées
+(25 000 000 + 1 800 000)
+Résultat consolidé
+(5 000 000 + 675 000)
+Part du groupe
+Intérêts minoritaires
+(4 950 000 +825 000)
+Dettes (20 000 000 + 5 000 000)
+Total
+100 000 000
+26 800 000
+5 675 000
+132 475 000
+5 775 000
+25 000 000
+163 250 000 163 250 000
+Compte de résultat consolidé
+Produits (400 000 000 + 45 000 000)
+Charges (395 000 000 + 43 500 000)
+Résultat net de l'ensemble consolidé
+Intérêts minoritaires
+Résultat net (part du groupe)
+445 000 000
+- 	438 500 000
+6 500 000
+- 	825 000
+5 675 000
+1. 	Approche méthodologique
+L'intégration proportionnelle consiste à :
+• 	intégrer dans les comptes de l'entité consolidante la fraction représentative de ses
+intérêts dans les comptes de l'entité consolidée, après retraitements éventuels ; aucun
+intérêt minoritaire n’est donc constaté ;
+• 	éliminer les opérations et comptes entre l’entité intégrée proportionnellement et les
+autres entités consolidées.
+Consolidation par intégration proportionnelle
+On reprend l'application 126 en considérant que la filiale F est placée sous le contrôle
+conjoint de l'entité M détenant 45% des actions et d’une autre entité qui en détient
+55%. En effet, un accord contractuel prévoit l’exercice du contrôle conjoint sur
+l’activité économique de l’entité exploitée en commun par les deux associés.
+APPLICATION 133
+
+-- 13 of 43 --
+
+408
+2. 	Reprise des comptes des deux entités
+• 	Ecritures de consolidation du bilan :
+31/12/N
+Immobilisations
+Titres F
+Actifs circulants
+135 000 000
+2 250 000
+12 750 000
+Capital M
+Réserves M
+Résultat M
+Dettes
+100 000 000
+25 000 000
+5 000 000
+20 000 000
+(Reprise des comptes de bilan de la mère M)
+Immobilisations (10 000 000 x 45%)
+Actifs circulants (5 500 000 x 45%)
+4 500 000
+2 475 000
+Capital F (5 000 000 x 45%)
+Réserves F (4 000 000 x 45%)
+Résultat F (1 500 000 x 45%)
+Dettes (5 000 000 x 45%)
+2 250 000
+1 800 000
+675 000
+2 250 000
+(Reprise des comptes de bilan de la fille F)
+• 	Ecriture de consolidation du compte de résultat :
+31/12/N
+Charges
+Résultat global
+395 000 000
+5 000 000
+Produits 	400 000 000
+(Reprise des comptes de gestion de la mère M)
+Charges (43 500 000 x 45%)
+Résultat global (1 500 000 x 45%)
+19 575 000
+675 000
+Produits (45 000 000 x 45%) 	20 250 000
+(Reprise des comptes de gestion de la fille F)
+3. 	Détermination des capitaux propres consolidés et élimination des titres de
+participation
+Lorsqu’il s’agit d’une intégration proportionnelle, aucun partage n'est à effectuer étant donné
+que seule la fraction du patrimoine de la filiale appartenant à l'entité consolidante a fait l’objet
+d’une intégration.
+
+-- 14 of 43 --
+
+409
+Capital M
+Réserves M
+Résultat M
+100 000 000
+25 000 000
+5 000 000
+Capital
+Réserves consolidées
+Résultat consolidé
+100 000 000
+25 000 000
+5 000 000
+(Partage des capitaux propres de la mère M)
+Capital F
+Réserves F
+2 250 000
+1 800 000
+Titres F
+Réserves consolidées
+2 250 000
+1 800 000
+(Partage des capitaux propres hors résultat de la filiale F)
+Résultat F 	675 000
+Résultat consolidé 	675 000
+(Partage du résultat de la filiale F)
+4. 	Présentation du bilan et du compte de résultat consolidés
+Bilan consolidé au 31 décembre N
+Immobilisations
+(135 000 000 + 4 500 000)
+Actifs circulants
+(12 750 000 + 2 475 000)
+Total
+139 500 000
+15 225 000
+Capital
+Réserves consolidées
+(25 000 000 + 1 800 000)
+Résultat consolidé
+(5 000 000 + 675 000)
+Part du groupe
+Dettes (20 000 000 + 2 250 000)
+Total
+100 000 000
+26 800 000
+5 675 000
+132 475 000
+22 250 000
+154 725 000 	154 725 000
+Compte de résultat consolidé (1)
+Produits (400 000 000 + 20 250 000)
+- 	Charges (395 000 000 + 19 575 000)
+Résultat net de l'ensemble consolidé
+- 	Intérêts minoritaires
+Résultat net (part du groupe)
+420 250 000
+- 	414 575 000
+5 675 000
+0
+5 675 000
+
+-- 15 of 43 --
+
+410
+1. 	Approche méthodologique
+La mise en équivalence consiste à :
+• 	Substituer à la valeur comptable des titres détenus, la quote-part des capitaux propres
+y compris le résultat de l'exercice déterminé d'après les règles de consolidation;
+• 	Eliminer les opérations et comptes entre l'entité mise en équivalence et les autres
+filiales consolidées.
+Les titres mis en équivalence représentent la quote-part des capitaux propres qui revient à
+l'entité mère dans les filiales ainsi consolidées.
+2. 	Reprise des seuls comptes de l'entité mère (ceux de F ne sont pas intégrés)
+• 	Ecritures de consolidation du bilan
+31/12/N
+Immobilisations
+Titres F
+Actifs circulants
+135 000 000
+2 250 000
+12 750 000
+Capital M
+Réserves M
+Résultat M
+Dettes
+100 000 000
+25 000 000
+5 000 000
+20 000 000
+• 	Ecritures de consolidation du compte de résultat
+31/12/N
+Charges
+Résultat global
+395 000 000
+5 000 000
+Produits 	400 000 000
+Mise en équivalence
+On reprend l'application 126 en considérant que bien que détenant 45% du capital de
+F, l'entité M 	n'exerce sur cette dernière qu'une influence notable puisqu'une autre
+entité détenant 55% de ce même capital exerce un contrôle exclusif.
+APPLICATION 134
+
+-- 16 of 43 --
+
+411
+3. 	Détermination des capitaux propres consolidés et mise en équivalence des titres
+de la filiale
+Capital M
+Réserves M
+Résultat M
+100 000 000
+25 000 000
+5 000 000
+Capital
+Réserves consolidées
+Résultat consolidé
+100 000 000
+25 000 000
+5 000 000
+Titres mis en équivalence 45% (5 000 000 + 4 000 000 +
+1 500 00)
+4 725 000
+Titres F
+Réserves consolidées
+[45% x (5 000 000 + 4 000 000) - 2 250 000]
+Résultat consolidé 45% x 1 500 000
+2 250 000
+1 800 000
+675 000
+4. 	Ecritures de consolidation du compte de résultat
+31/12/N
+Résultat global 	675 000
+Quote-part dans les résultats des entités mises en équivalence 	675 000
+5. 	Présentation du bilan et du compte de résultat consolidés
+Bilan consolidé au 31 décembre N
+Immobilisations
+Titres mis en équivalence
+Actifs circulants
+135 000 000
+4 725 000
+12 750 000
+Capital
+Réserves consolidées
+(25 000 000 + 1 800 000)
+Résultat consolidé
+(5 000 000 + 675 000)
+Part du groupe
+Dettes
+100 000 000
+26 800 000
+5 675 000
+132 475 000
+20 000 000
+152 475 000 	152 475 000
+
+-- 17 of 43 --
+
+412
+Compte de résultat consolidé (1)
+Produits
+- 	Charges
+Résultat net des entités intégrées
+- 	Quote-part dans les résultats des entités mises en équivalence
+Résultat net de l'ensemble consolidé
+- 	Intérêts minoritaires
+Résultat net (part du groupe)
+400 000 000
+- 	395 000 000
+5 000 000
+675 000
+5 675 000
+0
+5 675 000
+
+-- 18 of 43 --
+
+413
+1. Principes généraux
+• 	Ecart de consolidation
+Lors de l’entrée dans le périmètre de consolidation et de la modification des participations
+ultérieures, un écart de de consolidation est calculé par différence entre :
+ü 	d'une part, le coût d’acquisition des titres ;
+ü 	et d'autre part, la part des capitaux propres que représentent ces titres pour l’entité
+consolidante, y compris le résultat de l’exercice réalisé à la date d’entrée de l’entité
+dans le périmètre et de la modification des participations ultérieures.
+L’écart de consolidation permet de distinguer l’écart d’évaluation et l’écart d’acquisition:
+• 	Ecart d’évaluation
+L’écart d’évaluation positif ou négatif afférent à certains éléments identifiables de l’actif
+ou du passif correspond à la différence entre la valeur d'entrée dans le bilan consolidé
+(éléments identifiables de l'actif et du passif réestimés à la juste valeur) et la valeur
+comptable du même élément dans l'entité contrôlée. Tous les écarts d'évaluation donnent
+lieu à une imposition différée.
+Ecart d’évaluation et d’acquisition positif
+(intégration globale)
+Une entité mère M prend une participation de 80% dans une filiale F pour 50 000 000
+le 01/01/N. A la date de l'opération, les capitaux propres s'élèvent 	25 000 000 et un
+terrain était inscrit au bilan pour 15 000 000. La juste valeur du terrain est de
+30 000 000. De plus, la marque est évaluée pour 10 000 000 et les provisions pour
+engagements retraite s'élèvent à 7 500 000. Enfin, un brevet inscrit au bilan pour une
+valeur de 20 000 000 a une juste valeur de 26 000 000. La durée d'utilité de l'écart
+d'acquisition est prévisible, mais ne peut être déterminée de façon fiable.
+Le taux de l'impôt sur le bénéfice est théoriquement de 25%.
+APPLICATION 135
+Chapitre 3 	ECART DE CONSOLIDATION
+
+-- 19 of 43 --
+
+414
+• 	Ecart d’acquisition
+L’écart d’acquisition est un écart résiduel qui correspond à la quote part de l’écart de
+consolidation non affectable à l’actif et au passif de l’entité.
+Lorsqu'il existe, l'écart d'acquisition correspond également à la différence entre le coût
+d'acquisition des titres et la quote-part de l'entité mère dans la juste valeur des actifs et passifs
+identifiables (capitaux propres réestimés à la juste valeur). Il n'y a pas d'impôt différé sur
+l'écart d'acquisition.
+• 	Date d’acquisition
+La date d’acquisition correspond à la date de prise de contrôle ou d’influence notable de
+l’entité acquise et donc la date d’entrée dans le périmètre de consolidation.
+Lorsque l’acquisition s’effectue par des achats successifs de titres, la date d’acquisition est la
+date à laquelle l’acquéreur obtient le contrôle ou l’influence notable de l’entité acquise.
+• 	Période d’évaluation
+La période d’évaluation ne doit pas excéder 12 mois à compter de la date d’acquisition.
+La période d’évaluation est la période qui suit la date d’acquisition et pendant laquelle
+l’acquéreur peut ajuster, de manière rétrospective, les montants provisoires comptabilisés afin
+de refléter les informations nouvelles obtenues à propos des faits et circonstances qui
+prévalaient à la date d’acquisition.
+• 	Comptabilisation initiale de l’écart d'acquisition positif
+L'écart d'acquisition positif (goodwill) est considéré comme une survaleur. Il représente les
+avantages que procure la prise de participation. L'écart d'acquisition est inscrit à l'actif
+immobilisé dans la rubrique des immobilisations incorporelles. En contrepartie, il convient :
+- 	soit, de diminuer la valeur d'entrée de la participation de l'acquéreur en créditant le
+poste "Titres de participation"
+- 	soit, d'augmenter directement les capitaux propres de l'acquéreur en créditant le poste
+"Réserves consolidées" de l'acquéreur.
+
+-- 20 of 43 --
+
+415
+• 	Amortissement de l’écart d’acquisition
+Lorsque la durée d’utilité de l'écart d'acquisition est limitée, il est amorti linéairement sur la
+limite prévisible de cette durée 	déterminée par l'entité. Si la durée d’utilité ne peut être
+déterminée de manière fiable, l'écart d’acquisition sera amorti sur 10 ans.
+Par contre, lorsque la durée d’utilité est non limitée, l’écart d'acquisition ne fait pas l’objet
+d’amortissement. Lorsque la durée d'utilité non limitée au départ devient limitée, la valeur
+actuelle de l’écart d’acquisition à la date du changement d’estimation (un test de dépréciation
+est réalisé et l’écart d’acquisition, le cas échéant fait l’objet d’une dépréciation), est amortie
+sur la durée d'utilité résiduelle. L’impact de ce changement de durée d'utilité est traité de
+façon prospective.
+• 	Dépréciation de l’écart d’acquisition
+Un 	écart acquisition amortissable ou non doit faire l’objet obligatoirement d’un test de
+dépréciation qu’il existe ou non un indice de perte de valeur.
+S’il n'est pas possible de déterminer la valeur actuelle de l’écart d’acquisition pris isolément,
+ce qui est souvent le cas en pratique, il convient de déterminer la valeur actuelle du groupe
+d'actifs immobilisés 	auquel il appartient. En cas de dépréciation à comptabiliser dans un
+groupe d'actifs, elle est allouée, en premier, à l’écart d’acquisition, puis aux autres actifs
+immobilisés appartenant à ce groupe. Les dépréciations relatives à l’écart d’acquisition ne
+seront jamais reprises en résultat.
+• 	Ecart de consolidation
+Coût d'acquisition des titres 	: 	50 000 000
+Quote part dans les capitaux propres 25000 000 x 80% 	: -20 000 000
+Ecart de consolidation 	= 30 000 000
+• 	Ecart d'évaluation
+Plus-value sur le terrain (30 000 000 - 15 000 000) 	: 15 000 000
+Plus-value sur la marque 	: 10 000 000
+Plus-value sur le brevet 	(26 000 000 - 20 000 000) 	: 	6 000 000
+Provisions pour engagement retraite 	: -7 500 000
+Plus-value nette I 	= 23 500 000
+Imposition différée
+- 	Impôt différé passif sur le terrain 	(15 000 000 x 25%) 	: -3 750 000
+- 	Impôt différé passif sur la marque 	(10 000 000 x 25%) 	: 	-2 500 000
+- 	Impôt différé passif sur le brevet 	(6 000 000 x 25%) 	: 	-1 500 000
+
+-- 21 of 43 --
+
+416
+- 	Impôt différé actif sur provisions pour engagement de retraite 	: 	1 875 000
+(7 500 000 x 25%)
+Total impôt différé II (23 500 000 x 25%) 	= 5 875 000
+Ecart d’évaluation (I - II) 	= 17 625 000
+Part du groupe : 17 625 000 x 80% = 14 100 000
+Part hors groupe : 17 625 000 x 20% = 3 525 000 (Intérêts minoritaires).
+• 	Ecart d'acquisition
+1ère méthode :
+Ecart de consolidation 	: 	30 000 000
+Part du groupe dans l'écart d’évaluation 	: - 14 100 000
+Ecart d'acquisition 	= 	15 900 000
+U Vérification : Ecart de consolidation = 14 100 000 + 15 900 000 = 30 000 000
+2ème méthode :
+• 	Juste valeur des actifs et passifs identifiables acquis :
+Capitaux propres 	: 25 000 000
+Ecart d'évaluation 	: 17 625 000
+Juste valeur des actifs et passifs identifiables 	= 42 625 000
+La différence entre le coût d'acquisition des titres et la part acquise dans l'actif net comptable
+corrigé (juste valeur des actifs et passifs identifiables acquis) à la date d'acquisition de cette
+entité constitue l'écart d'acquisition.
+Coût d'acquisition 	: 	50 000 000
+Quote part dans la juste valeur des actifs et passifs identifiables 	:- 34 100 000
+(80% x 42 625 000)
+Ecart d'acquisition 	= 15 900 000
+Coût
+d’acquisition :
+50 000 000
+Quote-part dans les
+capitaux propres :
+20 000 000
+Ecart de consolidation :
+30 000 000
+Ecart d’évaluation :
+14 100 000
+Ecart d’acquisition :
+15 900 000
+
+-- 22 of 43 --
+
+417
+• 	Ecritures au bilan de l'écart d'évaluation
+Terrain
+Marque
+Brevet
+15 000 000
+10 000 000
+6 000 000
+Provision pour engagement de retraite
+Impôt différé passif (solde)
+Titres de participation
+Intérêts minoritaires
+7 500 000
+5 875 000
+14 100 000
+3 525 000
+F 	Remarque : Il est également possible d'inscrire l'écart d'évaluation directement dans
+un compte "réserves de réestimation", réserves qui seront au moment du partage des
+capitaux propres, ventilées entre le groupe et les minoritaires.
+Terrain
+Marque
+Brevet
+15 000 000
+10 000 000
+6 000 000
+Provision pour engagement de retraite
+Impôt différé passif (solde)
+Réserves de réestimation
+7 500 000
+5 875 000
+17 625 000
+• 	Ecritures au bilan de l'écart d'acquisition
+- 	Constatation de l'écart d'acquisition
+Ecart d'acquisition 	15 900 000
+Titres de participation F ou réserves consolidées 	15 900 000
+- 	Amortissement de l'écart d'acquisition
+Résultat groupe (ou résultat consolidé) 	1 590 000
+Ecart d'acquisition
+(Amortissement : 15 900 000 : 10)
+1 590 000
+• 	Ecritures au compte de résultat de l'amortissement de l'écart d'acquisition
+Dotations aux amortissements 	1 590 000
+Résultat global 	1 590 000
+
+-- 23 of 43 --
+
+418
+1. 	Principe
+L’écart d’acquisition positif enregistré dans le cas de l’entrée d’une entité mise en équivalence
+n’est pas inscrit séparément à l’actif du Bilan dans un compte d’immobilisation incorporelle
+mais inclus dans la valeur comptable des titres mis en équivalence.
+Lorsque l’écart d’acquisition est positif, il n’y a pas lieu de déprécier les titres mis en
+équivalence.
+2. 	Ecart d'évaluation
+• 	Plus-value nette
+Plus-value sur le terrain (40 000 000 - 30 000 000) 	: 10 000 000
+Plus-value sur le bâtiment industriel (130 000 000 - 80 000 000) 	: 50 000 000
+Plus-value nette I 	= 60 000 000
+• 	Imposition différée
+- 	Impôt différé passif sur le terrain 	(10 000 000 x 30%) 	: 	3 000 000
+- 	Impôt différé passif sur le bâtiment industriel (50 000 000 x 30%) : 15 000 000
+Total impôt différé passif II (60 000 000 x 30%) = 18 000 000
+Ecart d’évaluation (I - II) 	= 42 000 000
+Part du groupe : 42 000 000 x 25% = 10 500 000
+Ecart d'acquisition positif
+(entité mise en équivalence)
+Une entité M a acquis, le 01/10/N, 25% des titres d'une filiale F1 pour un montant
+global de 170 000 000. Les éléments identifiables suivants, ont été valorisés au 1/10/N:
+L'ensemble immobilier évalué à 170 000 000 (40 000 000 pour le terrain et 130 000
+000 pour le bâtiment industriel) inscrit à l'actif du bilan pour une valeur comptable
+nette de 110 000 000 (30 000 000 	pour le terrain et 80 000 000 pour le bâtiment
+industriel). Le bâtiment industriel réestimé avait encore une durée de vie de 20 ans.
+L'écart d'acquisition éventuel n'est pas amortissable. Les capitaux propres de la société
+F1 s'élèvent au 31/12/N à :
+• 	Capital 	200 000 000
+• 	Réserves 	70 500 000
+• 	Résultat 	40 000 000
+Le taux de l'impôt sur le bénéfice est théoriquement de 30%.
+APPLICATION 136
+
+-- 24 of 43 --
+
+419
+Part hors groupe : 42 000 000 x 75% = 31 500 000 (Intérêts minoritaires).
+3. Juste valeur des actifs et passifs identifiables acquis :
+La 	quote-part 	du 	résultat 	réalisée 	à 	la 	date 	d'acquisition 	des 	titres 	s'élèvent 	à 	:
+40 000 000 x 9/12 = 30 000 000
+Capitaux propres (200 000 000+70 500 000+30 000 000) 	: 300 500 000
+Ecart d'évaluation 	: 	42 000 000
+Juste valeur des actifs et passifs identifiables 	= 342 500 000
+4. Ecart d'acquisition
+Coût d'acquisition 	: 170 000 000
+Quote part dans la juste valeur des actifs et passifs identifiables 	: - 85 625 000
+(342 500 000x 25%)
+Ecart d'acquisition 	= 84 375 000
+5. Valeur des titres mis en équivalence
+Quote part dans la juste valeur des actifs et passifs identifiables 	: 	85 625 000
+à la date d'acquisition des titres
+Ecart d'acquisition 	: 	84 375 000
+Quote part du résultat (du 01/10/N au 31/12/N) 	: 	2 343 750
+[(40 000 000-30 000 000) - (50 000 000 x 1/20 x 3/12)* ] x25%
+Valeur des titres mis en équivalence 	= 172 343 750
+(*)Amortissement de la plus-value sur bâtiments
+6. Ecritures de partage des capitaux propres
+• 	Ecritures au bilan
+Titres mis en équivalence 	172 343 750
+Titres de participation
+Quote-part du résultat mise en équivalence
+170 000 000
+2 343 750
+• 	Ecritures au compte de résultat
+Résultat global 	2 343 750
+Quote-part du résultat mise en équivalence 	2 343 750
+
+-- 25 of 43 --
+
+420
+• 	Principe
+Un écart d'acquisition négatif (badwill) correspond généralement soit à une plus-value
+potentielle du fait d'une acquisition effectuée dans des conditions avantageuses, soit à une
+rentabilité insuffisante de l'entité acquise.
+Toutefois, lors de l’acquisition, les actifs incorporels identifiés qui ne peuvent pas être évalués
+par référence à un marché actif ne doivent pas être comptabilisés au bilan consolidé s’ils
+conduisent à créer ou à augmenter un écart d’acquisition négatif.
+L’écart d’acquisition négatif éventuel est rapporté sur une durée qui doit refléter les
+hypothèses 	retenues 	et 	les 	objectifs 	fixés 	lors 	de 	l'acquisition. 	Lorsque 	les 	faits 	et
+circonstances 	permettent 	de 	le 	justifier, 	l’écart 	d’acquisition 	négatif 	peut 	être 	repris
+globalement par imputation au résultat de l'exercice d'acquisition.
+Avant 	de 	comptabiliser 	un 	profit 	sur 	une 	acquisition 	à 	des 	conditions 	avantageuses,
+l’acquéreur doit vérifier s’il a correctement tous les actifs acquis et les passifs repris.
+• 	Juste valeur des actifs et passifs identifiables acquis :
+Capitaux propres 	: 160 000 000
+Ecart d'évaluation [25 500 000 x (1- 30%)] 	: 	17 850 000
+Juste valeur des actifs et passifs identifiables 	= 177 850 000
+• 	Ecart d'acquisition
+Coût d'acquisition 	: 	90 000 000
+Quote part dans la juste valeur des actifs et passifs identifiables 	:-106 710 000
+(60% x 177 850 000)
+Ecart d'acquisition 	= -16 710 000
+Ecart d’acquisition négatif (badwill)
+L'entité M prend une participation de 60% dans la filiale F pour une valeur de
+90 000 000. Les capitaux propres se présentent comme suit :
+Capital 	: 	50 000 000
+Réserves 	: 	100 000 000
+Résultat 	: 	10 000 000
+Capitaux propres 	: 	160 000 000
+Lors de la prise de contrôle, une plus-value de 25 500 000 est identifiée sur la licence.
+Le taux de l'impôt sur le bénéfice est théoriquement de 30%. L'écart d'acquisition, s'il
+est négatif est repris globalement par imputation au résultat de l'exercice d'acquisition.
+APPLICATION 137
+
+-- 26 of 43 --
+
+421
+L'écart d'acquisition négatif (badwill) correspond a un profit résultant d'une acquisition à des
+conditions avantageuses. Avant d'enregistrer ce profit, l'acquéreur doit réexaminer si les actifs
+acquis et les passifs repris ont été correctement identifiés et évalués. Si après cet examen le
+profit subsiste, il doit être rapporté au résultat sur une durée qui doit refléter les hypothèses
+retenues et les objectifs fixés lors de l'acquisition.
+Dans cette application, le groupe décide de rapporter globalement l'écart d'acquisition négatif
+au résultat de l'exercice d'acquisition.
+• 	Ecritures au bilan de l'écart d'acquisition
+Titres de participations 	16 710 000
+Résultat M 	16 710 000
+• 	Ecritures au compte de résultat de l'écart d'acquisition
+Résultat global 	16 710 000
+Produit 	16 710 000
+
+-- 27 of 43 --
+
+422
+Conversion en unités monétaires locales des états
+financiers établis en devises étrangères
+Une entité mère M exerce un contrôle exclusif sur une filiale N installée au Nigéria. La
+filiale N a été acquise le 1er janvier de l'exercice N. A cette date, le cours de change
+était de 1 Naira = 2 F. Le bilan en Naira et en Franc se présentait comme suit :
+Bilan de la filiale au 01/01/N (en Naira et en Franc)
+Postes Actif 	Montant
+en Naira
+Montant
+en Franc
+Postes Passif 	Montant
+en Naira
+Montant
+en Franc
+Immobilisations
+Banques
+2 000 000
+3 000 000
+4 000 000
+6 000 000
+Capital
+Réserves
+Dettes
+2 000 000
+1 000 000
+2 000 000
+4 000 000
+2 000 000
+4 000 000
+Total actif 	5 000 000 	10 000 000 	Total passif 	5 000 000 	10 000 000
+Au cours de l'exercice N, la filiale N réalise un résultat de 5 000 Naira.
+• 	Taux de change au 31/12/N : 1 Naira = 2,30 F
+• 	Taux moyen de l'année N : 1 Naira = 2,20 F.
+Le bilan et le compte de résultat de N se présentent ainsi le 31 décembre N (en Naira) :
+Bilan de la filiale N au 31/12/N(en Naira)
+Postes Actif 	Montant en Naira 	Postes Passif 	Montant en Naira
+Immobilisations
+Stocks (1)
+Banque
+2 000 000
+2 000 000
+1 000 000
+Capital
+Réserves
+Résultat
+Capitaux propres
+Dettes
+2 000 000
+1 000 000
+500 000
+3 500 000
+1 500 000
+Total actif 	5 000 000 	Total passif 	5 000 000
+(1) Provenant intégralement d'un lot acquis à un moment où le cours de change
+était de 1 Naira = 2,25 F.
+Compte de résultat N au 31/12/N(en Naira)
+Postes charges 	Montant en Naira 	Postes Produits 	Montant en Naira
+Achats
+Variations de stocks
+Autres charges
+Résultat net
+7 500 000
+-2 000 000
+1 500 000
+500 000
+Chiffres d'affaires
+Autres produits
+6 000 000
+1 500 000
+Total charges 	7 500 000 	Total produits 	7 500 000
+APPLICATION 138
+Chapitre 4 CONVERSION EN UNITES MONETAIRES LOCALES DES ETATS
+FINANCIERS ETABLIS EN DEVISES
+
+-- 28 of 43 --
+
+423
+1. Méthode temporelle (ou méthode du coût historique)
+• 	Modalités pratiques
+La conversion des comptes du bilan et de compte de résultat de la monnaie locale à la
+monnaie fonctionnelle est effectuée en respectant les règles suivantes :
+- 	éléments monétaires du Bilan : conversion au cours de change à la clôture ;
+- 	éléments non monétaires y compris les capitaux propres du Bilan évalués au coût
+historique : conversion au cours de change en vigueur à la date à laquelle la
+transaction a été comptabilisée initialement (cours historique);
+- 	produits et charges : convertis au cours de change à la date de chaque transaction (en
+pratique il est souvent fait usage du cours moyen. Le cours moyen n’est autorisé que
+s’il est proche du cours réel en vigueur à la date d’opération.), sauf pour les dotations
+aux amortissements et aux dépréciations (cours de change en vigueur à la date de
+comptabilisation initiale des immobilisations correspondantes) ;
+- 	le résultat de l’exercice n’est pas converti, mais obtenu par une différence entre les
+actifs et les passifs convertis, pour équilibrer le bilan. Le Compte de résultat fait ainsi
+apparaître un écart de change ou conversion.
+L’écart de conversion qui provient de la méthode temporelle est affecté au compte de résultat
+consolidé dans un poste distinct (en charges ou produits financiers). En effet, cet écart de
+conversion affecte essentiellement les comptes de gestion.
+L’écart découlant de cette méthode appartient exclusivement au groupe et ne peut faire l’objet
+d’une quelconque répartition au profit des minoritaires.
+• 	Conversion du bilan
+Postes Actif 	Montant
+en Naira
+Taux
+de
+change
+Montant
+en Franc
+Postes Passif 	Montant
+en Naira
+Taux de
+change
+Montant en
+Franc
+Immobilisations
+Stocks
+Banque
+2 000 000
+2 000 000
+1 000 000
+2
+2,25
+2,30
+4 000 000
+4 500 000
+2 300 000
+Capital
+Réserves
+Résultat
+Capitaux propres
+Dettes
+2 000 000
+1 000 000
+500 000
+3 500 000
+1 500 000
+2
+2
+2,30
+4 000 000
+2 000 000
+1 350 000
+7 350 000
+3 450 000
+Total actif 	5 000 000 	10 800 000 	Total passif 	5 000 000 	10 800 000
+
+-- 29 of 43 --
+
+424
+• 	Conversion du compte de résultat
+Tous les postes sont convertis au taux moyen de 2,20 sauf la variation de stocks convertie au
+taux de 2,25 et le résultat reporté du bilan. Le poste écart de conversion est déterminé par
+différence pour l’équilibre du compte de résultat.
+Postes
+charges
+Montant
+en Naira
+Taux
+de
+change
+Montant
+en Franc
+Postes Produits 	Montant
+en Naira
+Taux
+de
+change
+Montant en
+Franc
+Achats
+Variations de
+stocks
+Autres
+charges
+Résultat net
+7 500 000
+-2 000 000
+1 500 000
+500 000
+2,20
+2,25
+2,20
+16 500 000
+-4 500 000
+3 300 000
+1 350 000
+Chiffres d'affaires
+Autres produits
+Produits financiers
+(Ecart de
+conversion)
+6 000 000
+1 500 000
+2,20
+2,20
+13 200 000
+3 300 000
+150 000
+Total charges 	7 500 000 	16 650 000 	Total produits 	7 500 000 	16 650 000
+3. 	Méthode du cours de clôture
+• 	Modalités pratiques
+La conversion des états financiers de la monnaie fonctionnelle à la monnaie de présentation
+est effectuée selon la méthode du cours de clôture.
+Les modalités de conversion sont les suivantes :
+- 	les actifs et les passifs monétaires ou non monétaires, hors capitaux propres, de chaque
+Bilan présenté (y compris les comparatifs) doivent être convertis au cours de clôture
+en vigueur à la date de chacun de ces bilans.
+Ce traitement s'applique également aux écarts d’acquisition.
+- 	pour les éléments de capitaux propres, tels que le capital social ou les postes de
+réserves, ils sont convertis à leur cours historique mais peuvent également être
+convertis au cours moyen.
+- 	les charges et les produits du Compte de résultat (y compris les comparatifs) doivent
+être convertis soit au cours de clôture, soit au cours moyen.
+Le cours moyen est généralement obtenu en faisant une moyenne des cours de change
+constatés pendant l’exercice.
+Les écarts de conversion sont des réserves consolidées qui appartiennent aussi bien au groupe
+qu’aux associés minoritaires. Il faut alors faire la répartition selon le pourcentage d’intérêts
+détenu par chaque partie.
+
+-- 30 of 43 --
+
+425
+• 	Conversion du compte de résultat au taux moyen :
+Postes charges 	Montant
+en Naira
+Taux
+de
+change
+Montant
+en Franc
+Postes Produits 	Montant
+en Naira
+Taux
+de
+change
+Montant
+en Franc
+Achats
+Variations de
+stocks
+Autres charges
+Résultat net
+7 500 000
+-2 000 000
+1 500 000
+500 000
+2,20
+2,20
+2,20
+2,20
+16 500 000
+-4 400 000
+3 300 000
+1 100 000
+Chiffres d'affaires
+Autres produits
+6 000 000
+1 500 000
+2,20
+2,20
+13 200 000
+3 300 000
+Total charges 	7 500 000 	16 500 000 	Total produits 	7 500 000 	16 500 000
+• 	Conversion du bilan :
+Les postes du bilan sont convertis au taux de clôture (2,30), à l'exception des différents postes
+de capitaux propres auxquels est appliqué un taux historique (2,0) qui correspond au cours à
+la date d'acquisition (à l’exception du résultat de 1 100 000 déterminé précédemment dans le
+compte de résultat et reporté directement dans le bilan).
+Postes Actif 	Montant
+en Naira
+Taux
+de
+change
+Montant
+en Franc
+Postes Passif 	Montant
+en Naira
+Taux
+de
+change
+Montant
+en Franc
+Immobilisations
+Stocks
+Banque
+2 000 000
+2 000 000
+1 000 000
+2,30
+2,30
+2,30
+4 600 000
+4 600 000
+2 300 000
+Capital
+Réserves
+Ecart de conversion
+Résultat
+Capitaux propres
+Dettes
+2 000 000
+1 000 000
+500 000
+3 500 000
+1 500 000
+2
+2
+2,2
+2,30
+4 000 000
+2 000 000
+950 000
+1 100 000
+8 050 000
+3 450 000
+Total actif 	5 000 000 	11 500 000 	Total passif 	5 000 000 	11 500 000
+
+-- 31 of 43 --
+
+426
+Chapitre 5 RETRAITEMENTS ET ELIMINATION DES
+OPERATIONS INTERGROUPES
+Opérations de retraitements
+Opération 1 : Ecart de conversion actif et passif
+Le bilan du 31/12/N d'une entité F comprend :
+• 	écart de conversion actif de 1 150 000 	qui a donné lieu à une dotation aux
+provisions pour risques et charges ;
+• 	un écart de conversion passif 750 000.
+Hypothèse fiscale retenue dans les comptes personnels :
+• 	les écarts de conversions actifs sont déductibles et les écarts de conversions passifs
+sont imposables ;
+• 	les provisions pour perte de change ne sont pas déductibles et les reprises ne sont
+pas imposables.
+Opération 2 : Provision pour engagement de retraite
+Une filiale F1 installée hors espace OHADA n'a pas comptabilisé de provision mais a
+inscrit le montant de ses engagements de retraite selon la méthode dans les Notes
+annexes au 31/12/N.
+• 	Indemnité de départ à la retraite évaluée au 31/12/N = 75 000 000.
+• 	Indemnité de départ à la retraite évaluée au 31/12/N-1 = 65 000 000.
+Le taux de l'impôt sur le bénéfice est théoriquement de 30 %.
+Opération 3 : Amortissement dérogatoire
+Année Amortissement
+dérogatoire
+N -1 	375 000
+N 	200 000
+Le taux de l’impôt sur le bénéfice est théoriquement de 25%.
+Opération 4 : Subventions
+Au bilan de l'exercice N de l'entité PHILAS figure une subvention de 180 000 000
+obtenue pour un matériel acquis début N-3 pour 500 000 000 (matériel subventionné à
+hauteur de 60%). A la fin de l'exercice N, un montant de 30 000 000 avait été viré au
+compte de résultat sur la base des amortissements linéaires du matériel (10 ans). Le
+plan retenu par le groupe est linéaire et prévoit le reclassement de la subvention en
+produit constaté d'avance.
+APPLICATION 139
+
+-- 32 of 43 --
+
+427
+1. Opération 1 : Ecart de conversion actif et passif
+• 	Ecart de conversion actif
+־ 	Ecriture au bilan
+Provisions pour perte de change 	1 150 000
+Ecart de conversion actif
+(Annulation de l'écart de conversion actif)
+1 150 000
+־ 	Ecriture au compte de résultat
+Perte de change 	1 150 000
+Dotations aux provisions pour risques et charges 	1 150 000
+• 	Ecart de conversion passif
+־ 	Ecriture au bilan
+Ecart de conversion passif 	750 000
+Résultat de l'entité
+(Annulation de l'écart de conversion passif)
+750 000
+־ 	Ecriture au compte de résultat
+Résultat Global 	750 000
+Gain de change 	750 000
+F 	Remarque :
+Pour ces retraitements, il n'a pas d'impôts différés 	à comptabiliser car dans les comptes
+personnels l'impôt exigible a été calculé en tenant compte des réintégrations et des déductions
+fiscales conformément à l’hypothèse fiscale retenue dans l’énoncé.
+
+-- 33 of 43 --
+
+428
+2. Opération 2 : Provision pour engagement de retraite
+• 	Ecriture au bilan
+Réserves F1 (65 000 000 x 70%)
+Résultat F1 (75 000 000 - 65 000 000) 70%
+Impôts différés actif (75 000 000 x 30%)
+45 500 000
+7 000 000
+22 500 000
+Provision pour engagement de retraite
+(Provision pour engagement)
+75 000 000
+• 	Ecriture au compte de résultat
+Dotations aux provisions (75 000 000- 65 000 000) 	10 000 000
+Résultat Global (10 000 000 x 70%)
+Impôt sur les bénéfices (10 000 000 x 30%)
+(Dotation en année N)
+7 000 000
+3 000 000
+Opération 3 : Amortissement dérogatoire
+• 	Ecritures au bilan :
+Amortissements dérogatoires 	575 000
+Résultat (200 000 x 0,75)
+Réserves (375 000 x 0, 75)
+Impôt différé passif (575 000 x 0, 25)
+150 000
+281 250
+143 750
+• 	Ecritures dans les comptes de gestion :
+Résultat global (200 000 x 0, 75)
+Impôt sur les bénéfices (200 000 x 0,25)
+150 000
+50 000
+Dotations aux amortissements 	200 000
+
+-- 34 of 43 --
+
+429
+Opération 4 : Subvention
+La subvention est reclassée en produit constaté d'avance. Il n'y a pas lieu d'éliminer la quote-
+part de subvention virée au résultat (conséquence de l'optique dans laquelle on s'est placé).
+Subvention d'investissement 	180 000 000
+Produit constaté d'avance 	180 000 000
+1. Opération 1 :
+Les dividendes distribués en N proviennent des résultats de N-1, il convient d'éliminer ces
+dividendes par imputation sur les réserves M et résultats consolidés.
+Les dividendes versés par la filiale F proviennent du résultat de l'exercice précédent. Par
+conséquent si la distribution n'avait pas eu lieu 	ce résultat aurait été affecté en réserve.
+La contrepartie de l'élimination des dividendes reçus par l'entité mère M correspond donc à la
+part de M dans les réserves de la filiale F.
+Elimination des comptes réciproques et des résultats
+intra-groupe
+• 	Opération 1 :
+Une entité mère M acquiert une filiale F en N-1. Cette entité mère perçoit en
+Novembre N de cette filiale F, des dividendes 	de 4 000 000 enregistrés en produits
+financiers.
+Hypothèse fiscale retenue : les dividendes versés sont en franchise d’impôt
+bénéficiant du régime fiscal des sociétés mères et filiales.
+• 	Opération 2 :
+L'entité mère M a vendu des marchandises à sa filiale F 	(intégrée globalement) avec
+un taux de marge de 20%. Au 31/12/N, le stock de ces marchandises dans les comptes
+de F est de 900 000 (il était de 300 000 au 31/12/N-1). Le taux de l’impôt sur le
+bénéfice est théoriquement de 30%.
+APPLICATION 140
+
+-- 35 of 43 --
+
+430
+L'écriture se présente donc comme suit :
+• 	Ecriture au bilan
+Résultat (M) 	4 000 000
+Réserves
+(Distribution de dividendes)
+4 000 000
+- 	Ecriture au compte de résultat
+Produits financiers 	4 000 000
+Résultat global 	4 000 000
+2. Opération 2 :
+• 	Comptes de bilan
+Résultat M (900 000 - 300 000) x 0,2
+Réserves M (300 000 x 0,2)
+120 000
+60 000
+Stock de marchandises (900 000 x 0,2) 	180 000
+Impôts différés actif 	54 000
+Résultat M (120 000 x 0,3)
+Réserves M (60 000 x 0,3)
+36 000
+18 000
+• 	Comptes de gestion
+Variations de stock de marchandises
+20% x (300 000 – 900 000)
+120 000
+Résultat
+Impôt sur les bénéfices
+96 000
+24 000
+
+-- 36 of 43 --
+
+431
+• 	Etape 1: Détermination des écarts d'évaluation et d'acquisition lors de la prise de
+contrôle
+• 	Ecart de consolidation :
+Coût d’acquisition des titres 	: 	50 000 000
+Quote part dans les capitaux propres (45 000 000 x 70%) 	: - 31 500 000
+Ecart de consolidation 	= 18 500 000
+• 	Ecart d'évaluation
+Plus-value latente (12000000 +8000000) 	: 20 000 000
+Impôt différé passif (20 000 000 x 0.25) 	: - 5 000 000
+Ecart d'évaluation 	= 15 000 000
+Part du groupe dans l’écart d’évaluation 	: 15 00 000 x 70% = 10 500 000
+Part du hors groupe dans l’écart d’évaluation : 15 00 000 x 30% = 	4 500 000
+Variation du pourcentage d'intérêt et de contrôle
+Une entité mère M a acquis en janvier N-2, 70% dans une filiale F pour un coût
+d’acquisition de 50 000 000 A cette date, les capitaux propres s'élèvent à 45 000 000.
+Au moment de la prise de participation, différentes plus-values latentes sont les
+suivantes:
+• 	Terrain 12 000 000
+• 	Bâtiment 8 000 000 (durée de vie restant à courir : 10 ans).
+Début N, l'entité M décide de porter par sa participation à 80%. La valeur d'acquisition
+est de 9 700 000. Les capitaux propres de la filiale F sont de 75 000 000.
+Les capitaux propres de la filiale F au 31/12/N s'élèvent à 90 000 000.
+La durée d'utilité de l'écart d'acquisition est indéfinie. Le taux de l'impôt sur le bénéfice
+est théoriquement de 25%.
+APPLICATION 141
+Chapitre 6 	VARIATIONS DU PERIMETRE DE CONSOLIDATION
+
+-- 37 of 43 --
+
+432
+• 	Juste valeur des actifs et passifs identifiables acquis :
+Capitaux propres 	: 	45 000 000
+Ecart d'évaluation 	: 	15 000 000
+Juste valeur des actifs et passifs identifiables 	= 60 000 000
+• 	Ecart d'acquisition
+La différence entre le coût d'acquisition des titres et la part acquise dans l'actif net comptable
+corrigé (juste valeur des actifs et passifs identifiables acquis) à la date d'acquisition de cette
+entité constitue l'écart d'acquisition.
+Coût d'acquisition 	: 	50 000 000
+Quote part dans la juste valeur des actifs et passifs identifiables 	: - 42 000 000
+(70% x 60 000 000)
+Ecart d'acquisition 	= 	8000 000
+U Vérification : Ecart de consolidation = 10 500 000 + 8000 000 = 18 500 000
+• 	Etape 2 : Détermination des écarts d'évaluation et d'acquisition en N
+Les changements dans le taux de détention d'une filiale, sans perte de contrôle, n'ont d'effet
+que sur les capitaux propres. Les parts respectifs entre le groupe et les intérêts 	minoritaires
+dans la valeur de la filiale consolidée sont ajustées afin de respecter les nouveaux 	taux de
+détention. Le montant de l’écart d’acquisition est figé à la date d'acquisition ayant permis de
+prendre le contrôle.
+• 	Ecart d'évaluation
+Plus-value latente (12000000 +8000000) 	: 20 000 000
+Amortissement de l'écart d'évaluation lié au bâtiment (8 000 000/10 x 2) 	: - 1600 000
+Impôt différé passif (20 000 000- 1600 000) x (1-0.25) 	: -13 800 000
+Ecart d'évaluation 	= 	4 600 000
+Lors de l'acquisition de 10% supplémentaire, l'entité M a aussi acquis 10% de l'écart
+d'évaluation soit 4 600 000 x 10% = 460 000.
+• 	Juste valeur des actifs et passifs identifiables supplémentaires acquis :
+Capitaux propres (75 000 000 10%) 	: 	7 500 000
+Ecart d'évaluation (4 600 000 x 10%) 	: 	460 000
+Juste valeur des actifs et passifs identifiables 	= 7 960 000
+
+-- 38 of 43 --
+
+433
+• 	Ecart d'acquisition
+Coût d'acquisition du lot supplémentaire est de 9 700 000 et la juste valeur des actifs et passifs
+identifiables supplémentaires acquis s’élève à 7 960 000.Mais il n’y a pas lieu de constater un
+nouvel écart d’acquisition. L’écart d’acquisition constaté lors e la prise e contrôle initial reste
+figé.
+• 	Ecritures au bilan de l'écart d'évaluation
+Terrain
+Bâtiment
+12 000 000
+8 000 000
+Titres de participation (20 000 000x75% x80%)
+Intérêts minoritaires (20 000 000x75% x20%)
+Impôt différé passif (20 000 000 x 25%)
+12 000 000
+3 000 000
+5 000 000
+F 	Remarque : Il est également possible d'inscrire l'écart d'évaluation directement dans
+un compte "réserves de réestimation", réserves qui seront au moment du partage des
+capitaux propres, ventilées entre le groupe et les minoritaires.
+Terrain
+Bâtiment
+12 000 000
+8 000 000
+Réserves de réestimation
+Impôt différé passif (20 000 000 x 25%)
+15 000 000
+5 000 000
+• 	Ecriture au bilan de l'écart d'acquisition
+Ecart d'acquisition 	8 000 000
+Titres de participation F ou réserves consolidées 	8 000 000
+• 	Ecriture au bilan de l'amortissement du bâtiment
+Résultat groupe (8 000 000/10 x 75% x 80%)
+Réserves groupe [(8 000 000/10 x2) x 75% x 80%]
+Intérêts minoritaires [(8 000 000/10 x3) x 75% x 20%]
+Impôts différés actif [(8 000 000/10 x3) x 25%]
+480 000
+960 000
+360 000
+600 000
+Amortissement bâtiment
+(Amortissement : 8000 000 /10 x 3)
+2 400 000
+
+-- 39 of 43 --
+
+434
+• 	Ecriture au compte de résultat de l'amortissement du bâtiment
+Dotations aux amortissements 	800 000
+Résultat global (800000 x 75%)
+Impôt sur le bénéfice 	(800000 x 25%)
+600 000
+200 000
+• 	Ecriture de partage des capitaux propres
+Capitaux propres 	90 000 000
+Titres de participation (1)
+Intérêts minoritaires (90 000 000 x 20%)
+Réserves groupe ou réserves consolidés (2)
+39 700 000
+18 000 000
+32 300 000
+(1) 50 000 000 + 9 700 000 – 12 000 000 – 8 000 000
+(2) (90 000 000 x 80%) - 39 700 000
+
+-- 40 of 43 --
+
+435
+Chapitre 7 	Comptes combines
+Comptes combinés
+Soit le groupe suivant, où l’entité X a son siège social et ses activités dans un Etat situé
+hors de l’espace OHADA, alors que les entités B, C et D sont situées dans l’espace
+OHADA.
+Les comptes personnels des entités X, B, C, D, après d’éventuels retraitements destinés
+à assurer leur homogénéité, se présentent de la façon suivante à la clôture de
+l’exercice N :
+BILAN
+ACTIF 	Entité X 	Entité B 	Entité C 	Entité D
+Immobilisations 	500 	200 	300 	150
+Titres 	870
+Autres actifs 	830 	450 	500 	350
+TOTAL 	2 200 	650 	800 	500
+PASSIF
+Capital 	1 000 	400 	500 	300
+Réserves 	500 	100 	150 	50
+Résultat 	100 	40 	20 	30
+Dettes fournisseurs 	600 	110 	130 	120
+TOTAL 	2 200 	650 	800 	500
+COMPTE DE RESULTAT
+PRODUITS 	Entité X 	Entité B 	Entité C 	Entité D
+Chiffres d’affaires 	2 500 	1 000 	1 500 	750
+Autres produits 	150 	50 	100 	30
+TOTAL 	2 650 	1 050 	1 600 	780
+CHARGES
+Achats 	1 450 	760 	1 180 	600
+Autres charges 	1 040 	220 	380 	120
+Impôts sur résultats 	60 	30 	20 	30
+Résultats nets 	100 	40 	20 	30
+TOTAL 	2 650 	1 050 	1 600 	780
+APPLICATION 142
+X (hors OHADA)
+B 	C 	D
+90% 	60% 70%
+
+-- 41 of 43 --
+
+436
+1. Détermination du périmètre de combinaison :
+En application des normes internationales, l’entité X devrait établir des états financiers
+consolidés incluant les entités B, C et D.
+Cependant, que ces états financiers consolidés soient établis ou non, l’entité X, du fait qu’elle
+contrôle des entités dont le siège social et les activités se situent dans des pays de l’espace
+OHADA, doit obligatoirement établir des comptes combinés regroupant uniquement les
+entités B, C et D conformément aux règles préconisées par le dispositif comptable relatif aux
+comptes consolidés et combinés.
+2. Présentation schématique du bilan et du compte de résultat combinés
+BILAN COMBINE
+ACTIF 	MONTANTS 	PASSIF 	MONTANTS
+Immobilisations (200 + 300 +150) 	650 	Capital et réserves combinés (1) 	1 085
+Autres actifs (450 + 500 + 350) 	1 300 	Résultat net combiné (2) 	96
+Impôts différés (60 x 50 %) 	30 	Part des ayants droits aux cap. propres 	1 181
+Part des minoritaires (3) 	439
+Total des cap. propres combinés 	1 620
+Dettes four. et div. (110 + 130 + 120) 	360
+TOTAL ACTIF 	1 980 	TOTAL PASSIF 	1 980
+(1) Soit (400 + 100) x 90% + (500 + 150) x 60% + (300 + 50) x 70% = 1 085.
+(2) Soit (40 + 30) x 90% + 20 x 60% + 30 x 70% = 96
+(3) Soit (400 + 100 + 40 + 30) x 10% + (500 + 150 + 20) x 40% + (300 + 50 + 30) x 30% = 439
+Comptes combinés : Suite des données
+Analyse de certains postes
+• 	Il n’existe pas d’opérations réciproques entre les entités B, C, D ;
+• 	Des honoraires ont été versés par les entités B, C, D à leur maison mère X pour
+respectivement 100, 150 et 75 ;
+• 	L’entité B a constitué une provision pour dépréciation d’actifs de 60, justifiée
+sur un plan économique, mais non déductible fiscalement (cette provision ne
+sera déductible qu’au moment de son utilisation). Taux de l’impôt sur les
+résultats : 50 %.
+APPLICATION 142
+
+-- 42 of 43 --
+
+437
+COMPTE DE RESULTAT COMBINE
+Chiffre d’affaires
+Autres produits
+Total des produits
+-Achat et autres charges
+Résultat avant impôts
+-Impôts exigibles sur résultats
+Impôts différés (variations)
+Résultat net ensemble combiné
+Dont :
+-Part des minoritaires
+-Part des ayants droits
+3 250
+180
+3430
+-3260
+170
+-80
++30
+120
+24
+96
+
+-- 43 of 43 --
+
