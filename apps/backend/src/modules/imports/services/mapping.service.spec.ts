@@ -51,6 +51,42 @@ describe('MappingService', () => {
       expect(proposal.unmappedTargets).not.toContain('date');
     });
 
+    it('maps the journal import template headers (Sage-style export)', () => {
+      const proposal = service.autoMap([
+        'Jo',
+        'Date saisie',
+        'N° pièce',
+        'N° facture',
+        'Référence',
+        'N° compte général',
+        'N° compte tiers',
+        'Code taxe',
+        'Libellé écriture',
+        'Date échéance',
+        'Débit',
+        'Crédit',
+      ]);
+
+      // Les colonnes comptables clés du modèle sont reconnues…
+      expect(proposal.headerToTarget).toMatchObject({
+        Jo: 'journal',
+        'Date saisie': 'date',
+        'N° compte général': 'account',
+        'N° compte tiers': 'partner',
+        'Libellé écriture': 'label',
+        Débit: 'debit',
+        Crédit: 'credit',
+      });
+
+      // …et les colonnes sans champ canonique restent non mappées
+      // (elles sont simplement ignorées à l'import, pas une erreur).
+      expect(proposal.headerToTarget).not.toHaveProperty('N° pièce');
+      expect(proposal.headerToTarget).not.toHaveProperty('N° facture');
+      expect(proposal.headerToTarget).not.toHaveProperty('Référence');
+      expect(proposal.headerToTarget).not.toHaveProperty('Code taxe');
+      expect(proposal.headerToTarget).not.toHaveProperty('Date échéance');
+    });
+
     it('ignores empty / whitespace-only headers', () => {
       const proposal = service.autoMap(['', '   ', 'compte']);
       expect(proposal.headerToTarget).toEqual({ compte: 'account' });

@@ -110,13 +110,46 @@ export type MappedRow = Partial<Record<TargetField, string | null>>;
  * each parser reinvent it.
  */
 export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> = {
-  account: ['compte', 'compte general', 'numero compte', 'no compte', 'account', 'gl account'],
-  journal: ['journal', 'code journal', 'jrn', 'journal code'],
-  date: ['date', 'date ecriture', 'date piece', 'date operation', 'posting date'],
+  account: [
+    'compte',
+    'compte general',
+    'numero compte',
+    'no compte',
+    'account',
+    'gl account',
+    // Modèle d'import journal (export type Sage) : la colonne
+    // "N° compte général" se normalise en "n compte general".
+    'n compte general',
+    'numero compte general',
+    'no compte general',
+  ],
+  journal: ['journal', 'code journal', 'jrn', 'journal code', 'jo', 'jal', 'code jal'],
+  date: [
+    'date',
+    'date ecriture',
+    'date piece',
+    'date operation',
+    'posting date',
+    // "Date saisie" / "Date de saisie" du modèle d'import journal.
+    'date saisie',
+    'date de saisie',
+    'date comptable',
+  ],
   debit: ['debit', 'montant debit', 'dr', 'debit amount'],
   credit: ['credit', 'montant credit', 'cr', 'credit amount'],
   label: ['libelle', 'libelle ecriture', 'description', 'memo', 'label', 'narration'],
-  partner: ['tiers', 'compte tiers', 'partner', 'client', 'fournisseur', 'code tiers'],
+  partner: [
+    'tiers',
+    'compte tiers',
+    'partner',
+    'client',
+    'fournisseur',
+    'code tiers',
+    // "N° compte tiers" du modèle d'import journal → "n compte tiers".
+    'n compte tiers',
+    'numero compte tiers',
+    'no compte tiers',
+  ],
   currency: ['devise', 'monnaie', 'currency', 'ccy'],
   analyticAxisType: ['type axe', 'type analytique', 'axe type', 'axis type', 'nature analytique'],
   analyticAxisCode: [
