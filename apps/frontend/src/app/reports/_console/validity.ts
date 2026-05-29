@@ -10,6 +10,7 @@
 import type {
   BalanceSheetReport,
   CashFlowReport,
+  ComparativeBalanceReport,
   ProfitLossReport,
   SigReport,
   TrialBalanceReport,
@@ -72,6 +73,21 @@ export const validityFromCashFlow = (report: CashFlowReport): PeriodValidity => 
   const incoherence = Math.abs(Number(report.coherenceCheck));
   return {
     imbalance: incoherence < BALANCE_EPSILON ? 0 : Math.round(incoherence),
+    lastMovementDate: report.toDate,
+    computedAt: new Date().toISOString(),
+    periodClosed: false,
+  };
+};
+
+/** Équilibre d'une balance comparative : Σ débit clôture vs Σ crédit clôture. */
+export const validityFromComparativeBalance = (
+  report: ComparativeBalanceReport,
+): PeriodValidity => {
+  const difference = Math.abs(
+    Number(report.totals.endingDebit) - Number(report.totals.endingCredit),
+  );
+  return {
+    imbalance: difference < BALANCE_EPSILON ? 0 : Math.round(difference),
     lastMovementDate: report.toDate,
     computedAt: new Date().toISOString(),
     periodClosed: false,

@@ -19,8 +19,11 @@ import { AgingConsole } from '../_console/aging-console';
 import { AnnexeConsole } from '../_console/annexe-console';
 import { BalanceConsole } from '../_console/balance-console';
 import { BilanConsole } from '../_console/bilan-console';
+import { ComparativeConsole } from '../_console/comparative-console';
 import { CrConsole } from '../_console/cr-console';
 import { GlConsole } from '../_console/gl-console';
+import { MarginConsole } from '../_console/margin-console';
+import { MultiYearConsole } from '../_console/multi-year-console';
 import { RatiosConsole } from '../_console/ratios-console';
 import { SigConsole } from '../_console/sig-console';
 import { TftConsole } from '../_console/tft-console';
@@ -33,6 +36,9 @@ type ConsoleReport =
   | 'annexe'
   | 'ratios'
   | 'trial-balance'
+  | 'comparative-balance'
+  | 'multi-year-balance'
+  | 'margin-by-axis'
   | 'general-ledger'
   | 'aging-balance';
 
@@ -44,6 +50,9 @@ const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: stri
   { key: 'annexe', label: 'Annexe' },
   { key: 'ratios', label: 'Ratios' },
   { key: 'trial-balance', label: 'Balance générale' },
+  { key: 'comparative-balance', label: 'Balance comparative' },
+  { key: 'multi-year-balance', label: 'Balance pluriannuelle' },
+  { key: 'margin-by-axis', label: 'Marge analytique' },
   { key: 'general-ledger', label: 'Grand livre' },
   { key: 'aging-balance', label: 'Balance âgée' },
 ];
@@ -103,6 +112,12 @@ export default function ReportConsolePage() {
           <AnnexeConsole orgId={orgId} />
         ) : active === 'ratios' ? (
           <RatiosConsole orgId={orgId} />
+        ) : active === 'comparative-balance' ? (
+          <ComparativeConsole orgId={orgId} />
+        ) : active === 'multi-year-balance' ? (
+          <MultiYearConsole orgId={orgId} />
+        ) : active === 'margin-by-axis' ? (
+          <MarginConsole orgId={orgId} />
         ) : active === 'general-ledger' ? (
           <GlConsole orgId={orgId} />
         ) : active === 'aging-balance' ? (
