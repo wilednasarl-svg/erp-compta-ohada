@@ -7,7 +7,7 @@
  * Actif = Passif via `totals.difference`.
  */
 
-import type { BalanceSheetReport, TrialBalanceReport } from '@/types/reports';
+import type { BalanceSheetReport, ProfitLossReport, TrialBalanceReport } from '@/types/reports';
 
 import type { PeriodValidity } from './types';
 
@@ -24,6 +24,18 @@ export const validityFromBalanceSheet = (report: BalanceSheetReport): PeriodVali
     periodClosed: false,
   };
 };
+
+/**
+ * Compte de résultat : aucun invariant débit=crédit (le CR produit un résultat,
+ * il n'est pas censé « équilibrer »). On n'expose donc pas d'`imbalance` — seuls
+ * la date de fin et la fraîcheur sont renseignées. Le résultat (bénéfice/perte)
+ * est porté par le rendu lui-même.
+ */
+export const validityFromProfitLoss = (report: ProfitLossReport): PeriodValidity => ({
+  lastMovementDate: report.toDate,
+  computedAt: new Date().toISOString(),
+  periodClosed: false,
+});
 
 /** Équilibre d'une balance : Σ débit clôture vs Σ crédit clôture. */
 export const validityFromTrialBalance = (report: TrialBalanceReport): PeriodValidity => {

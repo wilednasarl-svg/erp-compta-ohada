@@ -17,11 +17,13 @@ import { useCurrentOrg } from '@/stores/auth-store';
 
 import { BalanceConsole } from '../_console/balance-console';
 import { BilanConsole } from '../_console/bilan-console';
+import { CrConsole } from '../_console/cr-console';
 
-type ConsoleReport = 'balance-sheet' | 'trial-balance';
+type ConsoleReport = 'balance-sheet' | 'profit-loss' | 'trial-balance';
 
 const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: string }> = [
   { key: 'balance-sheet', label: 'Bilan' },
+  { key: 'profit-loss', label: 'Compte de résultat' },
   { key: 'trial-balance', label: 'Balance générale' },
 ];
 
@@ -70,6 +72,8 @@ export default function ReportConsolePage() {
 
         {active === 'balance-sheet' ? (
           <BilanConsole orgId={orgId} />
+        ) : active === 'profit-loss' ? (
+          <CrConsole orgId={orgId} />
         ) : (
           <BalanceConsole orgId={orgId} />
         )}

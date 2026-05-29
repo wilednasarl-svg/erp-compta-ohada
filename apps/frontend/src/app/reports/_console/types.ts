@@ -42,8 +42,12 @@ export interface PeriodValidity {
    * côté backend (la validité actuelle est dérivée du rapport généré).
    */
   readonly committedEntries?: number;
-  /** Σ débit − Σ crédit sur la période, en valeur absolue (FCFA). 0 = équilibré. */
-  readonly imbalance: number;
+  /**
+   * Σ débit − Σ crédit sur la période, en valeur absolue (FCFA). 0 = équilibré.
+   * Optionnel : certains états (Compte de résultat) n'ont pas d'invariant
+   * débit=crédit — l'indicateur d'équilibre est alors masqué plutôt que faussé.
+   */
+  readonly imbalance?: number;
   /** Date ISO du mouvement le plus récent pris en compte. */
   readonly lastMovementDate: string | null;
   /** Horodatage ISO du calcul de cet indice (fraîcheur). */

@@ -87,6 +87,7 @@ export function DataValidityStrip({ validity, loading, pendingHint }: DataValidi
   }
 
   const hasEntryCount = validity.committedEntries !== undefined;
+  const hasBalance = validity.imbalance !== undefined;
   const empty = validity.committedEntries === 0;
   const balanced = validity.imbalance === 0;
 
@@ -110,18 +111,20 @@ export function DataValidityStrip({ validity, loading, pendingHint }: DataValidi
         </Indicator>
       )}
 
-      <Indicator
-        icon={balanced ? CheckCircle2 : TriangleAlert}
-        tone={balanced ? 'ok' : 'critical'}
-        tipLabel="Équilibre du journal"
-        tip={
-          balanced
-            ? 'Σ débit = Σ crédit sur la période. Le bilan pourra équilibrer.'
-            : `Écart Σdébit − Σcrédit de ${formatFcfa(validity.imbalance)}. Un Bilan ou un CR généré maintenant sera déséquilibré.`
-        }
-      >
-        {balanced ? 'Journal équilibré' : `Écart ${formatFcfa(validity.imbalance)}`}
-      </Indicator>
+      {hasBalance && (
+        <Indicator
+          icon={balanced ? CheckCircle2 : TriangleAlert}
+          tone={balanced ? 'ok' : 'critical'}
+          tipLabel="Équilibre du journal"
+          tip={
+            balanced
+              ? 'Σ débit = Σ crédit sur la période. Le bilan pourra équilibrer.'
+              : `Écart Σdébit − Σcrédit de ${formatFcfa(validity.imbalance ?? 0)}. Un Bilan ou un CR généré maintenant sera déséquilibré.`
+          }
+        >
+          {balanced ? 'Journal équilibré' : `Écart ${formatFcfa(validity.imbalance ?? 0)}`}
+        </Indicator>
+      )}
 
       {validity.lastMovementDate && (
         <Indicator
