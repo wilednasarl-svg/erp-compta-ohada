@@ -140,7 +140,7 @@ export default function ForecastDashboardPage() {
       <div className="w-full animate-page-in space-y-8">
         <header>
           <p className="eyebrow">Pilotage · Trésorerie</p>
-          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink">
             Prévisions de Trésorerie
           </h1>
           <p className="mt-2 max-w-[64ch] text-sm text-ink-soft">

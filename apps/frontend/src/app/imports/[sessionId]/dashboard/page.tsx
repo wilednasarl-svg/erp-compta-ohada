@@ -89,7 +89,7 @@ export default function ImportDashboardPage() {
               Retour aux imports
             </Link>
             <p className="eyebrow mb-2">Session d&apos;import</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
               Analyse de la session d&apos;import
             </h1>
             <p className="mt-2 text-sm text-ink-mute">
@@ -353,9 +353,11 @@ function AnalyticsDashboard({ analytics }: { analytics: ImportAnalytics }) {
                 </thead>
                 <tbody>
                   {topAccounts.map((a, i) => {
-                    const stripe = i % 2 === 0 ? 'bg-paper' : 'bg-sunk/25';
                     return (
-                      <tr key={a.account} className={`border-t border-line ${stripe}`}>
+                      <tr
+                        key={a.account}
+                        className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
+                      >
                         <td className="px-3 py-2 text-ink-mute">{i + 1}</td>
                         <td className="px-3 py-2 font-mono text-ink">{a.account}</td>
                         <td className="px-3 py-2 text-right font-mono text-accent-ink">

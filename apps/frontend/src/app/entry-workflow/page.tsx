@@ -203,7 +203,7 @@ export default function EntryWorkflowPage() {
         {/* ─── Header ──────────────────────────────────────── */}
         <header className="space-y-3">
           <p className="eyebrow">Saisie · Workflow</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
             Workflow écritures
           </h1>
           <p className="max-w-[64ch] text-sm leading-relaxed text-ink-soft">

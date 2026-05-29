@@ -94,7 +94,7 @@ export default function AgingPage() {
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
           <p className="eyebrow mb-2">Tiers</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
             Échéancier
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
@@ -165,13 +165,10 @@ export default function AgingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report?.partners.map((p, i) => (
+                  {report?.partners.map((p) => (
                     <tr
                       key={p.partnerAccountId}
-                      className={cn(
-                        'border-t border-line',
-                        i % 2 === 1 ? 'bg-sunk/25' : 'bg-paper',
-                      )}
+                      className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
                     >
                       <td className="px-3 py-2 font-mono text-xs text-ink">
                         {p.partnerAccountCode}

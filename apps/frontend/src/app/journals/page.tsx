@@ -134,7 +134,7 @@ export default function JournalsPage() {
       <div className="animate-page-in space-y-8">
         <header>
           <p className="eyebrow mb-2">Module 8 · Saisie</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
             Journaux &amp; Écritures
           </h1>
           <p className="mt-2 text-sm text-ink-mute">
@@ -468,12 +468,12 @@ function EntryDetailSection({ orgId, entryQuery, accountById, onClose, onMutated
               </tr>
             </thead>
             <tbody>
-              {entry.lines.map((l, idx) => {
+              {entry.lines.map((l) => {
                 const account = accountById.get(l.accountId);
                 return (
                   <tr
                     key={l.id}
-                    className={`border-t border-line ${idx % 2 === 1 ? 'bg-sunk/30' : ''}`}
+                    className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
                   >
                     <td className="px-3 py-2 text-ink-mute">{l.position}</td>
                     <td className="px-3 py-2 font-mono text-ink">
@@ -755,10 +755,10 @@ function CreateEntrySection({ orgId, journals, onCreated }: CreateProps) {
                 </tr>
               </thead>
               <tbody>
-                {lines.map((l, idx) => (
+                {lines.map((l) => (
                   <tr
                     key={l.key}
-                    className={`border-t border-line ${idx % 2 === 1 ? 'bg-sunk/30' : ''}`}
+                    className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
                   >
                     <td className="px-2 py-1.5">
                       <Input

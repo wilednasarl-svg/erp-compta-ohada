@@ -246,7 +246,7 @@ export default function AiPage() {
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="eyebrow mb-2">Analyse &amp; IA · Anomalies</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
               Détection d&apos;anomalies
             </h1>
             <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">

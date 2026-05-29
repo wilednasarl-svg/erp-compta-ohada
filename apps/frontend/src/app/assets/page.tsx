@@ -284,7 +284,7 @@ export default function AssetsPage() {
         <header className="flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow mb-2">États · Immobilisations</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
               Immobilisations
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-ink-mute">
@@ -540,7 +540,7 @@ export default function AssetsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(assetsQuery.data ?? []).map((a, idx) => {
+                  {(assetsQuery.data ?? []).map((a) => {
                     const isSelected = a.id === selectedId;
                     const m = computeAssetMetrics(a);
                     const rateLabel =
@@ -554,7 +554,7 @@ export default function AssetsPage() {
                         key={a.id}
                         onClick={() => setSelectedId(isSelected ? null : a.id)}
                         className={`cursor-pointer border-t border-line transition-colors duration-fast hover:bg-sunk/60 ${
-                          isSelected ? 'bg-sunk/60' : idx % 2 === 1 ? 'bg-sunk/20' : ''
+                          isSelected ? 'bg-sunk/60' : ''
                         }`}
                       >
                         <td className="px-3 py-2 font-mono text-xs text-ink-soft">{a.code}</td>
@@ -772,13 +772,12 @@ function AssetDetailCard({
                 </tr>
               </thead>
               <tbody>
-                {(scheduleQuery.data ?? []).map((r, i) => (
+                {(scheduleQuery.data ?? []).map((r) => (
                   <ScheduleRowItem
                     key={r.id}
                     orgId={orgId}
                     assetId={assetId}
                     row={r}
-                    rowIndex={i}
                     onMutated={() => {
                       onMutated();
                       void scheduleQuery.refetch();
@@ -879,13 +878,11 @@ function ScheduleRowItem({
   orgId,
   assetId,
   row,
-  rowIndex,
   onMutated,
 }: {
   orgId: string;
   assetId: string;
   row: ScheduleRow;
-  rowIndex: number;
   onMutated: () => void;
 }) {
   const post = useApiMutation(
@@ -894,10 +891,8 @@ function ScheduleRowItem({
     { onSuccess: onMutated },
   );
 
-  const stripe = rowIndex % 2 === 0 ? 'bg-paper' : 'bg-sunk/25';
-
   return (
-    <tr className={`border-t border-line transition-colors duration-fast hover:bg-sunk/40 ${stripe}`}>
+    <tr className="border-t border-line transition-colors duration-fast hover:bg-sunk/40">
       <td className="px-3 py-2 font-mono text-ink">{row.fiscalYear}</td>
       <td className="px-3 py-2 font-mono text-xs text-ink-mute">
         {row.periodStart} → {row.periodEnd}

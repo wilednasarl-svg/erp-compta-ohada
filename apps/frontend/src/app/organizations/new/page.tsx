@@ -124,7 +124,7 @@ export default function NewOrganizationPage() {
         {/* ── Header ───────────────────────────────────────── */}
         <header className="border-b border-line pb-6">
           <p className="eyebrow">Organisations</p>
-          <h1 className="mt-1 font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="mt-1 font-display text-3xl font-medium tracking-tight text-ink">
             Nouvelle organisation
           </h1>
           <p className="mt-2 max-w-[56ch] text-sm leading-relaxed text-ink-soft">

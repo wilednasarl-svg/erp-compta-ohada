@@ -92,7 +92,7 @@ export default function DashboardsPage() {
       <div className="animate-page-in space-y-8">
         <header>
           <p className="eyebrow">Pilotage · KPIs</p>
-          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink">
             Tableaux de bord
           </h1>
           <p className="mt-2 max-w-[64ch] text-sm text-ink-soft">
@@ -663,12 +663,12 @@ function PartnerAgingTable({
           </tr>
         </thead>
         <tbody>
-          {partners.slice(0, 100).map((p, idx) => {
+          {partners.slice(0, 100).map((p) => {
             const over = Number(p.amountsByBucket['over-90']);
             return (
               <tr
                 key={p.accountId}
-                className={`border-t border-line ${idx % 2 === 1 ? 'bg-sunk/30' : ''}`}
+                className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
               >
                 <td className="px-3 py-2 font-mono text-xs tabular-nums text-ink">
                   {p.accountCode}
@@ -1108,7 +1108,7 @@ function TopAccountsSection({ orgId, exerciseId }: { orgId: string; exerciseId: 
                   {(top?.rows ?? []).map((r, i) => (
                     <tr
                       key={r.accountId}
-                      className={`border-t border-line ${i % 2 === 1 ? 'bg-sunk/30' : ''}`}
+                      className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
                     >
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">

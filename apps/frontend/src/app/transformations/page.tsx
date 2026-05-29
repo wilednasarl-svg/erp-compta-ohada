@@ -132,7 +132,7 @@ export default function TransformationsPage(){
         <header className="flex flex-col gap-6 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow mb-2">Retraitement · Transformations</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
               Transformations
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">

@@ -269,7 +269,7 @@ export default function CurrenciesPage() {
         <header className="flex items-start justify-between gap-6 border-b border-line pb-6">
           <div>
             <p className="eyebrow mb-2">Référentiel</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
               Devises &amp; Taux de change
             </h1>
             <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-ink-soft">

@@ -266,7 +266,7 @@ export default function ImportsPage() {
         {/* ─── Header ──────────────────────────────────────── */}
         <header className="space-y-3">
           <p className="eyebrow">Saisie · Imports</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
             Imports
           </h1>
           <p className="max-w-[68ch] text-sm leading-relaxed text-ink-soft">

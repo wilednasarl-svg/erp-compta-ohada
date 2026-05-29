@@ -99,7 +99,7 @@ export default function TvaPage() {
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
           <p className="eyebrow mb-2">Fiscalité</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">TVA</h1>
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">TVA</h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
             Codes TVA et déclarations mensuelles SYSCOHADA. La déclaration agrège
             automatiquement les écritures validées en collectée / déductible et calcule
@@ -228,12 +228,10 @@ export default function TvaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(codesQuery.data ?? []).map((c, i) => (
+                  {(codesQuery.data ?? []).map((c) => (
                     <tr
                       key={c.id}
-                      className={`border-b border-line last:border-0 ${
-                        i % 2 === 1 ? 'bg-sunk/30' : 'bg-paper'
-                      }`}
+                      className="border-b border-line last:border-0 transition-colors duration-fast hover:bg-sunk/50"
                     >
                       <td className="px-3 py-2.5 font-mono text-xs text-ink">{c.code}</td>
                       <td className="px-3 py-2.5 text-ink">{c.label}</td>
