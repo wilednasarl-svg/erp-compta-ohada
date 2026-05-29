@@ -8,6 +8,7 @@ import {
   BookText,
   Brain,
   Calendar,
+  CalendarClock,
   Coins,
   Compass,
   FileUp,
@@ -24,6 +25,7 @@ import {
   PenLine,
   Percent,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Users,
   Warehouse,
@@ -85,6 +87,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'Retraitement',
     items: [
       { href: '/lettering', label: 'Lettrage', icon: Link2, hint: 'Comptes 40x · 41x, clients/fournisseurs' },
+      { href: '/aging', label: 'Échéancier', icon: CalendarClock, hint: 'Balance âgée clients / fournisseurs' },
       { href: '/bank-reconciliation', label: 'Rapprochement', icon: Banknote, hint: 'Pointer relevés bancaires' },
       { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft, hint: 'Retraitements et recalculs' },
       { href: '/rules', label: 'Règles', icon: Sparkles, hint: 'Automatisations comptables' },
@@ -94,6 +97,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     title: 'États',
     items: [
       { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat, TFT, SIG, Annexe' },
+      { href: '/reports/console', label: 'Console des états', icon: SlidersHorizontal, hint: 'Parcours guidé : période → générer (14 états)' },
       { href: '/tva', label: 'TVA', icon: Percent, hint: 'Déclarations UEMOA / DGI' },
       { href: '/inventory', label: 'Inventaire', icon: Warehouse, hint: 'Stocks et inventaire physique' },
       { href: '/assets', label: 'Immobilisations', icon: Package, hint: 'Amortissements et dotations' },

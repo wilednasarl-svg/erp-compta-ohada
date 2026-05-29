@@ -84,19 +84,16 @@ export function Calendar(props: CalendarProps) {
       props.onSelect(iso);
       return;
     }
-    // Range : 1er clic = nouvelle borne basse ; 2e clic = borne haute.
+    // Range : borne basse posée mais haute vide → on complète (en ordonnant) ;
+    // sinon (rien encore, ou plage déjà complète) → on (re)pose la borne basse.
     const { start, end } = props;
-    if (!start || (start && end && start !== end) || start === end) {
-      // Recommence une plage si une plage complète existe déjà.
-      if (start && !end) {
-        const lo = iso < start ? iso : start;
-        const hi = iso < start ? start : iso;
-        props.onRangeChange({ start: lo, end: hi });
-        return;
-      }
+    if (start && !end) {
+      const lo = iso < start ? iso : start;
+      const hi = iso < start ? start : iso;
+      props.onRangeChange({ start: lo, end: hi });
+    } else {
+      props.onRangeChange({ start: iso, end: '' });
     }
-    // Cas par défaut : (re)pose la borne basse, vide la haute.
-    props.onRangeChange({ start: iso, end: '' });
   };
 
   const onKeyDown = (e: React.KeyboardEvent): void => {
