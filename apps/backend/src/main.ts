@@ -10,6 +10,7 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+import { buildCorsOrigin } from './config/cors-origin';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -45,7 +46,7 @@ async function bootstrap(): Promise<void> {
   const corsOrigin = process.env.APP_BASE_URL;
   app.enableCors(
     corsOrigin !== undefined && corsOrigin.length > 0
-      ? { origin: corsOrigin, credentials: true }
+      ? { origin: buildCorsOrigin(corsOrigin), credentials: true }
       : { origin: '*' },
   );
 
