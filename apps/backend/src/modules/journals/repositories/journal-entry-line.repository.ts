@@ -140,6 +140,45 @@ export class JournalEntryLineRepository {
     return qb.orderBy('l.account_id', 'ASC').addOrderBy('l.invoice_number', 'ASC').getMany();
   }
 
+  /**
+   * Échéancier (balance âgée) : retourne les lignes encore OUVERTES
+   * (non lettrées) des comptes tiers, rattachées à une écriture
+   * `validated`. Une ligne ouverte = créance/dette non soldée. Chaque
+   * ligne porte sa relation `account` mappée (code, libellé, classe) pour
+   * que le service détermine le sens (client 41 / fournisseur 40) et le
+   * libellé tiers.
+   *
+   * `subClasses` filtre les sous-classes tiers (défaut 40 + 41). Tri par
+   * compte puis date d'échéance (NULLS LAST) pour un découpage stable.
+   */
+  async listOpenPartnerLines(
+    organizationId: TenantId | string,
+    options: { subClasses?: readonly string[]; partnerAccountId?: string } = {},
+  ): Promise<JournalEntryLineEntity[]> {
+    assertTenantId(organizationId);
+    const subClasses = options.subClasses ?? ['40', '41'];
+    const qb = this.repo
+      .createQueryBuilder('l')
+      .innerJoinAndMapOne('l.account', OrganizationAccountEntity, 'a', 'a.id = l.account_id')
+      .innerJoin(JournalEntryEntity, 'e', 'e.id = l.journal_entry_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere('l.lettering_id IS NULL')
+      .andWhere("e.status = 'validated'")
+      .andWhere('a.class = 4')
+      .andWhere('substring(a.code from 1 for 2) IN (:...subClasses)', {
+        subClasses: [...subClasses],
+      });
+    if (options.partnerAccountId !== undefined) {
+      qb.andWhere('l.account_id = :partnerAccountId', {
+        partnerAccountId: options.partnerAccountId,
+      });
+    }
+    return qb
+      .orderBy('l.account_id', 'ASC')
+      .addOrderBy('l.due_date', 'ASC', 'NULLS LAST')
+      .getMany();
+  }
+
   async attachLettering(
     lineIds: readonly string[],
     letteringId: string,

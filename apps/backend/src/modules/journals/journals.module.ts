@@ -8,6 +8,7 @@ import { RbacModule } from '../rbac/rbac.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
 import { OrganizationAccountEntity } from '../accounting-plan/entities/organization-account.entity';
 import { OrganizationAccountRepository } from '../accounting-plan/repositories/organization-account.repository';
+import { AgingController } from './controllers/aging.controller';
 import { EntriesController } from './controllers/entries.controller';
 import { EntryWorkflowController } from './controllers/entry-workflow.controller';
 import { JournalsController } from './controllers/journals.controller';
@@ -32,6 +33,7 @@ import { EntriesService } from './services/entries.service';
 import { EntryNotificationService } from './services/entry-notification.service';
 import { EntryPdfGenerator } from './services/entry-pdf-generator';
 import { EntryWorkflowService } from './services/entry-workflow.service';
+import { AgingService } from './services/aging.service';
 import { JournalsService } from './services/journals.service';
 import { LetteringService } from './services/lettering.service';
 import { PeriodsService } from './services/periods.service';
@@ -88,6 +90,7 @@ import { PeriodsService } from './services/periods.service';
     JournalsController,
     EntriesController,
     LetteringsController,
+    AgingController,
     EntryWorkflowController,
     SignatureVerifyController,
   ],
@@ -103,6 +106,7 @@ import { PeriodsService } from './services/periods.service';
     JournalsService,
     EntriesService,
     LetteringService,
+    AgingService,
     EntryWorkflowService,
     EntryPdfGenerator,
     EntryNotificationService,
