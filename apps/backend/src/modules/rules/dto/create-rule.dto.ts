@@ -1,4 +1,5 @@
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsInt,
@@ -54,6 +55,6 @@ export class CreateRuleDto {
     example: [{ type: 'assign_cost_center', costCenter: 'ADMIN' }],
   })
   @IsArray()
-  @MinLength(1, { each: false, message: 'Au moins une action est requise.' })
+  @ArrayMinSize(1, { message: 'Au moins une action est requise.' })
   actions!: RuleAction[];
 }
