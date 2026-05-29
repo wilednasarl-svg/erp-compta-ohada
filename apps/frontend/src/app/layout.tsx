@@ -1,6 +1,7 @@
 import './globals.css';
 
 import type { Metadata, Viewport } from 'next';
+import { Toaster } from 'sonner';
 
 import { AuthHydrationGate } from '@/components/auth-hydration-gate';
 import { ReactQueryProvider } from '@/components/react-query-provider';
@@ -41,6 +42,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ReactQueryProvider>
           <AuthHydrationGate>{children}</AuthHydrationGate>
         </ReactQueryProvider>
+        <Toaster position="bottom-right" richColors closeButton />
+
       </body>
     </html>
   );

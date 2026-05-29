@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  AlertTriangle,
   Download,
   Eye,
   FileSpreadsheet,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
@@ -21,10 +23,17 @@ import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
+import { useDebounce } from '@/hooks/use-debounce';
 import { ApiError, api, getAuthToken } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+
+/** Mirrors the backend default `DOC_MAX_FILE_SIZE_MB` (25 Mo). */
+const MAX_FILE_SIZE_MB = 25;
+/** MIME/extension allow-list aligned with the backend upload validation. */
+const ACCEPT_ATTR =
+  'image/*,application/pdf,.csv,.txt,.xls,.xlsx,.doc,.docx,.ods,.odt';
 
 type OcrStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
 
@@ -284,14 +293,15 @@ export default function DocumentsPage() {
   const qc = useQueryClient();
 
   const [filterTag, setFilterTag] = useState('');
+  const debouncedTag = useDebounce(filterTag.trim(), 350);
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
   const docsQuery = useQuery<ListResponse, ApiError>({
-    queryKey: ['documents', orgId, filterTag, page],
+    queryKey: ['documents', orgId, debouncedTag, page],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filterTag.trim() !== '') params.set('tag', filterTag.trim());
+      if (debouncedTag !== '') params.set('tag', debouncedTag);
       params.set('page', String(page));
       params.set('pageSize', String(pageSize));
       return api.get<ListResponse>(`/documents?${params.toString()}`);
@@ -302,11 +312,24 @@ export default function DocumentsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  // Bumped on success to force the uncontrolled <input type="file"> to reset.
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  const selectTag = (tag: string) => {
+    setFilterTag(tag);
+    setPage(1);
+  };
 
   const upload = useApiMutation(
     async () => {
       if (!file) {
         throw new ApiError(422, { code: 'DOC_FILE_REQUIRED', message: 'Sélectionner un fichier.' });
+      }
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        throw new ApiError(422, {
+          code: 'DOC_FILE_TOO_LARGE',
+          message: `Fichier trop volumineux (${formatSize(file.size)}). Taille max : ${MAX_FILE_SIZE_MB} Mo.`,
+        });
       }
       const fd = new FormData();
       fd.append('file', file);
@@ -337,12 +360,17 @@ export default function DocumentsPage() {
         setFile(null);
         setDescription('');
         setTagsInput('');
+        setFileInputKey((k) => k + 1);
+        toast.success('Document téléversé avec succès.');
         void qc.invalidateQueries({ queryKey: ['documents', orgId] });
       },
+      onError: (err) => toast.error(err.message),
     },
   );
 
   const rows = docsQuery.data?.rows ?? [];
+  const total = docsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <AppShell>
@@ -351,8 +379,8 @@ export default function DocumentsPage() {
           <p className="eyebrow mb-2">Organisation · GED</p>
           <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Documents</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-mute">
-            Gestion électronique des pièces justificatives. Associez chaque document à une écriture
-            ou une période.
+            Gestion électronique des pièces justificatives : importez vos factures, relevés et autres
+            justificatifs, organisez-les par tags et retrouvez-les en un clic.
           </p>
         </header>
 
@@ -360,7 +388,8 @@ export default function DocumentsPage() {
           <div className="border-b border-line pb-3">
             <h2 className="font-display text-xl font-medium text-ink">Téléverser un document</h2>
             <p className="mt-1 text-sm text-ink-mute">
-              Tags séparés par virgules (ex.{' '}
+              Formats : PDF, images, Excel/Word, CSV. Taille max : {MAX_FILE_SIZE_MB} Mo. Tags séparés
+              par virgules (ex.{' '}
               <code className="rounded-xs bg-sunk px-1 py-0.5 font-mono text-xs text-ink-soft">
                 facture, fournisseur, mars-2026
               </code>
@@ -379,12 +408,20 @@ export default function DocumentsPage() {
                 <div className="space-y-1">
                   <Label htmlFor="file">Fichier</Label>
                   <Input
+                    key={fileInputKey}
                     id="file"
                     type="file"
+                    accept={ACCEPT_ATTR}
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     className="cursor-pointer file:mr-3 file:rounded-sm file:border file:border-line-strong file:bg-paper file:px-3 file:py-1 file:text-sm"
                     required
                   />
+                  {file && (
+                    <p className="text-xs text-ink-mute">
+                      {file.name} ·{' '}
+                      <span className="font-mono tabular-nums">{formatSize(file.size)}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="doc-tags">Tags</Label>
@@ -424,58 +461,86 @@ export default function DocumentsPage() {
             <div>
               <h2 className="font-display text-xl font-medium text-ink">Bibliothèque</h2>
               <p className="mt-1 text-sm text-ink-mute">
-                <span className="font-mono tabular-nums text-ink">{docsQuery.data?.total ?? 0}</span> document
-                {(docsQuery.data?.total ?? 0) > 1 ? 's' : ''} · page{' '}
-                <span className="font-mono tabular-nums">{page}</span>
+                <span className="font-mono tabular-nums text-ink">{total}</span> document
+                {total > 1 ? 's' : ''} · page{' '}
+                <span className="font-mono tabular-nums">{page}</span> / {totalPages}
               </p>
             </div>
-            <Input
-              value={filterTag}
-              onChange={(e) => {
-                setFilterTag(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Filtrer par tag…"
-              className="max-w-xs"
-            />
+            <div className="space-y-1">
+              <Label htmlFor="filter-tag" className="text-ink-mute">
+                Filtrer par tag (ex. fournisseur, période)
+              </Label>
+              <div className="relative">
+                <Input
+                  id="filter-tag"
+                  value={filterTag}
+                  onChange={(e) => {
+                    setFilterTag(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Filtrer par tag…"
+                  className="max-w-xs pr-8"
+                />
+                {filterTag !== '' && (
+                  <button
+                    type="button"
+                    onClick={() => selectTag('')}
+                    aria-label="Effacer le filtre"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-mute transition-colors hover:text-ink"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-sm border border-line bg-paper">
             {docsQuery.isLoading ? (
               <SkeletonRows n={5} />
             ) : rows.length === 0 ? (
-              <EmptyState
-                icon={Paperclip}
-                title="Aucun document"
-                description="Importez des pièces justificatives pour les associer à vos écritures."
-              />
+              debouncedTag !== '' ? (
+                <EmptyState
+                  icon={Paperclip}
+                  title={`Aucun document pour « ${debouncedTag} »`}
+                  description="Aucune pièce ne porte ce tag. Effacez le filtre pour voir toute la bibliothèque."
+                />
+              ) : (
+                <EmptyState
+                  icon={Paperclip}
+                  title="Aucun document"
+                  description="Importez vos premières pièces justificatives pour les retrouver ici."
+                />
+              )
             ) : (
               <ul className="divide-y divide-line">
                 {rows.map((d) => (
-                  <DocumentRow key={d.id} doc={d} />
+                  <DocumentRow key={d.id} doc={d} activeTag={debouncedTag} onTagClick={selectTag} />
                 ))}
               </ul>
             )}
           </div>
           <FormError error={docsQuery.error} className="mt-3" />
 
-          {rows.length > 0 && (
+          {total > pageSize && (
             <div className="mt-3 flex items-center justify-between text-sm">
               <Button
                 type="button"
                 variant="outline"
-                disabled={page === 1}
+                disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="press"
               >
                 Précédent
               </Button>
-              <span className="font-mono tabular-nums text-xs text-ink-mute">Page {page}</span>
+              <span className="font-mono tabular-nums text-xs text-ink-mute">
+                Page {page} / {totalPages}
+              </span>
               <Button
                 type="button"
                 variant="outline"
-                disabled={rows.length < pageSize}
-                onClick={() => setPage((p) => p + 1)}
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 className="press"
               >
                 Suivant
@@ -488,12 +553,21 @@ export default function DocumentsPage() {
   );
 }
 
-function DocumentRow({ doc }: { doc: DocumentView }) {
+function DocumentRow({
+  doc,
+  activeTag,
+  onTagClick,
+}: {
+  doc: DocumentView;
+  activeTag: string;
+  onTagClick: (tag: string) => void;
+}) {
   const qc = useQueryClient();
   const [downloading, setDownloading] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [preview, setPreview] = useState<{ url: string; mime: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const openPreview = async () => {
     setLoadingPreview(true);
@@ -541,13 +615,25 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
       a.download = doc.filename;
       a.click();
       URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? `Téléchargement impossible : ${err.message}` : 'Téléchargement impossible.',
+      );
     } finally {
       setDownloading(false);
     }
   };
 
   const remove = useApiMutation(async () => api.delete(`/documents/${doc.id}`), {
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['documents'] }),
+    onSuccess: () => {
+      setConfirmDelete(false);
+      toast.success('Document supprimé.');
+      void qc.invalidateQueries({ queryKey: ['documents'] });
+    },
+    onError: (err) => {
+      setConfirmDelete(false);
+      toast.error(err.message);
+    },
   });
 
   return (
@@ -598,14 +684,25 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
           </div>
           {doc.tags.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
-              {doc.tags.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center rounded-xs border border-line bg-canvas px-1.5 py-0.5 text-[10px] font-medium text-ink-soft"
-                >
-                  {t}
-                </span>
-              ))}
+              {doc.tags.map((t) => {
+                const isActive = activeTag !== '' && t.toLowerCase() === activeTag.toLowerCase();
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => onTagClick(isActive ? '' : t)}
+                    aria-pressed={isActive}
+                    title={isActive ? 'Retirer le filtre' : `Filtrer par « ${t} »`}
+                    className={`press inline-flex items-center rounded-xs border px-1.5 py-0.5 text-[10px] font-medium transition-colors duration-fast ${
+                      isActive
+                        ? 'border-accent bg-accent-soft text-accent-ink'
+                        : 'border-line bg-canvas text-ink-soft hover:border-accent hover:text-accent-ink'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -639,16 +736,45 @@ function DocumentRow({ doc }: { doc: DocumentView }) {
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" strokeWidth={1.5} />}
           </button>
-          <button
-            type="button"
-            disabled={remove.isPending}
-            onClick={() => remove.mutate(undefined)}
-            aria-label={`Supprimer ${doc.filename}`}
-            className="press inline-flex h-7 w-7 items-center justify-center rounded-xs border border-line text-ink-mute transition-colors duration-fast hover:border-critical hover:text-critical-ink disabled:opacity-40"
-            title="Supprimer"
-          >
-            {remove.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
-          </button>
+          {confirmDelete ? (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={remove.isPending}
+                onClick={() => remove.mutate(undefined)}
+                aria-label={`Confirmer la suppression de ${doc.filename}`}
+                className="press inline-flex h-7 items-center gap-1 rounded-xs bg-critical px-2 text-[11px] font-medium text-paper transition-colors duration-fast hover:bg-critical-ink disabled:opacity-40"
+                title="Confirmer la suppression"
+              >
+                {remove.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.5} />
+                )}
+                Confirmer
+              </button>
+              <button
+                type="button"
+                disabled={remove.isPending}
+                onClick={() => setConfirmDelete(false)}
+                aria-label="Annuler la suppression"
+                className="press inline-flex h-7 items-center rounded-xs border border-line px-2 text-[11px] text-ink-soft transition-colors duration-fast hover:border-line-strong hover:text-ink disabled:opacity-40"
+                title="Annuler"
+              >
+                Annuler
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label={`Supprimer ${doc.filename}`}
+              className="press inline-flex h-7 w-7 items-center justify-center rounded-xs border border-line text-ink-mute transition-colors duration-fast hover:border-critical hover:text-critical-ink"
+              title="Supprimer"
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       </li>
 
