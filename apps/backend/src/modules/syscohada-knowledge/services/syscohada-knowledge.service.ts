@@ -14,6 +14,18 @@ export type SyscohadaDomain =
   | 'inventory'
   | 'tva'
   | 'reports'
+  | 'leases'
+  | 'provisions'
+  | 'impairments'
+  | 'subsidies'
+  | 'actuarial-commitments'
+  | 'regularizations'
+  | 'transformations'
+  | 'bills-of-exchange'
+  | 'multi-currency'
+  | 'pledged-assets'
+  | 'cash-flow'
+  | 'bank-reconciliation'
   | 'ai';
 
 export interface SyscohadaKnowledgeOptions {
@@ -97,6 +109,127 @@ const DOMAIN_REFERENCES: ReadonlyArray<SyscohadaDomainReference> = [
     tome: 3,
     topic: 'États financiers annuels, DSF, bilan, compte de résultat, TFT et notes annexes',
     keywords: ['bilan', 'resultat', 'tft', 'flux', 'dsf', 'note', 'etat financier'],
+  },
+  {
+    domain: 'leases',
+    tome: 2,
+    topic: 'Contrats de location-acquisition et de location simple, redevances et retraitement',
+    keywords: ['location', 'acquisition', 'redevance', 'bail', 'preneur', 'bailleur', 'loyer'],
+  },
+  {
+    domain: 'provisions',
+    tome: 2,
+    topic: 'Provisions pour risques et charges, litiges, garanties et reprises',
+    keywords: ['provision', 'risque', 'charge', 'litige', 'garantie', 'reprise', 'dotation'],
+  },
+  {
+    domain: 'impairments',
+    tome: 1,
+    topic: 'Dépréciations d’actifs, pertes de valeur et valeur actuelle à l’inventaire',
+    keywords: [
+      'depreciation',
+      'perte',
+      'valeur',
+      'actuelle',
+      'recouvrable',
+      'prudence',
+      'inventaire',
+    ],
+  },
+  {
+    domain: 'subsidies',
+    tome: 2,
+    topic: 'Subventions d’investissement, d’exploitation et d’équilibre, quote-part au résultat',
+    keywords: ['subvention', 'investissement', 'exploitation', 'equipement', 'quote', 'equilibre'],
+  },
+  {
+    domain: 'actuarial-commitments',
+    tome: 2,
+    topic: 'Engagements de retraite, indemnités de fin de carrière et avantages du personnel',
+    keywords: [
+      'engagement',
+      'retraite',
+      'indemnite',
+      'personnel',
+      'depart',
+      'provision',
+      'actuariel',
+    ],
+  },
+  {
+    domain: 'regularizations',
+    tome: 1,
+    topic: 'Régularisations de charges et produits, charges/produits constatés d’avance, cut-off',
+    keywords: [
+      'regularisation',
+      'constate',
+      'avance',
+      'abonnement',
+      'rattachement',
+      'charge',
+      'produit',
+    ],
+  },
+  {
+    domain: 'transformations',
+    tome: 2,
+    topic: 'Fusions, apports partiels d’actif, scissions et transformations de sociétés',
+    keywords: [
+      'fusion',
+      'apport',
+      'scission',
+      'absorption',
+      'transformation',
+      'societe',
+      'echange',
+    ],
+  },
+  {
+    domain: 'bills-of-exchange',
+    tome: 1,
+    topic: 'Effets de commerce, traites, escompte, encaissement et endossement',
+    keywords: [
+      'effet',
+      'traite',
+      'escompte',
+      'endossement',
+      'encaissement',
+      'commerce',
+      'echeance',
+    ],
+  },
+  {
+    domain: 'multi-currency',
+    tome: 2,
+    topic: 'Opérations en devises, écarts de conversion et écarts de change',
+    keywords: ['devise', 'conversion', 'change', 'cours', 'monnaie', 'etrangere', 'ecart'],
+  },
+  {
+    domain: 'pledged-assets',
+    tome: 2,
+    topic: 'Garanties, gages, hypothèques, cautions et engagements donnés ou reçus',
+    keywords: ['garantie', 'gage', 'hypotheque', 'caution', 'aval', 'engagement', 'surete'],
+  },
+  {
+    domain: 'cash-flow',
+    tome: 3,
+    topic:
+      'Tableau des flux de trésorerie : activités opérationnelles, investissement, financement',
+    keywords: [
+      'flux',
+      'tresorerie',
+      'operationnel',
+      'investissement',
+      'financement',
+      'tableau',
+      'tft',
+    ],
+  },
+  {
+    domain: 'bank-reconciliation',
+    tome: 1,
+    topic: 'Rapprochement bancaire, état de rapprochement et comptes de trésorerie',
+    keywords: ['rapprochement', 'banque', 'releve', 'tresorerie', 'compte', '521', 'solde'],
   },
   {
     domain: 'ai',
@@ -250,6 +383,14 @@ export class SyscohadaKnowledgeService {
     const explicit = this.options.sourcesDir ?? process.env.SYSCOHADA_KNOWLEDGE_DIR;
     if (explicit && existsSync(explicit)) return resolve(explicit);
 
+    // Sources embarquées dans le module (copiées dans dist via nest-cli assets).
+    // Fonctionne en production (dist/modules/syscohada-knowledge/sources) comme
+    // en dev/test (src/modules/syscohada-knowledge/sources), sans dépendre de
+    // .local ni d'une variable d'environnement.
+    const bundled = join(__dirname, '..', 'sources');
+    if (existsSync(bundled)) return bundled;
+
+    // Repli historique pour le développement local : remonter vers .local/sources.
     let current = process.cwd();
     for (let i = 0; i < 6; i += 1) {
       const candidate = join(current, '.local', 'sources');

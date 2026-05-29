@@ -1,0 +1,2306 @@
+325
+GUIDE
+D’APPLICATION
+TROISIEME 	PARTIE 	:
+SYSCOHADA
+
+-- 1 of 70 --
+
+326
+SECTION 1 : Principe
+1.1. Notion d’états financiers
+a) En pure logique comptable, la synthèse pourrait se satisfaire d’un simple regroupement de
+tous les comptes utilisés au cours de la période ou de l’exercice en deux comptes collectifs :
+- 	« gestion » ou « résultat », regroupant les comptes des classes 6, 7 et 8,
+- 	« patrimoine » ou « Bilan », regroupant ceux des classes 1 à 5.
+L’ensemble de ces deux comptes correspondrait à la balance générale, après inventaire.
+Mais de tels comptes ne seraient guère plus lisibles que la balance, en raison du grand nombre
+de lignes utilisées, et demeureraient par ailleurs hermétiques aux non-comptables, auxquels ils
+ne fourniraient aucune indication sur la gestion.
+b) L’article 23 de l’Acte uniforme prévoit donc, au titre de la synthèse annuelle, des « états
+financiers » qui devront être « arrêtés au plus tard dans les quatre mois qui suivent la date de
+clôture de l’exercice ».
+Le terme retenu, «états financiers», n’est à rapprocher ni des « éléments financiers » (comptes
+principaux 67 et 77), ni des comptes de Trésorerie de la classe 5. Il dérive de la terminologie
+anglo-saxonne, dans laquelle la Comptabilité générale est appelée « financière » («financial
+accounting»), bien qu’elle traduise à la fois les flux juridiques et les flux financiers, et que sa
+synthèse figure alors dans des états « financiers » («financial statements»).
+1.2. Eléments communs aux états financiers
+a) Si certains de ces états conservent à première vue la structure d’un compte, avec des soldes
+débiteurs à gauche et des soldes créditeurs à droite, ils forment en fait des tableaux, constitués
+de « postes ». Ces postes ne sont pas « chiffrés » dans une numérotation décimale, comme les
+comptes, mais « lettrés », c’est à dire identifiés par des groupes de deux lettres.
+Chapitre 1 	Préparation des états financiers
+
+-- 2 of 70 --
+
+327
+EXEMPLE : Dans le Bilan, les postes sont lettrés de AD à DZ.
+b) Ces postes :
+- 	correspondent en règle générale à un compte principal. Exemple : au Bilan, les postes
+BQ et BR traduisent les soldes des comptes 50, et 51. ;
+- 	mais contractent quelquefois plusieurs comptes principaux. Exemple : dans le Compte
+de résultat, le poste RH « Services extérieurs » contracte tous les comptes 62.. et 63.. ;
+- 	et développent souvent, en revanche, le contenu d’un seul compte principal. Exemple :
+le compte 60.. est développé sur six postes, RA à RF.
+d) 	Dans tous les états financiers, les postes sont regroupés en « rubriques », elles-mêmes
+réunies en « masses » identifiées par des sous-totaux. Exemple : au Bilan, les postes AJ à AN
+sont regroupés dans une « rubrique » d'immobilisations corporelles, qui entre dans la «
+masse » de l'ACTIF IMMOBILISÉ.
+e) 	En sus des informations fournies par les comptes de l’exercice intéressé « n », les états
+financiers rappellent également les informations correspondantes de l’exercice précédent,
+appelé « n - 1 », en vue de faciliter au lecteur la comparaison d’une année sur l’autre.
+1.3. Eléments distinctifs
+a) L’article 8 de l’Acte uniforme prescrit quatre états financiers :
+- 	le Bilan (postes AD à DZ),
+- 	le Compte de résultat (postes RA à TO et XA à XI),
+- 	le Tableau des flux de trésorerie (postes FA à FQ et ZA à ZH),
+- 	les Notes annexes (postes non lettrés).
+Les états financiers forment un tout indissociable et décrivent de façon régulière et sincère les
+évènements, opérations et situations de l’exercice.
+Les Notes annexes ne sont pas à considérer comme un appendice, mais comme un état
+financier « à part entière », ayant la même importance que les trois autres états.
+
+-- 3 of 70 --
+
+328
+b) 	Des grilles de correspondance postes/comptes ont été conçues :
+- 	le passage des numéros de comptes aux lettres des postes est indiqué dans la balance
+servant d’exemple de synthèse, en section 6 ci-dessous.
+- 	le contenu de chaque poste est exprimé en numéros de compte, dans les tableaux de
+correspondance Postes/Comptes du Plan comptable général OHADA titre IX
+chapitre 7.
+c) 	La problématique du classement des postes et des rubriques, et de leur regroupement
+par masse, a fait l’objet de nombreux débats, en vue de concilier les approches des différents
+utilisateurs des états financiers : gestionnaires, actionnaires, fiscalistes, statisticiens, etc.
+La solution retenue diffère selon les états financiers, et est exposée dans chacune des sections
+suivantes.
+SECTION 2 : Bilan
+2.1. Fonction
+Selon l’article 29 de l’Acte uniforme, « le Bilan décrit séparément les éléments d’actif et les
+éléments de passif constituant le patrimoine de l’entité. Il fait apparaître, de façon distincte,
+les capitaux propres ».
+Sur cette base, le SYSCOHADA préconise un tableau dont la composition obéit aux
+considérations suivantes.
+2.2. Logique comptable
+Le Bilan du SYSCOHADA ne renie pas, pour l’essentiel, ses origines de compte collectif : il
+recense bien les soldes des comptes de patrimoine contenus dans les classes 1 à 5.
+a) Une lecture horizontale montre que le Bilan présente :
+- 	à gauche (actif) les soldes débiteurs,
+- 	à droite (passif) les soldes créditeurs.
+
+-- 4 of 70 --
+
+329
+b) Une lecture verticale révèle :
+- 	d’abord dans le « haut de Bilan » :
+o 	un « actif immobilisé » reprenant les comptes de la classe 2,
+o 	un « passif interne ou capitaux propres » et des « dettes financières »
+enregistrées en classe 1 ;
+- 	puis dans le « bas de Bilan » :
+o 	un « actif circulant », reprenant les soldes débiteurs des comptes des classes 3
+et 4, et un « actif de Trésorerie », reprenant les soldes débiteurs des comptes de
+la classe 5,
+o 	un « passif circulant », reprenant les soldes créditeurs des comptes de la classe
+4, et un « passif de Trésorerie » reprenant les soldes créditeurs des comptes de
+la classe 5.
+2.3. Aménagements
+Mais pour améliorer sa lisibilité et mieux traduire la situation patrimoniale, le SYSCOHADA
+corrige cette rigidité comptable par plusieurs aménagements :
+a) En lecture horizontale, de gauche à droite :
+- 	les comptes d’amortissements (28) et de dépréciations (29 à 59), à solde créditeur,
+figurent à l’actif en soustraction et non au passif ;
+- 	les comptes 12 Report à nouveau et 139 Résultat net de l’exercice figurent toujours
+au passif :
+o 	en addition, si leurs soldes sont créditeurs,
+o 	en soustraction, si leurs soldes sont débiteurs.
+b) 	En lecture verticale, les postes sont classés dans un ordre « fonctionnel » tant à l’actif
+qu’au passif. Mais le SYSCOHADA introduit un décalage : les écarts de conversion (comptes
+478 et 479) sont placés au pied du Bilan, et non pas dans la masse des éléments circulants, en
+raison de leur caractère probable seulement.
+
+-- 5 of 70 --
+
+330
+2.4. Tracé
+L’entité peut présenter le bilan soit :
+- 	sur une seule page en mode paysage (plan comptable général OHADA Titre IX,
+chapitre 4);
+- 	sur deux pages une page regroupant l’actif et l’autre le passif (plan comptable général
+OHADA Titre IX, chapitre 4).
+SECTION 3 : Compte de résultat
+3.1. Fonction
+Selon l’article 29 de l’Acte uniforme, le Compte de résultat récapitule en liste les produits et
+les charges, qui font apparaître par cascade les résultats intermédiaires et, in fine, le bénéfice
+net ou la perte nette de l’exercice.
+Sur cette base, le SYSCOHADA préconise un tableau, dont la composition obéit aux
+considérations suivantes.
+3.2. Logique comptable et aménagements
+Le SYSCOHADA a retenu la présentation du Résultat « en liste ». Cette présentation a
+l’avantage mettre en évidence en cascade les soldes intermédiaires retenus par le plan
+comptable général.
+Pour améliorer l’information et faciliter sa lecture aux non-comptables, le Compte de résultat
+présente des soldes qui peuvent être regroupés en cinq points :
+- 	la marge commerciale
+- 	le chiffre d’affaires,
+- 	les 	résultats 	intermédiaires 	des 	activités 	ordinaires 	subdivisées 	en 	activité
+d’exploitation et activité financière ;
+- 	le résultat des activités extraordinaires dénommées hors activités ordinaires ;
+- 	le résultat net de l’exercice.
+a) 	la 	marge 	commerciale 	permet 	de 	distinguer 	les 	opérations 	commerciales 	des
+opérations artisanales ou industrielles et des prestations de services.
+
+-- 6 of 70 --
+
+331
+Elle est déterminée par la différence entre les postes TA (compte 701) et le poste RA
+(comptes 601) complété par le poste RB (compte 6031) en addition si le solde est
+débiteur (déstockage) ou en soustraction si le solde est créditeur (stockage) ;
+b) 	le chiffre d’affaires est défini par le total des ventes de la période ou de l’exercice,
+correspond normalement à la sommation des postes TA à TD (comptes 70 ventes) ;
+c) 	les résultats intermédiaires des activités ordinaires
+§ 	la Valeur ajoutée est obtenue par la différence entre
+1) 	le chiffre d’affaires (compte 70), les autres produits regroupés dans les postes
+TE, à TI (comptes 73, 72, 71, 75, 781)
+et
+2) 	les postes d’achats RA, RC, RE (comptes 601 à 608) complétés par des postes
+de variation de stocks RB, RD, RF (comptes 603) en addition si le solde est
+débiteur (déstockage) ou en soustraction si le solde est créditeur (stockage) et
+les 	autres 	consommations 	intermédiaires 	des 	postes 	RG 	à 	RJ
+(comptes 61 à 65) ;
+ü 	l’excédent brut d’exploitation, obtenu après déduction du poste RK (compte 66
+charges de personnel), représente le résultat obtenu par l’unité de production,
+avant prise en considération des politiques d’amortissement et financière de
+l’entité. Il constitue également le point de départ du calcul de la capacité
+d’autofinancement par la méthode soustractive ;
+ü 	le résultat d’exploitation, obtenu après prise en compte des reprises d’exploitation,
+poste TJ (comptes 791, 798, 799) et dotations d’exploitation, poste RL (comptes
+681, 691), c’est-à-dire de la totalité des éléments d’exploitation ;
+ü 	le résultat financier, qui mesure l’incidence de la politique financière de l’entité
+est obtenu par la différence entre :
+o 	les revenus financiers, postes TK à TM (comptes 77, 797, 787)
+et
+o 	les charges financières postes RM et RN (comptes 67 et 697),
+ü 	le résultat des activités ordinaires résulte de la somme du résultat d’exploitation et
+du résultat financier ;
+d) 	le résultat hors activités ordinaires, qui représente les opérations extraordinaires est
+obtenu par différence entre
+
+-- 7 of 70 --
+
+332
+§ 	les produits HAO, postes TN et TO (comptes 82, 84, 86, 88)
+et
+§ 	les charges HAO, postes RM et RN (comptes 81, 83, 85)
+e) 	le résultat net de l’exercice qui représente la rémunération des propriétaires de
+l’entité est obtenue par la somme algébrique du résultat des activités ordinaires et du
+résultat HAO amputée de la participation éventuelle des travailleurs, poste RQ
+(compte 87) et des impôts sur le résultat, poste RS (compte 89).
+Ces soldes intermédiaires peuvent être déterminés :
+§ 	de manière comptable, par virement successif des comptes des classes 6, 7 et 8 dans
+les comptes 132 à 138,
+§ 	par le calcul, lors de l’établissement du compte de résultat, tous les comptes de gestion
+étant alors directement virés au Compte de résultat 131 ou 139.
+S’il est souhaitable que les soldes intermédiaires de gestion soient créditeurs, il faut
+évidemment envisager le cas contraire d’un solde débiteur, constatant une perte. Pour
+améliorer la lisibilité du compte de résultat, le SYSCOHADA préconise dans les deux cas
+l’inscription du solde, en l’affectant du signe + en cas d’excédent (solde créditeur), et du signe
+- en cas de déficit (solde débiteur).
+3.3. Tracé
+Il est présenté au plan comptable général, Titre IX, chapitre 4.
+SECTION 4 : Tableau des flux de trésorerie
+Selon l’article 29 de l’Acte uniforme de l’acte uniforme relatif au droit comptable et à
+l’information financière, le Tableau de flux de trésorerie retrace les mouvements « entrée » ou
+« sortie » de liquidités de l’exercice.
+Une synthèse des mouvements patrimoniaux fournira une information sur la variation de la
+trésorerie de l’entité au cours de l’exercice du 1er janvier au 31 décembre.
+Le SYSCOHADA distingue trois catégories de flux de trésorerie :
+
+-- 8 of 70 --
+
+333
+§ 	flux de trésorerie des activités opérationnelles ;
+§ 	flux de trésorerie des activités d’investissement ;
+§ 	flux de trésorerie des activités de financement.
+4.2. Concept
+4.2.1. Principe de base
+Le mode opératoire relatif à la détermination des flux de trésorerie peut être résumé de la
+façon suivante :
+4.2.2. Principales composantes du tableau de flux de trésorerie
+Selon l’article 32, le Tableau de flux de trésorerie fait apparaître :
+• 	la trésorerie nette en début d’exercice (poste ZA),
+• 	les flux de trésorerie provenant des activités opérationnelles (postes FA à FE),
+• 	les flux de trésorerie provenant des investissements (postes FF à FJ),
+• 	les flux de trésorerie provenant des capitaux propres (postes FK à FN),
+• 	les flux de trésorerie provenant des capitaux étrangers (postes FO à FQ) et
+• 	la trésorerie nette en fin d’exercice (poste ZH).
+Déterminer la variation comptable des postes de bilan et compte de résultat :
+• 	Postes du bilan = variation entre N et N-1 (augmentation ou diminution)
+• 	Postes du compte de résultat = la variation entre N et N-1 correspond
+directement à la charge ou au produit de l’exercice.
+Déterminer les flux de trésorerie potentiels (flux encaissables ou décaissables) =
+• 	Variation comptable des postes de bilan et compte de résultat
+• 	+/- 	Non-flux 	ou 	flux 	fictifs (exclure 	toute 	variation 	n'ayant 	pas 	un
+caractère 	monétaire 	(par 	exemple : 	amortissements, 	provisions 	et
+dépréciations ...)
+Déterminer les flux de trésorerie (flux encaissés ou décaissés) =
+• 	Flux de trésorerie potentiels
+• 	+/- Variation des décalages de trésorerie (créances et dettes).
+Etape 1
+Etape 2
+Etape 3
+
+-- 9 of 70 --
+
+334
+4.2.3. Principaux retraitements
+D’une 	manière 	générale, 	les 	retraitements 	opérés 	pour 	l’obtention 	de 	ces 	différentes
+catégories de flux sont les suivants :
+4.2.3.1. Trésorerie de début exercice : il est obtenu par la différence entre la trésorerie-actif
+de N-1 (corrigée de la variation du compte 472 versements restant à effectuer sur titres de
+placement non libérés de l’année N-1) et la trésorerie passif de l’année N-1.
+4.2.3.2. Flux provenant des activités opérationnelles : Le compte de résultat fournit des
+soldes intermédiaires de gestion, le regroupement de postes ci-dessus décrits permet de
+dégager dans le Tableau des flux de trésorerie des « soldes financiers » intermédiaires. Le
+SYSCOHADA en retient cinq :
+a) la capacité d’autofinancement globale (C.A.FG.) de l’exercice résulte :
+• 	de l’excédent brut d’exploitation (poste XD du compte de résultat de l’exercice)
+corrigé par un rajout du solde des valeurs comptables des cessions courantes
+d’immobilisation (solde débiteur du compte 654 de la balance de fin de l’exercice) et
+par une déduction des produits 	des cessions courantes d’immobilisations (solde
+créditeur du compte 754 de la balance de fin de l’exercice),
+• 	du résultat financier (poste XF du compte de résultat de l’exercice),
+• 	des autres produits HAO (poste TO du compte de résultat de l’exercice),
+• 	des autres charges HAO (poste RP compte de résultat de l’exercice),
+• 	de la participation des travailleurs (poste RQ du compte résultat de l’exercice)
+• 	et des impôts sur le résultat (poste RS du compte de résultat de l’exercice).
+Elle est calculée à partir des produits et des charges comptabilisés et non à partir des
+encaissements et décaissements correspondants enregistrés au cours de l’exercice. 	Il s’agit
+d’une 	trésorerie 	potentielle 	disponible 	sur 	l’exercice 	pour 	financer 	l’investissement 	et
+éventuellement pour rémunérer les propriétaires de l’entité. Des corrections sont donc
+nécessaires 	pour 	passer 	de 	la 	CAFG 	aux 	flux 	de 	trésorerie 	provenant 	des 	activités
+opérationnelles. La CAFG est ainsi corrigée de la variation du besoin de financement lié aux
+activités opérationnelles ;
+
+-- 10 of 70 --
+
+335
+b) la variation du besoin de financement liée aux activités opérationnelles résulte, après
+annulation de la correction de la créance et/ou de la dette de l’écart de conversion s’il y a lieu,
+de la variation :
+- 	de l’actif circulant HAO (poste BA des bilans) à l’exclusion de la variation
+créances liées aux immobilisations, comptes 485 ;
+- 	des stocks et encours (poste BB des bilans) ;
+- 	des créances et emplois assimilés (poste BG des bilans) à l’exclusion de la
+variation :
+o 	des créances liées aux immobilisations, compte 414,
+o 	des créances des apporteurs de capital propre, compte 467
+apporteurs restant dû sur capital appelé,
+o 	des fonds à recevoir des fonds de dotation et des subventions
+d’investissement, compte 458, organismes internationaux, fonds
+de dotation et subventions à recevoir et 4494 Etat subvention
+d’investissement à recevoir ;
+o 	du compte transitoire, ajustement spéciale lié à la révision du
+SYSCOHADA compte 4751 ;
+- 	du passif circulant (poste DP des bilans) à l’exclusion de la variation
+o 	des dettes liées aux immobilisations, comptes 404, 481, 482,
+o 	des dettes des apporteurs de capitaux propres, compte 467
+Apporteurs restant dû sur capital appelé,
+o 	du compte transitoire, ajustement spéciale lié à la révision du
+SYSCOHADA compte 4752,
+o 	des dettes liées au titre de placement, compte 472 versements
+restant à effectuer sur titres non libérés ;
+4.2.3.3. Flux de trésorerie provenant des activités d’investissement : le SYSCOHADA
+détermine 	la 	trésorerie 	affectée 	aux 	acquisitions 	ou 	provenant 	de 	la 	cession 	des
+immobilisations. Les immobilisations acquises ou cédées à crédit doivent être corrigées du
+montant des dettes et des créances si l’entité bénéficie ou octroie un crédit partiel du
+financement.
+Toute variation d’immobilisations qui n’a pas généré de flux de trésorerie ne figurera
+pas dans les flux de trésorerie.
+
+-- 11 of 70 --
+
+336
+a) Les acquisitions d’immobilisations peuvent être déterminées à l’aide du Bilan par la
+sommation de :
+• 	variation des immobilisations nettes, incorporelles (poste AD), corporelles (poste AI)
+financières (poste AN) des bilans des deux exercices successifs,
+• 	les dotations aux amortissements et aux dépréciations ainsi que 	la valeur nette de
+cession des immobilisations de l’exercice.
+De cette somme seront déduits :
+- 	le montant de la réévaluation libre ou légale des immobilisations
+(montant enregistré au crédit des comptes 106 Ecart de réévaluation et
+154 Provision spéciale de réévaluation au cours de l’exercice) inscrit en
+contrepartie des comptes d’immobilisations corporelles et financières ;
+- 	le montant de la provision pour démantèlement ou remise en l’état d’un
+site inscrit en contrepartie d’un compte d’immobilisation,
+- 	le montant des acquisitions d’immobilisations financées par une dette
+de location-acquisition (contrat de location chez le preneur : location-
+acquisition) car n’ayant fait l’objet d’aucun décaissement,
+- 	le montant des créances à long terme inscrit au débit du compte 2714
+Créances 	de 	location 	financement/location-vente 	(contrat 	de
+location-vente chez le bailleur : location-financement) car n’ayant fait
+l’objet d’aucun décaissement. En revanche, la part de l’encaissement
+relative au remboursement de la créance de location (crédit du compte
+2714 	Créances 	de 	location 	financement/location-vente) 	est
+considérée comme un remboursement d’immobilisation financière.
+b) Le décaissement lié aux acquisitions d’immobilisations est obtenu :
+- 	en cas d’achat d’immobilisations au comptant, par le montant
+de l’investissement acquis reconstitué ci-dessus,
+- 	en cas d’achat d’immobilisations financé en partie à crédit par
+la 	déduction 	de 	la 	dette 	fournisseurs 	d’investissements 	du
+montant 	des 	biens 	acquis 	reconstitué 	ci-dessus. 	La 	dette
+fournisseurs d’investissement peut être déterminée à l’aide des
+
+-- 12 of 70 --
+
+337
+comptes 481 fournisseurs d’investissements et 404 Fournisseurs
+acquisitions courantes immobilisations ;
+- 	En cas d’acquisition d’immobilisations à l’aide d’avances et
+acomptes par la déduction des fonds versés antérieurement au
+dernier exercice. Ils sont déterminés à l’aide du compte 25
+Avances et Acomptes versés sur immobilisations.
+- 	En 	cas 	paiement 	de 	dettes 	fournisseurs 	relatives 	aux
+immobilisations acquises au cours des exercices précédents, par
+le montant du paiement au cours de l’exercice. Il est reconstitué,
+à l’aide des comptes 481 fournisseurs d’investissements, 482
+fournisseurs 	d’investissements, 	effets 	à 	payer 	et 	404
+Fournisseurs 	acquisitions 	courantes 	immobilisations 	de
+l’exercice à l’exclusion de toute somme relative au virement
+interne du compte fournisseurs dettes en compte, au compte
+fournisseurs effets à payer ;
+- 	En 	cas 	de 	versement 	d’avances 	et 	d’acomptes 	sur
+immobilisations, par le montant des avances et acomptes versés
+au cours du dernier exercice. Il est déterminé à l’aide du compte
+25 Avances et acomptes versés sur immobilisations.
+c) L’encaissement lié aux cessions d’immobilisations sera reconstitué :
+- 	en cas de paiement comptant, par le crédit des comptes 82
+Produits des cessions d’immobilisations ou 754 produits des
+cessions courantes d’immobilisations ;
+- 	en cas de paiement en partie à crédit, par la différence entre le
+crédit 	des 	comptes 	82 	Produits 	des 	cessions
+d’immobilisations ou 	754 	produits 	des 	cessions 	courantes
+d’immobilisations et le débit du mouvement débit de la balance
+du dernier exercice des comptes 	485 créances sur cession
+d’immobilisations 	et 	414 	Créances 	sur 	cessions 	courantes
+d’immobilisations ;
+
+-- 13 of 70 --
+
+338
+- 	en cas de paiement de la créance sur cessions d’immobilisations
+des exercices précédents, à l’aide des comptes 485 créances sur
+cession 	d’immobilisations 	et 	414 	Créances 	sur 	cessions
+courantes d’immobilisations.
+4.2.3.4. Flux de trésorerie provenant des capitaux propres : le SYSCOHADA détermine la
+trésorerie provenant ou prélevée par les propriétaires de l’entité. Il s’agit :
+a) d’augmentation de capital par apport nouveau, il est obtenu par la variation :
+§ 	des comptes de la classe 10 capital à l’exclusion des comptes 106 écarts
+de réévaluation et 109 apporteurs capital souscrit non appelé,
+§ 	du compte 467 Apporteurs restant dû sur capital appelé,
+§ 	du 	compte 	4581 	organismes 	internationaux, 	fonds 	de 	dotation 	à
+recevoir ;
+b) subvention d’investissement, il est obtenu à l’aide :
+• 	de la variation du compte 14 Subvention d’investissement (à l’exclusion de
+la quote part virée au résultat au cours de l’exercice),
+• 	de la variation des comptes 4582 Organismes internationaux, subvention
+d’investissement à recevoir et 4494 Etat subvention d’investissement à
+recevoir ; et
+• 	des avances reçues sur subvention.
+c) prélèvement sur le capital, il est obtenu par la variation des comptes de la classe 10
+capital à l’exclusion des comptes 106 écarts de réévaluation et 109 apporteurs capital souscrit
+non appelé ;
+d) dividendes versés : il est obtenu à l’aide du mouvement débit du compte 465 Associés,
+dividendes à payer (à l’exception des mouvements inscrits au débit du compte 465 ne
+traduisant pas un flux de trésorerie comme par exemple le paiement de dividendes en actions).
+4.2.3.5. Flux de financement provenant des capitaux étrangers : il est obtenu à l’aide de la
+variation des comptes 16 Emprunts et dettes assimilés, et 18 Dettes liées à des participations
+(à l’exception des intérêts courus). Les dettes de location acquisition (compte 17) ne sont pas
+retenues car elles ne font pas l’objet d’un encaissement. En revanche, la part du décaissement
+relative au remboursement de la dette (débit du compte 17 Dettes de location acquisition) est
+considérée comme un remboursement de dettes financières.
+
+-- 14 of 70 --
+
+339
+4.2.3.6. Trésorerie de fin d’exercice : il est obtenu par la différence entre la trésorerie-actif
+de l’année N (corrigée de la variation du compte 472 versements restant à effectuer sur titres
+de placement non libérés de l’année N) et la trésorerie passif de l’année N.
+4.3. Tracé
+Il est présenté au plan comptable général, Titre IX, chapitre 5.
+SECTION 5 : Notes annexes
+5.1. Justification
+Selon l’article 29 de l’Acte uniforme, les Notes annexes complètent et précisent l’information
+donnée par les autres états financiers.
+Les Notes annexes constituent un état financier qui a la même valeur que les trois autres états
+financiers du SYSCOHADA (Bilan, Compte de résultat et Tableau de variation des flux de
+trésorerie).
+5.2. Contenu
+Selon l’article 33 de l’Acte uniforme, les Notes annexes contiennent des informations
+complémentaires à celles qui sont présentés dans le Bilan, le Compte de résultat et le Tableau
+de flux de trésorerie. Les Notes annexes fournissent des descriptions narratives ou des
+décompositions 	d’éléments 	présentés 	dans 	les 	autres 	états 	financiers, 	ainsi 	que 	des
+informations relatives aux éléments qui ne répondent pas aux critères de comptabilisations des
+autres états financiers.
+Elle tient compte de toutes les informations utiles à la prise de décision.
+Des informations déjà portées, au Bilan, au Compte de résultat, et au Tableau des flux de
+trésorerie, n’ont pas à être reprises dans les Notes annexes.
+Chaque élément des états financiers de synthèse doit faire l'objet d'une référence croisée vers
+l'information liée figurant dans les notes.
+
+-- 15 of 70 --
+
+340
+Les Notes annexes doivent comporter obligatoirement une déclaration explicite de conformité
+au Plan Comptable OHADA (PCGO). Les états financiers ne doivent être déclarés conformes
+au SYSCOHADA que s’ils sont conformes à toutes les dispositions relatives au Système
+comptable OHADA et à l’Acte uniforme.
+5.3. Tracé
+Trente-six modèles de Notes sont présentés au plan comptable général, Titre IX, chapitre 6.
+Les modèles non documentés ne doivent pas être joints aux états financiers, leur contenu peut
+être amélioré par l’entité.
+
+-- 16 of 70 --
+
+341
+Modèle type d’un jeu complet d’états financiers
+La direction financière d’une entité vous propose à partir de sa balance après
+inventaire, le premier jeu complet d’états financiers conforme au SYSCOHADA et à
+l’Acte uniforme relatif au droit comptable et à l’information financière.
+Renseignements divers sur l’entité :
+Dénomination sociale : SYSTEME COMPTABLE OHADA
+Sigle usuel : SYSCOHADA
+Adresse : 2B 234 OHADA
+N° d’identification : GB 567 TE
+Greffe : XX
+N° Registre du commerce : 7865 K 45
+N° Répertoire des entités : 7869 TGO
+N° Code importateur : 7865438
+N° de caisse sociale 	: 34 560
+Code activité principale : 9087655
+Date d’arrêté des comptes : 30 Avril N+1
+Durée de l’exercice : 12 mois (année civile)
+APPLICATION 127
+Chapitre 2 	MODELE TYPE D’un jeu complet d’Etats 	financiers
+
+-- 17 of 70 --
+
+342
+Entités utilisant des imprimés :
+• N'utiliser que des imprimés normalisés
+• Remplir chaque page de façon parfaitement lisible sans décalage de lignes
+• Ne créer aucune rubrique
+• Eviter toute surcharge et donner les explications sur une feuille séparée
+• N'utiliser que les codes indiqués dans les tables
+• N'utiliser que des imprimés en noir et blanc
+Entités produisant les états financiers à l'aide de l'outil informatique :
+• Reproduire à l'identique la contexture des imprimés normalisés
+• Fournir une liasse comprenant à la fois : la fiche d'identification et renseignements divers
+et les états financiers correspondant au système comptable
+• Ne créer aucune rubrique
+• N'utiliser que les codes indiqués dans les tables
+• N'utiliser que des imprimés en noir et blanc
+Etats financiers :
+Les rubriques et les postes du Bilan, du Compte de résultat et des Flux de trésorerie
+ainsi que les Notes non chiffrées peuvent être supprimés.
+CONDITIONS DE RECEVABILITE
+
+-- 18 of 70 --
+
+343
+N°
+CPTE 	INTITULES
+SOLDE N-2 	MOUVEMENT N-1 	SOLDE N-1
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR CREDITEUR
+101300 Capital souscrit, appelé, versé, non amorti 	100 000 000 	100 000 000
+111000 Réserve légale 	20 000 000 	20 000 000
+120000 Report à nouveau 	20 818 799 	26 631 518 	47 450 317
+131000 Résultat net 	66 631 518 	66 631 518
+165200 Cautionnements reçus 	2 200 000 	2 200 000
+196000 Provision pour pensions et obligations assimilées 	47 553 935 	3 771 900 	11 082 662 	54 864 697
+213000 Logiciels 	1 050 000 	1 050 000
+215000 Fonds commercial 	1 600 000 	1 600 000
+223000 Terrains bâtis 	12 500 000 	12 500 000
+229000 Aménagement de terrain en cours 	22 673 950 	22 673 950
+231100 Bâtiments industriels sur sol propre 	55 000 000 	55 000 000
+232100 Bâtiments industriels sur sol d’autrui 	231 411 100 	231 411 100
+235100 Installations générales 	60 263 648 	60 263 648
+238000 Autres installations et agencements 	11 064 619 	11 064 619
+241100 Matériel industriel 	74 507 291 	17 153 112 	350 000 	91 310 403
+244100 Matériel de bureau 	1 325 000 	1 325 000
+244200 Matériel informatique 	6 867 703 	6 867 703
+244400 Mobilier de bureau 	4 968 900 	4 968 900
+245100 Matériel automobile 	54 050 000 	54 050 000
+272800 Autres prêts au personnel 	1 245 000 	682 000 	1 927 000
+275000 Dépôts et cautionnement électricité 	1 238 776 	276 379 	179 865 	1 335 290
+275300 Dépôts et caution. Eau 	87 068 	87 068
+275500 Dépôt/téléphone télex télécopie 	449 300 	449 300
+275800 Autres dépôts et cautionnements 	750 000 	750 000
+276200 Prêt amicale personnel 	1 000 000 	1 000 000
+283210 Amortissement des bâtiments indust. 	140 579 277 	9 734 682 	150 313 959
+283510 Amortissement des instal. Générales 	71 310 267 	18 000 	71 328 267
+284110 Amortissement du matériel indust. 	53 005 415 	58 333 	7 356 831 	60 303 913
+284410 Amortissement du matériel de bureau 	1 325 000 	1 325 000
+284420 Amortissement du matériel informatique 	5 733 437 	441 600 	6 175 037
+284440 Amortissement du mobilier de bureau 	4 283 140 	298 880 	4 582 020
+284510 Amortissement du matériel automobile 	47 407 500 	6 455 000 	53 862 500
+321100 Stock de matières premières 	10 552 040 	7 721 440 	10 552 040 	7 721 440
+335100 Stocks emballages 	6 262 346 	8 146 993 	6 262 346 	8 146 993
+401100 Fournisseurs 	76 549 980 562 421 027 526 454 947 	40 583 900
+408100 Fournisseurs fac non parvenues 	8 071 358 	54 500 645 	60 428 763 	13 999 476
+408110 Fac. Non parvenues eau 	782 702 	782 702
+408120 Fac. Non parvenues téléphone 	415 200 	415 200
+408130 Fac. Non parvenues électricité 	3 257 358 	3 257 358
+408140 Fac. Non parvenues transporteur 	637 437 	14 451 330 	13 813 893
+408150 Fac. Non parvenues avocats 	1 310 830 	1 310 830
+BALANCE N-1
+
+-- 19 of 70 --
+
+344
+N°
+CPTE 	INTITULES
+SOLDE N-2 	MOUVEMENT N-1 	SOLDE N-1
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR CREDITEUR
+409100 Fournisseurs, avances et acomptes 	1 433 750 	733 750 	700 000
+411100 Clients 	114 098 863 	1 906 855 340 1 880 270 370 140 683 833
+416200 Créances douteuses 	31 677 520 	31 677 520
+419800 R. R. Ristournes & avoirs à accorder 	948 441 	948 441
+421000 Personnel avances & acomptes 	675 000 	5 362 000 	5 344 500 	692 500
+421400 Frais médicaux 	1 162 554 	1 935 977 	2 510 745 	587 786
+422000 Personnel rémunérations dues 	130 502 753 	131 486 004 	983 251
+423200 Personnel saisies- arrêts 	40 000 	480 000 	480 000 	40 000
+427000 Personnel dépôts 	55 000 	166 500 	184 000 	72 500
+428001 Pers locaux congés à payer 	2 303 892 	2 303 892 	3 057 458 	3 057 458
+428002 Pers non nat congés à payer 	1 351 085 	1 351 085 	955 634 	955 634
+431000 Caisse sécurité sociale 	979 255 	7 316 170 	7 112 818 	775 903
+431300 Caisse de retraite 	1 161 181 	13 328 375 	13 417 004 	1 249 810
+433110 Mutuelle de sante 	587 724 	3 657 726 	3 540 003 	470 001
+438200 Charges sociales / congés 	506 047 	506 047 	508 585 	508 585
+441100 Etat impôt sur les sociétés 	9 098 000 	9 098 000 	23 411 413 	23 411 413
+442100 Etat impôts et taxes 	2 752 200 	114 048 	574 992 	3 213 144
+443200 Tva facturée / prestation services 	54 049 	252 049 	287 781 	89 781
+447000 Etat impôts retenue à la source personnel 	596 627 	12 424 778 	12 894 469 	1 066 318
+447200 Etat retenue à la source prestataire 	90 750 	870 129 	895 879 	116 500
+462001 Compte courant associés 	10 336 159 	40 643 970 	40 246 770 	9 938 959
+471100 Débiteurs divers 	10 000 000 	10 650 000 	200 000 	450 000
+471300 Créditeurs divers 	530 000 	4 120 000 	4 300 000 	710 000
+476000 Charges constatées d'avance 	2 255 622 	5 310 480 	6 168 003 	1 398 099
+477000 Produits constatés d'avance 	1 056 000 	1 056 000
+481800 Fours d'invest. Fnp 	399 942 	399 942
+482000 Frs invest. effets à payer 	1 218 333 	1 218 333
+485100 Créances sur cessions d’immobilisations 	620 000 	240 000 	380 000
+491000 Dépréciations comptes clts 	31 677 520 	31 677 520
+521400 Banques 	18 485 559 	1 864 651 283 1 814 012 866 	69 123 976
+571100 Caisse 	15 109 845 	164 971 903 	174 621 567 	5 460 181
+585000 Virements de fonds 	155 673 628 	155 673 628
+602100 Achats matières premières 	955 664 862 	1 079 390 954 585 472
+603201 Variation stock matières premières 	10 552 040 	7 721 440 	2 830 600
+603302 Variation stock emballage 	6 262 346 	8 146 993 	1 884 647
+604200 Achats carburant 	12 683 576 	12 683 576
+604300 Produits d'entretien 	1 144 000 	1 144 000
+605100 Eau 	6 125 987 	1 466 738 	4 659 249
+605200 Electricité 	36 907 753 	15 147 134 	21 760 619
+605300 Autres énergies gaz 	6 618 773 	6 618 773
+605400 Fourniture entretien non stockables 	2 249 226 	69 600 	2 179 626
+
+-- 20 of 70 --
+
+345
+N°
+CPTE 	INTITULES
+SOLDE N-2 	MOUVEMENT N-1 	SOLDE N-1
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR CREDITEUR
+605500 Fourniture de bureau 	5 047 450 	12 500 	5 034 950
+605600 Achats de petit matériel & outillage 	11 441 377 	11 441 377
+605700 Achats d'études prestations service 	505 000 	505 000
+605800 Petits équipements 	420 025 	420 025
+608100 Emballages perdus 	101 311 095 	19 000 101 292 095
+612000 Transports sur ventes 	346 376 807 	18 382 446 327 994 361
+616000 Transport de plis 	86 870 	86 870
+618100 Voyages et déplacements 	306 500 	306 500
+618300 Transports administratifs 	685 825 	685 825
+622200 Location de bâtiments 	8 513 500 	350 000 	8 163 500
+622300 Location véhicules et parking 	14 162 750 	1 442 750 	12 720 000
+622800 Location machines 	2 299 377 	49 118 	2 250 259
+624200 Entretiens & réparations biens mobiliers 	3 570 579 	295 547 	3 275 032
+624300 Maintenance machines 	5 110 000 	5 110 000
+624330 Hygiène et services assimilés 	390 000 	390 000
+624800 Autres entretiens et réparations 	931 113 	931 113
+625100 Assurances multirisques 	1 459 236 	1 459 236
+625200 Assurances matériel de transport 	981 248 	981 248
+626500 Documentation générale 	30 000 	30 000
+627100 Annonces insertion 	200 000 	200 000
+628100 Frais de téléphone 	6 203 750 	1 837 900 	4 365 850
+628800 Autres frais télécommunications 	1 012 400 	155 000 	857 400
+631800 Frais bancaires 	3 117 023 	3 117 023
+631810 Frais virements/règlement clients 	9 611 023 	9 611 023
+632400 Honoraires 	3 000 000 	1 000 000 	2 000 000
+632410 Honoraires analyses 	4 050 900 	899 480 	3 151 420
+632800 Certificat de salubrité 	1 725 285 	1 725 285
+632801 Droit entrée port 	140 990 	140 990
+635100 Cotisations 	90 000 	90 000
+635101 Cotisation syndicat patronal 	200 000 	200 000
+638300 Réceptions 	18 000 	18 000
+646800 Autres droits 	35 000 	35 000
+647800 Autres amendes pénales & fiscales 	75 000 	75 000
+658800 Autres charges diverses 	67 670 	67 670
+661100 Salaires bruts nationaux 	85 757 833 	85 757 833
+661300 Congés payés au pers. nat. 	10 273 495 	2 303 892 	7 969 603
+661800 Autres rémunérations directes 	46 989 030 	46 989 030
+662100 Salaires bruts non nationaux 	28 414 973 	1 351 085 	27 063 888
+663100 Indemnités de logement 	3 216 000 	3 216 000
+663400 Primes de transport 	5 360 307 	5 360 307
+663800 Autres indemnités & avantages divers 	4 776 437 	4 776 437
+
+-- 21 of 70 --
+
+346
+N°
+CPTE 	INTITULES
+SOLDE N-2 	MOUVEMENT N-1 	SOLDE N-1
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR 	CREDITEUR
+664000 Charges sociales 	5 000 821 	5 000 821
+664120 Charges de sécurité sociale-permanents 	2 762 138 	176 400 	2 585 738
+664121 Charges de sécurité sociale- journaliers 	4 522 558 	4 522 558
+664130 Charges sociales caisse retraite 	8 386 885 	329 647 	8 057 238
+664140 Charges sociales mutuelle de sante 	1 770 020 	1 770 020
+664200 Charges sociales non nationaux 	513 033 	513 033
+664800 Autres charges sociales 	800 000 	800 000
+668400 Médecine du travail et pharmacie 	662 735 	662 735
+668500 Equipements personnel 	3 807 010 	3 807 010
+681300 Dotations aux amorts biens corporels 	47 569 542 	23 264 549 	24 304 993
+691000 Dotations aux provisions pour risques 	11 082 662 	3 771 900 	7 310 762
+702200 Ventes produits finis 	1 872 894 148 	1 872 894 148
+702201 Avoir / ventes produits finis 	14 316 453 	14 316 453
+702902 Remise / ventes produits finis 	1 153 585 	1 153 585
+706100 Location villa 	2 112 000 	14 916 000 	12 804 000
+707800 Autres produits accessoires 	1 400 000 	1 400 000
+707810 Autres produits 	198 780 	198 780
+758800 Autres produits divers 	347 132 	11 833 669 	11 486 537
+781000 Transfert de charges 	3 216 000 	3 216 000
+781200 Transfert charges fret 	2 601 880 	2 601 880
+812000 Valeur comptable des cessions d'immobilisation 	350 000 	58 333 	291 667
+822000 Produits de cession immob corporelles 	350 000 	350 000
+891000 Impôt / bénéfices 	23 411 413 	23 411 413
+TOTAUX COMPTES DE BILAN 	743 900 145 	743 900 145 	6 971 264 571 6 971 264 571 2 613 872 627 2 613 872 627
+
+-- 22 of 70 --
+
+347
+N°
+CPTE 	INTITULES
+SOLDE N-1 	MOUVEMENT N 	SOLDE N
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR CREDITEUR
+101100 Capital souscrit, non appelé 	200 000 000 	300 000 000 	100 000 000
+101200 Capital souscrit, appelé, non versé 	200 000 000 	200 000 000 	0
+101300 Capital souscrit, appelé, versé non amorti 	100 000 000 	200 000 000 	300 000 000
+106200 Ecarts de réévaluation 	3 500 000 	3 500 000
+109000 Apporteurs, capital souscrit, non appelé 	300 000 000 	200 000 000 100 000 000
+111000 Réserve légale 	20 000 000 	20 000 000
+120000 Report à nouveau 	47 450 317 	90 000 000 	118 619 674 	76 069 991
+131000 Résultat net 	118 619 674 118 619 674
+141600 Subvention d’investissement 	2 000 000 	2 000 000
+154000 Provisions spéciales de réévaluation 	40 000 000 	40 000 000
+162000 Emprunt bancaire 	7 500 925 	100 000 000 	92 499 075
+165200 Cautionnements reçus 	2 200 000 	2 200 000
+196000 Provisions pour pensions et obligations similaires 	54 864 697 	6 701 530 	13 953 199 	62 116 366
+213000 Logiciels 	1 050 000 	2 000 000 	3 050 000
+215000 Fonds commercial 	1 600 000 	1 600 000
+223000 Terrains bâtis 	12 500 000 	3 500 000 	16 000 000
+229000 Aménagement de terrain en cours 	22 673 950 	22 673 950
+231100 Bâtiments industriels sur sol propre 	55 000 000 	23 000 000 	78 000 000
+232100 Bâtiments industriels sur sol d’autrui 	231 411 100 	432 000 000 	663 411 100
+235100 Installations générales 	60 263 648 	1 000 000 	61 263 648
+238000 Autres installations et agencements 	11 064 619 	1 000 000 	12 064 619
+241100 Matériel industriel 	91 310 403 	17 694 000 	40 023 276 	68 981 127
+244100 Matériel de bureau 	1 325 000 	5 075 000 	140 000 	6 260 000
+244200 Matériel informatique 	6 867 703 	1 199 000 	5 829 703 	2 237 000
+244400 Mobilier de bureau 	4 968 900 	500 000 	5 468 900
+245100 Matériel automobile 	54 050 000 	22 000 000 	76 050 000
+252000 Avance acompte sur immobilisation 	25 000 000 	5 000 000 	20 000 000
+272800 Autres prêts au personnel 	1 927 000 	1 927 000
+275000 Dépôts et cautionnement électricité 	1 335 290 	401 175 	730 043 	1 006 422
+275300 Dépôts et caution. Eau 	87 068 	87 068
+275500 Dépôt/téléphone télex télécopie 	449 300 	200 000 	649 300
+275800 Autres dépôts et cautionnements 	750 000 	750 000
+283210 Amortissement des bâtiments industriels 	150 313 959 	9 734 682 	160 048 641
+283510 Amortissement des instal. Générales 	71 328 267 	71 328 267
+284110 Amortissement du matériel industriel 	60 303 913 	40 023 276 	8 385 232 	28 665 869
+284410 Amortissement du matériel de bureau 	1 325 000 	140 000 	4 833 	1 189 833
+284420 Amortissement du matériel informatique 	6 175 037 	5 829 703 	496 917 	842 251
+284440 Amortissement du mobilier de bureau 	4 582 020 	260 480 	4 842 500
+284510 Amortissement du matériel automobile 	53 862 500 	377 500 	54 240 000
+311000 Stock marchandises 	5 000 000 	5 000 000
+BALANCE N
+
+-- 23 of 70 --
+
+348
+N°
+CPTE 	INTITULES
+SOLDE N-1 	MOUVEMENT N 	SOLDE N
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR CREDITEUR
+321100 Stock de matières premières 	7 721 440 	57 881 451 	57 775 035 	7 827 856
+335100 Stocks emballages 	8 146 993 	76 874 255 	79 288 966 	5 732 282
+401100 Fournisseurs 	40 583 900 	579 308 293 	565 419 408 	26 695 015
+408100 Fournisseurs fac. Non parvenues 	15 310 306 	117 810 569 	114 015 470 	11 515 207
+409100 Fournisseurs, avances et acomptes 	700 000 	4 007 612 	3 850 000 	857 612
+411100 Clients 	140 683 833 	2 068 782 537 	2 073 205 069 136 261 301
+416200 Créances douteuses 	31 677 520 	31 677 520
+421000 Personnel avances & acomptes 	692 500 	20 740 622 	6 330 272 	15 102 850
+421300 Personnel frais avances 	587 786 	2 856 452 	1 625 425 	1 818 813
+422000 Personnel rémunérations dues 	983 251 	106 926 551 	106 078 239 	134 939
+423200 Personnel saisies- arrêts 	40 000 	520 000 	480 000
+424200 Allocations familiales 	56 700 	56 700
+427000 Personnel dépôts 	72 500 	197 000 	186 500 	62 000
+428101 Pers locaux congés à payer 	3 057 458 	3 057 458 	2 690 099 	2 690 099
+428102 Pers non national congés à payer 	955 634 	955 634 	956 541 	956 541
+431000 Caisse sécurité sociale 	775 903 	7 301 357 	7 148 050 	622 596
+431300 Caisse de retraite 	1 249 810 	13 665 738 	13 921 213 	1 505 285
+433110 Mutuelle de sante 	470 001 	3 704 942 	3 539 940 	304 999
+438200 Charges sociales / congés 	508 585 	508 585 	479 581 	479 581
+441100 Etat impôt sur les sociétés 	23 411 413 	23 411 413 	31 102 200 	31 102 200
+442100 Etat impôts et taxes 	3 213 144 	456 192 	3 669 336
+443200 Etat tva facturée 	89 781 	316 062 	226 281
+444100 Etat tva due 	226 281 	226 281
+447000 Etat impôts retenue à la source 	1 182 818 	15 162 688 	15 120 541 	1 140 671
+462000 Compte courant associés 	9 938 959 	33 999 957 	4 060 998 	20 000 000
+465000 Associés dividendes à payer 	90 000 000 	90 000 000
+467000 Apporteurs restant dû sur capital appelé 	200 000 000 	200 000 000
+471100 Débiteurs divers 	450 000 	13 050 	463 050 	0
+471300 Créditeurs divers 	710 000 	3 330 000 	3 240 000 	620 000
+476000 Charges constatées d'avance 	1 398 099 	6 817 087 	6 951 322 	1 263 864
+477000 Produits constatés d'avance 	10 560 000 	10 560 000
+478100 Ecart conversion créances clients 	15 000 000 	15 000 000
+479400 Ecart conversion emprunts 	2 500 925 	2 500 925
+481200 Frs invest. Immobilisation corporelle 	7 000 000 	163 250 000 	156 250 000
+481800 Frs invest. Fnp 	399 942 	399 942
+488000 Autres créances HAO 	2 000 000 	2 000 000
+485100 Créances sur cessions d’immobilisations 	380 000 	240 000 	140 000
+491000 Dépréciations comptes clients 	31 677 520 	31 677 520
+521400 Banques 	69 123 976 	2 247 552 500 	2 195 523 485 121 152 991
+571100 Caisse 	5 460 181 	141 403 437 	144 919 482 	1 944 136
+585000 Virements de fonds 	144 502 048 	144 502 048
+
+-- 24 of 70 --
+
+349
+N°
+CPTE 	INTITULES
+SOLDE N-1 	MOUVEMENT N 	SOLDE N
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR CREDITEUR
+601100 Achats marchandises 	75 000 000 	75 000 000
+602100 Achats matières dans la région 	924 957 492 	1 770 650 923 186 842
+602210 Achats fournitures 	5 116 850 	5 116 850
+603100 Variations stocks de marchandises 	5 000 000 	5 000 000
+603201 Variation stocks matières premières 	57 775 035 	57 881 451 	106 416
+603302 Variation stocks emballages 	79 288 966 	76 874 255 	2 414 711
+604200 Achats carburant 	21 691 425 	10 431 949 	11 259 476
+605100 Eau 	10 895 715 	5 387 895 	5 507 820
+605200 Electricité 	56 706 955 	32 760 604 	23 946 351
+605400 Fourniture entretien non stockables 	4 268 103 	285 000 	3 983 103
+605500 Fourniture de bureau 	4 480 500 	207 000 	4 273 500
+605600 Achats de petit matériel & outillage 	13 718 052 	13 718 052
+605700 Achats d'études prestations service 	12 000 	12 000
+608100 Emballages perdus 	132 571 022 	37 004 365 	95 566 657
+612000 Transports sur ventes 	343 513 892 	19 987 821 323 526 071
+618100 Voyages et déplacements 	3 958 126 	3 958 126
+618300 Transports administratifs 	1 662 475 	1 662 475
+622200 Location de bâtiments 	8 750 000 	350 000 	8 400 000
+622300 Location véhicules et parking 	15 080 000 	2 955 000 	12 125 000
+622800 Location de machines 	682 298 	399 400 	282 898
+624100 Entretiens & réparations biens immobiliers 	1 951 316 	1 951 316
+624200 Entretiens & réparations biens mobiliers 	4 392 302 	720 054 	3 672 248
+624300 Maintenance 	6 460 000 	650 000 	5 810 000
+624330 Hygiène et services assimilés 	585 000 	585 000
+625100 Assurances multirisques 	2 796 869 	1 378 167 	1 418 702
+625200 Assurances matériel de transport 	2 660 291 	1 617 217 	1 043 074
+628100 Frais de téléphone 	10 693 350 	4 187 100 	6 506 250
+628800 Autres frais télécommunications 	1 207 400 	397 000 	810 400
+631800 Frais bancaires 	2 012 656 	2 012 656
+631810 Frais virements/règlement clients 	6 417 410 	6 417 410
+632400 Honoraires expert-comptable 	22 500 000 	6 600 000 	15 900 000
+632401 Honoraires notaires 	1 500 000 	1 500 000
+632410 Honoraires analyses 	2 049 080 	647 560 	1 401 520
+632500 Frais d'acte et de contentieux 	46 680 	46 680
+632800 Certificat de salubrité 	2 277 000 	2 277 000
+632801 Droit d’entrée port 	129 375 	129 375
+634800 Autres redevances 	48 000 	48 000
+635101 Cotisation syndicale patronale 	400 000 	200 000 	200 000
+638300 Réceptions 	31 500 	31 500
+638900 Prestations diverses 	30 300 	30 300
+646100 Droits enregistrement aug. Capital 	3 000 000 	3 000 000
+
+-- 25 of 70 --
+
+350
+N°
+CPTE 	INTITULES
+SOLDE N-1 	MOUVEMENT N 	SOLDE N
+DEBITEUR CREDITEUR 	DEBIT 	CREDIT 	DEBITEUR 	CREDITEUR
+646200 Droits de timbres 	10 200 	10 200
+646400 Vignettes 	35 000 	35 000
+647200 Pénalités TVA 	90 000 	90 000
+651100 Pertes sur créances clients 	4 150 956 	4 150 956
+658200 Dons 	100 000 	100 000
+658800 Autres charges diverses 	12 973 	12 973
+661100 Salaires bruts nationaux 	101 601 787 	101 601 787
+661300 Congés payés au personnel national. 	7 690 099 	3 057 458 	4 632 641
+661800 Autres rémunérations directes 	45 353 580 	45 353 580
+662100 Salaires bruts non nationaux 	26 964 127 	26 964 127
+662300 Congés payés au personnel .non national 	956 541 	955 634 	907
+663100 Indemnités de logement 	3 216 000 	3 216 000
+663400 Primes de transport 	5 407 994 	5 407 994
+663800 Autres indemnités & avantages divers 	4 651 183 	4 651 183
+664120 Charges de sécurité sociale - permanents 	2 588 506 	171 878 	2 416 628
+664121 Charge de sécurité sociale - journaliers 	4 728 850 	4 728 850
+664130 Charges sociales - caisse retraite 	8 662 975 	336 707 	8 326 268
+664140 Charges sociales - mutuelle 	1 739 939 	1 739 939
+664200 Charges sociales - caisse retraite complémentaire 	9 164 992 	2 893 292 	6 271 700
+664800 Autres charges sociales 	800 000 	800 000
+668400 Médecine du travail et pharmacie 	2 929 779 	1 241 500 	1 688 279
+668500 Equipements personnel 	417 210 	417 210
+671200 Intérêt emprunts 	3 500 000 	3 500 000
+681300 Dotations aux amortissements biens corporels 	41 555 720 	22 296 076 	19 259 644
+691100 Dotations aux provisions pour risques 	13 953 199 	6 701 530 	7 251 669
+701100 Ventes marchandises 	110 000 000 	110 000 000
+702200 Ventes produits finis 	1 941 053 121 	1 941 053 121
+702600 Retour produits finis 	1 112 590 	1 112 590
+702901 Remises et ristournes / ventes produits finis 	21 795 786 	21 795 786
+706100 Location villa 	12 672 000 	12 672 000
+707800 Locations groupe électrogène 	1 130 000 	1 130 000
+722100 Production immobilisée 	4 500 000 	4 500 000
+756000 Gains de change sur créances commerciales 	1 081 031 	1 081 031
+758000 Indemnités assurances 	2 355 947 	2 355 947
+773000 Escomptes obtenus 	7 500 000 	7 500 000
+781000 Transfert de charges 	3 233 550 	3 233 550
+812000 Valeur comptable des cessions d'imm 	45 992 979 	45 992 979
+822000 Produits de cession immob corporelles 	127 119 	127 119
+845000 Dons et libéralités obtenus 	2 000 000 	2 000 000
+891000 Impôt / bénéfices 	31 102 200 	31 102 200
+TOTAUX COMPTES DE BILAN 	825 656 309 	825 656 309 9 736 437 162 9 736 437 162 3 382 628 833 	3 382 628 833
+
+-- 26 of 70 --
+
+351
+REPUBLIQUE :
+MINISTERE :
+DIRECTION :
+CENTRE DE DEPOT DE : Fisc
+ETATS FINANCIERS NORMALISES
+SYSTEME COMPTABLE OHADA (SYSCOHADA)
+EXERCICE CLOS LE : 	31 décembre N
+DESIGNATION DE L'ENTITE
+DENOMINATION SOCIALE : 	SYSTEME COMPTABLE OHADA
+(ou nom et prénoms de l'exploitant)
+SIGLE USUEL : 	SYSCOHADA
+ADRESSE COMPLETE : 2B 234 OHADA
+N° IDENTIFICATION FISCALE : GB 567 TE
+SYSTEME NORMAL
+Documents déposés 	Réservé à la Direction Générale des Impôts
+Fiche d'identification et renseignements divers 	Date de dépôt
+Bilan 30 avril N+1
+Compte de résultat
+Tableau des flux de trésorerie 	Nom de l'agent de la DGI ayant réceptionné le dépôt
+Notes annexées
+Nombre de pages déposées par exemplaire : 	Signature de l'agent et cachet du service
+Nombre d'exemplaires déposés :
+PAGE DE GARDE
+
+-- 27 of 70 --
+
+352
+Sigle usuel :
+Exercice clos le : 31 decembre N 	12
+ZA 	DU : 	AU :
+ZB 	30 avril N+1
+ZC 	31/12/N-1 	12
+ZD 	XX
+Greffe
+ZE
+ZF
+ZG 	er@tgur.ji
+email 	Code
+ZH
+ZI
+Non 	Non 	Oui
+Signature
+30/04/N+1
+Date de signature
+Directeur général 	Banque Verte 	678899000
+Qualité du signataire des états financiers 	Banque Jaune 	9876544333
+Générale (cocher la case)
+ABC 	Domiciliations bancaires :
+Nom du signataire des états financiers 	Banque 	Numéro de compte
+nom, adresse et téléphone du cabinet comptable ou du professionnel INSCRIT A L'ORDRE NATIONAL
+DES EXPERTS COMPTABLES ET DES COMPTABLES AGREES ayant établi les états financiers
+Visa de l'Expert comptable ou du Comptable agréé
+Etats financiers approuvés par l'Assemblée
+Désignation précise de l'activité principale exercée par l'entité
+Monsieur ABC Directeur général même adresse que société
+Nom, adresse et qualité de la personne à contacter en cas de demande d'informations complémentaires
+Monsieur Comptable inscrit à ONECCA domicilié 56 rue Ohé
+Nom du professionnel salarié de l'entité ou
+N° de téléphone 	Boite postale 	Ville
+56 rue OCAM Kola
+Adresse géographique complète (Immeuble, rue, quartier, ville, pays)
+Fabrication de meubles
+SYSTEME COMPTABLE OHADA 	SYSCOHADA
+Désignation de l'entité 	Sigle
+1234567899 	898777 	Kola
+34 560 	7865438 	9087655
+N° de caisse sociale 	N° Code Importateur 	Code activité principale
+DATE D'ARRETE EFFECTIF DES COMPTES :
+EXERCICE PRECEDENT CLOS LE : 	DUREE EXERCICE PRECEDENT EN MOIS :
+7865 K 45 	7869 TGO
+N° Registre du Commerce 	N° Répertoire des entités
+N° d'identification fiscale : GB 567 TE 	Durée (en mois) :
+EXERCICE COMPTABLE : 	1er janvier N 	31 decembre N
+Dénomination sociale de l'entité : 	SYSTEME COMPTABLE OHADA
+SYSCOHADA
+Adresse : 	2B 234 OHADA
+FICHE R1
+
+-- 28 of 70 --
+
+353
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Contrôle de l'entité (cocher la case)
+ZK 	Forme juridique (1) : 	0 1 	ZQ Entité sous contrôle public
+ZL 	Régime fiscal (1) : 	0 1 	ZQ Entité sous contrôle privé national
+ZM 	Pays du siège social (1) : 	0 7 	ZS 	Entité sous contrôle privé étranger
+ZN 	Nombre d'établissements dans le pays : 	0 1
+ZO 	Nombre d'établissements hors du pays pour
+lesquels une comptabilité distincte est tenue : 	0 0
+ZP 	Première année d'exercice dans le pays : 	1 9 4 5
+ACTIVITE DE L'ENTITE
+Code nomenclature 	Chiffre d'affaires HT 	% activité
+Désignation de l'activité (2) 	d'activité (1) 	(CA HT) 	dans le CA
+HT
+fabrication de meubles 	C 3 1 0 0 	2 041 946 745 	100,00%
+Divers
+TOTAL
+(1) NOTE 36
+(2) Lister de manière précise les activités dans l'ordre décroissant du C.A.HT, ou de la valeur ajoutée (V.A).
+FICHE R2
+
+-- 29 of 70 --
+
+354
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+DIRIGEANTS (1)
+Nom 	Prénoms 	Qualité N° identification 	Adresse (BP, ville,
+pays)	fiscale
+ZAU 	POPO 	PCA 	56 rue voilà
+ABC 	DADA 	DG 	98 rue ici
+(1) Dirigeants = Président Directeur Général, Directeur Général, Administrateur
+Général, Gérant, Autres
+MEMBRES DU CONSEIL D'ADMINISTRATION
+Nom 	Prénoms 	Qualité
+Adresse (BP, ville,
+pays)
+ZAU 	POPO 	PCA 	56 rue voilà
+ABC 	DADA 	DG 	98 rue ici
+DIDU 	FAFA 	Administrateur 	34 rue à toi
+FICHE R3
+
+-- 30 of 70 --
+
+355
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+NOTE 1 	X
+NOTE 2 	X
+NOTE 3A 	X
+NOTE 3B 	X
+NOTE 3C 	X
+NOTE 3D 	X
+NOTE 3E 	X
+NOTE 3F 	X
+NOTE 4 	X
+NOTE 5 	X
+NOTE 6 	X
+NOTE 7 	X
+NOTE 8 	X
+NOTE 9 	X
+NOTE 10 	X
+NOTE 11 	X
+NOTE 12 	X
+NOTE 13 	X
+NOTE 14 	X
+NOTE 15A 	X
+NOTE 15B 	X
+NOTE 16A 	X
+NOTE 16B 	X
+NOTE 16B bis 	X
+NOTE 16C 	X
+NOTE 17 	X
+NOTE 18 	X
+NOTE 19 	X
+NOTE 20 	X
+NOTE 21 	X
+NOTE 22 	X
+NOTE 23 	X
+NOTE 24 	X
+NOTE 25 	X
+NOTE 26 	X
+NOTE 27A 	X
+NOTE 27B 	X
+NOTE 28 	X
+NOTE 29 	X
+NOTE 30 	X
+NOTE 31 	X
+NOTE 32 	X
+NOTE 33 	X
+NOTE 34 	X
+NOTE 35 	X
+NOTE 36 	X
+A : Applicable 	N/A : Non applicable.
+Par exemple pour une entité qui n'a pas de stocks et en-cours, elle doit cocher à l'intersection ('ligne NOTE6' & 'colonne N/A')
+IMMOBILISATIONS : AMORTISSEMENTS
+IMMOBILISATIONS : PLUS-VALUES ET MOINS VALUE DE CESSION
+IMMOBILISATION BRUTE
+BIENS PRIS EN LOCATION ACQUISITION
+DETTES GARANTIES PAR DES SURETES REELLES
+INFORMATIONS OBLIGATOIRES
+NOTES 	INTITULES 	A 	N/A
+STOCKS ET ENCOURS
+CLIENTS
+IMMOBILISATIONS FINANCIERES
+ACTIF CIRCULANT ET DETTES CIRCULANTES HAO
+INFORMATIONS SUR LES REEVALUATIONS EFFECTUEES PAR L'ENTITE
+TABLEAU D'ETALEMENT DES CHARGES IMMOBILISEES
+VALEURS A ENCAISSER
+DISPONIBILITES
+ECARTS DE CONVERSION ET TRANSFERTS DE CHARGES
+AUTRES CREANCES
+TITRES DE PLACEMENT
+AUTRES FONDS PROPRES
+DETTES FINANCIERES ET RESSOURCES ASSIMILEES
+ENGAGEMENTS DE RETRAITE ET AVANTAGES ASSIMILES (METHODE ACTUARIELLE)
+CAPITAL : VALEUR NOMINALE DES ACTIONS OU PARTS
+PRIMES ET RESERVES
+SUBVENTIONS ET PROVISIONS REGLEMENTEES
+DETTES FISCALES ET SOCIALES
+AUTRES DETTES ET PROVISIONS POUR RISQUES A COURT TERME
+BANQUES, CREDIT D'ESCOMPTE ET DE TRESORERIE
+ENGAGEMENTS DE RETRAITE ET AVANTAGES ASSIMILES (METHODE ACTUARIELLE)
+ACTIFS ET PASSIFS EVENTUELS
+FOURNISSEURS D'EXPLOITATION
+LISTE DES INFORMATIONS SOCIALES, ENVIRONNEMENTALES ET SOCIETALES A FOURNIR
+TABLES DES CODES
+PRODUCTION DE L'EXERCICE
+ACHATS DESTINES A LA PRODUCTION
+FICHE DE SYNTHESE DES PRINCIPAUX INDICATEURS FINANCIERS
+AUTRES CHARGES ET PRODUITS HAO
+REPARTITION DU RESULTAT ET AUTRES ELEMENTS CARACTERISTIQUES DES
+CHARGES DE PERSONNEL
+EFFECTIFS, MASSE SALARIALE ET PERSONNEL EXTERIEUR
+PROVISIONS ET DEPRECIATIONS INSCRITES AU BILAN
+SERVICES EXTERIEURS
+IMPOTS ET TAXES
+AUTRES CHARGES
+CHIFFRE D'AFFAIRES ET AUTRES PRODUITS
+CHARGES ET REVENUS FINANCIERS
+ACHATS
+TRANSPORTS
+FICHE R4
+
+-- 31 of 70 --
+
+356
+REF 	ACTIF 	Note
+EXERCICE au 31/12/ N
+EXERCICE
+AU
+31/12/N-1 	REF 	PASSIF 	Note
+EXERCICE
+AU
+31/12/N
+EXERCICE
+AU
+31/12/N-1
+BRUT 	AMORT et
+DEPREC 	NET 	NET 	NET 	NET
+AD 	IMMOBILISATIONS INCORPORELLES 	3 	4 650 000 	0 	4 650 000 	2 650 000 	CA 	Capital 	13 	400 000 000 	100 000 000
+AF 	Brevets, licences, logiciels et droits similaires 	3 050 000 	3 050 000 	1 050 000 	CB 	Apporteurs capital non appelé 	(-) 	13 	-100 000 000
+AG 	Fonds commercial et droit au bail 	1 600 000 	1 600 000 	1 600 000 	CD 	Ecarts de réévaluation 	3e 	3 500 000
+AI 	IMMOBILISATIONS CORPORELLES 	3 	1 012 410 344 	321 157 361 	691 252 983 	203 544 627 	CE 	Réserves indisponibles 	14 	20 000 000 	20 000 000
+AJ 	Terrains (1)
+(1) dont Placement 	…………….
+38 673 950 	38 673 950 	35 173 950 	CF 	Report à nouveau 	(+ ou -) 	14 	76 069 991 	47 450 317
+AK 	Bâtiments
+(1) dont Placement 	……………. 741 411 100 160 048 641 	581 362 459 136 097 141 	CG 	Résultat net de l'exercice (bénéfice + ou perte -) 	215 389 710 	118 619 674
+AL 	Aménagements, agencements et installations 	73 328 267 	71 328 267 	2 000 000 	0 	CH 	Subventions d'investissement 	15 	2 000 000
+AM 	Matériel, mobilier et actifs biologiques 	82 947 027 	35 540 453 	47 406 574 	32 086 036 	CJ 	Provisions réglementées 	15 	40 000 000
+AN 	Matériel de transport 	76 050 000 	54 240 000 	21 810 000 	187 500 	CP 	TOTAL CAPITAUX PROPRES ET RESSOURCES
+ASSIMILEES 	656 959 701 	286 069 991
+AP 	AVANCES ET ACOMPTES VERSES SUR
+IMMOBILISATIONS 	3 	20 000 000 	20 000 000 	DA 	Emprunts et dettes financières diverses 	16 	94 699 075 	2 200 000
+AQ 	IMMOBILISATIONS FINANCIERES 	4 	4 419 790 	0 	4 419 790 	4 548 658 	DC 	Provisions pour risques et charges 	16 	62 116 366 	54 864 697
+AS 	Autres immobilisations financières 	4 419 790 	4 419 790 	4 548 658 	DD 	TOTAL DETTES FINANCIERES ET RESSOURCES
+ASSIMILEES 	156 815 441 	57 064 697
+AZ 	TOTAL ACTIF IMMOBILISE 	1 041 480 134 	321 157 361 	720 322 773 	210 743 285 	DF 	TOTAL RESSOURCES STABLES 	813 775 142 	343 134 688
+BA 	ACTIF CIRCULANT HAO 	5 	2 140 000 	2 140 000 	380 000 	DH 	Dettes circulantes HAO 	5 	156 649 942 	399 942
+BB 	STOCKS ET ENCOURS 	6 	18 560 138 	18 560 138 	15 868 433 	DI 	Clients, avances reçues 	7
+BG 	CREANCES ET EMPLOIS ASSIMILES 	206 981 960 	31 677 520 	175 304 440 144 512 218 	DJ 	Fournisseurs d'exploitation 	17 	38 210 222 	55 894 206
+BH 	Fournisseurs avances versées 	17 	857 612 	857 612 	700 000 	DK 	Dettes fiscales et sociales 	18 	42 668 247 	36 010 298
+BI 	Clients 	7 	167 938 821 	31 677 520 	136 261 301 140 683 833 	DM 	Autres dettes 	19 	620 000 	10 648 959
+BJ 	Autres créances 	8 	38 185 527 	38 185 527 	3 128 385 	DN 	Provisions pour risques a court terme 	19
+BK 	TOTAL ACTIF CIRCULANT 	227 682 098 	31 677 520 	196 004 578 	160 760 651 	DP 	TOTAL PASSIF CIRCULANT 	238 148 411 	102 953 405
+BS 	Banques, chèques postaux, caisse et assimilés 	11 	123 097 127 	123 097 127 	74 584 157 	DR 	Banques, établissements financiers et crédits de trésorerie
+BT 	TOTAL TRESORERIE ACTIF 	123 097 127 	0 	123 097 127 	74 584 157 	DT 	TOTAL TRESORERIE PASSIF 	0 	0
+BU 	Ecart de conversion-Actif 	12 	15 000 000 	15 000 000 	DV 	Ecart de conversion-Passif 	12 	2 500 925
+BZ 	TOTAL GENERAL 	1 407 259 359 	352 834 881 	1 054 424 478 	446 088 093 	DZ 	TOTAL GENERAL 	1 054 424 478 	446 088 093
+BILAN AU 31 DECEMBRE N
+
+-- 32 of 70 --
+
+357
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+REF 	LIBELLES 	NOTE
+EXERCICE
+AU
+31/12/N
+EXERCICE
+AU 31/12/N-
+1
+NET 	NET
+TA 	Ventes de marchandises 	A 	+ 	21 	110 000 000 	0
+RA 	Achats de marchandises 	- 	22 	-75 000 000 	0
+RB 	Variation de stocks de marchandises 	-/+ 	6 	5 000 000 	0
+XA 	MARGE COMMERCIALE (Somme TA à RB) 	40 000 000 	0
+TB 	Ventes de produits fabriqués 	B 	+ 	21 	1 918 144 745 	1 857 424 110
+TC 	Travaux, services vendus 	C 	+ 	21 	12 672 000 	12 804 000
+TD 	Produits accessoires 	D 	+ 	21 	1 130 000 	1 598 780
+XB 	CHIFFRE D'AFFAIRES (A + B + C + D) 	2 041 946 745 	1 871 826 890
+TF 	Production immobilisée 	+ 	21 	4 500 000 	0
+TH 	Autres produits 	+ 	21 	3 436 978 	11 486 537
+TI 	Transferts de charges d'exploitation 	+ 	12 	3 233 550 	5 817 880
+RC 	Achats de matières premières et fournitures liées 	- 	22 	-928 303 692 	-954 585 472
+RD 	Variation de stocks de matières premières et fournitures liées 	-/+ 	6 	106 416 	-2 830 600
+RE 	Autres achats 	- 	22 	-158 266 959 	-161 120 517
+RF 	Variation de stocks d’autres approvisionnements 	-/+ 	6 	-2 414 711 	1 884 647
+RG 	Transports 	- 	23 	-329 146 672 	-329 073 556
+RH 	Services extérieurs 	- 	24 	-72 599 329 	-60 787 379
+RI 	Impôts et taxes 	- 	25 	-3 135 200 	-110 000
+RJ 	Autres charges 	- 	26 	-4 263 929 	-67 670
+XC 	VALEUR AJOUTEE 	(XB +RA+RB) + (somme TE à RJ) 	485 093 197 	382 440 760
+RK 	Charges de personnel 	- 	27 	-218 217 093 	-208 852 251
+XD 	EXCEDENT BRUT D'EXPLOITATION (XC+RK) 	266 876 104 	173 588 509
+RL 	Dotations aux amortissements aux provisions et dépréciations 	- 	3C&28 	-26 511 313 	-31 615 755
+XE 	RESULTAT D'EXPLOITATION (XD+TJ+ RL) 	240 364 791 	141 972 754
+TK 	Revenus financiers et assimilés 	+ 	29 	7 500 000 	0
+RM 	Frais financiers et charges assimilés 	- 	29 	-3 500 000 	0
+XF 	RESULTAT FINANCIER (somme TK à RN) 	4 000 000 	0
+XG 	RESULTAT DES ACTIVITES ORDINAIRES (XE+XF) 	244 364 791 	141 972 754
+TN 	Produits des cessions d'immobilisations 	+ 	3D 	127 119 	350 000
+TO 	Autres Produits HAO 	+ 	30 	2 000 000 	0
+RO 	Valeurs comptables des cessions d'immobilisations 	- 	3D 	0 	-291 667
+XH RESULTAT HORS ACTIVITES ORDINAIRES
+(somme TN à RP) 2 127 119 	58 333
+RS 	Impôts sur le résultat 	- 	-31 102 200 	-23 411 413
+XI 	RESULTAT NET (XG+XH+RQ+RS) 	215 389 710 	118 619 674
+COMPTE DE RESULTAT DE L'EXERCICE DU 1ER JANVIER N AU 31 DECEMBRE N
+
+-- 33 of 70 --
+
+358
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+REF 	LIBELLES 	Note EXERCICE
+N
+EXERCICE
+N-1
+ZA Trésorerie nette au 1er janvier
+(Trésorerie actif N-1 - Trésorerie passif N-1) A 	74 584 157 	33 595 404
+Flux de trésorerie provenant des activités opérationnelles
+FA 	Capacité d'Autofinancement Globale (CAFG) 	241 773 904 150 177 096
+FB 	- Variations de l'actif circulant HAO 	-2 000 000
+FC 	- Variation des stocks 	-2 691 705 	945 953
+FD 	- Variation des créances et emplois assimilés 	-45 792 222 	-25 371 738
+FE 	- Variation du passif circulant 	-21 054 994 	-27 602 541
+Variation du BFG lié aux opérations opérationnelles
+(FB+FC+FD+FE) : 71 538 921 / 52 028 326
+ZB 	Flux de trésorerie provenant des activités opérationnelles (somme FA à FE) 	B 	170 234 983 	98 148 770
+Flux de trésorerie provenant des activités d’investissements
+FF - Décaissements liés aux acquisitions d'immobilisations
+incorporelles -2 000 000 	0
+FG 	- Décaissements liés aux acquisitions d'immobilisations corporelles 	-327 218 000 	-17 971 503
+FH 	- Décaissements liés aux acquisitions d'immobilisations financières 	-601 175 	-958 379
+FI 	+ Encaissements liés aux cessions d’immobilisations incorporelles et corporelles 	367 119 	590 000
+FJ 	+ Encaissements liés aux cessions d’immobilisations financières 	730 043 	1 179 865
+ZC 	Flux de trésorerie provenant des opérations d’investissement (somme FE à FJ) 	C 	-328 722 013 	-17 160 017
+Flux de trésorerie provenant du financement par les capitaux propres
+FK 	+ Augmentations de capital par apports nouveaux 	200 000 000 	0
+FL 	+ Subventions d'investissement 	2 000 000 	0
+FN 	- Distribution de dividendes 	-90 000 000 	-40 000 000
+ZD 	Flux de trésorerie provenant des capitaux propres (somme FK à FN) 	D 	112 000 000 	-40 000 000
+Trésorerie provenant du financement par les capitaux étrangers
+FO 	+ Emprunts 	100 000 000 	0
+FQ 	- Remboursements des emprunts et autres dettes financières 	-5 000 000 	0
+ZE 	Flux de Trésorerie provenant des capitaux étrangers (somme FO à FQ) 	E 	95 000 000 	0
+ZF 	Flux de trésorerie provenant des activités de financement (D+E) 	F 	207 000 000 	-40 000 000
+ZF 	VARIATION DE LA TRÉSORERIE NETTE DE LA PÉRIODE (B+C+F) 	G 	48 512 970 	40 988 753
+ZH Trésorerie nette au 31 Décembre (G+A) H 	123 097 127 	74 584 157
+Contrôle : Trésorerie actif N - Trésorerie passif N
+TABLEAU DES FLUX DE TRESORERIE
+
+-- 34 of 70 --
+
+359
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+LIBELLES 	Note 	Montant brut
+SURETES REELLES
+Hypothèques 	Nantissements Gages/
+autres
+Dettes financières et
+ressources assimilées :
+Emprunts et dettes des
+établissements de crédit 100 000 000 	TF: 456N23
+TOTAL
+Commentaire :
+Il s’agit d’une hypothèque sur l'ensemble immobilier sis à Kalala Titre foncier n° 456N23
+pour garantir l'emprunt octroyé par l'entité financière London City le 13/08/N.
+NOTE 1 : DETTES GARANTIES PAR DES SURETES REELLES
+
+-- 35 of 70 --
+
+360
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+A - DECLARATION DE CONFORMITE AU SYSCOHADA
+Les états financiers sont établis en conformité avec le Système comptable OHADA et l'Acte
+uniforme relatif au droit comptable et à l'information financière.
+B - REGLES ET METHODES COMPTABLES
+Les états financiers ont été confectionnés dans le respect des postulats, des conventions et des
+règles d'évaluation édictés par le SYSCOHADA et l'Acte Uniforme.
+C- DEROGATION AUX POSTULATS ET CONVENTIONS COMPTABLES
+Respect de tous les postulats et conventions comptables sans aucune dérogation.
+D - INFORMATIONS COMPLEMENTAIRES RELATIVES AU BILAN, AU
+COMPTE DE RESULTAT ET AU TABLEAU DES FLUX DE TRESORERIE
+Pas d'informations complémentaires relatives aux autres états financiers.
+NOTE 2 : INFORMATIONS OBLIGATOIRES
+
+-- 36 of 70 --
+
+361
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+SITUATIONS ET MOUVEMENTS 	A 	AUGMENTATIONS B 	DIMINUTIONS C 	D = A + B - C
+MONTANT 	Acquisitions 	Virements 	Suite à une 	Cessions 	Virements 	MONTANT
+BRUT 	Apports 	réévaluation 	Scissions 	de 	BRUT A LA
+A L'OUVERTURE 	Créations 	poste à poste 	pratiquée 	Hors 	poste à poste 	CLOTURE
+DE L'EXERCICE 	au cours 	service 	DE
+RUBRIQUES 	de l'exercice 	L'EXERCICE
+IMMOBILISATIONS INCORPORELLES 	2 650 000 	2 000 000 	0 	0 	0 	0 	4 650 000
+Brevets, licences, logiciels, et droits similaires 	1 050 000 	2 000 000 	3 050 000
+Fonds commercial et droit au bail 	1 600 000 	0 	1 600 000
+IMMOBILISATIONS CORPORELLES 	551 435 323 	463 468 000 	0 	43 500 000 	45 992 979 	0 	1 012 410 344
+Terrains 	35 173 950 	3 500 000 	38 673 950
+Bâtiments 	286 411 100 	430 000 000 	25 000 000 	741 411 100
+Aménagements, agencements et installations 	71 328 267 	0 	2 000 000 	73 328 267
+Matériel, mobilier et actifs biologiques 	104 472 006 	21 468 000 	3 000 000 	45 992 979 	82 947 027
+Matériel de transport 	54 050 000 	12 000 000 	10 000 000 	76 050 000
+AVANCES ET ACOMPTES VERSES SUR
+IMMOBILISATIONS 	25 000 000 	5 000 000 	20 000 000
+IMMOBILISATIONS FINANCIERES 	4 548 658 	601 175 	0 	0 	730 043 	0 	4 419 790
+Autres immobilisations financières 	4 548 658 	601 175 	730 043 	4 419 790
+TOTAL GENERAL 	558 633 981 	491 069 175 	0 	43 500 000 	51 723 022 	0 	1 041 480 134
+Commentaire :
+L’entité a bénéficié d'un logiciel qui a été subventionné par le groupe pour un meilleur suivi des stocks et des clients.
+Une réévaluation légale a été effectuée sur l'ensemble des biens corporels en date du 1/01/N.
+Un bâtiment neuf a été acquis sur la route labas labas à Kalala pour abriter l'usine et le siège social ainsi qu’un hangar de 5000 m2.
+Un inventaire des immobilisations en fin d'exercice a permis de mettre au rebut et de vendre à la ferraille certains biens.
+Un acompte a été versé pour l'acquisition d'une machine qui permet de faire un calibrage automatique des produits.
+NOTE 3A : IMMOBILISATION BRUTE
+
+-- 37 of 70 --
+
+362
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+SITUATIONS ET MOUVEMENTS 	A 	B 	C 	D = A + B - C
+AMORTISSEMENTS 	AUGMENTATIONS : 	DIMINUTIONS : 	CUMUL DES
+CUMULES 	DOTATIONS DE Amortissements
+relatifs AMORTISSEMENTS
+RUBRIQUES A L'OUVERTURE 	L'EXERCICE 	aux éléments sortis 	A LA CLOTURE
+DE L'EXERCICE 	de l'actif 	DE L'EXERCICE
+Bâtiments 	150 313 959 	9 734 682 	160 048 641
+Aménagements, agencements et installations 	71 328 267 	71 328 267
+Matériel, mobilier et actifs biologiques 	72 385 970 	9 147 462 	45 992 979 	35 540 453
+Matériel de transport 	53 862 500 	377 500 	54 240 000
+TOTAL : IMMOBILISATIONS
+CORPORELLES 347 890 696 	19 259 644 	45 992 979 	321 157 361
+Commentaire :
+les biens sont amortis suivant la durée d'utilité au taux de :
+• 	5% pour le bâtiment
+• 	10% pour les agencements et installations
+• 	20 % pour le matériel
+• 	33% pour le matériel de transport.
+NOTE 3C : IMMOBILISATIONS : AMORTISSEMENTS
+
+-- 38 of 70 --
+
+363
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+MONTANT 	AMORTISSEMENTS 	VALEUR 	PRIX 	PLUS-VALUE
+BRUT 	PRATIQUES 	COMPTABLE 	DE 	OU MOINS-VALUE
+NETTE 	CESSION
+A 	B 	C = A - B 	D 	E = D - C
+Matériel, mobilier et actifs biologiques 	4 500 000 	4 500 000 	0 	127 119 	127 119
+SOUS TOTAL : IMMOBILISATIONS CORPORELLES 	4 500 000 	4 500 000
+TOTAL GENERAL 	4 500 000 	4 500 000
+Commentaire :
+Il s'agit de la vente en ferraille d'une motopompe hors usage.
+NOTE 3D : IMMOBILISATIONS : PLUS-VALUES ET MOINS VALUE DE CESSION
+
+-- 39 of 70 --
+
+364
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Nature et date des réévaluations :
+Réévaluation libre effectuée en date du 31/12/N sur la totalité des biens corporels.
+Eléments réévalués par postes du bilan 	Montants
+coûts
+historiques
+Ecarts et
+provisions
+spéciales de
+réévaluation
+Terrains 	35 173 950 	3 500 000
+Bâtiments 	286 411 100 	25 000 000
+Agencements aménagements, installations 	71 328 267 	2 000 000
+Matériel, mobilier, actifs biologiques 	104 472 006 	3 000 000
+Matériel de transport 	54 050 000 	10 000 000
+Total écarts de réévaluation 	3 500 000
+Total provisions spéciales de réévaluation 	40 000 000
+Méthode de réévaluation utilisée :
+Toutes les immobilisations corporelles ont fait l'objet d'une réévaluation sur la base d'un rapport de
+Monsieur VISITE expert industriel en date du 31/12/N.
+Traitement fiscal de l'écart de réévaluation et des amortissements supplémentaires :
+L'écart de réévaluation a été imposé au taux de 35% sans aucune possibilité de
+compensation avec les déficits antérieurs.
+L'écart de réévaluation n'est pas amortissable, il fait partie des capitaux propres et
+n'est pas distribuable.
+Les plus-values de réévaluation des immobilisations corporelles bénéficient d'une
+neutralité fiscale sauf les terrains imposable au taux de l’impôt sur les bénéfices.
+Montant de l'écart incorporé au capital : 	0
+NOTE 3E : INFORMATIONS SUR LES REEVALUATIONS EFFECTUEES PAR L'ENTITE
+
+-- 40 of 70 --
+
+365
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Créances
+à un an
+au plus
+Créances
+à plus
+d'un an et
+à deux ans
+au plus
+Créances à
+plus de
+deux ans
+Prêt au personnel 	1 927 000 	1 927 000 	500 000 	200 000 	1 227 000
+Dépôts et cautionnements 	2 492 790 	2 621 658 	-5% 	2 492 790
+Dépréciations autres
+immobilisations 0 	0
+TOTAL NET DE
+DEPRECIATION 4 419 790 	4 548 658 	500 000 	200 000 	3 719 790
+Commentaire :
+Le remboursement de la caution versée pour une résiliation d'une ligne téléphonique du domicile d'un expatrié
+explique la baisse du poste dépôts et cautionnement.
+NOTE 4 : IMMOBILISATIONS FINANCIERES
+
+-- 41 of 70 --
+
+366
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+ACTIF CIRCULANT HAO
+Libellés 	Année n 	Année n-1 	Variation en %
+Créances sur cessions d'immobilisations 	140 000 	380 000 	-63%
+Autres créances HAO 	2 000 000
+Dépréciations des créances HAO 	0 	0
+TOTAL NET DE DEPRECIATION 	2 140 000 	380 000
+Commentaire :
+Les autres créances HAO sont constituées par un don de la Mairie de JOJO qui sera versé
+23/01/N+1.
+DETTES CIRCULANTES HAO
+Libellés 	Année n 	Année n-1 	Variation en %
+Fournisseurs d'investissements 	156 250 000
+Fournisseurs d'invest. factures non
+parvenues 	399 942 	399 942 	0%
+TOTAL 	156 649 942 	399 942
+Commentaire :
+Le montant du poste fournisseur d'investissement correspond à un crédit accordé par le
+vendeur de la broyeuse.
+NOTE 5 : ACTIF CIRCULANT ET DETTES CIRCULANTES HAO
+
+-- 42 of 70 --
+
+367
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1
+Variation
+de stock
+en valeur
+absolue
+Variation
+en %
+Marchandises 	5 000 000
+Matières premières et fournitures liées 	7 827 856 	7 721 440 	106 416 	1%
+Stock emballages 	5 732 282 	8 146 993 	-2 414 711 	-30%
+TOTAL STOCKS ET ENCOURS 	18 560 138 	15 868 433 	2 691 705
+Dépréciations des stocks 	0 	0
+TOTAL NET DE DEPRECIATION 	18 560 138 	15 868 433
+Commentaire :
+L'inventaire a été effectué le 1/01/N+1 conformément à la procédure décrite dans le manuel de
+procédures.
+La méthode de valorisation retenue est le coût moyen pondéré sur la durée moyenne de stockage.
+La baisse du stock d'emballage est due à la politique de l'entité qui consiste à diminuer le stock.
+NOTE 6 : STOCKS ET ENCOURS
+
+-- 43 of 70 --
+
+368
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Créances à
+un an au
+plus
+Créances
+à plus
+d'un an
+et à deux
+ans au
+plus
+Créances à
+plus de
+deux ans
+Clients (hors réserves de propriété
+et Groupe) 136 261 301 	140 683 833 	-3% 	136 261 301
+Créances litigieuses ou douteuses 	31 677 520 	31 677 520 	0% 	31 677 520
+TOTAL CLIENTS 	167 938 821 	172 361 353 	136 261 301 	31 677 520 	0
+Dépréciations des comptes clients 	31 677 520 	31 677 520
+TOTAL NET DE
+DEPRECIATION 136 261 301 	140 683 833 	136 261 301 	31 677 520 	0
+Commentaire :
+L'amélioration du recouvrement des créances est due à une mise au comptant de certains clients qui ne respectent
+pas le délai de paiement qui leur a été accordé.
+NOTE 7 : CLIENTS
+
+-- 44 of 70 --
+
+369
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Créances
+à un an
+au plus
+Créances à
+plus d'un
+an et à
+deux ans
+au plus
+Créances
+à plus de
+deux ans
+Personnel 	16 921 663 	1 280 286 	1222% 	16 921 663 	0 	0
+Associés compte courant 	20 000 000 	20 000 000 	0 	0
+Autres débiteurs divers 	450 000 	0 	0
+Charges constatées d'avance 	1 263 864 	1 398 099 	-10% 	1 263 864 	0 	0
+TOTAL AUTRES CREANCES 	38 185 527 	3 128 385 	38 185 527 	0 	0
+Dépréciations des autres créances 	0 	0 	0 	0 	0
+TOTAL NET DE
+DEPRECIATION 38 185 527 	3 128 385 	38 185 527 	0 	0
+Commentaire :
+L'augmentation importante du poste, personnel s'explique par une avance exceptionnelle accordée au personnel
+pour une fête religieuse.
+L'accroissement du poste, compte courant associé correspond à une mise à disposition des dividendes d'un
+actionnaire.
+NOTE 8 : AUTRES CREANCES
+
+-- 45 of 70 --
+
+370
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Banques locales 	121 152 991 	69 123 976 	75%
+Caisse 	1 944 136 	5 460 181 	-64%
+Régies d'avances et accréditifs
+TOTAL DISPONIBILITES 	123 097 127 	74 584 157
+Dépréciations 	0 	0
+TOTAL NET DE DEPRECIATION 	123 097 127 	74 584 157
+Commentaire:
+Le rapprochement du compte bancaire du mois de décembre a été effectué le 15/01/N+1.
+L'amélioration du compte bancaire est consécutive aux ventes au comptant des
+marchandises et de la diminution du plafond de la caisse.
+NOTE 11 : DISPONIBILITES
+
+-- 46 of 70 --
+
+371
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+ECARTS DE CONVERSION
+Libellés 	Devises Montant
+en devises
+Cours UML
+Année
+acquisition
+Cours
+UML
+31/12/N
+Variation en
+valeur
+absolue
+Ecarts de conversion-actif :
+clients USA 	$ 	150 000 	550 	450 	15 000 000
+Ecart de conversion passif :
+Emprunts banque London city 	£ 	115 250 	800 	778,30 	2 500 925
+Commentaire :
+La variation des cours n'appelle aucun commentaire.
+TRANSFERTS DE CHARGES
+Libellés 	Année N 	Année N-1 Variation
+en %
+Transferts de charges d'exploitation :
+Transports 	3 233 550 	5 817 880 	-44%
+Commentaire :
+Les refacturations des frais de transport aux clients ont baissé en raison du changement de la politique de
+livraison des produits.
+NOTE 12 : ECARTS DE CONVERSION ET TRANFERTS DE CHARGES
+
+-- 47 of 70 --
+
+372
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+CAPITAL 	Valeur nominale des actions ou parts : 	50 000
+Nom et prénom 	Nationalité
+Nature des
+actions ou
+parts
+(Ordinaires
+ou
+préférences)
+Nombre 	Montant total
+Cessions ou
+remboursements
+en cours
+d'exercice
+ZAU POPO 	OHADA 	Ordinaire 	3 000 	150 000 000 	0
+ABC DADA 	OHADA 	Ordinaire 	2 500 	125 000 000 	0
+DIDU FAFA 	OHADA 	Ordinaire 	2 500 	125 000 000 	0
+Apporteurs, capital
+non appelé 	100 000 000
+TOTAL 	300 000 000
+Commentaire :
+A la constitution de la société, le capital nominal était de FCFA 100 000 000.
+Le 22/03/N, l'AGE a décidé une augmentation de capital de FCFA 300 000 000 avec une libération à la
+souscription de FCFA 200 000 000.
+Le Conseil d'administration fera appel du solde dans un délai ne pouvant dépasser deux ans suivant une
+résolution de l'AGE.
+NOTE 13 : CAPITAL : VALEUR NOMINALE DES ACTIONS OU PARTS
+
+-- 48 of 70 --
+
+373
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année N 	Année N-1
+Variation
+en valeur
+absolue
+Réserves légales 	20 000 000 	20 000 000
+TOTAL RESERVES INDISPONIBLES 	20 000 000 	20 000 000
+Report à nouveau 	76 069 991 	47 450 317 	60%
+Commentaire :
+L'AGO du 15/05/16 a doté le report à nouveau de FCFA 28 619 674.
+NOTE 14 : PRIMES ET RESERVES
+
+-- 49 of 70 --
+
+374
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	NOTE 	Année n Année
+n-1
+Variation
+en valeur
+absolue
+Variation
+en %
+Régime
+fiscal Echéances
+Communes et collectivités publiques
+décentralisées 2 000 000
+TOTAL SUBVENTIONS
+Provisions spéciales de réévaluation 	3E 	40 000 000
+TOTAL PROVISIONS
+REGLEMENTEES
+TOTAL AUTRES CAPITAUX
+PROPRES
+Commentaire :
+La société a bénéficié d'un logiciel qui a été subventionné par le groupe pour un meilleur suivi des stocks et des
+clients.
+La provision spéciale de réévaluation est expliquée à la Note 3E.
+NOTE 15 A : SUBVENTIONS ET PROVISIONS REGLEMENTEES
+
+-- 50 of 70 --
+
+375
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1
+Variation
+en valeur
+absolue
+Variation
+en %
+Dettes à un
+an au plus
+Dettes à
+plus d'un
+an et à
+deux ans
+au plus
+Dettes à
+plus de
+deux ans
+Emprunts et dettes auprès des
+établissements de crédit 94 699 075 	2 200 000 	92 499 075 	14 699 075 	39 000 000 	41 000 000
+TOTAL EMPRUNTS ET
+DETTES FINANCIERES
+Provisions pour pensions et
+obligations assimilées 62 116 366 	54 864 697 	7 251 669
+TOTAL PROVISIONS
+FINANCIERES POUR
+RISQUES ET CHARGES
+Commentaire :
+Emprunt contracté auprès d'une entité financière anglaise du nom de London City en date du 13/8/N d'un montant initial
+de 100 000 000.
+L'emprunt remboursable sur 7 ans a fait l'objet d'une hypothèque sur l'ensemble immobilier.
+Les indemnités de départ à la retraite du personnel ont été calculées conformément à la loi. La société n’a pas utilisé pour le
+calcul des indemnités de départ à la retraite la méthode actuarielle mais plutôt une méthode simplifiée (non prise en compte de
+l’actualisation et des probabilités de survie et de présence).
+NOTE 16 A : DETTES FINANCIERES ET RESSOURCES ASSIMILEES
+
+-- 51 of 70 --
+
+376
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Dettes à
+un an au
+plus
+Dettes à
+plus
+d'un an
+et à deux
+ans au
+plus
+Dettes à
+plus de
+deux ans
+Fournisseurs dettes en compte (hors
+groupe) 26 695 015 	40 583 900 	-34% 	26 695 015
+Fournisseurs factures non parvenues
+(hors groupe) 11 515 207 	15 310 306 	-25% 	11 515 207
+TOTAL FOURNISSEURS 	38 210 222 	55 894 206
+Fournisseurs, avances et acomptes
+(hors groupe) 857 612 	700 000 	23% 	857 612
+TOTAL FOURNISSEURS
+DEBITEURS 857 612 	700 000
+Commentaire :
+L'amélioration de la trésorerie a permis de payer plus rapidement les fournisseurs qui ont accordé à l'entité des
+remises et escomptes.
+NOTE 17 : FOURNISSEURS D'EXPLOITATION
+
+-- 52 of 70 --
+
+377
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n Année
+n-1
+Variation
+en valeur
+absolue
+Variation
+en %
+Dettes à un
+an au plus
+Dettes à
+plus d'un
+an et à
+deux ans
+au plus
+Dettes à
+plus de
+deux
+ans
+Personnel avances et acomptes 	112 500 	-112 500 	-100%
+Personnel rémunérations dues 	134 939 	983 251 	-848 312 	-86% 	134 939
+Personnel congés à payer 	4 188 221 	4 521 677 	-333 456 	-7% 	4 188 221
+Caisse de sécurité sociale 	622 596 	775 903 	-153 307 	-20% 	622 596
+Caisse de retraite 	1 505 285 	1 249 810 	255 475 	20% 	1 505 285
+Mutuelle de santé 	304 999 	470 001 	-165 002 	-35% 	304 999
+TOTAL DETTES SOCIALES 	6 756 040 	8 113 142 -1 357 102 	-17%
+Etat, impôts sur les bénéfices 	31 102 200 	23 411 413 	7 690 787 	33% 	31 102 200
+Etat, impôts et taxes 	3 669 336 	3 213 144 	456 192 	14% 	3 669 336
+Etat, TVA 	89 781 	-89 781 	-100% 	0
+Etat, impôts retenus à la source 	1 140 671 	1 182 818 	-42 147 	-4% 	1 140 671
+TOTAL DETTES FISCALES 	35 912 207 	27 897 156 	8 015 051 	29%
+TOTAL DETTES SOCIALES
+ET FISCALES 42 668 247 	36 010 298 	6 657 949 	18% 	42 668 247
+Commentaire :
+La baisse des dettes sociales s'explique essentiellement par un apurement des avances au personnel et des
+rémunérations dues au personnel en fin de mois.
+L'accroissement des dettes fiscales est consécutif à l'impôt qui frappe les bénéfices.
+ces derniers ont augmenté de 65%.
+NOTE 18 : DETTES FISCALES ET SOCIALES
+
+-- 53 of 70 --
+
+378
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1
+Variation en
+valeur
+absolue
+Variation
+en %
+Dettes à
+un an au
+plus
+Dettes à
+plus
+d'un an
+et à deux
+ans au
+plus
+Dettes
+à plus
+de
+deux
+ans
+Associés, compte courant 	9 938 959 	-9 938 959 	-100%
+TOTAL DETTES ASSOCIES 	9 938 959
+Créditeurs divers 	620 000 	710 000 	-90 000 	-13% 	620 000
+TOTAL CREDITEURS
+DIVERS 620 000 	710 000
+TOTAL AUTRES DETTES 	620 000 	10 648 959
+Commentaire:
+Les associés ont été remboursés de la totalité des dettes le 12/06/N.
+NOTE 19 : AUTRES DETTES ET PROVISIONS POUR RISQUES A COURT TERME
+
+-- 54 of 70 --
+
+379
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Ventes dans la région 	110 000 000
+TOTAL : VENTES MARCHANDISES 	110 000 000
+Ventes dans la région 	415 674 669 	389 056 176 	7%
+Ventes hors région 	1 525 378 452 	1 483 837 972 	3%
+Remise et retour produits finis 	-22 908 376 	-15 470 038 	48%
+TOTAL : VENTES DE PRODUITS
+FABRIQUES 1 918 144 745 	1 857 424 110 	3%
+Ventes dans la région 	12 672 000 	12 804 000 	-1%
+TOTAL : VENTES DE TRAVAUX ET
+SERVICES VENDUS 12 672 000 	12 804 000
+Produits accessoires 	1 130 000 	1 598 780 	-29%
+TOTAL : CHIFFRES D'AFFAIRES 	2 041 946 745 	1 871 826 890 	9%
+Production immobilisée 	4 500 000
+Gains de change sur créances commerciales 	1 081 031 	11 486 537 	-91%
+Indemnités assurances 	2 355 947
+TOTAL : AUTRES PRODUITS 	3 436 978 	11 486 537
+TOTAL PRODUITS 	2 049 883 723 	1 883 313 427 	9%
+Commentaire :
+L'augmentation du poste remise se justifie par une demande forte de certains clients qui
+exigent que notre entité s'aligne sur la concurrence en terme de réduction de prix.
+La diminution des gains de change sur créances est due à une meilleure stabilité des devises.
+NOTE 21 : CHIFFRE D'AFFAIRES et AUTRES PRODUITS
+
+-- 55 of 70 --
+
+380
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variatio
+n en %
+Achats dans la région 	75 000 000
+TOTAL : ACHATS DE MARCHANDISES 	75 000 000
+Achats matières premières dans la région 	923 186 842 	954 585 472 	-3%
+Achats fournitures 	5 116 850
+TOTAL : ACHATS MATIERES
+PREMIERES ET FOURNITURES LIEES 928 303 692 	954 585 472 	-3%
+Produits d'entretien 	1 144 000
+Carburant 	11 259 476 	12 683 576 	-11%
+Eau 	5 507 820 	4 659 249 	18%
+Electricité 	23 946 351 	21 760 619 	10%
+Fourniture d'entretien 	3 983 103 	2 179 626 	83%
+Fourniture de bureau 	4 273 500 	5 034 950 	-15%
+Petit matériel et outillages 	13 718 052 	11 861 402 	16%
+Achats études, prestations de services 	12 000 	505 000 	-98%
+Achats d'emballages 	95 566 657 	101 292 095 	-6%
+TOTAL : AUTRES ACHATS 	158 266 959 	161 120 517 	-2%
+Commentaire:
+Une politique de suivi du carnet de bord des véhicules a permis de réaliser une économie de
+11% des frais de carburant.
+L'accroissement de la consommation d'eau et d'électricité est consécutif à une augmentation
+de prix des fournisseurs.
+Dans l'ensemble les autres charges ont été bien maîtrisées.
+NOTE 22 : ACHATS
+
+-- 56 of 70 --
+
+381
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Transports sur ventes 	320 292 521 	322 176 481 	-1%
+Transports pour le compte de tiers 	3 233 550 	5 817 880 	-44%
+Transport du personnel 	3 958 126 	306 500 	1191%
+Transports de plis 	86 870
+Autres transports 	1 662 475 	685 825 	142%
+TOTAL 	329 146 672 	329 073 556 	0%
+Commentaire :
+Les frais de transport du personnel ont augmenté en raison de la prise en charge de billets
+d'avion pour les congés des familles d'expatriés qui en ont droit tous les deux ans.
+NOTE 23 : TRANSPORTS
+
+-- 57 of 70 --
+
+382
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Locations appartements 	8 400 000 	8 163 500 	3%
+Locations véhicules et parking 	12 125 000 	12 720 000 	-5%
+Locations machine 	282 898 	2 250 259 	-87%
+Entretien, réparations biens immobiliers 	1 951 316 	931 113 	110%
+Entretien, réparations biens mobiliers 	3 672 248 	3 275 032 	12%
+Maintenance machines 	5 810 000 	5 110 000 	14%
+Services d'hygiène 	585 000 	390 000 	50%
+Primes d'assurance 	2 461 776 	2 440 484 	1%
+Documentation et annonces insertions 	230 000
+Frais de télécommunications 	7 316 650 	5 223 250 	40%
+Frais bancaires 	8 430 066 	12 728 046 	-34%
+Rémunérations d'intermédiaires et de
+conseils 	18 801 520 	5 151 420 265%
+Frais d'acte et contentieux 	46 680
+Certificat de salubrité 	2 277 000 	1 725 285 	32%
+Droit d’entrée port 	129 375 	140 990 	-8%
+Autres redevances 	48 000
+Cotisation syndicale patronale 	200 000 	290 000 	-31%
+Autres charges externes 	61 800 	18 000 	243%
+TOTAL 	72 599 329 	60 787 379 	19%
+Commentaire:
+La performance du matériel a considérablement diminué la location de machines.
+Les fortes pluies de cette année ont détérioré une partie de la toiture de notre immeuble ce qui
+justifie l'accroissement des réparations des biens immobiliers.
+L'augmentation des rémunérations des intermédiaires s'explique par une mission d'audit
+opérationnel.
+NOTE 24 : SERVICES EXTERIEURS
+
+-- 58 of 70 --
+
+383
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Droits d'enregistrement augmentation capital 	3 000 000
+Pénalités et amendes fiscales 	90 000 	75 000 	20%
+Autres impôts et taxes 	45 200 	35 000 	29%
+TOTAL 	3 135 200 	110 000
+Commentaire:
+Les droits d'enregistrement consécutifs à l'augmentation de capital est la conséquence de
+l'accroissement important de ce poste.
+NOTE 25 : IMPOTS ET TAXES
+
+-- 59 of 70 --
+
+384
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation en
+%
+Pertes sur créances clients 	4 150 956
+Dons et mécénat 	100 000
+Autres charges diverses 	12 973 	67 670
+TOTAL 	4 263 929 	67 670
+Commentaire :
+La perte est consécutive à la disparition subite du client Gigi.
+Un don a été versé à une équipe de football du quartier.
+NOTE 26 : AUTRES CHARGES
+
+-- 60 of 70 --
+
+385
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Rémunérations directes versées au personnel 	178 553 042 	167 780 354 	6%
+Indemnités logement 	3 216 000 	3 216 000 	0%
+Primes de transport 	5 407 994 	5 360 307 	1%
+Autres primes 	4 651 183 	4 776 437 	-3%
+Charges sociales 	24 283 385 	23 249 408 	4%
+Médecine du travail et pharmacie 	1 688 279 	662 735 	155%
+Equipements du personnel 	417 210 	3 807 010 	-89%
+Autres charges sociales
+TOTAL 	218 217 093 	208 852 251 	4%
+Commentaire :
+La variation de ce poste s'explique essentiellement :
+- par une augmentation annuelle des salaires et de la vacation du médecin du travail
+suite à une mise en demeure de l'inspection du travail.
+- par la baisse du poste équipement du personnel en raison du non renouvellement de la
+tenue des employés.
+NOTE 27 A : CHARGES DE PERSONNEL
+
+-- 61 of 70 --
+
+386
+EFFECTIF ET MASSE EFFECTIFS 	MASSE SALARIALE
+SALARIALE
+Nationaux
+Autres
+Etats de
+l'OHADA
+Hors
+OHADA TOTAL 	Nationaux
+Autres
+Etats de
+l'OHADA
+Hors OHADA 	TOTAL
+QUALIFICATIONS 	M 	F 	M 	F 	M 	F 	M 	F 	M 	F 	M 	F
+YA 	1. Cadres supérieurs 	1 	1 	0 	0 	1 	1 	4 	10 133 307 10 345 678 	0 	0 13 718 838 13 245 289 	47 443 112
+YB 2. Techniciens supérieurs et cadres
+moyens 	1 	0 	0 	0 	0 	0 	1 5 406 103 	0 	0 	0 	0 	0 	5 406 103
+YC 3. Techniciens, agents de maîtrise
+et ouvriers qualifiés 	6 	0 	0 	0 	0 	0 	6 25 609 783 	0 	0 	0 	0 	0 	25 609 783
+YD 4. Employés, manœuvres, ouvriers,
+et apprentis 	10 	10 	0 	0 	0 	0 	20 25 444 434 24 662 482 	0 	0 	0 	0 	50 106 916
+YE 	TOTAL (1) 	18 	11 	0 	0 	1 	1 	31 	66 593 627 35 008 160 	0 	0 13 718 838 13 245 289 128 565 914
+YF 	Permanents 	18 	11 	0 	0 	1 	1 	31 	66 593 627 35 008 160 	0 	0 13 718 838 13 245 289 128 565 914
+YG 	Saisonniers 	15 	38 	0 	0 	0 	0 	53 	10 456 719 36 831 738 	47 288 457
+Facturation à l'entité	2. Personnel extérieur
+YH 	1. Cadres supérieurs 	0 	0 	0 	0 	0 	0 	0
+YI 2. Techniciens supérieurs et cadres
+moyens 	0 	0 	0 	0 	0 	0 	0
+YJ 3. Techniciens, agents de maîtrise
+et ouvriers qualifiés 	0 	0 	0 	0 	0 	0 	0
+YK 4. Employés, manœuvres, ouvriers,
+et apprentis 	0 	0 	0 	0 	0 	0 	0 M : Masculin
+YL 	TOTAL (2) 	0 	0 	0 	0 	0 	0 	0
+YM Permanents 	0 	0 	0 	0 	0 	0 	0
+YN 	Saisonniers 	0 	0 	0 	0 	0 	0 	0
+YO 	TOTAL (1 + 2) 	18 	11 	0 	0 	1 	1 	31
+Commentaire:
+L'effectif et la masse salariale du personnel sont stables.
+NOTE 27 B : EFFECTIFS, MASSE SALARIALE ET PERSONNEL EXTERIEUR
+
+-- 62 of 70 --
+
+387
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+SITUATION ET A 	B 	C 	D = A + B - C
+MOUVEMENTS 	PROVISIONS 	AUGMENTATIONS : DOTATIONS 	DIMINUTIONS : REPRISES 	PROVISIONS
+A L'OUVERTURE 	D'EXPLOI- 	FINAN- HORS ACTIVITES 	D'EXPLOI- 	FINAN- 	HORS ACTIVITES 	A LA CLOTURE
+NATURE 	DE L'EXERCICE 	TATION 	CIERES 	ORDINAIRES 	TATION 	CIERES 	ORDINAIRES 	DE L'EXERCICE
+Provisions pour risques et charges 	54 864 697 	7 251 669 	62 116 366
+TOTAL 	54 864 697 	7 251 669 	0 	0 	0 	0 	0 	62 116 366
+Dépréciations clients 	31 677 520 	31 677 520
+TOTAL : CHARGES POUR
+DEPRECIATIONS ET PROVISIONS A
+COURT TERME
+31 677 520 	0 	0 	0 	0 	0 	0 	31 677 520
+TOTAL PROVISIONS ET DEPRECIATIONS 	86 542 217 	7 251 669 	0 	0 	0 	0 	0 	93 793 886
+Commentaire :
+L'augmentation s'explique par un ajustement de la provision pour indemnité départ à la retraite.
+NOTE 28 : PROVISIONS ET DEPRECIATIONS INSCRITES AU BILAN
+
+-- 63 of 70 --
+
+388
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation en
+%
+Intérêts des emprunts 	3 500 000
+SOUS TOTAL : FRAIS FINANCIERS 	3 500 000
+Escomptes obtenus 	7 500 000
+SOUS TOTAL : REVENUS FINANCIERS 	7 500 000
+Commentaire:
+Il s'agit des intérêts des emprunts contractés auprès de London City.
+Les escomptes ont été obtenus grâce à un paiement comptant de matières premières.
+NOTE 29 : CHARGES ET REVENUS FINANCIERS
+
+-- 64 of 70 --
+
+389
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+Libellés 	Année n 	Année n-1 Variation
+en %
+Produits HAO constatés 	2 000 000
+SOUS TOTAL : 	AUTRES PRODUITS HAO
+Commentaire:
+Il s'agit d'un don de la Mairie de JOJO.
+NOTE 30 : AUTRES PRODUITS HAO
+
+-- 65 of 70 --
+
+390
+EXERCICES CONCERNES (1)
+N 	N-1 	N - 2 	N - 3 	N - 4
+NATURE DES INDICATIONS
+STRUCTURE DU CAPITAL A LA CLOTURE DE L'EXERCICE (2)
+Capital social 	400 000 000 	100 000 000 	100 000 000 	100 000 000 	100 000 000
+Actions ordinaires 	8 000 	2 000 	2 000 	2 000 	2 000
+Actions à dividendes prioritaires (A.D.P) sans droit de vote 	0 	0 	0 	0 	0
+Actions nouvelles à émettre : 	0 	0 	0 	0 	0
+- par conversion d'obligations 	0 	0 	0 	0 	0
+- par exercice de droits de souscription 	0 	0 	0 	0 	0
+OPERATIONS ET RESULTATS DE L'EXERCICE (3)
+Chiffre d'affaires hors taxes 	2 041 946 745 1 871 826 890 2 027 155 947 1 373 432 266 1 550 743 626
+Résultat des activités ordinaires (R.A.O) hors dotations et reprises (exploitation et financières) 	270 876 104 	173 588 509 	104 291 396 	58 837 773 	64 922 205
+Participation des travailleurs aux bénéfices 	0 	0 	0 	0 	0
+Impôt sur le résultat 	31 102 200 	23 411 413 	9 905 550 	5 000 000 	5 000 000
+Résultat net (4) 	215 389 710 	118 619 674 	66 631 518 	28 123 501 	23 456 810
+RESULTAT ET DIVIDENDE DISTRIBUES
+Résultat distribué (5) 	180 000 000 	90 000 000 	50 000 000 	20 000 000 	15 000 000
+Dividende attribué à chaque action 	22 500 	45 000 	25 000 	10 000 	7 500
+PERSONNEL ET POLITIQUE SALARIALE
+Effectif moyen des travailleurs au cours de l'exercice (6) 	31 	33 	28 	25 	28
+Effectif moyen de personnel extérieur 	0 	0 	0 	0 	0
+Masse salariale distribuée au cours de l'exercice (7) 	192 195 578 	181 528 549 	163 810 396 	144 727 286 	159 648 250
+Avantages sociaux versés au cours de l'exercice (8) [Sécurité sociale, œuvres sociales] 	26 388 874 	27 719 153 	23 562 278 	20 973 487 	29 626 536
+Personnel extérieur facturé à l'entité (9) 	0 	0 	0 	0 	0
+(1) Y compris l'exercice dont les états financiers sont soumis à l'approbation de l'Assemblée
+(2) Indication, en cas de libération partielle du capital, du montant du capital non appelé
+(3) Les éléments de cette rubrique sont ceux figurant au compte de résultat
+(4) Le résultat, lorsqu'il est négatif, doit être mis entre parenthèses
+(5) L'exercice N correspond au dividende proposé du dernier exercice
+(6) Personnel propre
+(7) Total des comptes 661, 662, 663
+(8) Total des comptes 664, 668
+(9) Compte 667
+NOTE 31 : REPARTITION DU RESULTAT ET AUTRES ELEMENTS
+CARACTERISTIQUES DES CINQ DERNIERS EXERCICES
+
+-- 66 of 70 --
+
+391
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+(Valeurs en milliers de francs CFA)
+DESIGNATION 	UNITE DE 	PRODUCTION 	PRODUCTION 	PRODUCTION 	PRODUCTION 	STOCK 	STOCK
+DU PRODUIT 	QUANTITE 	VENDUE DANS 	VENDUE 	VENDUE HORS 	IMMOBILISEE 	OUVERTURE 	CLOTURE
+CHOISIE 	LE PAYS 	DANS LES 	OHADA 	DE L'EXERCICE DE L'EXERCICE
+AUTRES PAYS
+DE L'OHADA
+Quantité 	Valeur 	Quantité Valeur Quantité Valeur Quantité 	Valeur 	Quantité 	Valeur 	Quantité 	Valeur
+Meuble en bois 	unité 	545 	1 918 144 745 	0 	0 	0 	0 	1 	4 500 000 	0 	0 	0 	0
+NON VENTILE
+TOTAL 545 	1 918 144 745 	0 	0 	0 	0 	1 	4 500 000 	0 	0 	0 	0
+NOTE 32 : PRODUCTION DE L'EXERCICE
+
+-- 67 of 70 --
+
+392
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : 	GB 567 TE 	Durée (en mois) 12
+(Valeurs en milliers de francs CFA)
+ACHATS EFFECTUES AU COURS DE L'EXERCICE
+DESIGNATION 	PRODUITS IMPORTES 	VARIATION DES
+DES MATIERES 	UNITE DE QUANTITE 	PRODUITS DE L'ETAT 	ACHETES 	ACHETES 	STOCKS
+ET PRODUITS 	CHOISIE 	DANS L'ETAT 	HORS DE L'ETAT
+Quantité 	Valeur 	Quantité 	Valeur 	Quantité 	Valeur 	(en valeur)
+Bois 	m3 125 000 	923 186 842 	0 	0 	0 	0 	106 416
+NON VENTILES
+TOTAL 125 000 	923 186 842 	0 	0 	0 	0 	106 416
+NOTE 33 : ACHATS DESTINES A LA PRODUCTION
+
+-- 68 of 70 --
+
+393
+Désignation entité : SYSTEME COMPTABLE OHADA 	Exercice clos le 31-12-N
+Numéro d’identification : GB 567 TE 	Durée (en mois) : 12
+(EN MILLIERS DE FRANCS) 	Année N Année
+N-1
+Variation en
+%
+ANALYSE DE L'ACTIVITE
+SOLDES INTERMEDIAIRES DE GESTION
+Chiffre d'affaires 	2 041 947 	1 871 827 	9%
+Marge commerciale 	40 000 	0
+Valeur ajoutée 	485 093 	382 441 	27%
+Excédent brut d'exploitation (EBE) 	266 876 	173 589 	54%
+Résultat d'exploitation 	240 365 	141 973 	69%
+Résultat financier 	4 000 	0
+Résultat des activités ordinaires 	244 365 	141 973 	72%
+Résultat hors activités ordinaires 	2 127 	58
+Résultat net 	215 390 	118 620 	82%
+DETERMINATION DE LA CAPACITE D'AUTOFINANCEMENT
+Excédent brut d'exploitation 	266 876 	173 589
+= CAPACITE D'AUTOFINANCEMENT D'EXPLOITATION 	266 876 	173 589
++ Revenus financiers 	7 500 	0
++ Produits HAO 	2 000 	0
+- Frais financiers 	-3 500 	0
+- Impôts sur les résultats 	-31 102 	-23 411
+= CAPACITE D'AUTOFINANCEMENT GLOBALE (C.A.F.G.) 	242 	150 	61%
+- Distributions de dividendes opérées durant l'exercice 	-90 000 	-40 000 	125%
+= AUTOFINANCEMENT 	-89 758 	-39 850 	125%
+ANALYSE DE LA RENTABILITE
+Rentabilité économique = Résultat d’exploitation (a) /Capitaux propres + dettes financières* 	21 % 	32% 	-11 points
+Rentabilité financière = Résultat net/Capitaux propres 	33% 	41% 	-8 points
+ANALYSE DE LA STRUCTURE FINANCIERE
++ Capitaux propres et ressources assimilées 	656 960 	286 070 	130%
++ Dettes financières* et autres ressources assimilées (b) 	159 316 	57 065 	179%
+= Ressources stables 	816 276 	343 135 	138%
+- Actif immobilisé (b) 	720 323 	210 743 	242%
+= FONDS DE ROULEMENT (1) 	95 953 	132 391 	-28%
++ Actif circulant d'exploitation (b) 	208 865 	160 381 	30%
+- Passif circulant d'exploitation (b) 	-81 498 	-102 553 	-21%
+= BESOIN DE FINANCEMENT D'EXPLOITATION (2) 	127 366 	57 827 	120%
++ Actif circulant HAO (b) 	2 140 	380
+- Passif circulant HAO (b) 	-156 650 	-400
+= BESOIN DE FINANCEMENT HAO (3) 	-154 510 	-20
+BESOIN DE FINANCEMENT GLOBAL (4) = (2) + (3) 	-27 144 	57 807 	-147%
+TRESORERIE NETTE (5) = (1) - (4) 	123 097 	74 584 	65%
+CONTRÔLE : TRESORERIE NETTE = (TRESORERIE - ACTIF) - (TRESORERIE - PASSIF) 	123 097 	74 584
+ANALYSE DE LA VARIATION DE LA TRESORERIE
+Flux de trésorerie des activités opérationnelles 	170 235 	98 149 	73%
+-Flux de trésorerie des activités d'investissement 	-328 722 	-17 160
++Flux de trésorerie des activités de financement 	207 000 	-40 000
+= VARIATION DE LA TRESORERIE NETTE DE LA PERIODE 	48 513 	40 989 	18%
+ANALYSE DE LA VARIATION DE L’ENDETTEMENT FINANCIER NET
+Endettement financier brut (Dettes financières* + Trésorerie – passif) 	94 699 	2 200
+-Trésorerie - actif 	-123 097 	-74 584 	65%
+= ENDETTEMENT FINANCIER NET 	-28 398 	-72 384 	-61%
+a) Résultat d'exploitation après impôts théorique sur le bénéfice. Le taux d’impôt théorique retenu par la société est de 35%.
+b) Les écarts de conversion doivent être éliminés afin de ramener les créances et les dettes concernées à leur valeur initiale
+dettes financières* : emprunts et dettes financières diverses + dettes de location acquisition
+NOTE 34 : FICHE DE SYNTHESE DES PRINCIPAUX INDICATEURS FINANCIERS
+
+-- 69 of 70 --
+
+394
+Société Anonyme (SA) à participation 	Pays OHADA (2)
+publique 	0 	0
+Autres pays africains 	2 	1
+Société Anonyme (SA) 	0 	1
+France 	2 	3
+Société à Responsabilité Limitée (SARL) 	0 	2
+Autres pays de l'Union Européenne 	3 	9
+Société en Commandite Simple (SCS) 	0 	3
+U.S.A. 	4 	0
+Société en Nom Collectif (SNC) 	0 	4
+Canada 	4 	1
+Société en Participation (SP) 	0 	5
+Autres pays américains 	4 	9
+Groupement d'Intérêt Economique (GIE) 	0 	6
+Pays asiatiques 	5 	0
+Association 	0 	7
+Autres pays 	9 	9
+Société par Actions Simplifiée (SAS) 	0 	8
+Autre forme juridique (à préciser) 	0 	9
+Réel normal 	1
+Réel simplifié 	2
+Synthétique 	3
+Forfait 	4
+(1) Remplacer le premier 0 par 1 si l'entité bénéficie d'un agrément prioritaire
+Agriculture vivrière 	Industries du caoutchouc et des plastiques
+001 001 Culture céréalière 	022 001 Fabrication du caoutchouc naturel
+001 002 Culture de tubercules et plantains 	022 002 Industries du caoutchouc
+001 003 Culture de légumes 	022 003 Fabrication de matières plastiques
+001 004 Culture de condiments 	Fabrication d’autres produits minéraux non métalliques et de matériaux
+001 005 Culture de fruits 	de construction
+001 006 Culture d’autres produits de l’Agriculture vivrière 	023 001 Industrie du verre
+Agriculture industrielle et d’exportation 	023 002 Fabrication de produits minéraux pour la construction
+002 001 Culture de canne à sucre 	023 003 Fabrication d’autres produits minéraux non métalliques
+002 002 Culture d’arachide d’huilerie 	Métallurgie et travail des métaux
+002 003 Culture d’arachide de bouche 	024 001 Métallurgie
+002 004 Culture de tabac 	024 002 Travail des métaux
+002 005 Culture de coton 	Fabrication de machines, d’équipements et d’appareils électriques
+002 006 Culture de blé 	025 001 Fabrication de machines et d’équipements
+002 007 Culture de cacao 	025 002 Fabrication de machines de bureaux
+002 008 Culture de café 	025 003 Fabrication d’appareils électriques
+002 009 Culture de bananes d’exportation 	Fabrication d’équipements et appareils audiovisuels et de communication ;
+002 010 Culture d’ananas d’exportation 	fabrication d’instruments médicaux, d’optique et d’horlogerie
+002 011 Autres cultures industrielles 	026 001 Fabrication d’équipements et appareils audiovisuels et de Communication
+Elevage et chasse 	026 002 Fabrication d’instruments médicaux, d’optique et d’horlogerie
+003 001 Elevage bovin 	Fabrication de matériel de transport
+003 002 Elevage ovin, caprin, équin 	027 001 Fabrication de véhicules routiers
+003 003 Elevage de volaille 	027 002 Fabrication d’autres matériels de transport
+003 004 Autres élevages 	Industries diverses
+003 005 Chasse 	028 001 Fabrication de meubles
+Sylviculture, exploitation forestière 	028 002 Industries diverses
+004 001 Sylviculture 	Production et distribution d’eau, d’électricité et de gaz
+004 002 Exploitation forestière 	029 001 Production, transport et distribution d’électricité
+Pêche et aquaculture 	029 002 Captage, épuration et distribution d’eau
+005 001 Pêche de poissons 	029 003 Production et distribution de gaz
+005 002 Autres pèches et aquaculture 	Construction
+Industries extractives 	030 001 Préparation de sites et construction d’ouvrages de bâtiments ou de génie civil
+006 001 Extraction d’hydrocarbures 	030 002 Travaux d’installation et de finition
+006 002 Extraction d’autres produits 	Commerce
+Production de viande et de poissons 	031 001 Commerce de véhicules, d’accessoires et de carburant
+007 001 Production de viande et de produits à base de viande 	031 002 Commerce de produits agricoles bruts et d’animaux vivants
+007 002 Production de poissons et de produits à base de poisson 	031 003 Autres commerces
+Travail des grains et fabrication de produits amylacés 	Réparations
+008 000 Travail des grains et fabrication de produits amylacés 	032 001 Entretien et réparation de véhicules automobiles
+Transformation du café et du cacao 	032 002 Réparations de biens personnels et domestiques
+009 001 Transformation du café 	Hôtels, restaurants
+009 002 Transformation du cacao 	033 001 Hôtels
+Industrie des oléagineux 	033 002 Bars et restaurants
+010 001 Huiles brutes et tourteaux 	Transport et communication
+010 002 Autres corps gras 	034 001 Transports ferroviaires
+Boulangerie, Pâtisserie et pâtes alimentaires 	034 002 Transports routiers, transports par conduite
+011 001 Fabrication de pains, de biscuits et de pâtisserie 	034 003 Transport par eau
+011 002 Fabrication de pâtes alimentaires 	034 004 Transport aérien
+Industries laitières 	034 005 Services annexes et auxiliaire de transport
+012 000 Industries laitières 	Postes, télécommunications
+Transformation des fruits et légumes et fabrication 	035 001 Postes
+2 - Code régime fiscal
+CODES ACTIVITES ECONOMIQUES
+(2) Bénin = 01 ; Burkina = 02 ; Côte d'ivoire = 03 ; Guinée Bissau = 04 ; Mali = 05 ; Niger = 06 ; Sénégal = 07 ; Togo = 08;
+Cameroun = 09; Congo = 10; Gabon = 11; République Centrafricaine = 12; Tchad = 13; Comores = 14; Guinée = 15;
+Guinée Equatoriale = 16; Congo RDC = 17.
+TABLES DES CODES
+1 - Code forme juridique (1) 	3 - Code pays du siège social
+NOTE 36
+
+-- 70 of 70 --
+
