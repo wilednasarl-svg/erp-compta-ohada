@@ -10,6 +10,7 @@ import {
   type ListFiscalDeclarationsFilter,
 } from '../repositories/fiscal-declaration.repository';
 import { FiscalParameterRepository } from '../repositories/fiscal-parameter.repository';
+import { FiscalBaseService } from './fiscal-base.service';
 import { FISCAL_STATUS_TRANSITIONS, type FiscalDeclarationStatus } from '../types/fiscal.types';
 
 export interface GenerateDeclarationCommand {
@@ -34,6 +35,7 @@ export class FiscalDeclarationsService {
   constructor(
     private readonly declarations: FiscalDeclarationRepository,
     private readonly params: FiscalParameterRepository,
+    private readonly baseService: FiscalBaseService,
   ) {}
 
   async list(
@@ -110,6 +112,46 @@ export class FiscalDeclarationsService {
       liabilityAccount: param.liabilityAccount,
       comment: cmd.comment ?? null,
       createdById: cmd.createdById ?? null,
+    });
+  }
+
+  /**
+   * Génère une déclaration en DÉRIVANT automatiquement la base depuis la
+   * comptabilité validée de la période (selon le `base_kind` du paramètre).
+   * Si le `base_kind` est `custom`, la base auto vaut 0 — saisir manuellement
+   * (ex. patente). `baseOverride` force une base explicite si fourni.
+   */
+  async generateAuto(
+    organizationId: TenantId,
+    cmd: Omit<GenerateDeclarationCommand, 'baseAmount'> & { baseOverride?: string },
+  ): Promise<FiscalDeclarationEntity> {
+    const periodMonth = cmd.periodMonth ?? null;
+    const onDate = `${cmd.periodYear}-${String(periodMonth ?? 1).padStart(2, '0')}-01`;
+
+    const param = await this.params.findEffective(organizationId, cmd.taxCode, onDate);
+    if (!param) {
+      throw new AppException(ERROR_CODES.FISCAL_NO_RATE_FOR_PERIOD, {
+        message: `Aucun paramètre actif pour ${cmd.taxCode} à la date ${onDate}`,
+        details: { taxCode: cmd.taxCode, onDate },
+      });
+    }
+
+    const baseAmount =
+      cmd.baseOverride ??
+      (await this.baseService.computeBase(
+        organizationId,
+        param.baseKind,
+        cmd.periodYear,
+        periodMonth,
+      ));
+
+    return this.generate(organizationId, {
+      taxCode: cmd.taxCode,
+      periodYear: cmd.periodYear,
+      periodMonth,
+      baseAmount,
+      comment: cmd.comment,
+      createdById: cmd.createdById,
     });
   }
 

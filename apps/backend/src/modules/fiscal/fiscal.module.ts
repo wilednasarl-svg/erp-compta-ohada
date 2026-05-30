@@ -3,12 +3,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.entity';
 import { FiscalParameterEntity } from './entities/fiscal-parameter.entity';
 import { FiscalDeclarationEntity } from './entities/fiscal-declaration.entity';
 import { FiscalParameterRepository } from './repositories/fiscal-parameter.repository';
 import { FiscalDeclarationRepository } from './repositories/fiscal-declaration.repository';
+import { FiscalBaseRepository } from './repositories/fiscal-base.repository';
 import { FiscalParametersService } from './services/fiscal-parameters.service';
 import { FiscalDeclarationsService } from './services/fiscal-declarations.service';
+import { FiscalBaseService } from './services/fiscal-base.service';
 import { FiscalParametersController } from './controllers/fiscal-parameters.controller';
 import { FiscalDeclarationsController } from './controllers/fiscal-declarations.controller';
 
@@ -21,7 +24,11 @@ import { FiscalDeclarationsController } from './controllers/fiscal-declarations.
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([FiscalParameterEntity, FiscalDeclarationEntity]),
+    TypeOrmModule.forFeature([
+      FiscalParameterEntity,
+      FiscalDeclarationEntity,
+      JournalEntryLineEntity,
+    ]),
     AuthModule,
     RbacModule,
   ],
@@ -29,8 +36,10 @@ import { FiscalDeclarationsController } from './controllers/fiscal-declarations.
   providers: [
     FiscalParameterRepository,
     FiscalDeclarationRepository,
+    FiscalBaseRepository,
     FiscalParametersService,
     FiscalDeclarationsService,
+    FiscalBaseService,
   ],
   exports: [FiscalParametersService, FiscalDeclarationsService],
 })
