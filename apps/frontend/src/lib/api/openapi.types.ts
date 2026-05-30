@@ -2468,6 +2468,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/input-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue complet : pour chaque rapport financier SYSCOHADA, le(s) fichier(s) à importer, la donnée source et les formules de calcul. */
+        get: operations["ReportInputCatalogController_getCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/input-catalog/by-document-type/{documentType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rapports qu'un type de fichier importé donné peut alimenter. */
+        get: operations["ReportInputCatalogController_getByDocumentType"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/input-catalog/{reportKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Spécification d'un rapport : fichiers à importer, source et formules. */
+        get: operations["ReportInputCatalogController_getOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/assets": {
         parameters: {
             query?: never;
@@ -10170,6 +10221,64 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportInputCatalogController_getCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des spécifications de rapport (entrées requises + formules). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportInputCatalogController_getByDocumentType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentType: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rapports alimentés par ce type de document. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportInputCatalogController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reportKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Spécification du rapport, ou 404-like (report: null). */
             200: {
                 headers: {
                     [name: string]: unknown;
