@@ -442,7 +442,7 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries, audit } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession.mockResolvedValueOnce(balancedRows()).mockResolvedValueOnce([]);
+      stagingRepo.listBySession.mockResolvedValue(balancedRows());
       entries.createDraft.mockResolvedValue({ id: 'entry-uuid-1' });
 
       const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -500,7 +500,7 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 1, withErrors: 0 });
       stagingRepo.listBySession
-        .mockResolvedValueOnce([
+        .mockResolvedValue([
           {
             rowNumber: 1,
             mappedValues: {
@@ -512,8 +512,7 @@ describe('ImportSessionService', () => {
               credit: '0',
             },
           },
-        ])
-        .mockResolvedValueOnce([]);
+        ]);
 
       await expect(
         service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -535,7 +534,7 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 4, withErrors: 0 });
       stagingRepo.listBySession
-        .mockResolvedValueOnce([
+        .mockResolvedValue([
           ...balancedRows(),
           {
             rowNumber: 3,
@@ -559,8 +558,7 @@ describe('ImportSessionService', () => {
               credit: '50',
             },
           },
-        ])
-        .mockResolvedValueOnce([]);
+        ]);
       entries.createDraft
         .mockResolvedValueOnce({ id: 'entry-vte' })
         .mockResolvedValueOnce({ id: 'entry-ach' });
@@ -579,7 +577,7 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 4, withErrors: 0 });
       stagingRepo.listBySession
-        .mockResolvedValueOnce([
+        .mockResolvedValue([
           // Pièce 1 — équilibrée
           {
             rowNumber: 1,
@@ -630,8 +628,7 @@ describe('ImportSessionService', () => {
               pieceNumber: '2',
             },
           },
-        ])
-        .mockResolvedValueOnce([]);
+        ]);
       entries.createDraft
         .mockResolvedValueOnce({ id: 'entry-p1' })
         .mockResolvedValueOnce({ id: 'entry-p2' });
@@ -654,7 +651,7 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
       stagingRepo.listBySession
-        .mockResolvedValueOnce([
+        .mockResolvedValue([
           {
             rowNumber: 1,
             mappedValues: {
@@ -683,8 +680,7 @@ describe('ImportSessionService', () => {
               pieceNumber: '1',
             },
           },
-        ])
-        .mockResolvedValueOnce([]);
+        ]);
       entries.createDraft.mockResolvedValue({ id: 'entry-piece-1' });
 
       await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -719,7 +715,7 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
       stagingRepo.listBySession
-        .mockResolvedValueOnce([
+        .mockResolvedValue([
           {
             rowNumber: 1,
             mappedValues: {
@@ -744,8 +740,7 @@ describe('ImportSessionService', () => {
               pieceNumber: '7',
             },
           },
-        ])
-        .mockResolvedValueOnce([]);
+        ]);
 
       await expect(
         service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -763,7 +758,7 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession.mockResolvedValueOnce(balancedRows()).mockResolvedValueOnce([]);
+      stagingRepo.listBySession.mockResolvedValue(balancedRows());
       entries.createDraft.mockRejectedValueOnce(new Error('period closed by race'));
 
       await expect(
@@ -992,8 +987,7 @@ describe('ImportSessionService', () => {
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSessionLocal());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
       stagingRepo.listBySession
-        .mockResolvedValueOnce(balancedRowsLocal())
-        .mockResolvedValueOnce([]);
+        .mockResolvedValue(balancedRowsLocal());
       entries.createDraft.mockResolvedValue({ id: 'entry-x' });
 
       const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
