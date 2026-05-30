@@ -71,6 +71,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: '/dashboards/treasury', label: 'Trésorerie & Cash', icon: Wallet, hint: 'Jours de cash, soldes par banque, alertes' },
       { href: '/dashboards/profitability', label: 'Rentabilité', icon: PieChart, hint: 'Marge par activité, client, projet, zone' },
       { href: '/budget', label: 'Budget vs Réalisé', icon: Target, hint: 'Écarts budgétaires et taux de consommation' },
+      { href: '/budget/saisie', label: 'Saisie & import budget', icon: FileUp, hint: 'Modèle Excel : remplir puis réimporter, ou saisir' },
       { href: '/dashboards/consolidated', label: 'Vue consolidée', icon: BarChart3, hint: 'Multi-dossiers' },
     ],
   },
