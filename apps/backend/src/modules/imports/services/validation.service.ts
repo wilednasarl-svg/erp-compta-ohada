@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { parseAccountingAmount } from '../../../common/parsing/parse-accounting-amount';
 import { getRequiredFieldsForDocumentType, type MappedRow } from '../types/mapping';
 import type { DocumentType, ValidationError } from '../types/import-status';
 
@@ -440,17 +441,12 @@ function parseAmount(value: string | null | undefined): AmountResult {
   if (trimmed.length === 0) {
     return { value: 0, error: null };
   }
-  // Strip whitespace groupings, normalise all commas → dots. The /g flag
-  // is defensive: a value like '1,234,56' (ambiguous between French
-  // thousands and decimals) becomes '1.234.56' which fails the strict
-  // single-dot regex below, so the row is flagged invalid rather than
-  // silently mis-parsed if the regex is ever relaxed.
-  const normalised = trimmed.replace(/\s/g, '').replace(/,/g, '.');
-  if (!/^-?\d+(\.\d+)?$/.test(normalised)) {
-    return { value: 0, error: 'invalid' };
-  }
-  const num = Number(normalised);
-  if (!Number.isFinite(num)) {
+  // Parsing robuste FR + US (voir common/parsing/parse-accounting-amount).
+  // Accepte aussi bien `1 234,56` (FR) que `1,234,567.89` (US) : un fichier
+  // de balance exporté en format anglais était auparavant rejeté comme
+  // `invalid` (regex à point unique), bloquant l'import.
+  const num = parseAccountingAmount(trimmed);
+  if (Number.isNaN(num) || !Number.isFinite(num)) {
     return { value: 0, error: 'invalid' };
   }
   if (num < 0) {

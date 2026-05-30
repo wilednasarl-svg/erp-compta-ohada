@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import { parseAccountingAmount } from '../../../common/parsing/parse-accounting-amount';
 import type { TenantId } from '../../../common/persistence/tenant-scope';
 import { ImportSessionRepository } from '../repositories/import-session.repository';
 import { ImportStagingEntryRepository } from '../repositories/import-staging-entry.repository';
@@ -80,10 +81,8 @@ type Row = { mappedValues: MappedRow; errors: ValidationError[] };
 
 function parseAmount(value: string | null | undefined): number {
   if (value === null || value === undefined || value === '') return 0;
-  // Les staging entries normalisent les montants en string, virgule ou point
-  // selon le parser source — on accepte les deux.
-  const cleaned = value.replace(/\s/g, '').replace(',', '.');
-  const n = Number(cleaned);
+  // Parsing robuste FR + US (voir common/parsing/parse-accounting-amount).
+  const n = parseAccountingAmount(value);
   return Number.isFinite(n) ? n : 0;
 }
 

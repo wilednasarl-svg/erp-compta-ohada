@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import { parseAccountingAmount } from '../../../common/parsing/parse-accounting-amount';
 import type { AppConfig } from '../../../config/configuration';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import { OrganizationAccountRepository } from '../../accounting-plan/repositories/organization-account.repository';
@@ -1263,8 +1264,10 @@ export class ImportSessionService {
         details: { rowNumber, mapped },
       });
     }
-    const debit = parseFloat((mapped.debit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
-    const credit = parseFloat((mapped.credit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
+    // Parsing robuste FR + US (cohérent avec ValidationService, qui a déjà
+    // validé la ligne avant d'atteindre ce point).
+    const debit = parseAccountingAmount(mapped.debit ?? '0') || 0;
+    const credit = parseAccountingAmount(mapped.credit ?? '0') || 0;
     const rawAxisType = (mapped.analyticAxisType ?? '').trim();
     const rawAxisCode = (mapped.analyticAxisCode ?? '').trim();
     // Invariant axe (Migration 0092) : (type IS NULL) = (code IS NULL).
