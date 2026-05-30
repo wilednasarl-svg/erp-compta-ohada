@@ -264,6 +264,16 @@ describe('HTTP status mapping', () => {
       ACTUARIAL_COMMITMENT_NOT_FOUND: 404,
       ACTUARIAL_COMMITMENT_NOT_ACTIVE: 409,
       ACTUARIAL_COMMITMENT_PROVISION_OVERFLOW: 422,
+      // Module Budget — budget & contrôle budgétaire.
+      BUDGET_AXIS_NOT_FOUND: 404,
+      BUDGET_AXIS_CODE_TAKEN: 409,
+      BUDGET_AXIS_PARENT_NOT_FOUND: 404,
+      BUDGET_AXIS_PARENT_TYPE_MISMATCH: 422,
+      BUDGET_LINE_NOT_FOUND: 404,
+      BUDGET_LINE_DUPLICATE: 409,
+      BUDGET_LINE_LOCKED: 409,
+      BUDGET_LINE_INVALID_PERIOD: 422,
+      BUDGET_LINE_INVALID_TRANSITION: 409,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
