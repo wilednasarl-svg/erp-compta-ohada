@@ -222,8 +222,23 @@ export default function FiscalPage() {
     return { toFile, upcomingDue, overdue, paidAmount };
   }, [declarations, today]);
 
-  // Regroupement par échéance (date due) pour le calendrier.
-  const groups = useMemo(() => groupByDueDate(declarations), [declarations]);
+  // Nature (fiscale / sociale) de chaque déclaration, déduite du paramètre
+  // portant le même code d'impôt. Code inconnu → fiscal par défaut.
+  const kindByTaxCode = useMemo(() => {
+    const m = new Map<string, FiscalDeclarationKind>();
+    parameters.forEach((p) => m.set(p.taxCode, p.declarationKind));
+    return m;
+  }, [parameters]);
+
+  // Échéancier SÉPARÉ : déclarations fiscales d'un côté, sociales de l'autre.
+  const fiscalGroups = useMemo(
+    () => groupByDueDate(declarations.filter((d) => kindByTaxCode.get(d.taxCode) !== 'social')),
+    [declarations, kindByTaxCode],
+  );
+  const socialGroups = useMemo(
+    () => groupByDueDate(declarations.filter((d) => kindByTaxCode.get(d.taxCode) === 'social')),
+    [declarations, kindByTaxCode],
+  );
 
   const isLoading = declarationsQuery.isLoading && !declarationsQuery.data;
 
@@ -306,21 +321,28 @@ export default function FiscalPage() {
             {declarations.length === 0 ? (
               <EmptyState />
             ) : (
-              <section className="space-y-6">
-                {groups.map((group) => (
-                  <DueDateGroup
-                    key={group.dueDate}
-                    group={group}
-                    today={today}
-                    onTransition={(id, targetStatus) =>
-                      transition.mutate({ id, targetStatus })
-                    }
-                    transitionPendingId={
-                      transition.isPending ? transition.variables?.id : undefined
-                    }
-                  />
-                ))}
-              </section>
+              <div className="space-y-12">
+                <KindSection
+                  title="Déclarations fiscales"
+                  subtitle="DGI — IS, IMF, TVA, patente, retenues…"
+                  groups={fiscalGroups}
+                  today={today}
+                  onTransition={(id, targetStatus) => transition.mutate({ id, targetStatus })}
+                  transitionPendingId={
+                    transition.isPending ? transition.variables?.id : undefined
+                  }
+                />
+                <KindSection
+                  title="Déclarations sociales"
+                  subtitle="CNPS (retraite, PF, AT), FDFP, ITS"
+                  groups={socialGroups}
+                  today={today}
+                  onTransition={(id, targetStatus) => transition.mutate({ id, targetStatus })}
+                  transitionPendingId={
+                    transition.isPending ? transition.variables?.id : undefined
+                  }
+                />
+              </div>
             )}
 
             <BasesSection declarations={declarations} />
@@ -837,6 +859,48 @@ const SELECT_CLASS =
 
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function KindSection({
+  title,
+  subtitle,
+  groups,
+  today,
+  onTransition,
+  transitionPendingId,
+}: {
+  title: string;
+  subtitle: string;
+  groups: DueGroup[];
+  today: Date;
+  onTransition: (id: string, targetStatus: FiscalDeclarationStatus) => void;
+  transitionPendingId: string | undefined;
+}) {
+  return (
+    <section className="space-y-6">
+      <header>
+        <h2 className="font-display text-xl font-medium text-ink">{title}</h2>
+        <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>
+      </header>
+      {groups.length === 0 ? (
+        <p className="rounded-sm border border-dashed border-line p-6 text-center text-sm text-ink-soft">
+          Aucune déclaration pour ces filtres.
+        </p>
+      ) : (
+        <div className="space-y-6">
+          {groups.map((group) => (
+            <DueDateGroup
+              key={group.dueDate}
+              group={group}
+              today={today}
+              onTransition={onTransition}
+              transitionPendingId={transitionPendingId}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function groupByDueDate(declarations: FiscalDeclaration[]): DueGroup[] {
