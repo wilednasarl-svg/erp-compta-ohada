@@ -271,7 +271,7 @@ export default function BudgetSaisiePage() {
           </Link>
         </section>
 
-        {fileError ? <FormError message={fileError} /> : null}
+        {fileError ? <FormError error={{ message: fileError }} /> : null}
         {report ? (
           <div className="rounded-sm border border-line bg-surface p-4 text-sm">
             <p className="font-display font-medium text-ink">
@@ -386,7 +386,7 @@ export default function BudgetSaisiePage() {
               Ajouter
             </Button>
           </form>
-          {createLine.error ? <FormError message={createLine.error.message} /> : null}
+          {createLine.error ? <FormError error={createLine.error} /> : null}
         </section>
 
         {/* Table lignes */}
@@ -480,7 +480,7 @@ export default function BudgetSaisiePage() {
               Créer l&apos;axe
             </Button>
           </form>
-          {createAxis.error ? <FormError message={createAxis.error.message} /> : null}
+          {createAxis.error ? <FormError error={createAxis.error} /> : null}
           {(axesQuery.data?.length ?? 0) > 0 ? (
             <div className="flex flex-wrap gap-2">
               {axesQuery.data?.map((a) => (
