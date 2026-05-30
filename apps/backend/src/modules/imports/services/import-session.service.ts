@@ -756,8 +756,12 @@ export class ImportSessionService {
     // quand un préfixe parent existe (cas typique d'un Sage 8 chiffres
     // contre un plan org à 3-6 chiffres). Les sous-comptes manquants sont
     // ensuite auto-provisionnés au commit (cf. autoProvisionMissingBalanceAccounts).
+    // `documentType` null = auto → la validation défaut à `entries`, donc on
+    // résout aussi le défaut ici pour charger allReferenceCodes (sinon un
+    // import journal sans documentType explicite resterait en unknown_account).
+    const effectiveDocType: DocumentType = documentType ?? 'entries';
     const reconciliableDocType =
-      documentType === 'trial_balance' || documentType === 'entries';
+      effectiveDocType === 'trial_balance' || effectiveDocType === 'entries';
     const allReferenceCodes =
       reconciliableDocType && this.referenceAccounts !== undefined
         ? await this.loadAllReferenceCodes()
@@ -1073,7 +1077,10 @@ export class ImportSessionService {
     // parents SYSCOHADA détectés. S'exécute AVANT le compte d'erreurs
     // car la création supprime les `unknown_account_with_parent_hint`
     // qui sinon bloqueraient le commit.
-    const documentType = this.getDocumentType(session);
+    // `documentType` null = auto → défaut `entries` (cohérent avec la
+    // validation), pour que l'auto-provisioning s'applique aux imports
+    // journal sans documentType explicite.
+    const documentType = this.getDocumentType(session) ?? 'entries';
     let autoCreatedAccounts: number | undefined;
     if (documentType === 'trial_balance' || documentType === 'entries') {
       autoCreatedAccounts = await this.autoProvisionMissingBalanceAccounts(

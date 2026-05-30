@@ -1580,6 +1580,16 @@ function MappingOverridePanel({
               )
             )}
           </div>
+          {!journalsQuery.isLoading &&
+            (journalsQuery.data ?? []).filter((j) => j.isActive).length === 0 && (
+              <p className="mt-2 text-xs text-critical-ink">
+                Aucun journal n&apos;est configuré pour ce dossier.{' '}
+                <Link href="/journals" className="font-medium underline hover:text-critical">
+                  Créez-en un
+                </Link>{' '}
+                (ex. «&nbsp;Achats&nbsp;», code AC), puis revenez choisir le journal par défaut.
+              </p>
+            )}
           {setDefaultJournal.error !== null && (
             <FormError error={setDefaultJournal.error} className="mt-2" />
           )}
