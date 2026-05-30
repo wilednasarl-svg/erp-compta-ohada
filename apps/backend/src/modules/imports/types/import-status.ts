@@ -127,6 +127,14 @@ export const DOCUMENT_TYPES: readonly DocumentType[] = [
 export const DOCUMENT_TYPE_OVERRIDE_KEY = '__documentType';
 
 /**
+ * Clé sentinelle dans `mapping_override` pour le journal par défaut appliqué
+ * aux lignes dont le fichier ne porte pas de colonne « journal » (cas d'un
+ * export Sage mono-journal — tout le fichier est un seul journal, ex. ACH).
+ * Évite une migration SQL, comme `__documentType`.
+ */
+export const DEFAULT_JOURNAL_OVERRIDE_KEY = '__defaultJournalCode';
+
+/**
  * Lifecycle of a single `ImportFile` row (independent of the session).
  *
  *   uploaded      — bytes written, checksum computed, parse not started.

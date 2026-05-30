@@ -111,6 +111,7 @@ export class ImportsController {
         companyId: body.companyId ?? null,
         fiscalYear: body.fiscalYear ?? null,
         documentType: body.documentType ?? null,
+        defaultJournalCode: body.defaultJournalCode ?? null,
       },
       actorUserId,
       buildAuditRequestContext(req),
@@ -156,12 +157,19 @@ export class ImportsController {
   ): Promise<{ session: SessionSummary }> {
     this.assertOrgMatch(pathOrgId, tokenOrgId);
     this.assertActor(actorUserId);
-    const patch: { label?: string | null; documentType?: typeof body.documentType } = {};
+    const patch: {
+      label?: string | null;
+      documentType?: typeof body.documentType;
+      defaultJournalCode?: string | null;
+    } = {};
     if (Object.prototype.hasOwnProperty.call(body, 'label')) {
       patch.label = body.label ?? null;
     }
     if (Object.prototype.hasOwnProperty.call(body, 'documentType')) {
       patch.documentType = body.documentType ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'defaultJournalCode')) {
+      patch.defaultJournalCode = body.defaultJournalCode ?? null;
     }
     const session = await this.importSessions.updateSession(
       asTenantId(tokenOrgId),

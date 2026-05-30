@@ -98,6 +98,7 @@ export interface SessionSummary {
   readonly errorLines: number;
   readonly createdAt: string;
   readonly documentType: DocumentType | null;
+  readonly defaultJournalCode: string | null;
 }
 
 export type MappedRow = Partial<Record<TargetField, string | null>>;
