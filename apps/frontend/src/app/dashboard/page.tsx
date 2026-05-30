@@ -13,7 +13,6 @@ import {
   Clock,
   FileUp,
   Link2,
-  Loader2,
   Percent,
   Scale,
   Target,
@@ -169,25 +168,19 @@ export default function DashboardPage() {
     <AppShell>
       <div className="w-full animate-page-in space-y-10">
 
-        {/* ─── En-tête éditorial ────────────────────────────── */}
-        <header>
-          <p className="eyebrow mb-3">
-            {dayName.charAt(0).toUpperCase() + dayName.slice(1)}
+        {/* ─── En-tête : oriente vers le dossier et le jour ──── */}
+        <header className="border-b border-line pb-4">
+          <p className="eyebrow mb-2">
+            Tableau de bord
+            {' · '}
+            {dayName.charAt(0).toUpperCase() + dayName.slice(1)} {dayMonth} {year}
           </p>
-          <div className="flex items-baseline gap-4">
-            <h1 className="font-display text-5xl font-medium tracking-tight text-ink sm:text-6xl">
-              {dayMonth.charAt(0).toUpperCase() + dayMonth.slice(1)}
-            </h1>
-            <span className="font-display text-2xl font-medium text-ink-mute">{year}</span>
-          </div>
-          <div className="mt-4 h-px w-full bg-line" aria-hidden />
-          <p className="mt-4 text-sm text-ink-soft">
-            Dossier{' '}
-            <span className="font-medium text-ink">{currentOrg?.name ?? '—'}</span>
-            {' · '}
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
+            {currentOrg?.name ?? 'Tableau de bord'}
+          </h1>
+          <p className="mt-2 text-sm text-ink-soft">
             <span className="text-ink-mute">{currentOrg?.role ?? '—'}</span>
-            {' · '}
-            Bonjour{' '}
+            {' · Bonjour '}
             <span className="font-medium text-ink">
               {user?.firstName ?? user?.email?.split('@')[0] ?? ''}
             </span>
@@ -365,9 +358,14 @@ export default function DashboardPage() {
               </div>
 
               {isLoading ? (
-                <div className="flex items-center gap-2 py-6 text-sm text-ink-mute">
-                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-                  Chargement…
+                <div className="space-y-2.5 py-2" aria-hidden>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                      <div className="h-3.5 flex-1 rounded-xs bg-sunk" />
+                      <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <ul className="divide-y divide-line rounded-lg border border-line bg-paper">
@@ -421,8 +419,14 @@ export default function DashboardPage() {
                 </h2>
 
                 {isLoading ? (
-                  <div className="flex items-center gap-2 py-4 text-sm text-ink-mute">
-                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+                  <div className="space-y-2.5 py-2" aria-hidden>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                        <div className="h-3.5 flex-1 rounded-xs bg-sunk" />
+                        <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                      </div>
+                    ))}
                   </div>
                 ) : (s?.recentActivity.length ?? 0) === 0 ? (
                   <div className="rounded-lg border border-line bg-paper px-5 py-8 text-center">
@@ -863,8 +867,12 @@ function DgDashboardView({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20 text-ink-mute">
-        <Loader2 className="h-6 w-6 animate-spin" strokeWidth={1.5} />
+      <div className="space-y-6 py-2" aria-hidden>
+        <div className="space-y-2.5">
+          <div className="h-4 w-40 rounded-xs bg-sunk" />
+          <div className="h-3.5 w-64 rounded-xs bg-sunk" />
+        </div>
+        <div className="h-64 rounded-md bg-sunk" />
       </div>
     );
   }
@@ -1310,8 +1318,12 @@ function DafDashboardView({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20 text-ink-mute">
-        <Loader2 className="h-6 w-6 animate-spin" strokeWidth={1.5} />
+      <div className="space-y-6 py-2" aria-hidden>
+        <div className="space-y-2.5">
+          <div className="h-4 w-40 rounded-xs bg-sunk" />
+          <div className="h-3.5 w-64 rounded-xs bg-sunk" />
+        </div>
+        <div className="h-64 rounded-md bg-sunk" />
       </div>
     );
   }

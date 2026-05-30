@@ -199,7 +199,21 @@ export default function TvaPage() {
           <FormError error={createCode.error} />
 
           {codesQuery.isLoading ? (
-            <p className="py-4 text-sm text-ink-mute">Chargement…</p>
+            <div className="overflow-hidden rounded-sm border border-line" aria-hidden>
+              {Array.from({ length: 6 }).map((_, r) => (
+                <div
+                  key={r}
+                  className="flex items-center gap-4 border-b border-line px-3 py-2.5 last:border-0"
+                >
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 flex-1 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                </div>
+              ))}
+            </div>
           ) : (codesQuery.data ?? []).length === 0 ? (
             <p className="py-4 text-sm text-ink-mute">Aucun code TVA défini.</p>
           ) : (
@@ -312,7 +326,18 @@ export default function TvaPage() {
           <FormError error={compute.error} />
 
           {declarationsQuery.isLoading ? (
-            <p className="py-4 text-sm text-ink-mute">Chargement…</p>
+            <div className="overflow-hidden rounded-sm border border-line" aria-hidden>
+              {Array.from({ length: 6 }).map((_, r) => (
+                <div
+                  key={r}
+                  className="flex items-center gap-4 border-b border-line px-4 py-3 last:border-0"
+                >
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 flex-1 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                </div>
+              ))}
+            </div>
           ) : (declarationsQuery.data ?? []).length === 0 ? (
             <p className="py-4 text-sm text-ink-mute">Aucune déclaration calculée.</p>
           ) : (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Percent } from 'lucide-react';
+import { Percent } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -114,9 +114,20 @@ export default function TaxBreakdownPage() {
         {/* ─── Table ──────────────────────────────────────── */}
         <section className="space-y-5">
           {query.isLoading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-ink-mute">
-              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-              Chargement…
+            <div className="overflow-hidden rounded-sm border border-line" aria-hidden>
+              {Array.from({ length: 6 }).map((_, r) => (
+                <div
+                  key={r}
+                  className="flex items-center gap-4 border-b border-line px-3 py-2.5 last:border-0"
+                >
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 flex-1 rounded-xs bg-sunk" />
+                  <div className="ml-auto h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-12 rounded-xs bg-sunk" />
+                </div>
+              ))}
             </div>
           ) : (report?.codes.length ?? 0) === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">

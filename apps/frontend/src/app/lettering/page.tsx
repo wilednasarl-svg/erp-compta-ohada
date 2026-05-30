@@ -251,9 +251,21 @@ export default function LetteringPage() {
           </div>
 
           {query.isLoading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-ink-mute">
-              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-              Chargement…
+            <div className="overflow-hidden rounded-sm border border-line" aria-hidden>
+              {Array.from({ length: 6 }).map((_, r) => (
+                <div
+                  key={r}
+                  className="flex items-center gap-4 border-b border-line px-3 py-2.5 last:border-0"
+                >
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                  <div className="h-3.5 flex-1 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-12 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-7 rounded-xs bg-sunk" />
+                </div>
+              ))}
             </div>
           ) : (query.data?.length ?? 0) === 0 ? (
             <p className="py-8 text-center text-sm text-ink-mute">Aucun lettrage.</p>
