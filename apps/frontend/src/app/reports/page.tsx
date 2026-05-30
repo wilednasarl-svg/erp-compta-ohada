@@ -5534,6 +5534,22 @@ function parseBalanceCsv(text: string): BalanceParsed {
   }
   if (header.length === 0) { header = parseLine(first).map((c) => c.toLowerCase()); headerIdx = 0; }
 
+  // Ligne de groupe (au-dessus du header) : certains exports de balance
+  // empilent les colonnes par groupe — « MOUVEMENT 2025 | MOUVEMENT 2026 |
+  // SOLDE », chacun couvrant une paire Débit/Crédit, les titres étant
+  // fusionnés sur la 1re cellule du groupe. On la récupère et on propage
+  // (forward-fill) le titre sur les cellules fusionnées vides, pour savoir
+  // à quel groupe appartient chaque colonne.
+  let groupLabels: string[] = [];
+  if (headerIdx > 0) {
+    const raw = parseLine(lines[headerIdx - 1] ?? '').map((c) => c.toLowerCase());
+    let last = '';
+    groupLabels = header.map((_, i) => {
+      if ((raw[i] ?? '').trim() !== '') last = (raw[i] ?? '').trim();
+      return last;
+    });
+  }
+
   const findCol = (...patterns: RegExp[]): number => {
     for (const p of patterns) {
       const idx = header.findIndex((h) => p.test(h));
@@ -5542,10 +5558,26 @@ function parseBalanceCsv(text: string): BalanceParsed {
     return -1;
   };
 
+  // Sélection d'une colonne de montant. Quand PLUSIEURS colonnes matchent
+  // (fichier MOUVEMENT + SOLDE), on choisit le SOLDE : on privilégie la
+  // colonne dont l'en-tête OU le groupe au-dessus contient « solde » ; à
+  // défaut la DERNIÈRE paire (le solde est conventionnellement en fin de
+  // tableau). Une seule colonne candidate → comportement inchangé.
+  const findAmountCol = (...patterns: RegExp[]): number => {
+    const matches: number[] = [];
+    header.forEach((h, i) => { if (patterns.some((p) => p.test(h))) matches.push(i); });
+    if (matches.length === 0) return -1;
+    if (matches.length === 1) return matches[0] ?? -1;
+    const soldeIdx = matches.find(
+      (i) => /solde/.test(header[i] ?? '') || /solde/.test(groupLabels[i] ?? ''),
+    );
+    return soldeIdx ?? matches[matches.length - 1] ?? -1;
+  };
+
   const codeIdx  = findCol(/n[°o]?\s*compte/, /^compte$/, /^code$/, /num[eé]ro/, /^n°/);
   const labelIdx = findCol(/lib[eé]ll/, /intitul/, /d[eé]sign/, /^label/);
-  const debitIdx = findCol(/solde\s*d[eé]bit/, /^s\.?d\.?$/, /^d[eé]bit/, /^sd$/);
-  const creditIdx = findCol(/solde\s*cr[eé]dit/, /^s\.?c\.?$/, /^cr[eé]dit/, /^sc$/);
+  const debitIdx = findAmountCol(/solde\s*d[eé]bit/, /^s\.?d\.?$/, /^d[eé]bit/, /^sd$/, /d[eé]bit/);
+  const creditIdx = findAmountCol(/solde\s*cr[eé]dit/, /^s\.?c\.?$/, /^cr[eé]dit/, /^sc$/, /cr[eé]dit/);
 
   if (codeIdx === -1) throw new Error('Colonne "Compte" introuvable. Vérifier les en-têtes du fichier CSV.');
   if (debitIdx === -1 && creditIdx === -1) throw new Error('Colonnes "Débit" / "Crédit" introuvables. En-têtes attendus : Solde Débiteur, Solde Créditeur.');
@@ -5573,7 +5605,14 @@ function parseBalanceCsv(text: string): BalanceParsed {
 
   if (rows.length === 0) throw new Error('Aucun compte trouvé. Vérifier le format (codes comptes commençant par un chiffre).');
 
-  const colName = (i: number): string => (i >= 0 ? (header[i] ?? '—') : '—');
+  const colName = (i: number): string => {
+    if (i < 0) return '—';
+    const h = header[i] ?? '—';
+    const g = (groupLabels[i] ?? '').trim();
+    // Affiche le groupe (ex. « debit (solde) ») pour que l'utilisateur
+    // voie quelle colonne a été retenue quand le fichier en a plusieurs.
+    return g !== '' && !h.includes(g) ? `${h} (${g})` : h;
+  };
   return {
     rows,
     totalDebit: rows.reduce((s, r) => s + Number(r.debit), 0),
