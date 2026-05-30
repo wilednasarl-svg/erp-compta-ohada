@@ -52,7 +52,8 @@ export function parseAccountingAmount(raw: string | number | null | undefined): 
     const sepCount = (s.match(/[.,]/g) ?? []).length;
     const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
     const decPart = s.slice(decPos + 1).replace(/[.,]/g, '');
-    normalized = sepCount === 1 && decPart.length === 3 ? intPart + decPart : `${intPart}.${decPart}`;
+    normalized =
+      sepCount === 1 && decPart.length === 3 ? intPart + decPart : `${intPart}.${decPart}`;
   }
 
   const n = Number.parseFloat(normalized);
