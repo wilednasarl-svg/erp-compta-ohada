@@ -65,10 +65,18 @@ export class BudgetVarianceRepository {
     const col = GROUP_BY_COLUMNS[groupBy];
     const budgetScenario = query.budgetScenario ?? 'BI';
 
+    // Quand la colonne de libellé EST la colonne de regroupement (cas des axes
+    // analytiques, colonnes UUID, et de la période/type), on la sélectionne
+    // directement : Postgres n'a pas d'agrégat MAX(uuid), et la colonne
+    // groupée est de toute façon fonctionnellement déterminée. MAX n'est requis
+    // que pour le libellé de compte (account_label, non groupé).
+    const labelExpr =
+      col.label === col.key ? `line.${col.label}` : `MAX(line.${col.label})`;
+
     const qb = this.repo
       .createQueryBuilder('line')
       .select(`line.${col.key}`, 'dimension')
-      .addSelect(`MAX(line.${col.label})`, 'dimensionLabel')
+      .addSelect(labelExpr, 'dimensionLabel')
       .addSelect(
         `COALESCE(SUM(CASE WHEN line.scenario = :budgetScenario THEN line.amount_base ELSE 0 END), 0)`,
         'budget',
