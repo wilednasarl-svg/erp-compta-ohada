@@ -98,9 +98,11 @@ describe('Report input catalog', () => {
     const reports = getReportsForDocumentType('trial_balance');
     const fromBalance = reports.find((s) => s.reportKey === 'from-balance');
     expect(fromBalance).toBeDefined();
-    expect(fromBalance?.requiredImports.some((r) => r.documentType === 'trial_balance' && r.sufficientAlone)).toBe(
-      true,
-    );
+    expect(
+      fromBalance?.requiredImports.some(
+        (r) => r.documentType === 'trial_balance' && r.sufficientAlone,
+      ),
+    ).toBe(true);
   });
 
   it('returns null for an unknown report key', () => {

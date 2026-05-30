@@ -31,7 +31,9 @@ export class ReportInputCatalogController {
     summary:
       'Catalogue complet : pour chaque rapport financier SYSCOHADA, le(s) fichier(s) à importer, la donnée source et les formules de calcul.',
   })
-  @ApiOkResponse({ description: 'Liste des spécifications de rapport (entrées requises + formules).' })
+  @ApiOkResponse({
+    description: 'Liste des spécifications de rapport (entrées requises + formules).',
+  })
   getCatalog(): { reports: readonly ReportInputSpec[] } {
     return { reports: REPORT_INPUT_CATALOG };
   }

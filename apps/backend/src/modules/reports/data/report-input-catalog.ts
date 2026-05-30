@@ -160,8 +160,7 @@ export const REPORT_INPUT_CATALOG: readonly ReportInputSpec[] = [
     category: 'etats-financiers',
     endpoint: 'GET /reports/balance-sheet',
     requiredImports: [IMPORT_ENTRIES, IMPORT_GENERAL_LEDGER, IMPORT_TRIAL_BALANCE],
-    sourceData:
-      'Soldes cumulés par compte à la date (`accountBalancesAsAt`) — classes 1 à 5.',
+    sourceData: 'Soldes cumulés par compte à la date (`accountBalancesAsAt`) — classes 1 à 5.',
     formulas: [
       {
         output: 'Classement Actif / Passif',
@@ -636,9 +635,7 @@ export function getReportInputSpec(reportKey: string): ReportInputSpec | null {
 }
 
 /** Tous les rapports qu'un type de fichier importé peut alimenter. */
-export function getReportsForDocumentType(
-  documentType: DocumentType,
-): readonly ReportInputSpec[] {
+export function getReportsForDocumentType(documentType: DocumentType): readonly ReportInputSpec[] {
   return REPORT_INPUT_CATALOG.filter((spec) =>
     spec.requiredImports.some((req) => req.documentType === documentType),
   );
