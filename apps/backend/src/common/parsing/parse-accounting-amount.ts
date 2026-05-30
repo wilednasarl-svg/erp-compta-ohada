@@ -41,19 +41,27 @@ export function parseAccountingAmount(raw: string | number | null | undefined): 
   s = s.replace(/[^\d.,]/g, '');
   if (s === '') return NaN;
 
-  const lastDot = s.lastIndexOf('.');
-  const lastComma = s.lastIndexOf(',');
+  const dotCount = (s.match(/\./g) ?? []).length;
+  const commaCount = (s.match(/,/g) ?? []).length;
 
   let normalized: string;
-  if (lastDot === -1 && lastComma === -1) {
+  if (dotCount === 0 && commaCount === 0) {
     normalized = s;
+  } else if (dotCount > 0 && commaCount > 0) {
+    // Les deux séparateurs présents : le plus à droite est la décimale,
+    // l'autre le séparateur de milliers (1,234,567.89 ou 1.234.567,89).
+    const decSep = s.lastIndexOf('.') > s.lastIndexOf(',') ? '.' : ',';
+    const thousandsSep = decSep === '.' ? ',' : '.';
+    normalized = s.split(thousandsSep).join('').replace(decSep, '.');
   } else {
-    const decPos = Math.max(lastDot, lastComma);
-    const sepCount = (s.match(/[.,]/g) ?? []).length;
-    const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
-    const decPart = s.slice(decPos + 1).replace(/[.,]/g, '');
-    normalized =
-      sepCount === 1 && decPart.length === 3 ? intPart + decPart : `${intPart}.${decPart}`;
+    // Un seul type de séparateur.
+    const sep = dotCount > 0 ? '.' : ',';
+    const count = dotCount > 0 ? dotCount : commaCount;
+    const trailing = s.length - s.lastIndexOf(sep) - 1;
+    // Plusieurs occurrences (1,885,629,834 = milliers) OU une seule suivie
+    // d'exactement 3 chiffres (1,234 = 1234) → séparateurs de milliers.
+    // Sinon (1-2 chiffres après) c'est la décimale (1,23 = 1.23).
+    normalized = count > 1 || trailing === 3 ? s.split(sep).join('') : s.replace(sep, '.');
   }
 
   const n = Number.parseFloat(normalized);
