@@ -16,6 +16,7 @@ import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.
 import { JournalsModule } from '../journals/journals.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { ReportInputCatalogController } from './controllers/report-input-catalog.controller';
 import { ReportsController } from './controllers/reports.controller';
 import { FiscalYearSnapshotEntity } from './entities/fiscal-year-snapshot.entity';
 import { NoteAnnexeCommentEntity } from './entities/note-annexe-comment.entity';
@@ -91,7 +92,7 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
     JournalsModule,
     OrganizationsModule,
   ],
-  controllers: [ReportsController],
+  controllers: [ReportsController, ReportInputCatalogController],
   providers: [
     ReportsRepository,
     NoteAnnexeCommentsRepository,
