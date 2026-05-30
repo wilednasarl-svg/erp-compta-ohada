@@ -46,27 +46,66 @@ type ConsoleReport =
   | 'cash-trend'
   | 'bilan-diagnostic';
 
-const REPORTS: ReadonlyArray<{ readonly key: ConsoleReport; readonly label: string }> = [
-  { key: 'balance-sheet', label: 'Bilan' },
-  { key: 'profit-loss', label: 'Compte de résultat' },
-  { key: 'sig', label: 'SIG' },
-  { key: 'tft', label: 'TFT' },
-  { key: 'annexe', label: 'Annexe' },
-  { key: 'ratios', label: 'Ratios' },
-  { key: 'trial-balance', label: 'Balance générale' },
-  { key: 'comparative-balance', label: 'Balance comparative' },
-  { key: 'multi-year-balance', label: 'Balance pluriannuelle' },
-  { key: 'margin-by-axis', label: 'Marge analytique' },
-  { key: 'general-ledger', label: 'Grand livre' },
-  { key: 'aging-balance', label: 'Balance âgée' },
-  { key: 'cash-trend', label: 'Tendance trésorerie' },
-  { key: 'bilan-diagnostic', label: 'Bilan diagnostic' },
+interface ConsoleReportDef {
+  readonly key: ConsoleReport;
+  readonly label: string;
+  /** Sous-titre court affiché sous l'onglet actif (contexte). */
+  readonly tagline: string;
+}
+
+interface ConsoleGroup {
+  readonly title: string;
+  readonly items: ReadonlyArray<ConsoleReportDef>;
+}
+
+/**
+ * États groupés par famille — une nav à plat de 14 onglets s'enroulait sans
+ * hiérarchie. Le regroupement donne du rythme et un repère (comme la liasse).
+ */
+const CONSOLE_GROUPS: ReadonlyArray<ConsoleGroup> = [
+  {
+    title: 'États OHADA',
+    items: [
+      { key: 'balance-sheet', label: 'Bilan', tagline: 'Patrimoine à une date' },
+      { key: 'profit-loss', label: 'Compte de résultat', tagline: 'Charges & produits' },
+      { key: 'sig', label: 'SIG', tagline: 'Soldes intermédiaires' },
+      { key: 'tft', label: 'TFT', tagline: 'Flux de trésorerie' },
+      { key: 'annexe', label: 'Annexe', tagline: 'Notes réglementaires' },
+    ],
+  },
+  {
+    title: 'Analyses',
+    items: [
+      { key: 'ratios', label: 'Ratios', tagline: 'Structure & rentabilité' },
+      { key: 'margin-by-axis', label: 'Marge analytique', tagline: 'Par axe (chantier…)' },
+      { key: 'cash-trend', label: 'Tendance trésorerie', tagline: 'Évolution mensuelle' },
+    ],
+  },
+  {
+    title: 'Balances',
+    items: [
+      { key: 'trial-balance', label: 'Balance générale', tagline: 'Soldes par compte' },
+      { key: 'comparative-balance', label: 'Comparative', tagline: 'N vs N-1' },
+      { key: 'multi-year-balance', label: 'Pluriannuelle', tagline: 'N / N-1 / N-2' },
+      { key: 'aging-balance', label: 'Balance âgée', tagline: 'Ancienneté clients/fourn.' },
+    ],
+  },
+  {
+    title: 'Détail & contrôle',
+    items: [
+      { key: 'general-ledger', label: 'Grand livre', tagline: 'Détail d’un compte' },
+      { key: 'bilan-diagnostic', label: 'Bilan diagnostic', tagline: 'Contrôle pré-clôture' },
+    ],
+  },
 ];
+
+const ALL_REPORTS: ReadonlyArray<ConsoleReportDef> = CONSOLE_GROUPS.flatMap((g) => g.items);
 
 export default function ReportConsolePage() {
   const org = useCurrentOrg();
   const orgId = org?.id ?? '';
   const [active, setActive] = useState<ConsoleReport>('balance-sheet');
+  const current = ALL_REPORTS.find((r) => r.key === active);
 
   return (
     <AppShell>
@@ -82,29 +121,43 @@ export default function ReportConsolePage() {
           </p>
         </header>
 
-        <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="État à générer">
-          {REPORTS.map((r) => {
-            const isActive = r.key === active;
-            return (
-              <button
-                key={r.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActive(r.key)}
-                className={cn(
-                  '-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors duration-fast',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
-                  isActive
-                    ? 'border-accent text-ink'
-                    : 'border-transparent text-ink-mute hover:text-ink',
-                )}
-              >
-                {r.label}
-              </button>
-            );
-          })}
-        </div>
+        <nav className="space-y-3" aria-label="État à générer">
+          {CONSOLE_GROUPS.map((group) => (
+            <div key={group.title} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="w-28 shrink-0 text-2xs uppercase tracking-wider text-ink-mute">
+                {group.title}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {group.items.map((r) => {
+                  const isActive = r.key === active;
+                  return (
+                    <button
+                      key={r.key}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => setActive(r.key)}
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-sm transition-colors duration-fast',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
+                        isActive
+                          ? 'border-accent bg-accent-soft font-medium text-accent-ink'
+                          : 'border-line-strong bg-paper text-ink-soft hover:border-ink hover:text-ink',
+                      )}
+                    >
+                      {r.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {current && (
+          <p className="-mt-1 text-xs text-ink-mute" aria-live="polite">
+            Vous consultez : <span className="font-medium text-ink-soft">{current.label}</span> — {current.tagline}
+          </p>
+        )}
 
         {active === 'balance-sheet' ? (
           <BilanConsole orgId={orgId} />
