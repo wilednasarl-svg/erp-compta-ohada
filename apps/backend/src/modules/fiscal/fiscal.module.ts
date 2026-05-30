@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { BudgetModule } from '../budget/budget.module';
@@ -37,6 +38,7 @@ import { FiscalBracketsController } from './controllers/fiscal-brackets.controll
     ]),
     AuthModule,
     RbacModule,
+    AuditModule,
     BudgetModule,
   ],
   controllers: [FiscalParametersController, FiscalDeclarationsController, FiscalBracketsController],

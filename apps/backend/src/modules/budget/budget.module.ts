@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { BudgetAxisEntity } from './entities/budget-axis.entity';
@@ -25,7 +26,12 @@ import { BudgetTemplateController } from './controllers/budget-template.controll
  * Voir migrations 0111 (tables) et 0112 (permissions RBAC budget.read/write).
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([BudgetAxisEntity, BudgetLineEntity]), AuthModule, RbacModule],
+  imports: [
+    TypeOrmModule.forFeature([BudgetAxisEntity, BudgetLineEntity]),
+    AuthModule,
+    RbacModule,
+    AuditModule,
+  ],
   controllers: [
     BudgetAxesController,
     BudgetLinesController,
