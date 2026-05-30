@@ -827,16 +827,29 @@ function UnclassifiedAccounts({
 
   function correctionHint(code: string): string {
     const prefix = code.slice(0, 3);
-    if (code.startsWith('130')) return '→ À réimputer sur 110 (Report à nouveau) ou 119';
-    if (code.startsWith('131')) return '→ À réimputer sur 110 (Report à nouveau créditeur)';
-    if (code.startsWith('466')) return '→ À réimputer sur 411 (Clients) ou 401 (Fournisseurs)';
-    if (code.startsWith('467')) return '→ À réimputer sur 412 (Effets à recevoir) ou 404';
-    if (prefix >= '100' && prefix < '200') return "→ Classe 1 : vérifier le sous-compte SYSCOHADA applicable";
-    if (prefix >= '200' && prefix < '300') return "→ Classe 2 : vérifier le compte d'immobilisation SYSCOHADA";
-    if (prefix >= '300' && prefix < '400') return "→ Classe 3 : vérifier le compte de stock SYSCOHADA";
-    if (prefix >= '400' && prefix < '500') return "→ Classe 4 : vérifier le tiers (clients, fournisseurs, État…)";
-    if (prefix >= '500' && prefix < '600') return "→ Classe 5 : vérifier le compte de trésorerie SYSCOHADA";
-    return "→ Vérifier la conformité au PCG OHADA";
+    // Recommandations de réimputation vers le bon compte SYSCOHADA,
+    // du plus spécifique au plus général.
+    if (code.startsWith('462') || code.startsWith('466'))
+      return '→ Compte courant d’associé/groupe : réimputer sur 462 (Associés, comptes courants)';
+    if (code.startsWith('467'))
+      return '→ Réimputer sur 462 (associés) ou 47 (débiteurs/créditeurs divers) selon la nature';
+    if (code.startsWith('18'))
+      return '→ Compte de liaison inter-établissements (18) : exclu du bilan individuel — à rapprocher';
+    if (code.startsWith('130') || code.startsWith('131'))
+      return '→ Résultat : virer en 12 (Report à nouveau) après affectation, ou 11 (réserves)';
+    if (prefix >= '100' && prefix < '160')
+      return '→ Classe 1 : réimputer sur le compte de capitaux propres SYSCOHADA (10x–15x)';
+    if (prefix >= '160' && prefix < '200')
+      return '→ Classe 1 : réimputer sur les dettes financières SYSCOHADA (16x–18x)';
+    if (prefix >= '200' && prefix < '300')
+      return "→ Classe 2 : réimputer sur le compte d'immobilisation SYSCOHADA (21x–27x)";
+    if (prefix >= '300' && prefix < '400')
+      return '→ Classe 3 : réimputer sur le compte de stock SYSCOHADA (31x–38x)';
+    if (prefix >= '400' && prefix < '500')
+      return '→ Classe 4 : réimputer sur le bon tiers (401 fournisseurs, 411 clients, 44 État, 462 associés…)';
+    if (prefix >= '500' && prefix < '600')
+      return '→ Classe 5 : réimputer sur le compte de trésorerie SYSCOHADA (52x banques, 57x caisse…)';
+    return '→ Vérifier la conformité au plan comptable SYSCOHADA';
   }
 
   function downloadCsv() {
