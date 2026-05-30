@@ -236,37 +236,48 @@ export const UNCLASSIFIED_POSTE = '_UNCLASSIFIED_';
 export function classifyToPoste(
   accountCode: string,
   isOpposing = false,
+  netSign?: 'D' | 'C',
 ): BilanPosteClassification | null {
   if (!accountCode || accountCode.length === 0) return null;
 
-  let bestPoste: BilanPosteRef | null = null;
-  let bestLen = 0;
-  let bestIsDeduction = false;
-
+  // Collecte de TOUS les préfixes qui matchent, avec leur longueur et leur
+  // nature (source/déduction). Certains comptes de tiers (462, 463, 471…)
+  // figurent à la fois dans un poste ACTIF (créance) et un poste PASSIF
+  // (dette) : à longueur de préfixe égale, on tranche selon le SIGNE du
+  // solde (débiteur → actif, créditeur → passif) plutôt que l'ordre du
+  // référentiel — sinon un compte d'associé créditeur (dette) serait classé
+  // en créance et déséquilibrerait le bilan.
+  type Match = { poste: BilanPosteRef; len: number; isDeduction: boolean };
+  const matches: Match[] = [];
   for (const poste of BILAN_POSTES) {
     if (poste.section === '_TOTAL_') continue;
-
     for (const prefix of poste.sourceAccountPrefixes) {
-      if (accountCode.startsWith(prefix) && prefix.length > bestLen) {
-        bestPoste = poste;
-        bestLen = prefix.length;
-        bestIsDeduction = false;
+      if (accountCode.startsWith(prefix)) {
+        matches.push({ poste, len: prefix.length, isDeduction: false });
       }
     }
     for (const prefix of poste.deductionPrefixes) {
-      if (accountCode.startsWith(prefix) && prefix.length >= bestLen) {
-        // >= : à longueur égale, le match déduction l'emporte (cf. note 3).
-        bestPoste = poste;
-        bestLen = prefix.length;
-        bestIsDeduction = true;
+      if (accountCode.startsWith(prefix)) {
+        matches.push({ poste, len: prefix.length, isDeduction: true });
       }
     }
   }
 
-  if (bestPoste === null) return null;
+  if (matches.length === 0) return null;
+
+  const maxLen = Math.max(...matches.map((m) => m.len));
+  const top = matches.filter((m) => m.len === maxLen);
+
+  const wantSide = netSign === undefined ? undefined : netSign === 'D' ? 'ACTIF' : 'PASSIF';
+  const bySign = wantSide === undefined ? undefined : top.find((m) => m.poste.side === wantSide);
+
+  // Compte ambigu actif/passif → tranché par le signe ; sinon, à longueur
+  // égale, le match déduction l'emporte (note 3 — amortissements).
+  const chosen: Match = bySign ?? top.find((m) => m.isDeduction) ?? top[0]!;
+
   return {
-    posteCode: bestPoste.code,
-    side: bestPoste.side,
-    asDeduction: bestIsDeduction || isOpposing,
+    posteCode: chosen.poste.code,
+    side: chosen.poste.side,
+    asDeduction: chosen.isDeduction || isOpposing,
   };
 }
