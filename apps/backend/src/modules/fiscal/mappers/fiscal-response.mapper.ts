@@ -1,6 +1,7 @@
 import type { FiscalDeclarationEntity } from '../entities/fiscal-declaration.entity';
 import type { FiscalParameterEntity } from '../entities/fiscal-parameter.entity';
 import type { FiscalTaxBracketEntity } from '../entities/fiscal-tax-bracket.entity';
+import type { SocialPayrollLineEntity } from '../entities/social-payroll-line.entity';
 import {
   type FiscalBracketResponse,
   type FiscalDeclarationEnvelopeResponse,
@@ -10,7 +11,12 @@ import {
   type ListFiscalBracketsResponse,
   type ListFiscalDeclarationsResponse,
   type ListFiscalParametersResponse,
+  type ListSocialPayrollLinesResponse,
+  type SocialPayrollLineEnvelopeResponse,
+  type SocialPayrollLineResponse,
+  type SocialPeriodSummaryResponse,
 } from '../dto/responses';
+import type { SocialPeriodSummary } from '../services/social-payroll.service';
 
 export function toFiscalParameterResponse(entity: FiscalParameterEntity): FiscalParameterResponse {
   return {
@@ -104,4 +110,50 @@ export function toListFiscalBrackets(
   entities: readonly FiscalTaxBracketEntity[],
 ): ListFiscalBracketsResponse {
   return { brackets: entities.map(toFiscalBracketResponse) };
+}
+
+export function toSocialPayrollLineResponse(
+  entity: SocialPayrollLineEntity,
+): SocialPayrollLineResponse {
+  return {
+    id: entity.id,
+    organizationId: entity.organizationId,
+    periodYear: entity.periodYear,
+    periodMonth: entity.periodMonth,
+    employeeRef: entity.employeeRef,
+    grossSalary: entity.grossSalary,
+    createdAt: entity.createdAt,
+    updatedAt: entity.updatedAt,
+  };
+}
+
+export function toSocialPayrollLineEnvelope(
+  entity: SocialPayrollLineEntity,
+): SocialPayrollLineEnvelopeResponse {
+  return { line: toSocialPayrollLineResponse(entity) };
+}
+
+export function toListSocialPayrollLines(
+  entities: readonly SocialPayrollLineEntity[],
+): ListSocialPayrollLinesResponse {
+  return { lines: entities.map(toSocialPayrollLineResponse) };
+}
+
+export function toSocialPeriodSummaryResponse(
+  summary: SocialPeriodSummary,
+): SocialPeriodSummaryResponse {
+  return {
+    periodYear: summary.periodYear,
+    periodMonth: summary.periodMonth,
+    employeeCount: summary.employeeCount,
+    grossTotal: summary.grossTotal,
+    contributions: summary.contributions.map((c) => ({
+      taxCode: c.taxCode,
+      label: c.label,
+      base: c.base,
+      amountDue: c.amountDue,
+      mode: c.mode,
+    })),
+    totalDue: summary.totalDue,
+  };
 }
