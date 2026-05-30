@@ -154,7 +154,7 @@ export default function CollaborationPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow mb-2">Organisation · Collaboration</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Collaboration</h1>
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Collaboration</h1>
             <p className="mt-2 max-w-2xl text-sm text-ink-mute">
               Commentaires, tâches partagées et suivi des actions en équipe.
             </p>

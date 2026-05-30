@@ -127,7 +127,7 @@ export default function LetteringPage() {
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
           <p className="eyebrow mb-2">Tiers</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
             Lettrage
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
@@ -251,9 +251,21 @@ export default function LetteringPage() {
           </div>
 
           {query.isLoading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-ink-mute">
-              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
-              Chargement…
+            <div className="overflow-hidden rounded-sm border border-line" aria-hidden>
+              {Array.from({ length: 6 }).map((_, r) => (
+                <div
+                  key={r}
+                  className="flex items-center gap-4 border-b border-line px-3 py-2.5 last:border-0"
+                >
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                  <div className="h-3.5 flex-1 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-20 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-12 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-16 rounded-xs bg-sunk" />
+                  <div className="h-3.5 w-7 rounded-xs bg-sunk" />
+                </div>
+              ))}
             </div>
           ) : (query.data?.length ?? 0) === 0 ? (
             <p className="py-8 text-center text-sm text-ink-mute">Aucun lettrage.</p>
@@ -272,12 +284,10 @@ export default function LetteringPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {query.data?.map((l, i) => (
+                  {query.data?.map((l) => (
                     <tr
                       key={l.id}
-                      className={`border-b border-line last:border-0 ${
-                        i % 2 === 1 ? 'bg-sunk/25' : 'bg-paper'
-                      }`}
+                      className="border-b border-line last:border-0 transition-colors duration-fast hover:bg-sunk/50"
                     >
                       <td className="px-3 py-2.5 font-mono text-xs text-ink">
                         {l.letteringCode}

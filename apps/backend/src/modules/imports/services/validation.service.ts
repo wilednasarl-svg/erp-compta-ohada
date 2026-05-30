@@ -128,7 +128,8 @@ export class ValidationService {
       const resolved = resolvePostingAccount(account, ctx.chart.postingCodes);
       if (resolved === null) {
         const allowParentHint =
-          documentType === 'trial_balance' && ctx.chart.allReferenceCodes !== undefined;
+          (documentType === 'trial_balance' || documentType === 'entries') &&
+          ctx.chart.allReferenceCodes !== undefined;
         if (allowParentHint) {
           const parent = findParentAccountByPrefix(
             account,

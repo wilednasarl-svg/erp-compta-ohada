@@ -20,6 +20,8 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 
+import { AppException } from '../../../common/errors/app-exception';
+import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { buildAuditRequestContext } from '../../../common/http/request-context.helper';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { CurrentOrgContext, CurrentUserContext } from '../../../common/types/request-context';
@@ -82,12 +84,13 @@ export class RulesController {
   @ApiOperation({ summary: "Créer une règle d'automatisation" })
   @ApiCreatedResponse({ type: RuleEnvelopeResponse })
   async createRule(
-    @Param('id', ParseUUIDPipe) _orgId: string,
+    @Param('id', ParseUUIDPipe) pathOrgId: string,
     @CurrentOrg() org: CurrentOrgContext,
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: CreateRuleDto,
     @Req() req: Request,
   ): Promise<RuleEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, org.id);
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const entity = await this.rulesService.createRule(asTenantId(org.id), user.id, dto, ctx);
     return toRuleEnvelope(entity);
@@ -98,9 +101,10 @@ export class RulesController {
   @ApiOperation({ summary: "Lister les règles de l'organisation" })
   @ApiOkResponse({ type: ListRulesResponse })
   async listRules(
-    @Param('id', ParseUUIDPipe) _orgId: string,
+    @Param('id', ParseUUIDPipe) pathOrgId: string,
     @CurrentOrg() org: CurrentOrgContext,
   ): Promise<ListRulesResponse> {
+    this.assertOrgMatch(pathOrgId, org.id);
     const entities = await this.rulesService.listRules(asTenantId(org.id));
     return toListRules(entities);
   }
@@ -110,10 +114,11 @@ export class RulesController {
   @ApiOperation({ summary: "Détail d'une règle" })
   @ApiOkResponse({ type: RuleEnvelopeResponse })
   async getRule(
-    @Param('id', ParseUUIDPipe) _orgId: string,
+    @Param('id', ParseUUIDPipe) pathOrgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
     @CurrentOrg() org: CurrentOrgContext,
   ): Promise<RuleEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, org.id);
     const entity = await this.rulesService.getRule(asTenantId(org.id), ruleId);
     return toRuleEnvelope(entity);
   }
@@ -123,13 +128,14 @@ export class RulesController {
   @ApiOperation({ summary: 'Mettre à jour une règle (nom, conditions, actions, statut, priorité)' })
   @ApiOkResponse({ type: RuleEnvelopeResponse })
   async updateRule(
-    @Param('id', ParseUUIDPipe) _orgId: string,
+    @Param('id', ParseUUIDPipe) pathOrgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
     @CurrentOrg() org: CurrentOrgContext,
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: UpdateRuleDto,
     @Req() req: Request,
   ): Promise<RuleEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, org.id);
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const entity = await this.rulesService.updateRule(
       asTenantId(org.id),
@@ -153,13 +159,14 @@ export class RulesController {
   })
   @ApiOkResponse({ type: RuleExecutionResultResponse })
   async simulate(
-    @Param('id', ParseUUIDPipe) _orgId: string,
+    @Param('id', ParseUUIDPipe) pathOrgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
     @CurrentOrg() org: CurrentOrgContext,
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: ExecuteRuleDto,
     @Req() req: Request,
   ): Promise<RuleExecutionResultResponse> {
+    this.assertOrgMatch(pathOrgId, org.id);
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const scope: RuleScope = {
       journal: dto.journal,
@@ -185,13 +192,14 @@ export class RulesController {
   })
   @ApiOkResponse({ type: RuleExecutionResultResponse })
   async apply(
-    @Param('id', ParseUUIDPipe) _orgId: string,
+    @Param('id', ParseUUIDPipe) pathOrgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
     @CurrentOrg() org: CurrentOrgContext,
     @CurrentUser() user: CurrentUserContext,
     @Body() dto: ExecuteRuleDto,
     @Req() req: Request,
   ): Promise<RuleExecutionResultResponse> {
+    this.assertOrgMatch(pathOrgId, org.id);
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
     const scope: RuleScope = {
       journal: dto.journal,
@@ -218,11 +226,27 @@ export class RulesController {
   @ApiOperation({ summary: "Historique des exécutions d'une règle" })
   @ApiOkResponse({ type: ListRuleExecutionsResponse })
   async executionHistory(
-    @Param('id', ParseUUIDPipe) _orgId: string,
+    @Param('id', ParseUUIDPipe) pathOrgId: string,
     @Param('ruleId', ParseUUIDPipe) ruleId: string,
     @CurrentOrg() org: CurrentOrgContext,
   ): Promise<ListRuleExecutionsResponse> {
+    this.assertOrgMatch(pathOrgId, org.id);
     const entities = await this.rulesService.getExecutionHistory(asTenantId(org.id), ruleId);
     return toListRuleExecutions(entities);
+  }
+
+  /**
+   * Defense-in-depth tenant guard: the URL `:id` (organization) must match
+   * the organization carried by the caller's token. Mirrors the same check
+   * in ImportsController / ChartOfAccountsController so a token scoped to
+   * org A can never act on org B's path, even though the service layer
+   * already scopes every query by the token org.
+   */
+  private assertOrgMatch(pathOrgId: string, tokenOrgId: string | undefined): void {
+    if (tokenOrgId === undefined || pathOrgId !== tokenOrgId) {
+      throw new AppException(ERROR_CODES.ORG_NOT_FOUND, {
+        message: 'Organization not found',
+      });
+    }
   }
 }

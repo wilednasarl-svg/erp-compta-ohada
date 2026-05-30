@@ -19,9 +19,12 @@ import { SyscohadaComplianceService } from './services/syscohada-compliance.serv
  *     il fournit le catalogue de contrôles + l'extrait verbatim du Guide.
  *   - `DataSource` (TypeORM) est globalement disponible (forRoot) pour la
  *     requête d'équilibre en partie double.
- *   - `AuthModule + RbacModule` sont importés pour que le contrôleur puisse
- *     utiliser `JwtAuthGuard / TenantGuard / PermissionsGuard`
- *     (cf. memory `nest-useguards-requires-module-imports`).
+ *   - `AuthModule + RbacModule + AuditModule` sont importés pour que le
+ *     contrôleur puisse utiliser `JwtAuthGuard / TenantGuard / PermissionsGuard`
+ *     (cf. memory `nest-useguards-requires-module-imports`). `TenantGuard`
+ *     dépend de `AuthEventsService` (exporté par `AuditModule`) en plus des
+ *     repositories RBAC — sans `AuditModule`, le bootstrap Nest échoue à
+ *     résoudre le guard (healthcheck KO en prod).
  */
 @Module({
   imports: [AuditModule, AuthModule, RbacModule, ReportsModule],

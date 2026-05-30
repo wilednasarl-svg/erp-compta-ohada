@@ -3135,6 +3135,326 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/budget/axes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BudgetAxesController_list"];
+        put?: never;
+        post: operations["BudgetAxesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/budget/axes/{axisId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BudgetAxesController_getOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["BudgetAxesController_update"];
+        trace?: never;
+    };
+    "/organizations/{id}/budget/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BudgetLinesController_list"];
+        put?: never;
+        post: operations["BudgetLinesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/budget/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BudgetLinesController_getOne"];
+        put?: never;
+        post?: never;
+        delete: operations["BudgetLinesController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["BudgetLinesController_update"];
+        trace?: never;
+    };
+    "/organizations/{id}/budget/lines/{lineId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BudgetLinesController_transition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/budget/variance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BudgetVarianceController_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/budget/template.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BudgetTemplateController_downloadTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/budget/export.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BudgetTemplateController_exportLines"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/budget/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BudgetTemplateController_importLines"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/parameters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FiscalParametersController_list"];
+        put?: never;
+        post: operations["FiscalParametersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/parameters/{parameterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FiscalParametersController_getOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["FiscalParametersController_update"];
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/parameters/seed-defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FiscalParametersController_seedDefaults"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/declarations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FiscalDeclarationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/declarations/{declarationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FiscalDeclarationsController_getOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["FiscalDeclarationsController_update"];
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/declarations/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FiscalDeclarationsController_generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/declarations/generate-auto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FiscalDeclarationsController_generateAuto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/declarations/{declarationId}/spill-to-treasury": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FiscalDeclarationsController_spillToTreasury"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/declarations/{declarationId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FiscalDeclarationsController_transition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/brackets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FiscalBracketsController_list"];
+        put: operations["FiscalBracketsController_replace"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/brackets/seed-its-defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FiscalBracketsController_seedItsDefaults"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4000,6 +4320,8 @@ export interface components {
              * @enum {string}
              */
             documentType?: "entries" | "general_ledger" | "trial_balance" | "bank_statement" | "auxiliary_ledger" | "sales_purchases";
+            /** @description Code journal par défaut (ex. 'ACH') appliqué aux lignes quand le fichier ne porte pas de colonne journal. */
+            defaultJournalCode?: string;
         };
         UpdateImportSessionDto: {
             /** @description Libellé humain de la session (null pour effacer). */
@@ -4009,6 +4331,8 @@ export interface components {
              * @enum {string|null}
              */
             documentType?: "entries" | "general_ledger" | "trial_balance" | "bank_statement" | "auxiliary_ledger" | "sales_purchases" | null;
+            /** @description Code journal par défaut appliqué aux lignes sans colonne journal (null pour le retirer). */
+            defaultJournalCode?: string | null;
         };
         UpdateMappingOverrideDto: {
             /**
@@ -5247,6 +5571,547 @@ export interface components {
             category?: string;
             recurrence?: string;
             bankAccountId?: string;
+        };
+        BudgetAxisResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** @enum {string} */
+            axisType: "cost_center" | "project" | "agency" | "product" | "zone";
+            /** @example COMM */
+            code: string;
+            /** @example Direction commerciale */
+            label: string;
+            /** Format: uuid */
+            parentId?: Record<string, never> | null;
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListBudgetAxesResponse: {
+            axes: components["schemas"]["BudgetAxisResponse"][];
+        };
+        BudgetAxisEnvelopeResponse: {
+            axis: components["schemas"]["BudgetAxisResponse"];
+        };
+        CreateBudgetAxisDto: {
+            /**
+             * @description Type d'axe analytique
+             * @enum {string}
+             */
+            axisType: "cost_center" | "project" | "agency" | "product" | "zone";
+            /**
+             * @description Code de l'axe (maj, chiffres, tirets ; 1-32)
+             * @example COMM
+             */
+            code: string;
+            /**
+             * @description Libellé
+             * @example Direction commerciale
+             */
+            label: string;
+            /** @description Axe parent (consolidation hiérarchique) */
+            parentId?: string;
+            /**
+             * @description Actif par défaut
+             * @default true
+             */
+            isActive: boolean;
+        };
+        UpdateBudgetAxisDto: {
+            /** @description Libellé */
+            label?: string;
+            /** @description Axe parent (null pour détacher) */
+            parentId?: string | null;
+            /** @description Statut actif */
+            isActive?: boolean;
+        };
+        BudgetLineResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** @example 2026 */
+            fiscalYear: number;
+            /** @example 3 */
+            periodMonth?: Record<string, never> | null;
+            /** @enum {string} */
+            budgetType: "OPEX" | "CAPEX" | "TRESO" | "RH";
+            /** @enum {string} */
+            scenario: "BI" | "BR" | "REAL";
+            /** @example 6221 */
+            accountCode: string;
+            /** @example Locations immobilières */
+            accountLabel?: Record<string, never> | null;
+            /** Format: uuid */
+            costCenterAxisId?: Record<string, never> | null;
+            /** Format: uuid */
+            projectAxisId?: Record<string, never> | null;
+            /** Format: uuid */
+            agencyAxisId?: Record<string, never> | null;
+            /** Format: uuid */
+            productAxisId?: Record<string, never> | null;
+            /** @example 1500000.00 */
+            amount: string;
+            /** @example XOF */
+            currency: string;
+            /** @example 1.000000 */
+            exchangeRate: string;
+            /**
+             * @description Montant en devise de base (XOF)
+             * @example 1500000.00
+             */
+            amountBase: string;
+            comment?: Record<string, never> | null;
+            hypothesis?: Record<string, never> | null;
+            /** @enum {string} */
+            status: "brouillon" | "soumis" | "valide_n1" | "valide_daf" | "verrouille";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListBudgetLinesResponse: {
+            lines: components["schemas"]["BudgetLineResponse"][];
+            /**
+             * @description Nombre total de lignes (avant pagination)
+             * @example 100
+             */
+            total: number;
+        };
+        BudgetLineEnvelopeResponse: {
+            line: components["schemas"]["BudgetLineResponse"];
+        };
+        CreateBudgetLineDto: {
+            /**
+             * @description Exercice
+             * @example 2026
+             */
+            fiscalYear: number;
+            /**
+             * @description Mois 1-12 ; omis = ligne annuelle
+             * @example 3
+             */
+            periodMonth?: number;
+            /**
+             * @description Famille de budget
+             * @enum {string}
+             */
+            budgetType: "OPEX" | "CAPEX" | "TRESO" | "RH";
+            /**
+             * @description Scénario
+             * @default BI
+             * @enum {string}
+             */
+            scenario: "BI" | "BR" | "REAL";
+            /**
+             * @description Compte SYSCOHADA
+             * @example 6221
+             */
+            accountCode: string;
+            /**
+             * @description Libellé du compte
+             * @example Locations immobilières
+             */
+            accountLabel?: string;
+            /** @description Axe centre de coût */
+            costCenterAxisId?: string;
+            /** @description Axe projet */
+            projectAxisId?: string;
+            /** @description Axe agence */
+            agencyAxisId?: string;
+            /** @description Axe produit */
+            productAxisId?: string;
+            /**
+             * @description Montant budgété (string NUMERIC)
+             * @example 1500000.00
+             */
+            amount: string;
+            /**
+             * @description Devise ISO 4217
+             * @default XOF
+             * @example XOF
+             */
+            currency: string;
+            /**
+             * @description Taux de change vers XOF
+             * @default 1
+             * @example 1
+             */
+            exchangeRate: string;
+            /** @description Commentaire */
+            comment?: string;
+            /** @description Hypothèse de construction */
+            hypothesis?: string;
+        };
+        UpdateBudgetLineDto: {
+            /** @description Libellé du compte */
+            accountLabel?: string;
+            /** @description Montant budgété (string NUMERIC) */
+            amount?: string;
+            /** @description Devise ISO 4217 */
+            currency?: string;
+            /** @description Taux de change vers XOF */
+            exchangeRate?: string;
+            /** @description Commentaire */
+            comment?: string;
+            /** @description Hypothèse de construction */
+            hypothesis?: string;
+        };
+        TransitionBudgetLineDto: {
+            /**
+             * @description Statut cible
+             * @example soumis
+             * @enum {string}
+             */
+            targetStatus: "brouillon" | "soumis" | "valide_n1" | "valide_daf" | "verrouille";
+        };
+        BudgetVarianceRowResponse: {
+            /** @description Clé de la dimension (compte, id axe, mois…) */
+            dimension?: Record<string, never> | null;
+            /** @description Libellé lisible de la dimension */
+            dimensionLabel?: Record<string, never> | null;
+            /**
+             * @description Montant budgété (base XOF)
+             * @example 1500000.00
+             */
+            budget: string;
+            /**
+             * @description Montant réalisé (base XOF)
+             * @example 1620000.00
+             */
+            actual: string;
+            /**
+             * @description Écart = réalisé − budget
+             * @example 120000.00
+             */
+            variance: string;
+            /**
+             * @description Écart en % du budget (null si budget = 0)
+             * @example 8
+             */
+            variancePct?: number | null;
+            /** @description Écart favorable au résultat (tient compte du sens du compte SYSCOHADA) */
+            favorable: boolean;
+            /**
+             * @description Taux de réalisation = réalisé / budget × 100
+             * @example 108
+             */
+            realizationPct: number;
+        };
+        BudgetVarianceReportResponse: {
+            /** @example 2026 */
+            fiscalYear: number;
+            /**
+             * @description Scénario budgétaire de référence
+             * @example BI
+             */
+            budgetScenario: string;
+            /**
+             * @description Dimension d'agrégation
+             * @example account
+             */
+            groupBy: string;
+            rows: components["schemas"]["BudgetVarianceRowResponse"][];
+            /** @description Total budget (base XOF) */
+            totalBudget: string;
+            /** @description Total réalisé (base XOF) */
+            totalActual: string;
+            /** @description Écart total */
+            totalVariance: string;
+        };
+        BudgetImportRowErrorResponse: {
+            /**
+             * @description Numéro de ligne dans le fichier (1 = 1re ligne de données)
+             * @example 7
+             */
+            row: number;
+            /** @description Messages de validation pour cette ligne */
+            messages: string[];
+        };
+        BudgetImportReportResponse: {
+            /**
+             * @description Nombre de lignes de données lues
+             * @example 120
+             */
+            totalRows: number;
+            /**
+             * @description Lignes créées
+             * @example 95
+             */
+            created: number;
+            /**
+             * @description Lignes mises à jour (clé naturelle existante)
+             * @example 20
+             */
+            updated: number;
+            /**
+             * @description Lignes rejetées (erreurs de validation)
+             * @example 5
+             */
+            skipped: number;
+            errors: components["schemas"]["BudgetImportRowErrorResponse"][];
+        };
+        FiscalParameterResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** @example TVA */
+            taxCode: string;
+            label: string;
+            /** @example fiscal */
+            declarationKind: string;
+            /** @example 18.0000 */
+            rate: string;
+            /** @example vat_net */
+            baseKind: string;
+            /** @example monthly */
+            periodicity: string;
+            ceiling?: string | null;
+            floorAmount?: string | null;
+            /** @example 15 */
+            dueDay: number;
+            chargeAccount?: Record<string, never> | null;
+            liabilityAccount?: Record<string, never> | null;
+            /** @example 2026-01-01 */
+            effectiveFrom: string;
+            effectiveTo?: Record<string, never> | null;
+            isActive: boolean;
+            notes?: Record<string, never> | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListFiscalParametersResponse: {
+            parameters: components["schemas"]["FiscalParameterResponse"][];
+        };
+        FiscalParameterEnvelopeResponse: {
+            parameter: components["schemas"]["FiscalParameterResponse"];
+        };
+        CreateFiscalParameterDto: {
+            /** @example TVA */
+            taxCode: string;
+            /** @example TVA (taux normal) */
+            label: string;
+            /** @enum {string} */
+            declarationKind: "fiscal" | "social";
+            /**
+             * @description Taux en % (NUMERIC 8,4)
+             * @example 18.0000
+             */
+            rate: string;
+            /** @enum {string} */
+            baseKind: "turnover" | "accounting_result" | "salary_gross" | "salary_capped" | "vat_net" | "custom";
+            /** @enum {string} */
+            periodicity: "monthly" | "quarterly" | "annual";
+            /**
+             * @description Plafond de base
+             * @example 70000.00
+             */
+            ceiling?: string;
+            /**
+             * @description Jour limite de dépôt (1-31)
+             * @example 15
+             */
+            dueDay?: number;
+            /**
+             * @description Compte de charge
+             * @example 4434
+             */
+            chargeAccount?: string;
+            /**
+             * @description Compte de dette (État/CNPS)
+             * @example 4431
+             */
+            liabilityAccount?: string;
+            /**
+             * @description Date d'effet (AAAA-MM-JJ)
+             * @example 2026-01-01
+             */
+            effectiveFrom: string;
+            /**
+             * @description Fin de validité
+             * @example 2026-12-31
+             */
+            effectiveTo?: string;
+            /** @default true */
+            isActive: boolean;
+            /** @description Notes / base légale */
+            notes?: string;
+        };
+        UpdateFiscalParameterDto: {
+            label?: string;
+            /** @example 18.0000 */
+            rate?: string;
+            /** @example 70000.00 */
+            ceiling?: string;
+            /** @example 15 */
+            dueDay?: number;
+            /** @example 2026-12-31 */
+            effectiveTo?: string;
+            isActive?: boolean;
+            notes?: string;
+        };
+        SeedDefaultsDto: {
+            /**
+             * @description Exercice — date d'effet posée au 1er janvier
+             * @example 2026
+             */
+            fiscalYear: number;
+        };
+        SeedDefaultsResultResponse: {
+            /**
+             * @description Nombre de paramètres créés
+             * @example 10
+             */
+            created: number;
+        };
+        FiscalDeclarationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** @example TVA */
+            taxCode: string;
+            label?: Record<string, never> | null;
+            /** @example 2026 */
+            periodYear: number;
+            /** @example 3 */
+            periodMonth?: Record<string, never> | null;
+            /** @example 45000000.00 */
+            baseAmount: string;
+            /** @example 18.0000 */
+            rate: string;
+            /** @example 8100000.00 */
+            amountDue: string;
+            /** @example XOF */
+            currency: string;
+            /** @example 2026-04-15 */
+            dueDate: string;
+            /** @enum {string} */
+            status: "a_deposer" | "depose" | "paye" | "annule";
+            reference?: Record<string, never> | null;
+            justificatifUrl?: Record<string, never> | null;
+            chargeAccount?: Record<string, never> | null;
+            liabilityAccount?: Record<string, never> | null;
+            comment?: Record<string, never> | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ListFiscalDeclarationsResponse: {
+            declarations: components["schemas"]["FiscalDeclarationResponse"][];
+            /** @example 50 */
+            total: number;
+        };
+        FiscalDeclarationEnvelopeResponse: {
+            declaration: components["schemas"]["FiscalDeclarationResponse"];
+        };
+        GenerateDeclarationDto: {
+            /** @example TVA */
+            taxCode: string;
+            /** @example 2026 */
+            periodYear: number;
+            /**
+             * @description Mois 1-12 ; omis pour annuel
+             * @example 3
+             */
+            periodMonth?: number;
+            /**
+             * @description Base imposable (défaut 0)
+             * @example 45000000.00
+             */
+            baseAmount?: string;
+            comment?: string;
+        };
+        GenerateAutoDeclarationDto: {
+            /** @example TVA */
+            taxCode: string;
+            /** @example 2026 */
+            periodYear: number;
+            /**
+             * @description Mois 1-12 ; omis pour annuel
+             * @example 3
+             */
+            periodMonth?: number;
+            /** @description Force une base explicite (sinon dérivée de la compta) */
+            baseOverride?: string;
+            comment?: string;
+        };
+        UpdateDeclarationDto: {
+            /** @description Base imposable (recalcule le montant dû au taux figé) */
+            baseAmount?: string;
+            /** @description Référence de dépôt (e-impôts / CNPS) */
+            reference?: string;
+            /** @description Lien justificatif (GED) */
+            justificatifUrl?: string;
+            comment?: string;
+        };
+        TransitionDeclarationDto: {
+            /**
+             * @example depose
+             * @enum {string}
+             */
+            targetStatus: "a_deposer" | "depose" | "paye" | "annule";
+        };
+        FiscalBracketResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** @example ITS */
+            taxCode: string;
+            /** @example 2026-01-01 */
+            effectiveFrom: string;
+            /** @example 1 */
+            bracketOrder: number;
+            /** @example 0.00 */
+            fromAmount: string;
+            /** @example 75000.00 */
+            toAmount?: string | null;
+            /** @example 16.0000 */
+            rate: string;
+        };
+        ListFiscalBracketsResponse: {
+            brackets: components["schemas"]["FiscalBracketResponse"][];
+        };
+        TaxBracketInputDto: {
+            /**
+             * @description Ordre de la tranche (1 = première)
+             * @example 1
+             */
+            bracketOrder: number;
+            /**
+             * @description Borne inférieure
+             * @example 0.00
+             */
+            fromAmount: string;
+            /**
+             * @description Borne supérieure ; null = tranche ouverte (dernière)
+             * @example 75000.00
+             */
+            toAmount?: string | null;
+            /**
+             * @description Taux marginal en %
+             * @example 16.0000
+             */
+            rate: string;
+        };
+        ReplaceBracketsDto: {
+            /** @example ITS */
+            taxCode: string;
+            /**
+             * @description Date d'effet du barème
+             * @example 2026-01-01
+             */
+            effectiveFrom: string;
+            brackets: components["schemas"]["TaxBracketInputDto"][];
         };
     };
     responses: never;
@@ -10342,6 +11207,712 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    BudgetAxesController_list: {
+        parameters: {
+            query: {
+                axisType: string;
+                activeOnly: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListBudgetAxesResponse"];
+                };
+            };
+        };
+    };
+    BudgetAxesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBudgetAxisDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetAxisEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    BudgetAxesController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                axisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetAxisEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    BudgetAxesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                axisId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBudgetAxisDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetAxisEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    BudgetLinesController_list: {
+        parameters: {
+            query: {
+                fiscalYear: string;
+                periodMonth: string;
+                budgetType: string;
+                scenario: string;
+                accountCode: string;
+                costCenterAxisId: string;
+                projectAxisId: string;
+                status: string;
+                limit: string;
+                offset: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListBudgetLinesResponse"];
+                };
+            };
+        };
+    };
+    BudgetLinesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBudgetLineDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    BudgetLinesController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    BudgetLinesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BudgetLinesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBudgetLineDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    BudgetLinesController_transition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionBudgetLineDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    BudgetVarianceController_report: {
+        parameters: {
+            query: {
+                fiscalYear: string;
+                budgetScenario: string;
+                groupBy: string;
+                budgetType: string;
+                upToMonth: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetVarianceReportResponse"];
+                };
+            };
+        };
+    };
+    BudgetTemplateController_downloadTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BudgetTemplateController_exportLines: {
+        parameters: {
+            query: {
+                fiscalYear: string;
+                scenario: string;
+                budgetType: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BudgetTemplateController_importLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetImportReportResponse"];
+                };
+            };
+        };
+    };
+    FiscalParametersController_list: {
+        parameters: {
+            query: {
+                activeOnly: string;
+                declarationKind: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListFiscalParametersResponse"];
+                };
+            };
+        };
+    };
+    FiscalParametersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFiscalParameterDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalParameterEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalParametersController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                parameterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalParameterEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalParametersController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                parameterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFiscalParameterDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalParameterEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalParametersController_seedDefaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeedDefaultsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedDefaultsResultResponse"];
+                };
+            };
+        };
+    };
+    FiscalDeclarationsController_list: {
+        parameters: {
+            query: {
+                periodYear: string;
+                periodMonth: string;
+                taxCode: string;
+                status: string;
+                dueBefore: string;
+                limit: string;
+                offset: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListFiscalDeclarationsResponse"];
+                };
+            };
+        };
+    };
+    FiscalDeclarationsController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                declarationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalDeclarationEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalDeclarationsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                declarationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDeclarationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalDeclarationEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalDeclarationsController_generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateDeclarationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalDeclarationEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalDeclarationsController_generateAuto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateAutoDeclarationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalDeclarationEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalDeclarationsController_spillToTreasury: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                declarationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalDeclarationEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalDeclarationsController_transition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                declarationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionDeclarationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiscalDeclarationEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    FiscalBracketsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListFiscalBracketsResponse"];
+                };
+            };
+        };
+    };
+    FiscalBracketsController_replace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceBracketsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListFiscalBracketsResponse"];
+                };
+            };
+        };
+    };
+    FiscalBracketsController_seedItsDefaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeedDefaultsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedDefaultsResultResponse"];
                 };
             };
         };

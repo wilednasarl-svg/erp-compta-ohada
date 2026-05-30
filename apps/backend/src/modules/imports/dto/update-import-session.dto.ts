@@ -39,4 +39,16 @@ export class UpdateImportSessionDto {
   @ValidateIf((_, value) => value !== null)
   @IsIn(DOCUMENT_TYPES as readonly string[])
   documentType?: DocumentType | null;
+
+  @ApiPropertyOptional({
+    maxLength: 16,
+    nullable: true,
+    description:
+      "Code journal par défaut appliqué aux lignes sans colonne journal (null pour le retirer).",
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(16)
+  defaultJournalCode?: string | null;
 }

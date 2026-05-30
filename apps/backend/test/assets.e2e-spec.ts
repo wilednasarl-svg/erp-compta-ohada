@@ -207,7 +207,14 @@ describe('e2e: Immobilisations & Amortissements (Module 12)', () => {
       'post',
       `/organizations/${org.organizationId}/assets/${asset.id}/dispose`,
       org.scopedAccessToken,
-    ).send({ disposalDate: '2026-06-30', disposalValue: '8000000.00' });
+    ).send({
+      disposalDate: '2026-06-30',
+      proceedsAmount: '8000000.00',
+      disposalKind: 'recurring',
+      // Explicit contra account: fresh orgs only have the reference chart
+      // (parent '521'), not a leaf bank sub-account like the '5121' default.
+      proceedsAccountCode: '521',
+    });
     expect(disposeRes.status).toBe(HttpStatus.OK);
     expect(disposeRes.body.data.asset.status).toBe('disposed');
     expect(disposeRes.body.data.asset.disposalDate).toBe('2026-06-30');

@@ -178,7 +178,7 @@ export default function InventoryPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow mb-2">États · Inventaire</p>
-            <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Inventaire</h1>
+            <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Inventaire</h1>
             <p className="mt-2 max-w-2xl text-sm text-ink-mute">
               Suivi des stocks et inventaire physique SYSCOHADA. Valorisation au coût moyen pondéré (CMP).
             </p>
@@ -296,7 +296,7 @@ export default function InventoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itemsQuery.data?.map((it, idx) => {
+                    {itemsQuery.data?.map((it) => {
                       const qty = Number(it.qtyOnHand);
                       const cmp = Number(it.cmp);
                       const value = qty * cmp;
@@ -305,7 +305,7 @@ export default function InventoryPage() {
                       return (
                         <tr
                           key={it.id}
-                          className={`border-t border-line transition-colors duration-fast hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
+                          className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
                         >
                           <td className="px-3 py-2 font-mono text-ink">{it.code}</td>
                           <td className="px-3 py-2 text-ink">{it.label}</td>
@@ -392,10 +392,10 @@ export default function InventoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {movementsQuery.data?.map((m, idx) => (
+                    {movementsQuery.data?.map((m) => (
                       <tr
                         key={m.id}
-                        className={`border-t border-line transition-colors duration-fast hover:bg-sunk/50 ${idx % 2 === 1 ? 'bg-sunk/20' : ''}`}
+                        className="border-t border-line transition-colors duration-fast hover:bg-sunk/50"
                       >
                         <td className="px-3 py-2 font-mono text-xs text-ink-soft">{m.movementDate}</td>
                         <td className="px-3 py-2">

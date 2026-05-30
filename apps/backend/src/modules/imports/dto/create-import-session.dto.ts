@@ -55,4 +55,14 @@ export class CreateImportSessionDto {
   @IsOptional()
   @IsIn(DOCUMENT_TYPES as readonly string[])
   documentType?: DocumentType;
+
+  @ApiPropertyOptional({
+    maxLength: 16,
+    description:
+      "Code journal par défaut (ex. 'ACH') appliqué aux lignes quand le fichier ne porte pas de colonne journal.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  defaultJournalCode?: string;
 }

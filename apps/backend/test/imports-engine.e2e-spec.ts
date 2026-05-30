@@ -13,7 +13,7 @@ import { resetTables } from './helpers/db';
  *   12.2  Tenant isolation — org A cannot see/mutate org B sessions.
  *   12.3  Permissions — auditeur read OK, write 403; comptable write OK.
  *   12.4  MIME validation — fake .csv with EXE bytes → 422.
- *   12.5  Dedupe — same SHA256 in same session → 409.
+ *   12.5  Second upload to a parsed session → 409 (not-draft guard).
  *
  * These tests require `TEST_DATABASE_URL` to be set (see
  * `test/setup/load-env.ts`) and a postgres reachable. Locally:
@@ -72,11 +72,11 @@ describe('e2e: Module 3 Import engine (12.1..12.5)', () => {
     const preview = await authedJson(
       handle.http,
       'post',
-      `/organizations/${org.organizationId}/imports/sessions/${sessionId}/preview?page=1&pageSize=50`,
+      `/organizations/${org.organizationId}/imports/sessions/${sessionId}/preview?limit=50&offset=0`,
       org.scopedAccessToken,
     ).send({});
     expect(preview.status).toBe(HttpStatus.OK);
-    expect(Array.isArray(preview.body.data.rows ?? preview.body.data.items)).toBe(true);
+    expect(Array.isArray(preview.body.data.entries)).toBe(true);
 
     // Audit: at least 3 events landed (session_created + file_uploaded + file_parsed).
     const audit: Array<{ event_type: string }> = await dataSource.query(
@@ -216,7 +216,7 @@ describe('e2e: Module 3 Import engine (12.1..12.5)', () => {
   // 12.5 Dedupe
   // ─────────────────────────────────────────────────────────────────
 
-  it('refuses to upload twice the same SHA256 within a session (12.5)', async () => {
+  it('refuses a second upload once the session has been parsed (12.5)', async () => {
     const alice = await seedUserAndLogin(app, 'alice-imp-dedup@e2e.test');
     const org = await createOrgAndSwitch(app, alice, 'Cabinet Dedup');
     const created = await authedJson(
@@ -235,11 +235,17 @@ describe('e2e: Module 3 Import engine (12.1..12.5)', () => {
       .attach('file', csv, 'a.csv');
     expect(first.status).toBe(HttpStatus.CREATED);
 
+    // Vague 1 parses synchronously on upload, so the first upload already
+    // moved the session out of 'draft'. A second upload is rejected as
+    // not-draft — this guard fires BEFORE the checksum dedup
+    // (IMPORT_FILE_DUPLICATE), which is defensive code reserved for the
+    // Vague 2 async-parse flow where a draft session would accept multiple
+    // files before parsing.
     const second = await handle.http
       .post(`/organizations/${org.organizationId}/imports/sessions/${sessionId}/files`)
       .set('Authorization', `Bearer ${org.scopedAccessToken}`)
       .attach('file', csv, 'a-duplicate.csv'); // same bytes, different filename
     expect(second.status).toBe(HttpStatus.CONFLICT);
-    expect(second.body.error.code).toBe(ERROR_CODES.IMPORT_FILE_DUPLICATE);
+    expect(second.body.error.code).toBe(ERROR_CODES.IMPORT_SESSION_NOT_DRAFT);
   });
 });

@@ -377,7 +377,7 @@ export default function DocumentsPage() {
       <div className="animate-page-in space-y-8">
         <header>
           <p className="eyebrow mb-2">Organisation · GED</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Documents</h1>
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Documents</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-mute">
             Gestion électronique des pièces justificatives : importez vos factures, relevés et autres
             justificatifs, organisez-les par tags et retrouvez-les en un clic.

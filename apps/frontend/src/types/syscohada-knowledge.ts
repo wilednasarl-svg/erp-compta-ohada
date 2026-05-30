@@ -5,6 +5,18 @@ export type SyscohadaDomain =
   | 'inventory'
   | 'tva'
   | 'reports'
+  | 'leases'
+  | 'provisions'
+  | 'impairments'
+  | 'subsidies'
+  | 'actuarial-commitments'
+  | 'regularizations'
+  | 'business-combinations'
+  | 'bills-of-exchange'
+  | 'multi-currency'
+  | 'pledged-assets'
+  | 'cash-flow'
+  | 'bank-reconciliation'
   | 'ai';
 
 export interface SyscohadaCitation {

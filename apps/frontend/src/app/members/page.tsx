@@ -161,7 +161,7 @@ export default function MembersPage() {
       <div className="w-full animate-page-in space-y-8">
         <header>
           <p className="eyebrow mb-2">Organisation · Équipe</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">Membres</h1>
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Membres</h1>
           <p className="mt-2 max-w-[60ch] text-sm text-ink-mute">
             Équipe du cabinet. Gérez les rôles et les accès par organisation
             {currentOrg?.name ? ` ${currentOrg.name}` : ''}.

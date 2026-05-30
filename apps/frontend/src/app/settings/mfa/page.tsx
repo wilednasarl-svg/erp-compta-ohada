@@ -109,7 +109,7 @@ export default function MfaSettingsPage() {
       <div className="animate-page-in space-y-8">
         <header>
           <p className="eyebrow mb-2">Organisation · Sécurité</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
             Double authentification
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-mute">

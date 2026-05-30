@@ -40,6 +40,7 @@ import {
   type SessionSummary,
   type TargetField,
 } from '@/types/imports';
+import type { JournalView } from '@/types/journals';
 
 import { DeleteSessionConfirm } from './_components/delete-confirm';
 import { PipelineStepper } from './_components/pipeline-stepper';
@@ -266,7 +267,7 @@ export default function ImportsPage() {
         {/* ─── Header ──────────────────────────────────────── */}
         <header className="space-y-3">
           <p className="eyebrow">Saisie · Imports</p>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
             Imports
           </h1>
           <p className="max-w-[68ch] text-sm leading-relaxed text-ink-soft">
@@ -1102,6 +1103,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
               headers={preview.headers}
               currentMapping={preview.headerMapping}
               unmappedTargets={preview.unmappedTargets}
+              currentDefaultJournalCode={session.defaultJournalCode}
               onSaved={() => {
                 previewMutation.mutate(undefined);
                 onMutated();
@@ -1380,6 +1382,7 @@ interface MappingOverridePanelProps {
   readonly headers: ReadonlyArray<string>;
   readonly currentMapping: Readonly<Record<string, TargetField>>;
   readonly unmappedTargets: ReadonlyArray<TargetField>;
+  readonly currentDefaultJournalCode: string | null;
   readonly onSaved: () => void;
 }
 
@@ -1389,6 +1392,7 @@ function MappingOverridePanel({
   headers,
   currentMapping,
   unmappedTargets,
+  currentDefaultJournalCode,
   onSaved,
 }: MappingOverridePanelProps) {
   const [draft, setDraft] = useState<Record<string, TargetField | ''>>(() =>
@@ -1435,6 +1439,28 @@ function MappingOverridePanel({
         `/organizations/${orgId}/imports/sessions/${sessionId}/mapping`,
         { mappingOverride: {} },
       );
+    },
+    { onSuccess: () => onSaved() },
+  );
+
+  // Journaux actifs — pour le sélecteur de journal par défaut quand le fichier
+  // ne porte pas de colonne journal (export Sage mono-journal).
+  const journalsQuery = useQuery<ReadonlyArray<JournalView>, ApiError>({
+    queryKey: ['journals', orgId],
+    queryFn: async () => {
+      const data = await api.get<{ journals: ReadonlyArray<JournalView> }>(
+        `/organizations/${orgId}/journals`,
+      );
+      return data.journals;
+    },
+    enabled: orgId !== '',
+  });
+
+  const setDefaultJournal = useApiMutation(
+    async (code: string | null) => {
+      await api.patch(`/organizations/${orgId}/imports/sessions/${sessionId}`, {
+        defaultJournalCode: code,
+      });
     },
     { onSuccess: () => onSaved() },
   );
@@ -1518,6 +1544,48 @@ function MappingOverridePanel({
         </table>
       </div>
 
+      {missingRequired.includes('journal') && (
+        <div className="mt-3 rounded-sm border border-warn/50 bg-warn-soft/50 p-3">
+          <label htmlFor="default-journal" className="text-xs font-semibold text-ink">
+            Journal par défaut
+          </label>
+          <p className="mt-0.5 text-xs text-ink-soft">
+            Votre fichier n&apos;a pas de colonne «&nbsp;Journal&nbsp;». Choisissez le journal
+            appliqué à toutes les lignes de cet import (ex.&nbsp;Achats).
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <select
+              id="default-journal"
+              value={currentDefaultJournalCode ?? ''}
+              disabled={setDefaultJournal.isPending}
+              onChange={(e) =>
+                setDefaultJournal.mutate(e.target.value === '' ? null : e.target.value)
+              }
+              className="rounded-sm border border-line-strong bg-paper px-3 py-1.5 text-sm text-ink focus:border-accent focus:outline-none"
+            >
+              <option value="">— Choisir un journal —</option>
+              {(journalsQuery.data ?? [])
+                .filter((j) => j.isActive)
+                .map((j) => (
+                  <option key={j.id} value={j.code}>
+                    {j.code} — {j.label}
+                  </option>
+                ))}
+            </select>
+            {setDefaultJournal.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-ink-mute" />
+            ) : (
+              currentDefaultJournalCode !== null && (
+                <span className="text-xs font-medium text-accent-ink">Appliqué</span>
+              )
+            )}
+          </div>
+          {setDefaultJournal.error !== null && (
+            <FormError error={setDefaultJournal.error} className="mt-2" />
+          )}
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button
           type="button"
@@ -1548,13 +1616,20 @@ function MappingOverridePanel({
           )}
           Réinitialiser (auto-mapping)
         </Button>
-        {missingRequired.length > 0 && (
-          <span className="text-xs text-critical">
-            <ArrowRight className="mr-1 inline h-3 w-3" />
-            Champs requis manquants&nbsp;:{' '}
-            {missingRequired.map((t) => TARGET_LABEL[t]).join(', ')}
-          </span>
-        )}
+        {(() => {
+          // Le journal par défaut satisfait le champ requis « journal » même
+          // sans colonne mappée → on le retire du message d'erreur.
+          const stillMissing = missingRequired.filter(
+            (t) => !(t === 'journal' && currentDefaultJournalCode !== null),
+          );
+          return stillMissing.length > 0 ? (
+            <span className="text-xs text-critical">
+              <ArrowRight className="mr-1 inline h-3 w-3" />
+              Champs requis manquants&nbsp;:{' '}
+              {stillMissing.map((t) => TARGET_LABEL[t]).join(', ')}
+            </span>
+          ) : null;
+        })()}
       </div>
       <FormError error={save.error} className="mt-2" />
       <FormError error={reset.error} className="mt-2" />

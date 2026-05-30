@@ -20,6 +20,7 @@ import { ImportFileRepository } from '../repositories/import-file.repository';
 import { ImportSessionRepository } from '../repositories/import-session.repository';
 import { ImportStagingEntryRepository } from '../repositories/import-staging-entry.repository';
 import {
+  DEFAULT_JOURNAL_OVERRIDE_KEY,
   DOCUMENT_TYPE_OVERRIDE_KEY,
   type DocumentType,
   type ImportSourceType,
@@ -107,6 +108,7 @@ export interface SessionSummary {
   readonly errorLines: number;
   readonly createdAt: Date;
   readonly documentType: DocumentType | null;
+  readonly defaultJournalCode: string | null;
 }
 
 export interface PreviewEntry {
@@ -191,18 +193,25 @@ export class ImportSessionService {
       companyId?: string | null;
       fiscalYear?: string | null;
       documentType?: DocumentType | null;
+      defaultJournalCode?: string | null;
     },
     actorUserId: string,
     ctx: AuditContext,
   ): Promise<SessionSummary> {
-    // Le documentType est stocké dans le JSONB `mapping_override` sous
-    // la clé sentinelle `__documentType` pour éviter une migration SQL.
-    // Le MappingService extrait cette clé avant de traiter les
-    // overrides de header — voir `MappingService.extractDocumentType`.
+    // Le documentType et le journal par défaut sont stockés dans le JSONB
+    // `mapping_override` sous des clés sentinelles (`__documentType`,
+    // `__defaultJournalCode`) pour éviter une migration SQL. Le MappingService
+    // extrait ces clés avant de traiter les overrides de header.
+    const overrideSeed: Record<string, string> = {};
+    if (input.documentType !== null && input.documentType !== undefined) {
+      overrideSeed[DOCUMENT_TYPE_OVERRIDE_KEY] = input.documentType;
+    }
+    const seedJournal = input.defaultJournalCode?.trim();
+    if (seedJournal !== undefined && seedJournal.length > 0) {
+      overrideSeed[DEFAULT_JOURNAL_OVERRIDE_KEY] = seedJournal;
+    }
     const initialOverride: Record<string, string> | null =
-      input.documentType !== null && input.documentType !== undefined
-        ? { [DOCUMENT_TYPE_OVERRIDE_KEY]: input.documentType }
-        : null;
+      Object.keys(overrideSeed).length > 0 ? overrideSeed : null;
 
     const session = await this.sessions.create({
       organizationId,
@@ -267,7 +276,11 @@ export class ImportSessionService {
   async updateSession(
     organizationId: TenantId,
     sessionId: string,
-    patch: { label?: string | null; documentType?: DocumentType | null },
+    patch: {
+      label?: string | null;
+      documentType?: DocumentType | null;
+      defaultJournalCode?: string | null;
+    },
     actorUserId: string,
     ctx: AuditContext,
   ): Promise<SessionSummary> {
@@ -278,29 +291,44 @@ export class ImportSessionService {
 
     const labelTouched = Object.prototype.hasOwnProperty.call(patch, 'label');
     const docTypeTouched = Object.prototype.hasOwnProperty.call(patch, 'documentType');
+    const defaultJournalTouched = Object.prototype.hasOwnProperty.call(
+      patch,
+      'defaultJournalCode',
+    );
 
-    if (!labelTouched && !docTypeTouched) {
+    if (!labelTouched && !docTypeTouched && !defaultJournalTouched) {
       // Nothing to do — surface a 422 rather than a silent no-op so the
       // caller knows their PATCH body was empty.
       throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
-        message: 'Nothing to update — provide at least `label` or `documentType`.',
+        message:
+          'Nothing to update — provide at least `label`, `documentType` or `defaultJournalCode`.',
       });
     }
 
-    if (docTypeTouched) {
+    if (docTypeTouched || defaultJournalTouched) {
       if (session.status === 'completed' || session.status === 'ready_for_import') {
         throw new AppException(ERROR_CODES.IMPORT_SESSION_CANNOT_DELETE, {
-          message: `documentType cannot be changed on a "${session.status}" session.`,
+          message: `Le mapping ne peut pas être modifié sur une session "${session.status}".`,
         });
       }
-      // Merge into the existing JSONB: keep header overrides, replace
-      // only the `__documentType` sentinel (or drop it on null).
+      // Merge into the existing JSONB: keep header overrides, replace only
+      // the sentinelles (`__documentType`, `__defaultJournalCode`).
       const existing = session.mappingOverride ?? {};
       const merged: Record<string, string> = { ...existing };
-      if (patch.documentType === null) {
-        delete merged[DOCUMENT_TYPE_OVERRIDE_KEY];
-      } else if (patch.documentType !== undefined) {
-        merged[DOCUMENT_TYPE_OVERRIDE_KEY] = patch.documentType;
+      if (docTypeTouched) {
+        if (patch.documentType === null) {
+          delete merged[DOCUMENT_TYPE_OVERRIDE_KEY];
+        } else if (patch.documentType !== undefined) {
+          merged[DOCUMENT_TYPE_OVERRIDE_KEY] = patch.documentType;
+        }
+      }
+      if (defaultJournalTouched) {
+        const trimmed = patch.defaultJournalCode?.trim();
+        if (patch.defaultJournalCode === null || trimmed === undefined || trimmed === '') {
+          delete merged[DEFAULT_JOURNAL_OVERRIDE_KEY];
+        } else {
+          merged[DEFAULT_JOURNAL_OVERRIDE_KEY] = trimmed;
+        }
       }
       await this.sessions.updateMappingOverride(sessionId, organizationId, merged);
 
@@ -695,9 +723,10 @@ export class ImportSessionService {
     const rawOverride = (session.mappingOverride as Record<string, string>) ?? {};
     const documentType =
       (rawOverride[DOCUMENT_TYPE_OVERRIDE_KEY] as DocumentType | undefined) ?? null;
+    const defaultJournalCode = (rawOverride[DEFAULT_JOURNAL_OVERRIDE_KEY] ?? '').trim() || null;
     const headerOverrides: Record<string, TargetField> = {};
     for (const [k, v] of Object.entries(rawOverride)) {
-      if (k === DOCUMENT_TYPE_OVERRIDE_KEY) continue;
+      if (k === DOCUMENT_TYPE_OVERRIDE_KEY || k === DEFAULT_JOURNAL_OVERRIDE_KEY) continue;
       headerOverrides[k] = v as TargetField;
     }
 
@@ -721,13 +750,16 @@ export class ImportSessionService {
       })),
     );
 
-    // Pour `trial_balance`, on enrichit le chart avec l'ensemble des
-    // codes du référentiel SYSCOHADA, ce qui permet à `ValidationService`
+    // Pour `trial_balance` ET `entries`, on enrichit le chart avec l'ensemble
+    // des codes du référentiel SYSCOHADA, ce qui permet à `ValidationService`
     // de dégrader `unknown_account` en `unknown_account_with_parent_hint`
     // quand un préfixe parent existe (cas typique d'un Sage 8 chiffres
-    // contre un plan org à 3-6 chiffres).
+    // contre un plan org à 3-6 chiffres). Les sous-comptes manquants sont
+    // ensuite auto-provisionnés au commit (cf. autoProvisionMissingBalanceAccounts).
+    const reconciliableDocType =
+      documentType === 'trial_balance' || documentType === 'entries';
     const allReferenceCodes =
-      documentType === 'trial_balance' && this.referenceAccounts !== undefined
+      reconciliableDocType && this.referenceAccounts !== undefined
         ? await this.loadAllReferenceCodes()
         : undefined;
     const chart = allReferenceCodes !== undefined ? { ...baseChart, allReferenceCodes } : baseChart;
@@ -748,10 +780,17 @@ export class ImportSessionService {
         rawAccount !== undefined && rawAccount.length > 0
           ? resolvePostingAccount(rawAccount, chart.postingCodes)
           : null;
-      const mapped =
+      const accountResolved =
         resolvedAccount !== null && resolvedAccount !== rawMapped.account
           ? { ...rawMapped, account: resolvedAccount }
           : rawMapped;
+      // Injecte le journal par défaut quand le fichier ne porte pas de colonne
+      // journal (export mono-journal). Persisté dans mappedValues → le commit
+      // relit le persisté et groupe sur le bon journal.
+      const mapped =
+        defaultJournalCode !== null && (accountResolved.journal ?? '').trim() === ''
+          ? { ...accountResolved, journal: defaultJournalCode }
+          : accountResolved;
       const errors = this.validation.validateRow(mapped, {
         chart,
         documentType: documentType ?? undefined,
@@ -844,6 +883,7 @@ export class ImportSessionService {
 
   private toSummary(s: ImportSessionEntity): SessionSummary {
     const docType = s.mappingOverride?.[DOCUMENT_TYPE_OVERRIDE_KEY] ?? null;
+    const defaultJournal = (s.mappingOverride?.[DEFAULT_JOURNAL_OVERRIDE_KEY] ?? '').trim();
     return {
       id: s.id,
       status: s.status,
@@ -853,6 +893,7 @@ export class ImportSessionService {
       errorLines: s.errorLines,
       createdAt: s.createdAt,
       documentType: (docType as DocumentType | null) ?? null,
+      defaultJournalCode: defaultJournal.length > 0 ? defaultJournal : null,
     };
   }
 
@@ -1034,7 +1075,7 @@ export class ImportSessionService {
     // qui sinon bloqueraient le commit.
     const documentType = this.getDocumentType(session);
     let autoCreatedAccounts: number | undefined;
-    if (documentType === 'trial_balance') {
+    if (documentType === 'trial_balance' || documentType === 'entries') {
       autoCreatedAccounts = await this.autoProvisionMissingBalanceAccounts(
         organizationId,
         sessionId,
@@ -1061,8 +1102,11 @@ export class ImportSessionService {
     }
 
     // Step 4 — project + group + balance pre-check.
+    // Le journal par défaut (clé sentinelle) couvre les lignes dont le fichier
+    // ne porte pas de colonne journal, y compris au-delà de la page de preview.
+    const defaultJournalCode = this.getDefaultJournalCode(session);
     const drafts: StagingLineDraft[] = rows.map((r) =>
-      this.projectStagingRow(r.rowNumber, r.mappedValues),
+      this.projectStagingRow(r.rowNumber, r.mappedValues, defaultJournalCode),
     );
     const groups = this.groupByJournalAndDate(drafts);
     const unbalanced = this.collectUnbalancedGroups(groups);
@@ -1196,8 +1240,12 @@ export class ImportSessionService {
    * than a user data error (the throws below would indicate that
    * validation drift let an invalid row sneak through).
    */
-  private projectStagingRow(rowNumber: number, mapped: MappedRow): StagingLineDraft {
-    const journalCode = (mapped.journal ?? '').trim();
+  private projectStagingRow(
+    rowNumber: number,
+    mapped: MappedRow,
+    defaultJournalCode: string | null = null,
+  ): StagingLineDraft {
+    const journalCode = (mapped.journal ?? '').trim() || (defaultJournalCode ?? '');
     const entryDate = (mapped.date ?? '').trim();
     const accountCode = (mapped.account ?? '').trim();
     const label = (mapped.label ?? '').trim();
@@ -1581,6 +1629,12 @@ export class ImportSessionService {
     return (raw as DocumentType | null) ?? null;
   }
 
+  /** Journal par défaut (clé sentinelle) appliqué aux lignes sans colonne journal. */
+  private getDefaultJournalCode(session: ImportSessionEntity): string | null {
+    const raw = (session.mappingOverride?.[DEFAULT_JOURNAL_OVERRIDE_KEY] ?? '').trim();
+    return raw.length > 0 ? raw : null;
+  }
+
   // ─── Update Mapping ───────────────────────────────────────────────────
 
   async updateMappingOverride(
@@ -1605,9 +1659,13 @@ export class ImportSessionService {
     // existant — un update de mapping côté UI ne doit pas effacer la
     // nature du document choisie à la création.
     const existingDocType = session.mappingOverride?.[DOCUMENT_TYPE_OVERRIDE_KEY] ?? null;
+    const existingDefaultJournal = session.mappingOverride?.[DEFAULT_JOURNAL_OVERRIDE_KEY] ?? null;
     const merged: Record<string, string> = { ...mappingOverride };
     if (existingDocType !== null && merged[DOCUMENT_TYPE_OVERRIDE_KEY] === undefined) {
       merged[DOCUMENT_TYPE_OVERRIDE_KEY] = existingDocType;
+    }
+    if (existingDefaultJournal !== null && merged[DEFAULT_JOURNAL_OVERRIDE_KEY] === undefined) {
+      merged[DEFAULT_JOURNAL_OVERRIDE_KEY] = existingDefaultJournal;
     }
 
     await this.sessions.updateMappingOverride(sessionId, organizationId, merged);

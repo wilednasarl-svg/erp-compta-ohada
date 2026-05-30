@@ -7,6 +7,10 @@ import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+/** Hauteur approximative du popover (titre + texte + actions) pour décider du flip. */
+const POPOVER_EST_HEIGHT = 210;
+const POPOVER_GAP = 6;
+
 interface DeleteSessionConfirmProps {
   readonly label: string;
   readonly disabled: boolean;
@@ -28,19 +32,32 @@ export function DeleteSessionConfirm({
   onConfirm,
 }: DeleteSessionConfirmProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Calcule la position fixe du popover en évitant qu'il sorte de l'écran.
+   * Si la place sous le déclencheur est insuffisante (dernière ligne de la
+   * liste, bas de fenêtre), on l'ancre par le bas pour l'ouvrir vers le haut —
+   * sinon ses boutons d'action tomberaient hors champ.
+   */
+  const computePos = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const right = window.innerWidth - rect.right;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < POPOVER_EST_HEIGHT + POPOVER_GAP) {
+      setPos({ bottom: window.innerHeight - rect.top + POPOVER_GAP, right });
+    } else {
+      setPos({ top: rect.bottom + POPOVER_GAP, right });
+    }
+  };
+
   const openPopover = () => {
     if (disabled) return;
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setPos({
-        top: rect.bottom + 6,
-        right: window.innerWidth - rect.right,
-      });
-    }
+    computePos();
     setIsOpen((v) => !v);
   };
 
@@ -70,18 +87,13 @@ export function DeleteSessionConfirm({
   /* Reposition on scroll/resize while open */
   useEffect(() => {
     if (!isOpen) return;
-    const update = () => {
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
-      }
-    };
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
+    window.addEventListener('scroll', computePos, true);
+    window.addEventListener('resize', computePos);
     return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', computePos, true);
+      window.removeEventListener('resize', computePos);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   return (
@@ -114,7 +126,12 @@ export function DeleteSessionConfirm({
           ref={popoverRef}
           role="dialog"
           aria-label="Confirmer la suppression de la session"
-          style={{ top: pos.top, right: pos.right, position: 'fixed', zIndex: 200 }}
+          style={{
+            ...(pos.top !== undefined ? { top: pos.top } : { bottom: pos.bottom }),
+            right: pos.right,
+            position: 'fixed',
+            zIndex: 200,
+          }}
           className="w-80 rounded-md border border-line-strong bg-paper p-4 text-left shadow-xl"
         >
           <div className="flex items-start justify-between gap-2">
