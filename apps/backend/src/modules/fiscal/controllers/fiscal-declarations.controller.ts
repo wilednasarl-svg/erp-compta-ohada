@@ -24,6 +24,7 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { GenerateDeclarationDto } from '../dto/generate-declaration.dto';
+import { GenerateAutoDeclarationDto } from '../dto/generate-auto-declaration.dto';
 import { UpdateDeclarationDto } from '../dto/update-declaration.dto';
 import { TransitionDeclarationDto } from '../dto/transition-declaration.dto';
 import {
@@ -102,6 +103,28 @@ export class FiscalDeclarationsController {
       periodYear: dto.periodYear,
       periodMonth: dto.periodMonth,
       baseAmount: dto.baseAmount,
+      comment: dto.comment,
+      createdById: userId ?? null,
+    });
+    return toFiscalDeclarationEnvelope(decl);
+  }
+
+  @Post('generate-auto')
+  @RequirePermission('fiscal.write')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiCreatedResponse({ type: FiscalDeclarationEnvelopeResponse })
+  async generateAuto(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') userId: CurrentUserContext['id'] | undefined,
+    @Body() dto: GenerateAutoDeclarationDto,
+  ): Promise<FiscalDeclarationEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    const decl = await this.declarations.generateAuto(asTenantId(tokenOrgId), {
+      taxCode: dto.taxCode,
+      periodYear: dto.periodYear,
+      periodMonth: dto.periodMonth,
+      baseOverride: dto.baseOverride,
       comment: dto.comment,
       createdById: userId ?? null,
     });

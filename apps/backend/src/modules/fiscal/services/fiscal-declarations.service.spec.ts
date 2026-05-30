@@ -43,7 +43,14 @@ function makeService(opts: {
   const paramRepo = {
     findEffective: jest.fn().mockResolvedValue(opts.param ?? null),
   } as unknown as FiscalParameterRepository;
-  return { service: new FiscalDeclarationsService(declRepo, paramRepo), create, update };
+  const baseService = {
+    computeBase: jest.fn().mockResolvedValue('0.00'),
+  } as unknown as import('./fiscal-base.service').FiscalBaseService;
+  return {
+    service: new FiscalDeclarationsService(declRepo, paramRepo, baseService),
+    create,
+    update,
+  };
 }
 
 describe('FiscalDeclarationsService.generate', () => {

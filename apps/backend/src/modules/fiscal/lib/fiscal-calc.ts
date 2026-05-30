@@ -111,3 +111,33 @@ export function computeAmountDue(base: string, rate: string, ceiling?: string | 
   const amountCents = divRoundHalfUp(baseCents * rateScaled, RATE_SCALE * 100n);
   return centsToAmount(amountCents);
 }
+
+/** Différence signée `a − b` (montants string). */
+export function subtractAmounts(a: string, b: string): string {
+  return centsToAmount(amountToCents(a) - amountToCents(b));
+}
+
+/** Somme signée de montants string. */
+export function sumAmounts(values: ReadonlyArray<string>): string {
+  let total = 0n;
+  for (const v of values) total += amountToCents(v);
+  return centsToAmount(total);
+}
+
+/**
+ * Bornes de date d'une période : mois → 1er au dernier jour du mois ;
+ * période annuelle (`month` nul) → 1er janvier au 31 décembre.
+ */
+export function periodBounds(
+  year: number,
+  month: number | null,
+): { fromDate: string; toDate: string } {
+  if (month == null) {
+    return { fromDate: `${year}-01-01`, toDate: `${year}-12-31` };
+  }
+  const last = daysInMonth(year, month);
+  return {
+    fromDate: `${year}-${pad2(month)}-01`,
+    toDate: `${year}-${pad2(month)}-${pad2(last)}`,
+  };
+}
