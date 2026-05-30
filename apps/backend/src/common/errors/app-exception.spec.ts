@@ -274,6 +274,8 @@ describe('HTTP status mapping', () => {
       BUDGET_LINE_LOCKED: 409,
       BUDGET_LINE_INVALID_PERIOD: 422,
       BUDGET_LINE_INVALID_TRANSITION: 409,
+      BUDGET_IMPORT_EMPTY: 422,
+      BUDGET_IMPORT_INVALID_FORMAT: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {

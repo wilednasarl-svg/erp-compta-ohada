@@ -121,6 +121,70 @@ export class BudgetLinesService {
     });
   }
 
+  /**
+   * Insère ou met à jour une ligne par sa clé naturelle (utilisé par
+   * l'import). Si la ligne existe et est verrouillée, l'opération échoue.
+   * Retourne l'entité et l'action effectuée.
+   */
+  async upsert(
+    organizationId: TenantId,
+    cmd: CreateLineCommand,
+  ): Promise<{ line: BudgetLineEntity; action: 'created' | 'updated' }> {
+    const scenario = cmd.scenario ?? 'BI';
+    const currency = cmd.currency ?? DEFAULT_BUDGET_CURRENCY;
+    const exchangeRate = cmd.exchangeRate ?? '1';
+
+    await this.assertAxes(organizationId, cmd);
+
+    const existing = await this.lines.findByNaturalKey(organizationId, {
+      fiscalYear: cmd.fiscalYear,
+      periodMonth: cmd.periodMonth ?? null,
+      budgetType: cmd.budgetType,
+      scenario,
+      accountCode: cmd.accountCode,
+      costCenterAxisId: cmd.costCenterAxisId,
+      projectAxisId: cmd.projectAxisId,
+      agencyAxisId: cmd.agencyAxisId,
+      productAxisId: cmd.productAxisId,
+    });
+
+    if (existing) {
+      this.assertMutable(existing);
+      const updated = await this.lines.update(existing, {
+        accountLabel: cmd.accountLabel ?? existing.accountLabel,
+        amount: cmd.amount,
+        currency,
+        exchangeRate,
+        amountBase: toBaseAmount(cmd.amount, exchangeRate),
+        comment: cmd.comment ?? existing.comment,
+        hypothesis: cmd.hypothesis ?? existing.hypothesis,
+      });
+      return { line: updated, action: 'updated' };
+    }
+
+    const created = await this.lines.create({
+      organizationId,
+      fiscalYear: cmd.fiscalYear,
+      periodMonth: cmd.periodMonth ?? null,
+      budgetType: cmd.budgetType,
+      scenario,
+      accountCode: cmd.accountCode,
+      accountLabel: cmd.accountLabel ?? null,
+      costCenterAxisId: cmd.costCenterAxisId ?? null,
+      projectAxisId: cmd.projectAxisId ?? null,
+      agencyAxisId: cmd.agencyAxisId ?? null,
+      productAxisId: cmd.productAxisId ?? null,
+      amount: cmd.amount,
+      currency,
+      exchangeRate,
+      amountBase: toBaseAmount(cmd.amount, exchangeRate),
+      comment: cmd.comment ?? null,
+      hypothesis: cmd.hypothesis ?? null,
+      createdById: cmd.createdById ?? null,
+    });
+    return { line: created, action: 'created' };
+  }
+
   async update(
     id: string,
     organizationId: TenantId,
