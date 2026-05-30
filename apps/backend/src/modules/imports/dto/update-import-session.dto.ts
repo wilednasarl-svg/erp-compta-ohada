@@ -44,7 +44,7 @@ export class UpdateImportSessionDto {
     maxLength: 16,
     nullable: true,
     description:
-      "Code journal par défaut appliqué aux lignes sans colonne journal (null pour le retirer).",
+      'Code journal par défaut appliqué aux lignes sans colonne journal (null pour le retirer).',
   })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)

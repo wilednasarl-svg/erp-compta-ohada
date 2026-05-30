@@ -258,12 +258,8 @@ describe('ValidationService', () => {
     it('réconcilie un code zéro-paddé Sage vers le compte imputable exact (pas d’erreur)', () => {
       const chart: ChartAccountIndex = { postingCodes: new Set(['4011', '4452']) };
       // 40110000 → 4011 (zéros terminaux retirés), 44520000 → 4452.
-      expect(
-        service.validateRow({ ...baseRow(), account: '40110000' }, { chart }),
-      ).toEqual([]);
-      expect(
-        service.validateRow({ ...baseRow(), account: '44520000' }, { chart }),
-      ).toEqual([]);
+      expect(service.validateRow({ ...baseRow(), account: '40110000' }, { chart })).toEqual([]);
+      expect(service.validateRow({ ...baseRow(), account: '44520000' }, { chart })).toEqual([]);
     });
 
     it('ne fusionne PAS un sous-compte dans son parent (60420000 reste inconnu si 6042 absent)', () => {

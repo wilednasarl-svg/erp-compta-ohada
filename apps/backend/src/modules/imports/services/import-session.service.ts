@@ -86,7 +86,11 @@ import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { FileParserService } from './file-parser.service';
 import { MappingService } from './mapping.service';
-import { ValidationService, findParentAccountByPrefix, resolvePostingAccount } from './validation.service';
+import {
+  ValidationService,
+  findParentAccountByPrefix,
+  resolvePostingAccount,
+} from './validation.service';
 
 /**
  * Représentation minimale d'un fichier reçu en upload, agnostique du
@@ -291,10 +295,7 @@ export class ImportSessionService {
 
     const labelTouched = Object.prototype.hasOwnProperty.call(patch, 'label');
     const docTypeTouched = Object.prototype.hasOwnProperty.call(patch, 'documentType');
-    const defaultJournalTouched = Object.prototype.hasOwnProperty.call(
-      patch,
-      'defaultJournalCode',
-    );
+    const defaultJournalTouched = Object.prototype.hasOwnProperty.call(patch, 'defaultJournalCode');
 
     if (!labelTouched && !docTypeTouched && !defaultJournalTouched) {
       // Nothing to do — surface a 422 rather than a silent no-op so the
@@ -756,8 +757,7 @@ export class ImportSessionService {
     // quand un préfixe parent existe (cas typique d'un Sage 8 chiffres
     // contre un plan org à 3-6 chiffres). Les sous-comptes manquants sont
     // ensuite auto-provisionnés au commit (cf. autoProvisionMissingBalanceAccounts).
-    const reconciliableDocType =
-      documentType === 'trial_balance' || documentType === 'entries';
+    const reconciliableDocType = documentType === 'trial_balance' || documentType === 'entries';
     const allReferenceCodes =
       reconciliableDocType && this.referenceAccounts !== undefined
         ? await this.loadAllReferenceCodes()
