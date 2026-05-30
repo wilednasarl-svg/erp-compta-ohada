@@ -442,7 +442,7 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries, audit } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession.mockResolvedValueOnce(balancedRows()).mockResolvedValueOnce([]);
+      stagingRepo.listBySession.mockResolvedValue(balancedRows());
       entries.createDraft.mockResolvedValue({ id: 'entry-uuid-1' });
 
       const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -499,21 +499,19 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 1, withErrors: 0 });
-      stagingRepo.listBySession
-        .mockResolvedValueOnce([
-          {
-            rowNumber: 1,
-            mappedValues: {
-              journal: 'VTE',
-              date: '2026-01-15',
-              account: '411000',
-              label: 'Orphan debit',
-              debit: '100',
-              credit: '0',
-            },
+      stagingRepo.listBySession.mockResolvedValue([
+        {
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'VTE',
+            date: '2026-01-15',
+            account: '411000',
+            label: 'Orphan debit',
+            debit: '100',
+            credit: '0',
           },
-        ])
-        .mockResolvedValueOnce([]);
+        },
+      ]);
 
       await expect(
         service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -534,33 +532,31 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 4, withErrors: 0 });
-      stagingRepo.listBySession
-        .mockResolvedValueOnce([
-          ...balancedRows(),
-          {
-            rowNumber: 3,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-16',
-              account: '607000',
-              label: 'Achat',
-              debit: '50',
-              credit: '0',
-            },
+      stagingRepo.listBySession.mockResolvedValue([
+        ...balancedRows(),
+        {
+          rowNumber: 3,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-16',
+            account: '607000',
+            label: 'Achat',
+            debit: '50',
+            credit: '0',
           },
-          {
-            rowNumber: 4,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-16',
-              account: '401000',
-              label: 'Achat',
-              debit: '0',
-              credit: '50',
-            },
+        },
+        {
+          rowNumber: 4,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-16',
+            account: '401000',
+            label: 'Achat',
+            debit: '0',
+            credit: '50',
           },
-        ])
-        .mockResolvedValueOnce([]);
+        },
+      ]);
       entries.createDraft
         .mockResolvedValueOnce({ id: 'entry-vte' })
         .mockResolvedValueOnce({ id: 'entry-ach' });
@@ -578,60 +574,58 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 4, withErrors: 0 });
-      stagingRepo.listBySession
-        .mockResolvedValueOnce([
-          // Pièce 1 — équilibrée
-          {
-            rowNumber: 1,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '601000',
-              label: 'Achat pièce 1',
-              debit: '100',
-              credit: '0',
-              pieceNumber: '1',
-            },
+      stagingRepo.listBySession.mockResolvedValue([
+        // Pièce 1 — équilibrée
+        {
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '601000',
+            label: 'Achat pièce 1',
+            debit: '100',
+            credit: '0',
+            pieceNumber: '1',
           },
-          {
-            rowNumber: 2,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '401000',
-              label: 'Achat pièce 1',
-              debit: '0',
-              credit: '100',
-              pieceNumber: '1',
-            },
+        },
+        {
+          rowNumber: 2,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '401000',
+            label: 'Achat pièce 1',
+            debit: '0',
+            credit: '100',
+            pieceNumber: '1',
           },
-          // Pièce 2 — même journal & même date, équilibrée séparément
-          {
-            rowNumber: 3,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '602000',
-              label: 'Achat pièce 2',
-              debit: '70',
-              credit: '0',
-              pieceNumber: '2',
-            },
+        },
+        // Pièce 2 — même journal & même date, équilibrée séparément
+        {
+          rowNumber: 3,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '602000',
+            label: 'Achat pièce 2',
+            debit: '70',
+            credit: '0',
+            pieceNumber: '2',
           },
-          {
-            rowNumber: 4,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '401000',
-              label: 'Achat pièce 2',
-              debit: '0',
-              credit: '70',
-              pieceNumber: '2',
-            },
+        },
+        {
+          rowNumber: 4,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '401000',
+            label: 'Achat pièce 2',
+            debit: '0',
+            credit: '70',
+            pieceNumber: '2',
           },
-        ])
-        .mockResolvedValueOnce([]);
+        },
+      ]);
       entries.createDraft
         .mockResolvedValueOnce({ id: 'entry-p1' })
         .mockResolvedValueOnce({ id: 'entry-p2' });
@@ -653,38 +647,36 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession
-        .mockResolvedValueOnce([
-          {
-            rowNumber: 1,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '601000',
-              label: 'Achat ciment',
-              debit: '100',
-              credit: '0',
-              pieceNumber: '1',
-              invoiceNumber: '1553602408',
-              dueDate: '2026-02-15',
-              taxCode: '02',
-              reference: 'BELIER',
-            },
+      stagingRepo.listBySession.mockResolvedValue([
+        {
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '601000',
+            label: 'Achat ciment',
+            debit: '100',
+            credit: '0',
+            pieceNumber: '1',
+            invoiceNumber: '1553602408',
+            dueDate: '2026-02-15',
+            taxCode: '02',
+            reference: 'BELIER',
           },
-          {
-            rowNumber: 2,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '401000',
-              label: 'Fournisseur LAFARGE',
-              debit: '0',
-              credit: '100',
-              pieceNumber: '1',
-            },
+        },
+        {
+          rowNumber: 2,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '401000',
+            label: 'Fournisseur LAFARGE',
+            debit: '0',
+            credit: '100',
+            pieceNumber: '1',
           },
-        ])
-        .mockResolvedValueOnce([]);
+        },
+      ]);
       entries.createDraft.mockResolvedValue({ id: 'entry-piece-1' });
 
       await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -718,34 +710,32 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession
-        .mockResolvedValueOnce([
-          {
-            rowNumber: 1,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '601000',
-              label: 'Pièce déséquilibrée',
-              debit: '100',
-              credit: '0',
-              pieceNumber: '7',
-            },
+      stagingRepo.listBySession.mockResolvedValue([
+        {
+          rowNumber: 1,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '601000',
+            label: 'Pièce déséquilibrée',
+            debit: '100',
+            credit: '0',
+            pieceNumber: '7',
           },
-          {
-            rowNumber: 2,
-            mappedValues: {
-              journal: 'ACH',
-              date: '2026-01-15',
-              account: '401000',
-              label: 'Pièce déséquilibrée',
-              debit: '0',
-              credit: '90',
-              pieceNumber: '7',
-            },
+        },
+        {
+          rowNumber: 2,
+          mappedValues: {
+            journal: 'ACH',
+            date: '2026-01-15',
+            account: '401000',
+            label: 'Pièce déséquilibrée',
+            debit: '0',
+            credit: '90',
+            pieceNumber: '7',
           },
-        ])
-        .mockResolvedValueOnce([]);
+        },
+      ]);
 
       await expect(
         service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -763,7 +753,7 @@ describe('ImportSessionService', () => {
       const { service, sessionsRepo, stagingRepo, entries } = buildService();
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSession());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession.mockResolvedValueOnce(balancedRows()).mockResolvedValueOnce([]);
+      stagingRepo.listBySession.mockResolvedValue(balancedRows());
       entries.createDraft.mockRejectedValueOnce(new Error('period closed by race'));
 
       await expect(
@@ -991,9 +981,7 @@ describe('ImportSessionService', () => {
       // entries-type session — no __documentType override == defaults to entries.
       sessionsRepo.findById.mockResolvedValue(fakeValidatedSessionLocal());
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
-      stagingRepo.listBySession
-        .mockResolvedValueOnce(balancedRowsLocal())
-        .mockResolvedValueOnce([]);
+      stagingRepo.listBySession.mockResolvedValue(balancedRowsLocal());
       entries.createDraft.mockResolvedValue({ id: 'entry-x' });
 
       const result = await service.commitSession(asTenantId(ORG_ID), SESSION_ID, USER_ID, {
@@ -1001,7 +989,7 @@ describe('ImportSessionService', () => {
         userAgent: null,
       });
 
-      expect(result.autoCreatedAccounts).toBeUndefined();
+      expect(result.autoCreatedAccounts).toBe(0);
       expect(chartRepo.create).not.toHaveBeenCalled();
     });
 
