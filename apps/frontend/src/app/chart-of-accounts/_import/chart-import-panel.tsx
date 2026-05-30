@@ -9,7 +9,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, FileUp, Loader2, Upload } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, FileUp, Loader2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 
@@ -40,6 +40,7 @@ export function ChartImportPanel() {
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState<RunResult | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const accountsQuery = useQuery<ReadonlyArray<AccountView>, ApiError>({
     queryKey: ['chart-of-accounts', orgId],
@@ -118,6 +119,31 @@ export function ChartImportPanel() {
     void accountsQuery.refetch();
   };
 
+  const downloadTemplate = (): void => {
+    const csv = [
+      'Code,Libellé,Parent',
+      '4011,Fournisseurs locaux,401',
+      '60420000,Achats matières et fournitures,604',
+      '44520000,TVA récupérable sur achats,4452',
+    ].join('\n');
+    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'modele-plan-comptable.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const onDrop = (e: React.DragEvent): void => {
+    e.preventDefault();
+    setDragActive(false);
+    if (phase === 'running') return;
+    const f = e.dataTransfer.files?.[0];
+    if (f) void handleFile(f);
+  };
+
+  const busy = accountsQuery.isLoading || phase === 'running';
+
   return (
     <div className="space-y-5">
       <p className="max-w-[68ch] text-sm leading-relaxed text-ink-soft">
@@ -127,41 +153,64 @@ export function ChartImportPanel() {
         Chaque compte est rattaché à son parent existant ; les comptes déjà présents sont ignorés.
       </p>
 
-      <div className="rounded-md border border-line bg-paper p-4">
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".csv,.xlsx,.xls"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void handleFile(f);
-          }}
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => fileInput.current?.click()}
-            disabled={accountsQuery.isLoading || phase === 'running'}
-            className="inline-flex h-9 items-center gap-2 rounded-sm bg-accent px-4 text-sm font-medium text-paper transition-colors duration-fast hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
-          >
-            <FileUp className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-            Choisir un fichier
-          </button>
-          {fileName !== '' && <span className="font-mono text-xs text-ink-mute">{fileName}</span>}
-          {accountsQuery.isLoading && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink-mute">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} /> Chargement du plan…
-            </span>
-          )}
-        </div>
-        {parseError !== null && (
-          <p className="mt-3 flex items-center gap-2 text-sm text-critical-ink">
-            <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
-            {parseError}
-          </p>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleFile(f);
+        }}
+      />
+
+      <button
+        type="button"
+        onClick={() => !busy && fileInput.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!busy) setDragActive(true);
+        }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={onDrop}
+        disabled={busy}
+        className={cn(
+          'flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed px-6 py-10 text-center transition-colors duration-fast',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-60',
+          dragActive ? 'border-accent bg-accent-soft/40' : 'border-line-strong bg-paper hover:border-ink/40 hover:bg-sunk/30',
         )}
+      >
+        <span className={cn('flex h-11 w-11 items-center justify-center rounded-full', dragActive ? 'bg-accent text-paper' : 'bg-sunk text-ink-soft')}>
+          <FileUp className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+        </span>
+        <span className="text-sm font-medium text-ink">
+          {accountsQuery.isLoading
+            ? 'Chargement du plan existant…'
+            : fileName !== ''
+              ? fileName
+              : 'Glissez un fichier ici, ou cliquez pour parcourir'}
+        </span>
+        <span className="text-2xs uppercase tracking-wider text-ink-mute">CSV · XLSX · XLS</span>
+      </button>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-mute">
+        <span>En-têtes attendus : <span className="font-mono text-ink-soft">Code, Libellé, Parent</span> (Parent facultatif).</span>
+        <button
+          type="button"
+          onClick={downloadTemplate}
+          className="inline-flex items-center gap-1.5 font-medium text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <Download className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+          Télécharger un modèle CSV
+        </button>
       </div>
+
+      {parseError !== null && (
+        <p className="flex items-center gap-2 rounded-sm border border-critical/30 bg-critical-soft px-3 py-2 text-sm text-critical-ink">
+          <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
+          {parseError}
+        </p>
+      )}
 
       {plan !== null && phase !== 'idle' && (
         <PlanPreview
@@ -188,10 +237,10 @@ function PlanPreview({
   const pct = progress.total === 0 ? 0 : Math.round((progress.done / progress.total) * 100);
   return (
     <div className="space-y-4 rounded-md border border-line bg-paper p-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="text-accent-ink">{plan.toCreate} à créer</span>
-        <span className="text-ink-mute">{plan.existing} déjà présents</span>
-        {plan.blocked > 0 && <span className="text-warn-ink">{plan.blocked} sans parent</span>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Stat value={plan.toCreate} label="à créer" tone="accent" />
+        <Stat value={plan.existing} label="déjà présents" tone="muted" />
+        {plan.blocked > 0 && <Stat value={plan.blocked} label="sans parent" tone="warn" />}
         {phase === 'preview' && (
           <button
             type="button"
@@ -258,6 +307,26 @@ function PlanPreview({
         </table>
       </div>
     </div>
+  );
+}
+
+function Stat({
+  value, label, tone,
+}: {
+  readonly value: number;
+  readonly label: string;
+  readonly tone: 'accent' | 'muted' | 'warn';
+}) {
+  const cls = {
+    accent: 'border-accent/25 bg-accent-soft/50 text-accent-ink',
+    muted: 'border-line bg-sunk text-ink-soft',
+    warn: 'border-warn/30 bg-warn-soft text-warn-ink',
+  }[tone];
+  return (
+    <span className={cn('inline-flex items-baseline gap-1.5 rounded-sm border px-2.5 py-1', cls)}>
+      <span className="font-mono text-sm font-medium tabular-nums">{value}</span>
+      <span className="text-2xs uppercase tracking-wider">{label}</span>
+    </span>
   );
 }
 
