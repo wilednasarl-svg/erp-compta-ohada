@@ -30,6 +30,7 @@ export function DeleteSessionConfirm({
   const [isOpen, setIsOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   const openPopover = () => {
     if (disabled) return;
@@ -47,7 +48,12 @@ export function DeleteSessionConfirm({
   useEffect(() => {
     if (!isOpen) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (triggerRef.current && triggerRef.current.contains(e.target as Node)) return;
+      const target = e.target as Node;
+      if (triggerRef.current && triggerRef.current.contains(target)) return;
+      // Le popover est rendu via createPortal dans document.body : sans cette
+      // exception, le pointerdown sur « Supprimer » fermerait le popover avant
+      // que le click n'aboutisse, et onConfirm ne serait jamais appelé.
+      if (popoverRef.current && popoverRef.current.contains(target)) return;
       setIsOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -105,6 +111,7 @@ export function DeleteSessionConfirm({
 
       {isOpen && pos && createPortal(
         <div
+          ref={popoverRef}
           role="dialog"
           aria-label="Confirmer la suppression de la session"
           style={{ top: pos.top, right: pos.right, position: 'fixed', zIndex: 200 }}
@@ -141,7 +148,10 @@ export function DeleteSessionConfirm({
               size="sm"
               variant="destructive"
               disabled={isPending}
-              onClick={() => onConfirm()}
+              onClick={() => {
+                setIsOpen(false);
+                onConfirm();
+              }}
             >
               {isPending ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
