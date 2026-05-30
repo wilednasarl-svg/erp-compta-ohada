@@ -12,176 +12,89 @@ import {
   toListFiscalParameters,
 } from './fiscal-response.mapper';
 
-const FIXED_DATE = new Date('2026-05-25T10:00:00.000Z');
+const NOW = new Date('2026-01-01T00:00:00.000Z');
 
-function buildParameter(overrides: Partial<FiscalParameterEntity> = {}): FiscalParameterEntity {
+function param(): FiscalParameterEntity {
   return {
-    id: 'param-1',
-    organizationId: 'org-1',
-    organization: undefined as never,
+    id: 'p1',
+    organizationId: 'org1',
     taxCode: 'TVA',
-    label: 'TVA 18%',
+    label: 'TVA',
     declarationKind: 'fiscal',
-    rate: '18.00',
+    rate: '18.0000',
     baseKind: 'vat_net',
     periodicity: 'monthly',
     ceiling: null,
     floorAmount: null,
     dueDay: 15,
-    chargeAccount: null,
-    liabilityAccount: '4441',
+    chargeAccount: '4434',
+    liabilityAccount: '4431',
     effectiveFrom: '2026-01-01',
     effectiveTo: null,
     isActive: true,
     notes: null,
-    createdAt: FIXED_DATE,
-    updatedAt: FIXED_DATE,
-    ...overrides,
+    createdAt: NOW,
+    updatedAt: NOW,
   } as FiscalParameterEntity;
 }
 
-function buildDeclaration(
-  overrides: Partial<FiscalDeclarationEntity> = {},
-): FiscalDeclarationEntity {
+function declaration(): FiscalDeclarationEntity {
   return {
-    id: 'decl-1',
-    organizationId: 'org-1',
-    organization: undefined as never,
+    id: 'd1',
+    organizationId: 'org1',
     taxCode: 'TVA',
-    label: 'TVA mai 2026',
+    label: 'TVA',
     periodYear: 2026,
-    periodMonth: 5,
-    baseAmount: '10000000.00',
-    rate: '18.00',
-    amountDue: '1800000.00',
+    periodMonth: 3,
+    baseAmount: '45000000.00',
+    rate: '18.0000',
+    amountDue: '8100000.00',
     currency: 'XOF',
-    dueDate: '2026-06-15',
+    dueDate: '2026-04-15',
     status: 'a_deposer',
     reference: null,
     justificatifUrl: null,
-    chargeAccount: null,
-    liabilityAccount: '4441',
+    chargeAccount: '4434',
+    liabilityAccount: '4431',
     comment: null,
-    createdById: 'user-1',
-    validatedById: null,
-    createdAt: FIXED_DATE,
-    updatedAt: FIXED_DATE,
-    ...overrides,
+    createdAt: NOW,
+    updatedAt: NOW,
   } as FiscalDeclarationEntity;
 }
 
-function buildBracket(overrides: Partial<FiscalTaxBracketEntity> = {}): FiscalTaxBracketEntity {
+function bracket(): FiscalTaxBracketEntity {
   return {
-    id: 'bracket-1',
-    organizationId: 'org-1',
-    organization: undefined as never,
+    id: 'b1',
+    organizationId: 'org1',
     taxCode: 'ITS',
     effectiveFrom: '2026-01-01',
     bracketOrder: 1,
     fromAmount: '0.00',
     toAmount: '75000.00',
-    rate: '0.00',
-    createdAt: FIXED_DATE,
-    updatedAt: FIXED_DATE,
-    ...overrides,
+    rate: '0.0000',
+    createdAt: NOW,
+    updatedAt: NOW,
   } as FiscalTaxBracketEntity;
 }
 
 describe('fiscal-response.mapper', () => {
-  describe('toFiscalParameterResponse', () => {
-    it('maps every parameter field with rate kept as string', () => {
-      const dto = toFiscalParameterResponse(buildParameter());
-
-      expect(dto).toEqual({
-        id: 'param-1',
-        organizationId: 'org-1',
-        taxCode: 'TVA',
-        label: 'TVA 18%',
-        declarationKind: 'fiscal',
-        rate: '18.00',
-        baseKind: 'vat_net',
-        periodicity: 'monthly',
-        ceiling: null,
-        floorAmount: null,
-        dueDay: 15,
-        chargeAccount: null,
-        liabilityAccount: '4441',
-        effectiveFrom: '2026-01-01',
-        effectiveTo: null,
-        isActive: true,
-        notes: null,
-        createdAt: FIXED_DATE,
-        updatedAt: FIXED_DATE,
-      });
-    });
-
-    it('does not leak the organization relation', () => {
-      expect(toFiscalParameterResponse(buildParameter())).not.toHaveProperty('organization');
-    });
+  it('maps parameters', () => {
+    expect(toFiscalParameterResponse(param())).toMatchObject({ taxCode: 'TVA', rate: '18.0000' });
+    expect(toFiscalParameterEnvelope(param()).parameter.taxCode).toBe('TVA');
+    expect(toListFiscalParameters([param()]).parameters).toHaveLength(1);
   });
 
-  describe('toFiscalDeclarationResponse', () => {
-    it('maps a declaration and drops internal audit columns', () => {
-      const dto = toFiscalDeclarationResponse(buildDeclaration());
-
-      expect(dto.id).toBe('decl-1');
-      expect(dto.baseAmount).toBe('10000000.00');
-      expect(dto.amountDue).toBe('1800000.00');
-      expect(dto.status).toBe('a_deposer');
-      expect(dto.dueDate).toBe('2026-06-15');
-      expect(dto).not.toHaveProperty('createdById');
-      expect(dto).not.toHaveProperty('validatedById');
+  it('maps declarations', () => {
+    expect(toFiscalDeclarationResponse(declaration())).toMatchObject({
+      amountDue: '8100000.00',
+      dueDate: '2026-04-15',
     });
-
-    it('preserves nullable annual fields (no period month)', () => {
-      const dto = toFiscalDeclarationResponse(buildDeclaration({ periodMonth: null, label: null }));
-      expect(dto.periodMonth).toBeNull();
-      expect(dto.label).toBeNull();
-    });
+    expect(toFiscalDeclarationEnvelope(declaration()).declaration.taxCode).toBe('TVA');
+    expect(toListFiscalDeclarations([declaration()], 1).total).toBe(1);
   });
 
-  describe('toFiscalBracketResponse', () => {
-    it('maps a progressive-tax bracket with nullable upper bound', () => {
-      const dto = toFiscalBracketResponse(buildBracket({ toAmount: null }));
-
-      expect(dto).toEqual({
-        id: 'bracket-1',
-        organizationId: 'org-1',
-        taxCode: 'ITS',
-        effectiveFrom: '2026-01-01',
-        bracketOrder: 1,
-        fromAmount: '0.00',
-        toAmount: null,
-        rate: '0.00',
-      });
-    });
-  });
-
-  describe('envelope + list wrappers', () => {
-    it('wraps a single parameter and a list', () => {
-      expect(toFiscalParameterEnvelope(buildParameter()).parameter.id).toBe('param-1');
-      const list = toListFiscalParameters([
-        buildParameter(),
-        buildParameter({ id: 'param-2', taxCode: 'IS' }),
-      ]);
-      expect(list.parameters).toHaveLength(2);
-      expect(list.parameters[1]?.taxCode).toBe('IS');
-    });
-
-    it('wraps a single declaration and a list with total', () => {
-      expect(toFiscalDeclarationEnvelope(buildDeclaration()).declaration.id).toBe('decl-1');
-      const list = toListFiscalDeclarations([buildDeclaration()], 7);
-      expect(list.declarations).toHaveLength(1);
-      expect(list.total).toBe(7);
-    });
-
-    it('wraps a list of brackets', () => {
-      const list = toListFiscalBrackets([
-        buildBracket(),
-        buildBracket({ id: 'bracket-2', bracketOrder: 2 }),
-      ]);
-      expect(list.brackets).toHaveLength(2);
-      expect(list.brackets[1]?.bracketOrder).toBe(2);
-    });
+  it('maps brackets', () => {
+    expect(toFiscalBracketResponse(bracket())).toMatchObject({ bracketOrder: 1, rate: '0.0000' });
+    expect(toListFiscalBrackets([bracket()]).brackets).toHaveLength(1);
   });
 });

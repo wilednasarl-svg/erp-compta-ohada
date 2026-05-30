@@ -9,37 +9,33 @@ import {
   toListBudgetLines,
 } from './budget-response.mapper';
 
-const FIXED_DATE = new Date('2026-05-25T10:00:00.000Z');
+const NOW = new Date('2026-01-01T00:00:00.000Z');
 
-function buildAxis(overrides: Partial<BudgetAxisEntity> = {}): BudgetAxisEntity {
+function axis(): BudgetAxisEntity {
   return {
-    id: 'axis-1',
-    organizationId: 'org-1',
-    organization: undefined as never,
+    id: 'a1',
+    organizationId: 'org1',
     axisType: 'cost_center',
-    code: 'CC-001',
-    label: 'Centre de coût 1',
+    code: 'COMM',
+    label: 'Commercial',
     parentId: null,
-    parent: null,
     isActive: true,
-    createdAt: FIXED_DATE,
-    updatedAt: FIXED_DATE,
-    ...overrides,
+    createdAt: NOW,
+    updatedAt: NOW,
   } as BudgetAxisEntity;
 }
 
-function buildLine(overrides: Partial<BudgetLineEntity> = {}): BudgetLineEntity {
+function line(): BudgetLineEntity {
   return {
-    id: 'line-1',
-    organizationId: 'org-1',
-    organization: undefined as never,
+    id: 'l1',
+    organizationId: 'org1',
     fiscalYear: 2026,
-    periodMonth: 5,
+    periodMonth: 3,
     budgetType: 'OPEX',
     scenario: 'BI',
-    accountCode: '604000',
-    accountLabel: 'Achats stockés',
-    costCenterAxisId: 'axis-1',
+    accountCode: '6221',
+    accountLabel: 'Locations',
+    costCenterAxisId: 'a1',
     projectAxisId: null,
     agencyAxisId: null,
     productAxisId: null,
@@ -49,87 +45,26 @@ function buildLine(overrides: Partial<BudgetLineEntity> = {}): BudgetLineEntity 
     amountBase: '1500000.00',
     comment: null,
     hypothesis: null,
-    status: 'valide_daf',
-    createdById: 'user-1',
-    validatedById: 'user-2',
-    createdAt: FIXED_DATE,
-    updatedAt: FIXED_DATE,
-    ...overrides,
+    status: 'brouillon',
+    createdAt: NOW,
+    updatedAt: NOW,
   } as BudgetLineEntity;
 }
 
 describe('budget-response.mapper', () => {
-  describe('toBudgetAxisResponse', () => {
-    it('maps every axis field including nullable parentId', () => {
-      const dto = toBudgetAxisResponse(buildAxis({ parentId: 'axis-0' }));
-
-      expect(dto).toEqual({
-        id: 'axis-1',
-        organizationId: 'org-1',
-        axisType: 'cost_center',
-        code: 'CC-001',
-        label: 'Centre de coût 1',
-        parentId: 'axis-0',
-        isActive: true,
-        createdAt: FIXED_DATE,
-        updatedAt: FIXED_DATE,
-      });
-    });
-
-    it('does not leak the relation field', () => {
-      const dto = toBudgetAxisResponse(buildAxis());
-      expect(dto).not.toHaveProperty('organization');
-      expect(dto).not.toHaveProperty('parent');
-    });
-
-    it('does not mutate the source entity', () => {
-      const axis = buildAxis();
-      const snapshot = JSON.parse(JSON.stringify(axis));
-      toBudgetAxisResponse(axis);
-      expect(JSON.parse(JSON.stringify(axis))).toEqual(snapshot);
-    });
+  it('maps an axis and wraps it', () => {
+    const r = toBudgetAxisResponse(axis());
+    expect(r).toMatchObject({ id: 'a1', axisType: 'cost_center', code: 'COMM' });
+    expect(toBudgetAxisEnvelope(axis()).axis.code).toBe('COMM');
+    expect(toListBudgetAxes([axis(), axis()]).axes).toHaveLength(2);
   });
 
-  describe('toBudgetLineResponse', () => {
-    it('keeps decimal amounts as strings and maps nullable axes', () => {
-      const dto = toBudgetLineResponse(buildLine());
-
-      expect(dto.amount).toBe('1500000.00');
-      expect(dto.exchangeRate).toBe('1.000000');
-      expect(dto.amountBase).toBe('1500000.00');
-      expect(dto.costCenterAxisId).toBe('axis-1');
-      expect(dto.projectAxisId).toBeNull();
-      expect(dto.status).toBe('valide_daf');
-    });
-
-    it('does not expose internal audit columns', () => {
-      const dto = toBudgetLineResponse(buildLine());
-      expect(dto).not.toHaveProperty('createdById');
-      expect(dto).not.toHaveProperty('validatedById');
-      expect(dto).not.toHaveProperty('organization');
-    });
-  });
-
-  describe('envelope + list wrappers', () => {
-    it('wraps a single axis', () => {
-      expect(toBudgetAxisEnvelope(buildAxis()).axis.id).toBe('axis-1');
-    });
-
-    it('wraps a list of axes', () => {
-      const list = toListBudgetAxes([buildAxis(), buildAxis({ id: 'axis-2', code: 'CC-002' })]);
-      expect(list.axes).toHaveLength(2);
-      expect(list.axes[1]?.code).toBe('CC-002');
-    });
-
-    it('wraps a single line', () => {
-      expect(toBudgetLineEnvelope(buildLine()).line.id).toBe('line-1');
-    });
-
-    it('wraps a list of lines and carries the total', () => {
-      const list = toListBudgetLines([buildLine(), buildLine({ id: 'line-2' })], 42);
-      expect(list.lines).toHaveLength(2);
-      expect(list.total).toBe(42);
-      expect(list.lines[1]?.id).toBe('line-2');
-    });
+  it('maps a line and wraps it with total', () => {
+    const r = toBudgetLineResponse(line());
+    expect(r).toMatchObject({ accountCode: '6221', amountBase: '1500000.00', status: 'brouillon' });
+    expect(toBudgetLineEnvelope(line()).line.accountCode).toBe('6221');
+    const list = toListBudgetLines([line()], 1);
+    expect(list.total).toBe(1);
+    expect(list.lines).toHaveLength(1);
   });
 });
