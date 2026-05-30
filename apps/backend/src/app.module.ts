@@ -39,6 +39,8 @@ import { EmailModule } from './modules/email/email.module';
 // saisie via REST E2-bis en suivi.
 import { ActuarialCommitmentsModule } from './modules/actuarial-commitments/actuarial-commitments.module';
 import { CashFlowModule } from './modules/cash-flow/cash-flow.module';
+import { BudgetModule } from './modules/budget/budget.module';
+import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { SyscohadaComplianceModule } from './modules/syscohada-compliance/syscohada-compliance.module';
 import { SyscohadaGuidanceModule } from './modules/syscohada-knowledge/syscohada-guidance.module';
 import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohada-knowledge.module';
@@ -186,6 +188,10 @@ import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohad
     ActuarialCommitmentsModule,
     // Module 22 - Prévisionnel de trésorerie (Cash flow forecast)
     CashFlowModule,
+    // Module Budget - Budget & contrôle budgétaire (axes, lignes, écarts/KPI)
+    BudgetModule,
+    // Module Fiscal & Social - paramètres de taux + déclarations/échéancier (CI)
+    FiscalModule,
   ],
   controllers: [],
   providers: [
