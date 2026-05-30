@@ -28,6 +28,7 @@ function makeService(opts: {
   create?: jest.Mock;
   update?: jest.Mock;
   upsert?: jest.Mock;
+  brackets?: ReadonlyArray<{ fromAmount: string; toAmount: string | null; rate: string }>;
 }): {
   service: FiscalDeclarationsService;
   create: jest.Mock;
@@ -54,8 +55,17 @@ function makeService(opts: {
   const budgetLines = {
     upsert,
   } as unknown as import('../../budget/services/budget-lines.service').BudgetLinesService;
+  const bracketsRepo = {
+    findEffective: jest.fn().mockResolvedValue(opts.brackets ?? []),
+  } as unknown as import('../repositories/fiscal-tax-bracket.repository').FiscalTaxBracketRepository;
   return {
-    service: new FiscalDeclarationsService(declRepo, paramRepo, baseService, budgetLines),
+    service: new FiscalDeclarationsService(
+      declRepo,
+      paramRepo,
+      baseService,
+      budgetLines,
+      bracketsRepo,
+    ),
     create,
     update,
     upsert,
@@ -82,6 +92,30 @@ describe('FiscalDeclarationsService.generate', () => {
       }),
     );
     expect(decl.amountDue).toBe('8100000.00');
+  });
+
+  it('uses the progressive scale when brackets exist (ITS)', async () => {
+    const itsParam = { ...tvaParam(), taxCode: 'ITS', rate: '0.0000' } as FiscalParameterEntity;
+    const { service, create } = makeService({
+      param: itsParam,
+      brackets: [
+        { fromAmount: '0.00', toAmount: '75000.00', rate: '0.0000' },
+        { fromAmount: '75000.00', toAmount: '240000.00', rate: '16.0000' },
+        { fromAmount: '240000.00', toAmount: null, rate: '21.0000' },
+      ],
+    });
+
+    await service.generate(ORG, {
+      taxCode: 'ITS',
+      periodYear: 2026,
+      periodMonth: 3,
+      baseAmount: '300000.00',
+    });
+
+    // 0%×75k + 16%×165k (75k→240k) + 21%×60k (240k→300k) = 26 400 + 12 600 = 39 000
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ taxCode: 'ITS', amountDue: '39000.00' }),
+    );
   });
 
   it('throws FISCAL_NO_RATE_FOR_PERIOD when no parameter is effective', async () => {

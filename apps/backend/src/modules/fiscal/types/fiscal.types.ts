@@ -203,4 +203,40 @@ export const CI_DEFAULT_FISCAL_PARAMETERS: readonly DefaultFiscalParameter[] = [
     liabilityAccount: '4470',
     notes: 'Assise sur la masse salariale brute.',
   },
+  {
+    taxCode: 'ITS',
+    label: 'Impôt sur Traitements et Salaires (barème progressif)',
+    declarationKind: 'social',
+    rate: '0.0000',
+    baseKind: 'custom',
+    periodicity: 'monthly',
+    dueDay: 15,
+    chargeAccount: '4220',
+    liabilityAccount: '4470',
+    notes:
+      'Réforme 2024 : barème PROGRESSIF (voir fiscal_tax_brackets). Base = salaire imposable PAR SALARIÉ — l’agrégat masse salariale donne un résultat approché (le progressif n’est pas additif). Saisir la base par tête ou via le futur module RH.',
+  },
+];
+
+/** Une tranche de barème progressif par défaut. */
+export interface DefaultTaxBracket {
+  readonly bracketOrder: number;
+  readonly fromAmount: string;
+  readonly toAmount: string | null;
+  readonly rate: string;
+}
+
+/**
+ * Barème ITS CI mensuel par défaut (réforme 2024) — ⚠️ VALEURS
+ * ILLUSTRATIVES À VALIDER impérativement contre le barème officiel DGI.
+ * Le moteur de calcul est exact ; seuls les seuils/taux ci-dessous sont à
+ * confirmer et sont éditables via l'endpoint de remplacement des tranches.
+ */
+export const CI_DEFAULT_ITS_BRACKETS: readonly DefaultTaxBracket[] = [
+  { bracketOrder: 1, fromAmount: '0.00', toAmount: '75000.00', rate: '0.0000' },
+  { bracketOrder: 2, fromAmount: '75000.00', toAmount: '240000.00', rate: '16.0000' },
+  { bracketOrder: 3, fromAmount: '240000.00', toAmount: '800000.00', rate: '21.0000' },
+  { bracketOrder: 4, fromAmount: '800000.00', toAmount: '2400000.00', rate: '24.0000' },
+  { bracketOrder: 5, fromAmount: '2400000.00', toAmount: '8000000.00', rate: '28.0000' },
+  { bracketOrder: 6, fromAmount: '8000000.00', toAmount: null, rate: '32.0000' },
 ];

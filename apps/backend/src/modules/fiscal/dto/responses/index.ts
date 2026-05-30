@@ -9,3 +9,4 @@ export {
   FiscalDeclarationEnvelopeResponse,
   ListFiscalDeclarationsResponse,
 } from './fiscal-declaration.response';
+export { FiscalBracketResponse, ListFiscalBracketsResponse } from './fiscal-bracket.response';

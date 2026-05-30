@@ -283,6 +283,7 @@ describe('HTTP status mapping', () => {
       FISCAL_DECLARATION_DUPLICATE: 409,
       FISCAL_DECLARATION_INVALID_TRANSITION: 409,
       FISCAL_NO_RATE_FOR_PERIOD: 422,
+      FISCAL_BRACKET_INVALID: 422,
     };
 
     for (const key of Object.keys(expected) as Array<keyof typeof ERROR_CODES>) {
