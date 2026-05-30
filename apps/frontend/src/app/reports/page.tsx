@@ -45,6 +45,7 @@ import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError, api } from '@/lib/api-client';
+import { parseAccountingAmount } from '@/lib/parse-amount';
 import { cn } from '@/lib/utils';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountView } from '@/types/accounting-plan';
@@ -5582,11 +5583,11 @@ function parseBalanceCsv(text: string): BalanceParsed {
   if (codeIdx === -1) throw new Error('Colonne "Compte" introuvable. Vérifier les en-têtes du fichier CSV.');
   if (debitIdx === -1 && creditIdx === -1) throw new Error('Colonnes "Débit" / "Crédit" introuvables. En-têtes attendus : Solde Débiteur, Solde Créditeur.');
 
+  // Parsing robuste FR + US (voir @/lib/parse-amount). Les soldes de
+  // balance sont des montants positifs : on prend la valeur absolue.
   const parseAmt = (s: string): string => {
-    if (!s) return '0';
-    const c = s.replace(/\s/g, '').replace(/['"]/g, '');
-    const n = parseFloat(c.replace(/\./g, '').replace(',', '.'));
-    return isNaN(n) ? '0' : Math.abs(n).toFixed(2);
+    const n = parseAccountingAmount(s);
+    return Number.isNaN(n) ? '0' : Math.abs(n).toFixed(2);
   };
 
   const rows: UploadedBalanceRow[] = [];
@@ -5644,6 +5645,7 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
   const [incorporateResult, setIncorporateResult] = useState(true);
   const [balanceType, setBalanceType] = useState<BalanceInventoryType>('apres-inventaire');
   const [activeTab, setActiveTab] = useState<'bilan' | 'cr'>('bilan');
+  const [showAllRows, setShowAllRows] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation<FromBalanceResult>({
@@ -5669,6 +5671,7 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
       }
       setParsed(result);
       setParseError(null);
+      setShowAllRows(false);
       mutation.reset();
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Erreur de lecture du fichier.');
@@ -5838,7 +5841,7 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {parsed.rows.slice(0, 12).map((r, i) => (
+                  {(showAllRows ? parsed.rows : parsed.rows.slice(0, 12)).map((r, i) => (
                     <tr key={i} className="border-t border-line hover:bg-sunk/30">
                       <td className="px-3 py-1.5 font-mono text-xs text-ink-soft">{r.code}</td>
                       <td className="max-w-[24ch] truncate px-3 py-1.5 text-xs text-ink">{r.label || <span className="italic text-ink-mute">—</span>}</td>
@@ -5852,8 +5855,17 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
                   ))}
                   {parsed.rows.length > 12 && (
                     <tr className="border-t border-line/50 bg-sunk/30">
-                      <td colSpan={4} className="px-3 py-2 text-center text-xs text-ink-mute">
-                        … et {(parsed.rows.length - 12).toLocaleString('fr-FR')} lignes supplémentaires
+                      <td colSpan={4} className="px-0 py-0 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRows((v) => !v)}
+                          className="press w-full px-3 py-2 text-center text-xs font-medium text-accent-ink transition-colors duration-fast hover:bg-accent-soft/50"
+                          aria-expanded={showAllRows}
+                        >
+                          {showAllRows
+                            ? `▲ Réduire — n’afficher que les 12 premières lignes`
+                            : `▼ Afficher les ${(parsed.rows.length - 12).toLocaleString('fr-FR')} lignes restantes (total ${parsed.rows.length.toLocaleString('fr-FR')})`}
+                        </button>
                       </td>
                     </tr>
                   )}
