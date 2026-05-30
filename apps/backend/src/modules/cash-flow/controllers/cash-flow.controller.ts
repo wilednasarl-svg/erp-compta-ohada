@@ -14,6 +14,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequirePermission } from '../../rbac/decorators/require-permission.decorator';
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
+import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CashFlowService, CashFlowForecastReport } from '../services/cash-flow.service';
 import {
   CreateCashFlowForecastDto,
@@ -22,7 +23,7 @@ import {
 } from '../dto/cash-flow-forecast.dto';
 
 @Controller('organizations/:orgId/cash-flow')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class CashFlowController {
   constructor(private readonly cashFlowService: CashFlowService) {}
 
