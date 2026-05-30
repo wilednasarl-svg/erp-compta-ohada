@@ -57,4 +57,14 @@ describe('parseAccountingAmount', () => {
     expect(parseAccountingAmount('200,00')).toBe(200);
     expect(parseAccountingAmount('500')).toBe(500);
   });
+
+  it('parses US-format INTEGERS without decimals (multi-comma thousands)', () => {
+    // Régression : Excel rend souvent les entiers sans décimales → "100,000,000".
+    // L'ancienne règle "dernier groupe = décimale" donnait 100000 (÷1000).
+    expect(parseAccountingAmount('100,000,000')).toBe(100_000_000);
+    expect(parseAccountingAmount('1,885,629,834')).toBe(1_885_629_834);
+    expect(parseAccountingAmount('1,160,979,180')).toBe(1_160_979_180);
+    expect(parseAccountingAmount('236,953,148')).toBe(236_953_148);
+    expect(parseAccountingAmount('1.885.629.834')).toBe(1_885_629_834);
+  });
 });
