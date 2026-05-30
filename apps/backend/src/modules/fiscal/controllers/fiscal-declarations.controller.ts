@@ -146,6 +146,25 @@ export class FiscalDeclarationsController {
     return toFiscalDeclarationEnvelope(decl);
   }
 
+  @Post(':declarationId/spill-to-treasury')
+  @RequirePermission('fiscal.write')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: FiscalDeclarationEnvelopeResponse })
+  async spillToTreasury(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) pathOrgId: string,
+    @Param('declarationId', new ParseUUIDPipe({ version: '4' })) declarationId: string,
+    @CurrentOrg('id') tokenOrgId: CurrentOrgContext['id'] | undefined,
+    @CurrentUser('id') userId: CurrentUserContext['id'] | undefined,
+  ): Promise<FiscalDeclarationEnvelopeResponse> {
+    this.assertOrgMatch(pathOrgId, tokenOrgId);
+    const decl = await this.declarations.spillToTreasury(
+      declarationId,
+      asTenantId(tokenOrgId),
+      userId ?? null,
+    );
+    return toFiscalDeclarationEnvelope(decl);
+  }
+
   @Post(':declarationId/transition')
   @RequirePermission('fiscal.write')
   @HttpCode(HttpStatus.OK)

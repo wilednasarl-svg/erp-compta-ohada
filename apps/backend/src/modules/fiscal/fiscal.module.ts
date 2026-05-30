@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { BudgetModule } from '../budget/budget.module';
 import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.entity';
 import { FiscalParameterEntity } from './entities/fiscal-parameter.entity';
 import { FiscalDeclarationEntity } from './entities/fiscal-declaration.entity';
@@ -31,6 +32,7 @@ import { FiscalDeclarationsController } from './controllers/fiscal-declarations.
     ]),
     AuthModule,
     RbacModule,
+    BudgetModule,
   ],
   controllers: [FiscalParametersController, FiscalDeclarationsController],
   providers: [
