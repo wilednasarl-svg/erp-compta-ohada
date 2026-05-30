@@ -981,10 +981,15 @@ describe('ImportSessionService', () => {
       expect(chartRepo.create).not.toHaveBeenCalled();
     });
 
-    it('does NOT auto-provision when documentType is not trial_balance', async () => {
+    it('does NOT auto-provision for a documentType outside the auto-provision scope', async () => {
       const { service, sessionsRepo, stagingRepo, chartRepo, entries } = buildService();
-      // entries-type session — no __documentType override == defaults to entries.
-      sessionsRepo.findById.mockResolvedValue(fakeValidatedSessionLocal());
+      // L'auto-provision couvre balance (trial_balance) ET journaux (entries,
+      // défaut — cf. 636a985). On force ici un type hors champ (grand livre)
+      // pour vérifier que le gate documentType n'auto-provisionne pas partout.
+      sessionsRepo.findById.mockResolvedValue({
+        ...fakeValidatedSessionLocal(),
+        mappingOverride: { __documentType: 'general_ledger' },
+      });
       stagingRepo.countBySession.mockResolvedValue({ total: 2, withErrors: 0 });
       stagingRepo.listBySession
         .mockResolvedValue(balancedRowsLocal());
