@@ -4,6 +4,12 @@ import { Readable } from 'stream';
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
+
+/** Type du transport Realtime attendu par `createClient` (non exporté en direct). */
+type RealtimeTransport = NonNullable<
+  NonNullable<Parameters<typeof createClient>[2]>['realtime']
+>['transport'];
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -50,6 +56,12 @@ export class SupabaseDocumentStorage implements DocumentStorage {
     if (!this._client) {
       this._client = createClient(this.config.supabaseUrl, this.config.serviceRoleKey, {
         auth: { persistSession: false, autoRefreshToken: false },
+        // Node < 22 n'a pas de `WebSocket` global ; le constructeur de
+        // `RealtimeClient` (instancié par `createClient`) lève sinon
+        // « Node.js 20 detected without native WebSocket support ».
+        // On ne se sert jamais du Realtime — seulement de Storage — mais
+        // il faut fournir un transport pour que le constructeur passe.
+        realtime: { transport: WebSocket as unknown as RealtimeTransport },
       });
     }
     return this._client;
