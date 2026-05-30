@@ -11,9 +11,12 @@ import { BudgetVarianceRepository } from './repositories/budget-variance.reposit
 import { BudgetAxesService } from './services/budget-axes.service';
 import { BudgetLinesService } from './services/budget-lines.service';
 import { BudgetVarianceService } from './services/budget-variance.service';
+import { BudgetTemplateService } from './services/budget-template.service';
+import { BudgetImportService } from './services/budget-import.service';
 import { BudgetAxesController } from './controllers/budget-axes.controller';
 import { BudgetLinesController } from './controllers/budget-lines.controller';
 import { BudgetVarianceController } from './controllers/budget-variance.controller';
+import { BudgetTemplateController } from './controllers/budget-template.controller';
 
 /**
  * Module Budget — budget & contrôle budgétaire (OPEX / CAPEX / Trésorerie /
@@ -23,7 +26,12 @@ import { BudgetVarianceController } from './controllers/budget-variance.controll
  */
 @Module({
   imports: [TypeOrmModule.forFeature([BudgetAxisEntity, BudgetLineEntity]), AuthModule, RbacModule],
-  controllers: [BudgetAxesController, BudgetLinesController, BudgetVarianceController],
+  controllers: [
+    BudgetAxesController,
+    BudgetLinesController,
+    BudgetVarianceController,
+    BudgetTemplateController,
+  ],
   providers: [
     BudgetAxisRepository,
     BudgetLineRepository,
@@ -31,6 +39,8 @@ import { BudgetVarianceController } from './controllers/budget-variance.controll
     BudgetAxesService,
     BudgetLinesService,
     BudgetVarianceService,
+    BudgetTemplateService,
+    BudgetImportService,
   ],
   exports: [BudgetAxesService, BudgetLinesService, BudgetVarianceService],
 })

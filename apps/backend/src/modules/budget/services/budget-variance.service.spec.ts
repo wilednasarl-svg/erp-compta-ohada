@@ -17,7 +17,12 @@ const ORG = asTenantId('11111111-1111-1111-1111-111111111111');
 describe('BudgetVarianceService', () => {
   it('marks a charge overspend as unfavorable (réalisé > budget sur une charge)', async () => {
     const service = makeService([
-      { dimension: '6221', dimensionLabel: 'Locations', budget: '1500000.00', actual: '1620000.00' },
+      {
+        dimension: '6221',
+        dimensionLabel: 'Locations',
+        budget: '1500000.00',
+        actual: '1620000.00',
+      },
     ]);
 
     const report = await service.report(ORG, { fiscalYear: 2026, groupBy: 'account' });
@@ -56,7 +61,12 @@ describe('BudgetVarianceService', () => {
 
   it('uses the cost perspective for non-account groupings (écart ≤ 0 favorable)', async () => {
     const service = makeService([
-      { dimension: 'COST-CENTER-UUID', dimensionLabel: 'COMM', budget: '1000000.00', actual: '950000.00' },
+      {
+        dimension: 'COST-CENTER-UUID',
+        dimensionLabel: 'COMM',
+        budget: '1000000.00',
+        actual: '950000.00',
+      },
     ]);
 
     const report = await service.report(ORG, { fiscalYear: 2026, groupBy: 'cost_center' });
