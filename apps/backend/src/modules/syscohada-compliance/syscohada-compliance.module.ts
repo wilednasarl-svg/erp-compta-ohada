@@ -27,7 +27,7 @@ import { SyscohadaComplianceService } from './services/syscohada-compliance.serv
  *     résoudre le guard (healthcheck KO en prod).
  */
 @Module({
-  imports: [AuthModule, RbacModule, AuditModule, ReportsModule],
+  imports: [AuditModule, AuthModule, RbacModule, ReportsModule],
   controllers: [SyscohadaComplianceController],
   providers: [SyscohadaComplianceService],
   exports: [SyscohadaComplianceService],

@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
+import { parseAccountingAmount } from '../../../common/parsing/parse-accounting-amount';
 import type { AppConfig } from '../../../config/configuration';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import { OrganizationAccountRepository } from '../../accounting-plan/repositories/organization-account.repository';
@@ -86,7 +87,11 @@ import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { FileParserService } from './file-parser.service';
 import { MappingService } from './mapping.service';
-import { ValidationService, findParentAccountByPrefix, resolvePostingAccount } from './validation.service';
+import {
+  ValidationService,
+  findParentAccountByPrefix,
+  resolvePostingAccount,
+} from './validation.service';
 
 /**
  * Représentation minimale d'un fichier reçu en upload, agnostique du
@@ -291,10 +296,7 @@ export class ImportSessionService {
 
     const labelTouched = Object.prototype.hasOwnProperty.call(patch, 'label');
     const docTypeTouched = Object.prototype.hasOwnProperty.call(patch, 'documentType');
-    const defaultJournalTouched = Object.prototype.hasOwnProperty.call(
-      patch,
-      'defaultJournalCode',
-    );
+    const defaultJournalTouched = Object.prototype.hasOwnProperty.call(patch, 'defaultJournalCode');
 
     if (!labelTouched && !docTypeTouched && !defaultJournalTouched) {
       // Nothing to do — surface a 422 rather than a silent no-op so the
@@ -1262,8 +1264,10 @@ export class ImportSessionService {
         details: { rowNumber, mapped },
       });
     }
-    const debit = parseFloat((mapped.debit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
-    const credit = parseFloat((mapped.credit ?? '0').replace(/\s/g, '').replace(',', '.')) || 0;
+    // Parsing robuste FR + US (cohérent avec ValidationService, qui a déjà
+    // validé la ligne avant d'atteindre ce point).
+    const debit = parseAccountingAmount(mapped.debit ?? '0') || 0;
+    const credit = parseAccountingAmount(mapped.credit ?? '0') || 0;
     const rawAxisType = (mapped.analyticAxisType ?? '').trim();
     const rawAxisCode = (mapped.analyticAxisCode ?? '').trim();
     // Invariant axe (Migration 0092) : (type IS NULL) = (code IS NULL).

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { parseAccountingAmount } from '../../../common/parsing/parse-accounting-amount';
 import type { DocumentType } from '../types/import-status';
 import {
   HEADER_SYNONYMS,
@@ -326,12 +327,11 @@ function looksLikeAmount(v: string): boolean {
   // Nombre avec ou sans séparateurs FR/EN, autorise signe négatif.
   // Doit avoir au moins un chiffre. Exclut les valeurs trop courtes
   // pour être plausibles (un chiffre seul peut être un ID).
-  const cleaned = v.replace(/[\s ]/g, '').replace(/,/g, '.');
-  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return false;
-  const n = Number(cleaned);
+  // Parsing robuste FR + US (voir common/parsing/parse-accounting-amount).
+  const n = parseAccountingAmount(v);
   if (!Number.isFinite(n)) return false;
   // Heuristique : un montant comptable typique a |valeur| >= 10 ou
   // une partie décimale. Filtre les "0", "1", "2"… qui sont plus
   // probablement des flags / IDs.
-  return Math.abs(n) >= 10 || cleaned.includes('.');
+  return Math.abs(n) >= 10 || !Number.isInteger(n);
 }

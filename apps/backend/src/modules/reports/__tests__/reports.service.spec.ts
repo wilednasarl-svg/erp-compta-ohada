@@ -2129,12 +2129,14 @@ describe('ReportsService.getMarginByAxis (D3 — Note 34 par axe)', () => {
 });
 
 describe('ReportsService.getPeriodValidity', () => {
-  const agg = (over: Partial<{
-    committedEntries: number;
-    totalDebit: string;
-    totalCredit: string;
-    lastMovementDate: string | null;
-  }> = {}) => ({
+  const agg = (
+    over: Partial<{
+      committedEntries: number;
+      totalDebit: string;
+      totalCredit: string;
+      lastMovementDate: string | null;
+    }> = {},
+  ) => ({
     committedEntries: 0,
     totalDebit: '0.00',
     totalCredit: '0.00',
@@ -2145,7 +2147,12 @@ describe('ReportsService.getPeriodValidity', () => {
   it('passe la fenêtre au repo et reporte un journal équilibré (imbalance 0)', async () => {
     const h = buildHarness();
     h.repo.periodValidity.mockResolvedValue(
-      agg({ committedEntries: 42, totalDebit: '1000.00', totalCredit: '1000.00', lastMovementDate: '2026-03-15' }),
+      agg({
+        committedEntries: 42,
+        totalDebit: '1000.00',
+        totalCredit: '1000.00',
+        lastMovementDate: '2026-03-15',
+      }),
     );
 
     const result = await h.service.getPeriodValidity(ORG_ID, {

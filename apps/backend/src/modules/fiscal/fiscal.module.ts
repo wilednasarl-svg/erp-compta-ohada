@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { RbacModule } from '../rbac/rbac.module';
-import { AuditModule } from '../audit/audit.module';
 import { BudgetModule } from '../budget/budget.module';
 import { JournalEntryLineEntity } from '../journals/entities/journal-entry-line.entity';
 import { FiscalParameterEntity } from './entities/fiscal-parameter.entity';
