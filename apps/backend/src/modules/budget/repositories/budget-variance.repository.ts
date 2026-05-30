@@ -70,8 +70,7 @@ export class BudgetVarianceRepository {
     // directement : Postgres n'a pas d'agrégat MAX(uuid), et la colonne
     // groupée est de toute façon fonctionnellement déterminée. MAX n'est requis
     // que pour le libellé de compte (account_label, non groupé).
-    const labelExpr =
-      col.label === col.key ? `line.${col.label}` : `MAX(line.${col.label})`;
+    const labelExpr = col.label === col.key ? `line.${col.label}` : `MAX(line.${col.label})`;
 
     const qb = this.repo
       .createQueryBuilder('line')

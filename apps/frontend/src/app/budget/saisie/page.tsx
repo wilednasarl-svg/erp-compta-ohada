@@ -150,6 +150,22 @@ export default function BudgetSaisiePage() {
     },
   );
 
+  // ── Amortissement CAPEX → dotations OPEX 681 ──────────────────────────
+  const [capexLineId, setCapexLineId] = useState('');
+  const [capexService, setCapexService] = useState('2026-01-01');
+  const [capexDuration, setCapexDuration] = useState('3');
+  const generateAmort = useApiMutation<{ total: number }, void>(
+    () =>
+      api.post(`/organizations/${orgId}/budget/capex/generate-amortization`, {
+        capexLineId,
+        serviceDate: capexService,
+        durationYears: Number(capexDuration),
+      }),
+    {
+      onSuccess: () => void qc.invalidateQueries({ queryKey: ['budget-lines', orgId] }),
+    },
+  );
+
   // ── Download / upload authentifiés ───────────────────────────────────
   async function download(path: string, filename: string, kind: 'export' | 'template') {
     setBusy(kind);
@@ -199,6 +215,7 @@ export default function BudgetSaisiePage() {
   const lines = linesQuery.data?.lines ?? [];
   const codeById = new Map(axesQuery.data?.map((a) => [a.id, a.code]));
   const costCenters = axesQuery.data?.filter((a) => a.axisType === 'cost_center') ?? [];
+  const capexLines = lines.filter((l) => l.budgetType === 'CAPEX');
 
   return (
     <AppShell>
@@ -441,6 +458,57 @@ export default function BudgetSaisiePage() {
               </table>
             </div>
           )}
+        </section>
+
+        {/* Amortissement CAPEX */}
+        <section className="space-y-4">
+          <h2 className="font-display text-lg font-medium text-ink">Amortissement des investissements (CAPEX)</h2>
+          <p className="max-w-[64ch] text-sm text-ink-soft">
+            Génère les dotations aux amortissements (lignes OPEX compte 6811) de l&apos;exercice à
+            partir d&apos;une ligne CAPEX, du montant et de la durée (linéaire, prorata temporis).
+          </p>
+          <form
+            className="flex flex-wrap items-end gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              generateAmort.mutate();
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="cx">Ligne CAPEX</Label>
+              <select id="cx" className={SELECT} value={capexLineId} onChange={(e) => setCapexLineId(e.target.value)} required>
+                <option value="">— choisir —</option>
+                {capexLines.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.accountCode} · {l.accountLabel ?? ''} ({fmt(l.amountBase)})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cxd">Mise en service</Label>
+              <Input id="cxd" type="date" value={capexService} onChange={(e) => setCapexService(e.target.value)} className="w-40" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cxy">Durée (ans)</Label>
+              <Input id="cxy" value={capexDuration} onChange={(e) => setCapexDuration(e.target.value)} className="w-20" />
+            </div>
+            <Button type="submit" variant="secondary" disabled={generateAmort.isPending || !capexLineId}>
+              {generateAmort.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <Plus className="mr-2 size-4" />
+              )}
+              Générer les dotations
+            </Button>
+          </form>
+          {generateAmort.error ? <FormError error={generateAmort.error} /> : null}
+          {capexLines.length === 0 ? (
+            <p className="text-sm text-ink-soft">
+              Aucune ligne CAPEX chargée — saisissez/importez une ligne de type CAPEX (filtrez sur
+              « CAPEX » ci-dessus).
+            </p>
+          ) : null}
         </section>
 
         {/* Axes */}

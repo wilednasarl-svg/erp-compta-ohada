@@ -14,10 +14,12 @@ import { BudgetLinesService } from './services/budget-lines.service';
 import { BudgetVarianceService } from './services/budget-variance.service';
 import { BudgetTemplateService } from './services/budget-template.service';
 import { BudgetImportService } from './services/budget-import.service';
+import { BudgetCapexService } from './services/budget-capex.service';
 import { BudgetAxesController } from './controllers/budget-axes.controller';
 import { BudgetLinesController } from './controllers/budget-lines.controller';
 import { BudgetVarianceController } from './controllers/budget-variance.controller';
 import { BudgetTemplateController } from './controllers/budget-template.controller';
+import { BudgetCapexController } from './controllers/budget-capex.controller';
 
 /**
  * Module Budget — budget & contrôle budgétaire (OPEX / CAPEX / Trésorerie /
@@ -37,6 +39,7 @@ import { BudgetTemplateController } from './controllers/budget-template.controll
     BudgetLinesController,
     BudgetVarianceController,
     BudgetTemplateController,
+    BudgetCapexController,
   ],
   providers: [
     BudgetAxisRepository,
@@ -47,6 +50,7 @@ import { BudgetTemplateController } from './controllers/budget-template.controll
     BudgetVarianceService,
     BudgetTemplateService,
     BudgetImportService,
+    BudgetCapexService,
   ],
   exports: [BudgetAxesService, BudgetLinesService, BudgetVarianceService],
 })

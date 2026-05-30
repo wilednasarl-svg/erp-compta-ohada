@@ -274,6 +274,7 @@ describe('HTTP status mapping', () => {
       BUDGET_LINE_LOCKED: 409,
       BUDGET_LINE_INVALID_PERIOD: 422,
       BUDGET_LINE_INVALID_TRANSITION: 409,
+      BUDGET_LINE_NOT_CAPEX: 422,
       BUDGET_IMPORT_EMPTY: 422,
       BUDGET_IMPORT_INVALID_FORMAT: 422,
       // Module Fiscal & Social.
