@@ -3455,6 +3455,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/fiscal/social-payroll/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SocialPayrollController_listLines"];
+        put?: never;
+        post: operations["SocialPayrollController_upsertLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/social-payroll/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["SocialPayrollController_deleteLine"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/social-payroll/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SocialPayrollController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/fiscal/social-payroll/generate-declarations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SocialPayrollController_generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6112,6 +6176,82 @@ export interface components {
              */
             effectiveFrom: string;
             brackets: components["schemas"]["TaxBracketInputDto"][];
+        };
+        UpsertPayrollLineDto: {
+            /** @example 2026 */
+            periodYear: number;
+            /**
+             * @description Mois 1-12
+             * @example 3
+             */
+            periodMonth: number;
+            /**
+             * @description Matricule / référence salarié
+             * @example MAT-001
+             */
+            employeeRef: string;
+            /**
+             * @description Salaire brut du mois
+             * @example 350000.00
+             */
+            grossSalary: string;
+        };
+        SocialPayrollLineResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** @example 2026 */
+            periodYear: number;
+            /** @example 3 */
+            periodMonth: number;
+            /** @example MAT-001 */
+            employeeRef: string;
+            /** @example 350000.00 */
+            grossSalary: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SocialPayrollLineEnvelopeResponse: {
+            line: components["schemas"]["SocialPayrollLineResponse"];
+        };
+        ListSocialPayrollLinesResponse: {
+            lines: components["schemas"]["SocialPayrollLineResponse"][];
+        };
+        SocialContributionLineResponse: {
+            /** @example CNPS_RETRAITE_EMP */
+            taxCode: string;
+            label: string;
+            /** @description Base (Σ bruts plafonnés par tête, ou Σ bruts pour ITS) */
+            base: string;
+            /** @description Montant dû (calculé par tête) */
+            amountDue: string;
+            /** @enum {string} */
+            mode: "progressive" | "flat";
+        };
+        SocialPeriodSummaryResponse: {
+            /** @example 2026 */
+            periodYear: number;
+            /** @example 3 */
+            periodMonth: number;
+            /** @example 42 */
+            employeeCount: number;
+            /** @example 18000000.00 */
+            grossTotal: string;
+            contributions: components["schemas"]["SocialContributionLineResponse"][];
+            /** @description Total des charges sociales dues */
+            totalDue: string;
+        };
+        GenerateSocialDto: {
+            /** @example 2026 */
+            periodYear: number;
+            /**
+             * @description Mois 1-12
+             * @example 3
+             */
+            periodMonth: number;
         };
     };
     responses: never;
@@ -11913,6 +12053,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SeedDefaultsResultResponse"];
+                };
+            };
+        };
+    };
+    SocialPayrollController_listLines: {
+        parameters: {
+            query: {
+                periodYear: number;
+                periodMonth: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSocialPayrollLinesResponse"];
+                };
+            };
+        };
+    };
+    SocialPayrollController_upsertLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertPayrollLineDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SocialPayrollLineEnvelopeResponse"];
+                };
+            };
+        };
+    };
+    SocialPayrollController_deleteLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SocialPayrollController_summary: {
+        parameters: {
+            query: {
+                periodYear: number;
+                periodMonth: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SocialPeriodSummaryResponse"];
+                };
+            };
+        };
+    };
+    SocialPayrollController_generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateSocialDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListFiscalDeclarationsResponse"];
                 };
             };
         };
