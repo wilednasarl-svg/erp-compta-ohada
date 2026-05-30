@@ -27,16 +27,19 @@ function makeService(opts: {
   existing?: FiscalDeclarationEntity | null;
   create?: jest.Mock;
   update?: jest.Mock;
+  upsert?: jest.Mock;
 }): {
   service: FiscalDeclarationsService;
   create: jest.Mock;
   update: jest.Mock;
+  upsert: jest.Mock;
 } {
   const create = opts.create ?? jest.fn((input) => Promise.resolve({ id: 'new', ...input }));
   const update =
     opts.update ?? jest.fn((entity, input) => Promise.resolve({ ...entity, ...input }));
   const declRepo = {
     findByNaturalKey: jest.fn().mockResolvedValue(opts.existing ?? null),
+    findById: jest.fn().mockResolvedValue(opts.existing ?? null),
     create,
     update,
   } as unknown as FiscalDeclarationRepository;
@@ -46,10 +49,16 @@ function makeService(opts: {
   const baseService = {
     computeBase: jest.fn().mockResolvedValue('0.00'),
   } as unknown as import('./fiscal-base.service').FiscalBaseService;
+  const upsert =
+    opts.upsert ?? jest.fn().mockResolvedValue({ line: { id: 'b' }, action: 'created' });
+  const budgetLines = {
+    upsert,
+  } as unknown as import('../../budget/services/budget-lines.service').BudgetLinesService;
   return {
-    service: new FiscalDeclarationsService(declRepo, paramRepo, baseService),
+    service: new FiscalDeclarationsService(declRepo, paramRepo, baseService, budgetLines),
     create,
     update,
+    upsert,
   };
 }
 
@@ -117,5 +126,35 @@ describe('FiscalDeclarationsService.generate', () => {
     await expect(
       service.generate(ORG, { taxCode: 'TVA', periodYear: 2026, periodMonth: 3, baseAmount: '1' }),
     ).rejects.toBeInstanceOf(AppException);
+  });
+});
+
+describe('FiscalDeclarationsService.spillToTreasury', () => {
+  it('creates a negative TRESO/BR budget line at the due-date period', async () => {
+    const existing = {
+      id: 'd1',
+      taxCode: 'TVA',
+      periodYear: 2026,
+      periodMonth: 3,
+      amountDue: '8100000.00',
+      currency: 'XOF',
+      dueDate: '2026-04-15',
+      liabilityAccount: '4431',
+    } as FiscalDeclarationEntity;
+    const { service, upsert } = makeService({ existing });
+
+    await service.spillToTreasury('d1', ORG, 'user-1');
+
+    expect(upsert).toHaveBeenCalledWith(
+      ORG,
+      expect.objectContaining({
+        budgetType: 'TRESO',
+        scenario: 'BR',
+        fiscalYear: 2026,
+        periodMonth: 4,
+        accountCode: '4431',
+        amount: '-8100000.00',
+      }),
+    );
   });
 });
