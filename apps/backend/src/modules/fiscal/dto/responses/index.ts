@@ -10,3 +10,10 @@ export {
   ListFiscalDeclarationsResponse,
 } from './fiscal-declaration.response';
 export { FiscalBracketResponse, ListFiscalBracketsResponse } from './fiscal-bracket.response';
+export {
+  SocialPayrollLineResponse,
+  ListSocialPayrollLinesResponse,
+  SocialPayrollLineEnvelopeResponse,
+  SocialContributionLineResponse,
+  SocialPeriodSummaryResponse,
+} from './social-payroll.response';
