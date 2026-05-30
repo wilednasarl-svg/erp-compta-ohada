@@ -22,6 +22,11 @@ export interface GenerateDeclarationCommand {
   readonly periodMonth?: number | null;
   /** Base imposable (du calcul comptable/budget ou saisie). Défaut "0". */
   readonly baseAmount?: string;
+  /**
+   * Montant dû explicite. Court-circuite le calcul taux/barème — utilisé pour
+   * les charges sociales calculées PAR TÊTE (où l'agrégat serait faux).
+   */
+  readonly amountOverride?: string;
   readonly comment?: string;
   readonly createdById?: string | null;
 }
@@ -86,9 +91,10 @@ export class FiscalDeclarationsService {
     // sinon taux plat × base (plafonnée).
     const taxBrackets = await this.brackets.findEffective(organizationId, cmd.taxCode, onDate);
     const amountDue =
-      taxBrackets.length > 0
+      cmd.amountOverride ??
+      (taxBrackets.length > 0
         ? computeProgressiveTax(base, taxBrackets)
-        : computeAmountDue(base, param.rate, param.ceiling);
+        : computeAmountDue(base, param.rate, param.ceiling));
     const dueDate = computeDueDate(cmd.periodYear, periodMonth, param.periodicity, param.dueDay);
 
     const existing = await this.declarations.findByNaturalKey(
