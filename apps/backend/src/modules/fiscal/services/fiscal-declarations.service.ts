@@ -4,12 +4,14 @@ import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { TenantId } from '../../../common/persistence/tenant-scope';
 import { computeAmountDue, computeDueDate } from '../lib/fiscal-calc';
+import { computeProgressiveTax } from '../lib/progressive-tax';
 import { FiscalDeclarationEntity } from '../entities/fiscal-declaration.entity';
 import {
   FiscalDeclarationRepository,
   type ListFiscalDeclarationsFilter,
 } from '../repositories/fiscal-declaration.repository';
 import { FiscalParameterRepository } from '../repositories/fiscal-parameter.repository';
+import { FiscalTaxBracketRepository } from '../repositories/fiscal-tax-bracket.repository';
 import { FiscalBaseService } from './fiscal-base.service';
 import { BudgetLinesService } from '../../budget/services/budget-lines.service';
 import { FISCAL_STATUS_TRANSITIONS, type FiscalDeclarationStatus } from '../types/fiscal.types';
@@ -38,6 +40,7 @@ export class FiscalDeclarationsService {
     private readonly params: FiscalParameterRepository,
     private readonly baseService: FiscalBaseService,
     private readonly budgetLines: BudgetLinesService,
+    private readonly brackets: FiscalTaxBracketRepository,
   ) {}
 
   async list(
@@ -79,7 +82,13 @@ export class FiscalDeclarationsService {
       });
     }
 
-    const amountDue = computeAmountDue(base, param.rate, param.ceiling);
+    // Barème progressif (ITS) si des tranches sont définies pour la période ;
+    // sinon taux plat × base (plafonnée).
+    const taxBrackets = await this.brackets.findEffective(organizationId, cmd.taxCode, onDate);
+    const amountDue =
+      taxBrackets.length > 0
+        ? computeProgressiveTax(base, taxBrackets)
+        : computeAmountDue(base, param.rate, param.ceiling);
     const dueDate = computeDueDate(cmd.periodYear, periodMonth, param.periodicity, param.dueDay);
 
     const existing = await this.declarations.findByNaturalKey(

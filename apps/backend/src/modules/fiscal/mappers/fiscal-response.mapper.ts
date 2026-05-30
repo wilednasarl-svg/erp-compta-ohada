@@ -1,10 +1,13 @@
 import type { FiscalDeclarationEntity } from '../entities/fiscal-declaration.entity';
 import type { FiscalParameterEntity } from '../entities/fiscal-parameter.entity';
+import type { FiscalTaxBracketEntity } from '../entities/fiscal-tax-bracket.entity';
 import {
+  type FiscalBracketResponse,
   type FiscalDeclarationEnvelopeResponse,
   type FiscalDeclarationResponse,
   type FiscalParameterEnvelopeResponse,
   type FiscalParameterResponse,
+  type ListFiscalBracketsResponse,
   type ListFiscalDeclarationsResponse,
   type ListFiscalParametersResponse,
 } from '../dto/responses';
@@ -82,4 +85,23 @@ export function toListFiscalDeclarations(
   total: number,
 ): ListFiscalDeclarationsResponse {
   return { declarations: entities.map(toFiscalDeclarationResponse), total };
+}
+
+export function toFiscalBracketResponse(entity: FiscalTaxBracketEntity): FiscalBracketResponse {
+  return {
+    id: entity.id,
+    organizationId: entity.organizationId,
+    taxCode: entity.taxCode,
+    effectiveFrom: entity.effectiveFrom,
+    bracketOrder: entity.bracketOrder,
+    fromAmount: entity.fromAmount,
+    toAmount: entity.toAmount,
+    rate: entity.rate,
+  };
+}
+
+export function toListFiscalBrackets(
+  entities: readonly FiscalTaxBracketEntity[],
+): ListFiscalBracketsResponse {
+  return { brackets: entities.map(toFiscalBracketResponse) };
 }
