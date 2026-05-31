@@ -988,24 +988,106 @@ function RecentActivity({ isLoading, events }: { isLoading: boolean; events: Rea
 
 /* ─── Écran de bienvenue (nouveau dossier) ────────────────────── */
 
+interface SetupStep {
+  readonly label: string;
+  readonly detail: string;
+  readonly state: 'done' | 'current' | 'next';
+  readonly href?: string;
+  readonly cta?: string;
+}
+
+/**
+ * Premier écran d'un dossier vide. Au lieu d'un CTA isolé, montre le chemin
+ * d'initialisation : ce qui est déjà prêt, l'étape en cours (avec action), et
+ * ce qui suit. Guide sans noyer.
+ */
 function WelcomeSetup() {
+  const steps: ReadonlyArray<SetupStep> = [
+    {
+      label: 'Plan comptable SYSCOHADA',
+      detail: 'Pré-chargé, prêt à l’emploi.',
+      state: 'done',
+    },
+    {
+      label: 'Ouvrir le premier exercice',
+      detail: 'Définissez la période de départ et la date de clôture.',
+      state: 'current',
+      href: '/accounting-periods',
+      cta: 'Ouvrir l’exercice',
+    },
+    {
+      label: 'Paramétrer les journaux',
+      detail: 'Vente, achat, banque et opérations diverses.',
+      state: 'next',
+    },
+    {
+      label: 'Importer ou saisir vos écritures',
+      detail: 'Sage Saari, CSV, ou saisie manuelle.',
+      state: 'next',
+    },
+  ];
+
   return (
-    <div className="rounded-lg border border-line bg-paper px-6 py-12 text-center">
-      <span className="inline-flex h-14 w-14 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
-        <CalendarClock className="h-6 w-6" strokeWidth={1.5} />
-      </span>
-      <h2 className="mt-5 font-display text-2xl text-ink">Ouvrons votre premier exercice</h2>
-      <p className="mx-auto mt-2 max-w-[52ch] text-base leading-relaxed text-ink-soft">
-        C&apos;est l&apos;étape qui débloque la saisie des écritures, les états financiers et le suivi du
-        dossier. Quelques informations suffisent.
-      </p>
-      <Link
-        href="/accounting-periods"
-        className="press mt-6 inline-flex items-center gap-2 rounded-sm bg-accent px-5 py-2.5 text-sm font-medium text-[oklch(98%_0.004_85)] transition-colors duration-fast hover:opacity-90"
-      >
-        Ouvrir le 1<sup>er</sup> exercice
-        <ArrowRight className="h-4 w-4" strokeWidth={2} />
-      </Link>
+    <div className="rounded-lg border border-line bg-paper p-6 sm:p-8">
+      <div className="flex items-start gap-4">
+        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
+          <CalendarClock className="h-6 w-6" strokeWidth={1.5} />
+        </span>
+        <div className="min-w-0">
+          <p className="eyebrow">Premiers pas</p>
+          <h2 className="mt-1 font-display text-2xl text-ink">Configurons votre dossier</h2>
+          <p className="mt-1.5 max-w-[56ch] text-base leading-relaxed text-ink-soft">
+            Voici par où commencer. L&apos;étape clé : ouvrir l&apos;exercice, qui débloque la saisie, les
+            états financiers et le suivi du dossier.
+          </p>
+        </div>
+      </div>
+
+      <ol className="mt-6 space-y-1">
+        {steps.map((step, i) => {
+          const isCurrent = step.state === 'current';
+          const isDone = step.state === 'done';
+          return (
+            <li
+              key={step.label}
+              className={cn(
+                'flex items-center gap-4 rounded-md px-3 py-3 transition-colors duration-fast',
+                isCurrent && 'bg-sunk/60',
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums',
+                  isDone
+                    ? 'bg-accent-soft text-accent-ink'
+                    : isCurrent
+                      ? 'bg-accent text-[oklch(98%_0.004_85)]'
+                      : 'border border-line-strong text-ink-mute',
+                )}
+              >
+                {isDone ? <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} /> : i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className={cn('text-sm font-medium', isDone ? 'text-ink-soft' : 'text-ink')}>
+                  {step.label}
+                </p>
+                <p className="mt-0.5 text-xs text-ink-mute">{step.detail}</p>
+              </div>
+              {isCurrent && step.href && step.cta ? (
+                <Link
+                  href={step.href}
+                  className="press inline-flex shrink-0 items-center gap-1.5 rounded-sm bg-accent px-4 py-2 text-sm font-medium text-[oklch(98%_0.004_85)] transition-colors duration-fast hover:opacity-90"
+                >
+                  {step.cta}
+                  <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+                </Link>
+              ) : isDone ? (
+                <span className="shrink-0 text-2xs uppercase tracking-wider text-accent-ink">Prêt</span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
