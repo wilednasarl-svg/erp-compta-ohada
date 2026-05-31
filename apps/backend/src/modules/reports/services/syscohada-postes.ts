@@ -126,13 +126,18 @@ export const CHARGE_POSTES: ReadonlyArray<SyscohadaPoste> = [
     code: 'RL',
     label: 'Dotations aux amortissements, provisions et dépréciations',
     side: 'CHARGE',
-    accountPrefixes: ['681', '687', '691', '697'],
+    // Dotations d'EXPLOITATION uniquement : 681 (amort./prov. d'expl.) et
+    // 691 (dépréciations d'expl.). 687 → dotations HAO (poste RP) ; 697 →
+    // dotations financières (poste RM). Les y inclure minorait à tort le
+    // résultat d'exploitation (XE = XD + TJ − RL).
+    accountPrefixes: ['681', '691'],
   },
   {
     code: 'RM',
     label: 'Frais financiers et charges assimilés',
     side: 'CHARGE',
-    accountPrefixes: ['67'],
+    // 67 (charges financières) + 697 (dotations aux amort./prov. financières).
+    accountPrefixes: ['67', '697'],
   },
   {
     code: 'RO',
@@ -144,7 +149,8 @@ export const CHARGE_POSTES: ReadonlyArray<SyscohadaPoste> = [
     code: 'RP',
     label: 'Autres charges hors activités ordinaires',
     side: 'CHARGE',
-    accountPrefixes: ['83', '85'],
+    // 83/85 (autres charges HAO) + 687 (dotations aux amort./prov. HAO).
+    accountPrefixes: ['83', '85', '687'],
   },
   {
     code: 'RQ',

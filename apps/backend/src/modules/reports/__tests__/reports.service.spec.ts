@@ -1186,6 +1186,25 @@ describe('ReportsService.getSig (Soldes Intermédiaires de Gestion)', () => {
     expect(soldeByCode('XC')).toBe('40000000.00');
   });
 
+  it('classe 687 (dotations HAO) et 697 (dotations financières) hors du résultat d’exploitation', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountId: 'a-ta', accountCode: '701000', accountClass: 7, periodCredit: '100000000.00' }),
+      tbRow({ accountId: 'a-ra', accountCode: '601000', accountClass: 6, periodDebit: '60000000.00' }),
+      tbRow({ accountId: 'a-rl', accountCode: '681000', accountClass: 6, periodDebit: '10000000.00' }), // dotation expl → RL
+      tbRow({ accountId: 'a-hao', accountCode: '687000', accountClass: 6, periodDebit: '4000000.00' }), // dotation HAO → RP
+      tbRow({ accountId: 'a-fin', accountCode: '697000', accountClass: 6, periodDebit: '3000000.00' }), // dotation fin. → RM
+    ]);
+    const report = await h.service.getSig(ORG_ID, { fromDate: '2026-01-01', toDate: '2026-12-31' });
+    const s = (code: string): string => report.soldes.find((x) => x.code === code)?.amount ?? 'missing';
+    // RL = 681 seul (10M). XE = XD - RL = 40M - 10M = 30M (687/697 NE minorent PAS l'exploitation).
+    expect(s('XE')).toBe('30000000.00');
+    // 697 → RM (financier) : XF = -3M.
+    expect(s('XF')).toBe('-3000000.00');
+    // 687 → RP (HAO) : XH = -4M.
+    expect(s('XH')).toBe('-4000000.00');
+  });
+
   it('maps 6031 to RB (variation stocks marchandises) not RA via longest-prefix match', async () => {
     const h = buildHarness();
     h.repo.trialBalance.mockResolvedValue([
