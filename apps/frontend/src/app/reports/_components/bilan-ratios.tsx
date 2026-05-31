@@ -8,9 +8,9 @@ import type { BalanceSheetReport, BilanMasse } from '@/types/reports';
 /**
  * Section « Ratios & analyse » affichée sous le Bilan. Calcule les
  * indicateurs financiers usuels SYSCOHADA (structure, équilibre FR/BFR/TN,
- * liquidité, solvabilité) à partir des MASSES du bilan, et génère des
- * observations dynamiques selon les seuils. Purement dérivé du rapport —
- * aucun appel réseau.
+ * liquidité, solvabilité) à partir des MASSES du bilan, et fournit pour
+ * chaque ratio une INTERPRÉTATION dérivée de sa valeur réelle, plus des
+ * observations de synthèse. Purement dérivé du rapport — aucun appel réseau.
  */
 
 const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
@@ -47,7 +47,7 @@ interface RatioRow {
   readonly formula: string;
   readonly value: string;
   readonly tone: Tone;
-  readonly note: string;
+  readonly interpretation: string;
 }
 
 export function BilanRatios({ report }: { readonly report: BalanceSheetReport }) {
@@ -61,7 +61,6 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
   const totalActif = Number(report.totals.actif);
 
   const cp = masseTotal(P, 'CP');
-  const dettesFin = masseTotal(P, 'DD');
   const stables = masseTotal(P, 'DF');
   const passifCirc = masseTotal(P, 'DP');
   const tresoP = masseTotal(P, 'DT');
@@ -89,74 +88,116 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
       formula: 'Capitaux propres / Total passif',
       value: pct(autonomie),
       tone: autonomie >= 0.3 ? 'ok' : autonomie >= 0.2 ? 'warn' : 'bad',
-      note: 'Part du bilan financée par les fonds propres (norme > 20–30 %).',
+      interpretation:
+        autonomie >= 0.3
+          ? `Bonne capitalisation : ${pct(autonomie)} du bilan est financé par les fonds propres — structure solide face aux aléas.`
+          : autonomie >= 0.2
+            ? `Capitalisation correcte mais à renforcer (${pct(autonomie)}) : la marge de sécurité reste limitée.`
+            : `Structure très dépendante des dettes (seulement ${pct(autonomie)} de fonds propres). Vérifiez si des comptes courants d'associés peuvent être assimilés à des quasi-fonds propres avant de conclure à une fragilité.`,
     },
     {
       label: 'Endettement',
-      formula: 'Dettes / Capitaux propres',
+      formula: 'Total dettes / Capitaux propres',
       value: mult(endettement),
       tone: endettement <= 1 ? 'ok' : endettement <= 2 ? 'warn' : 'bad',
-      note: 'Poids des dettes rapporté aux fonds propres (norme < 1–2).',
+      interpretation:
+        endettement <= 1
+          ? `Endettement maîtrisé : les dettes restent au niveau des fonds propres ou en deçà.`
+          : endettement <= 2
+            ? `Endettement élevé : les dettes valent ${mult(endettement)} fois les fonds propres — à surveiller.`
+            : `Très endettée : les dettes pèsent ${mult(endettement)} fois les fonds propres ; capacité d'emprunt quasi saturée.`,
     },
     {
       label: 'Couverture des emplois stables',
       formula: 'Ressources stables / Actif immobilisé',
       value: mult(couverture),
       tone: couverture >= 1 ? 'ok' : 'bad',
-      note: 'L’immobilisé doit être financé par des ressources stables (> 1).',
+      interpretation:
+        couverture >= 1
+          ? `Sain : l'immobilisé est intégralement financé par des ressources durables, avec un excédent dégagé pour l'exploitation.`
+          : `Déséquilibre : une partie des immobilisations est financée à court terme — risque de tension de trésorerie.`,
     },
     {
       label: 'Fonds de roulement (FR)',
       formula: 'Ressources stables − Actif immobilisé',
       value: fcfa(fr),
       tone: fr >= 0 ? 'ok' : 'bad',
-      note: 'Marge de sécurité finançant le cycle d’exploitation.',
+      interpretation:
+        fr >= 0
+          ? `Positif (${fcfa(fr)} FCFA) : les ressources stables couvrent l'immobilisé et laissent une marge pour financer le cycle d'exploitation.`
+          : `Négatif (${fcfa(fr)} FCFA) : l'immobilisé n'est pas couvert par des ressources durables — équilibre financier fragile.`,
     },
     {
-      label: "Besoin en fonds de roulement (BFR)",
+      label: 'Besoin en fonds de roulement (BFR)',
       formula: 'Actif circulant − Passif circulant',
       value: fcfa(bfr),
       tone: 'neutral',
-      note: 'Financement requis par l’exploitation (stocks + créances − dettes).',
+      interpretation:
+        bfr > 0
+          ? `Positif (${fcfa(bfr)} FCFA) : l'exploitation consomme de la trésorerie (créances + stocks > dettes courantes) ; ce besoin doit être financé par le FR.`
+          : bfr < 0
+            ? `Négatif (${fcfa(bfr)} FCFA) : l'exploitation dégage de la trésorerie — les dettes courantes financent le cycle.`
+            : `Quasi nul : le cycle d'exploitation s'autofinance.`,
     },
     {
       label: 'Trésorerie nette',
       formula: 'FR − BFR',
       value: fcfa(tn),
       tone: tn >= 0 ? 'ok' : 'bad',
-      note: 'Positive = trésorerie excédentaire ; négative = découvert structurel.',
+      interpretation:
+        tn >= 0
+          ? `Excédentaire (${fcfa(tn)} FCFA) : le fonds de roulement couvre le BFR, aucun découvert structurel.`
+          : `Négative (${fcfa(tn)} FCFA) : l'entreprise dépend de financements court terme (découverts) pour boucler son cycle.`,
     },
     {
       label: 'Liquidité générale',
       formula: 'Actif circulant / Passif circulant',
       value: mult(liqGen),
       tone: liqGen >= 1.2 ? 'ok' : liqGen >= 1 ? 'warn' : 'bad',
-      note: 'Capacité à honorer le court terme avec l’actif circulant (> 1).',
+      interpretation:
+        liqGen >= 1.2
+          ? `Confortable : l'actif circulant couvre largement les dettes à court terme.`
+          : liqGen >= 1
+            ? `Juste suffisante (${mult(liqGen)}) : l'actif circulant couvre tout juste le court terme, sans marge.`
+            : `Insuffisante (${mult(liqGen)}) : l'actif circulant ne couvre pas les dettes à court terme.`,
     },
     {
       label: 'Liquidité réduite',
       formula: '(Créances + Trésorerie) / Passif circulant',
       value: mult(liqRed),
       tone: liqRed >= 1 ? 'ok' : liqRed >= 0.8 ? 'warn' : 'bad',
-      note: 'Idem hors stocks — mesure la dépendance à l’encaissement clients.',
+      interpretation:
+        liqRed >= 1
+          ? `Solide : même sans écouler les stocks, l'entreprise couvre ses dettes à court terme.`
+          : liqRed >= 0.8
+            ? `Tension (${mult(liqRed)}) : hors stocks, la couverture dépend directement de l'encaissement des créances clients.`
+            : `Risque (${mult(liqRed)}) : hors stocks, l'actif « rapide » ne couvre pas les dettes à court terme.`,
     },
     {
       label: 'Liquidité immédiate',
       formula: 'Trésorerie / Passif circulant',
       value: mult(liqImm),
       tone: liqImm >= 0.2 ? 'ok' : 'neutral',
-      note: 'Part des dettes court terme couverte par la trésorerie disponible.',
+      interpretation:
+        liqImm >= 0.2
+          ? `La trésorerie disponible couvre ${pct(liqImm)} des dettes à court terme — coussin de sécurité appréciable.`
+          : `Cash immédiat faible (${pct(liqImm)}), fréquent pour une activité à fort BFR : la liquidité repose sur l'encaissement des clients, pas sur la trésorerie en caisse.`,
     },
     {
       label: 'Solvabilité générale',
       formula: 'Total actif / Total dettes',
       value: mult(solva),
       tone: solva >= 1.5 ? 'ok' : solva >= 1.1 ? 'warn' : 'bad',
-      note: 'Capacité à rembourser l’ensemble des dettes en cas de liquidation.',
+      interpretation:
+        solva >= 1.5
+          ? `Bonne : l'actif représente ${mult(solva)}× les dettes — capacité de remboursement confortable en cas de liquidation.`
+          : solva >= 1.1
+            ? `Limitée (${mult(solva)}) : l'actif ne dépasse les dettes que de peu — marge de sécurité mince.`
+            : `Fragile (${mult(solva)}) : l'actif couvre à peine l'ensemble des dettes.`,
     },
   ];
 
-  // ── Observations dynamiques ──────────────────────────────────────────
+  // ── Observations de synthèse ─────────────────────────────────────────
   const obs: Array<{ tone: Tone; text: string }> = [];
 
   if (!equilibre) {
@@ -179,7 +220,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
   if (partCreances >= 0.5) {
     obs.push({
       tone: 'bad',
-      text: `Les créances représentent ${pct(partCreances)} de l’actif (${fcfa(creances)} FCFA). La santé de la trésorerie dépend directement du recouvrement clients — point de vigilance prioritaire (relances, provisions, affacturage).`,
+      text: `Les créances représentent ${pct(partCreances)} de l’actif (${fcfa(creances)} FCFA). La trésorerie dépend directement du recouvrement clients — point de vigilance prioritaire (relances, provisions, affacturage).`,
     });
   }
 
@@ -217,38 +258,25 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
         <span className="ml-auto text-2xs text-ink-mute">calculés sur les masses du bilan</span>
       </header>
 
-      <div className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-2xs uppercase tracking-wide text-ink-mute">
-              <th className="px-4 py-2 text-left font-medium">Indicateur</th>
-              <th className="px-3 py-2 text-left font-medium">Formule</th>
-              <th className="px-4 py-2 text-right font-medium">Valeur</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-b border-line/60 last:border-0 align-top">
-                <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', TONE_DOT[r.tone])} aria-hidden />
-                    <span className="font-medium text-ink">{r.label}</span>
-                  </div>
-                  <p className="mt-0.5 pl-3.5 text-2xs text-ink-mute">{r.note}</p>
-                </td>
-                <td className="px-3 py-2.5 text-xs text-ink-soft">{r.formula}</td>
-                <td className="px-4 py-2.5 text-right font-mono text-sm font-semibold tabular-nums text-ink">
-                  {r.value}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ul className="divide-y divide-line/60">
+        {rows.map((r) => (
+          <li key={r.label} className="px-4 py-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', TONE_DOT[r.tone])} aria-hidden />
+                <span className="font-medium text-ink">{r.label}</span>
+              </div>
+              <span className="font-mono text-sm font-semibold tabular-nums text-ink">{r.value}</span>
+            </div>
+            <p className="mt-0.5 pl-3.5 text-2xs text-ink-mute">{r.formula}</p>
+            <p className="mt-1 pl-3.5 text-xs leading-relaxed text-ink-soft">{r.interpretation}</p>
+          </li>
+        ))}
+      </ul>
 
       <div className="border-t border-line px-4 py-3">
         <p className="mb-2 flex items-center gap-1.5 text-2xs font-medium uppercase tracking-wide text-ink-mute">
-          <AlertTriangle className="h-3 w-3" strokeWidth={1.5} aria-hidden /> Observations
+          <AlertTriangle className="h-3 w-3" strokeWidth={1.5} aria-hidden /> Synthèse
         </p>
         <ul className="space-y-1.5">
           {obs.map((o) => (
