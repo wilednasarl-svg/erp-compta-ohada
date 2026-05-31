@@ -134,6 +134,29 @@ export function IllustrationLedger({ className }: IllustrationProps) {
   );
 }
 
+/** Loupe + « ? » — page introuvable (404). */
+export function IllustrationNotFound({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 120 116" fill="none" role="img" aria-hidden className={className}>
+      <g {...LINE}>
+        <circle cx="50" cy="48" r="26" />
+        <path d="M70 68 L90 88" strokeWidth={3.2} />
+      </g>
+      <text
+        x="50"
+        y="58"
+        textAnchor="middle"
+        fontSize="28"
+        fontWeight="600"
+        fill={ACCENT}
+        fontFamily="var(--font-fraunces), Georgia, serif"
+      >
+        ?
+      </text>
+    </svg>
+  );
+}
+
 /** Maillon rompu — connexion indisponible (page hors-ligne). */
 export function IllustrationOffline({ className }: IllustrationProps) {
   return (
