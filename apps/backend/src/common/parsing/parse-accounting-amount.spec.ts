@@ -8,6 +8,21 @@ describe('parseAccountingAmount', () => {
     expect(parseAccountingAmount('1,234.56')).toBe(1_234.56);
   });
 
+  it('parses comma-thousands WITHOUT a decimal part (régression Blance CSV)', () => {
+    // Bug : `100,000,000` était lu 100000.000 = 100 000 (÷1000), ce qui
+    // amputait le débit importé et faussait l'équilibre du bilan.
+    expect(parseAccountingAmount('100,000,000')).toBe(100_000_000);
+    expect(parseAccountingAmount('20,000,000')).toBe(20_000_000);
+    expect(parseAccountingAmount('1,885,629,834')).toBe(1_885_629_834);
+    expect(parseAccountingAmount('236,953,148')).toBe(236_953_148);
+    expect(parseAccountingAmount('13,561,223,572')).toBe(13_561_223_572);
+  });
+
+  it('parses dot-thousands WITHOUT a decimal part (FR sans décimale)', () => {
+    expect(parseAccountingAmount('1.234.567')).toBe(1_234_567);
+    expect(parseAccountingAmount('100.000.000')).toBe(100_000_000);
+  });
+
   it('parses French format (space/dot thousands, comma decimal)', () => {
     expect(parseAccountingAmount('1 234 567,89')).toBe(1_234_567.89);
     expect(parseAccountingAmount('1.234.567,89')).toBe(1_234_567.89);

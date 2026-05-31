@@ -10,12 +10,13 @@
  *   - Format anglais/US : `1,234,567.89`
  *     (virgule = milliers, point = décimale)
  *
- * Principe : le **dernier** séparateur (`.` ou `,`) rencontré est la
- * décimale ; tout autre séparateur est un séparateur de milliers et est
- * supprimé. Cas particulier traité : un séparateur unique suivi
- * d'exactement 3 chiffres (`1,234`) est interprété comme un séparateur
- * de milliers (→ `1234`), pas comme 3 décimales — les montants OHADA
- * ont au plus 2 décimales.
+ * Principe : si les deux types de séparateurs (`.` ET `,`) coexistent,
+ * le **dernier** est la décimale et l'autre les milliers. Si un seul
+ * type est présent (une ou plusieurs fois) et que le dernier groupe fait
+ * exactement 3 chiffres, c'est un séparateur de milliers : `1,234` →
+ * `1234`, `100,000,000` → `100000000`, `1.234.567` → `1234567`. Les
+ * montants OHADA ont au plus 2 décimales, donc un groupe final de 3
+ * chiffres ne peut pas être une partie décimale.
  *
  * Gère aussi : espaces insécables (NBSP), symboles monétaires/lettres
  * (FCFA, €, …), signe `-` et parenthèses comptables `(1 234,00)` = négatif.
@@ -51,15 +52,18 @@ export function parseAccountingAmount(raw: string | number | null | undefined): 
     normalized = s;
   } else {
     const decPos = Math.max(lastDot, lastComma);
-    const sepCount = (s.match(/[.,]/g) ?? []).length;
-    const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
-    const decPart = s.slice(decPos + 1).replace(/[.,]/g, '');
-
-    if (sepCount === 1 && decPart.length === 3) {
-      // `1,234` / `1.234` → séparateur de milliers, valeur entière 1234.
-      normalized = intPart + decPart;
+    // Un seul TYPE de séparateur présent (que des `,` OU que des `.`) :
+    // si le dernier groupe fait exactement 3 chiffres, ce séparateur est
+    // un séparateur de MILLIERS, pas une décimale. Couvre `1,234` (→1234),
+    // `100,000,000` (→100000000) et `1.234.567` (→1234567). Si les deux
+    // types sont présents (`1,234.56`), le dernier est la décimale.
+    const onlyOneSepType = lastDot === -1 || lastComma === -1;
+    const lastGroup = s.slice(decPos + 1);
+    if (onlyOneSepType && /^\d{3}$/.test(lastGroup)) {
+      normalized = s.replace(/[.,]/g, '');
     } else {
-      normalized = `${intPart}.${decPart}`;
+      const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
+      normalized = `${intPart}.${lastGroup.replace(/[.,]/g, '')}`;
     }
   }
 

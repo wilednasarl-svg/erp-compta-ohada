@@ -8,11 +8,13 @@
  *   - Format anglais/US : `1,234,567.89`
  *     (virgule = milliers, point = décimale)
  *
- * Principe : le **dernier** séparateur (`.` ou `,`) rencontré est la
- * décimale ; tout autre séparateur est un séparateur de milliers et est
- * supprimé. Cas particulier : un séparateur unique suivi d'exactement 3
- * chiffres (`1,234`) est interprété comme un séparateur de milliers
- * (→ `1234`) — les montants OHADA ont au plus 2 décimales.
+ * Principe : si les deux types de séparateurs (`.` ET `,`) coexistent,
+ * le **dernier** est la décimale et l'autre les milliers. Si un seul
+ * type est présent (qu'il apparaisse une ou plusieurs fois) et que le
+ * dernier groupe fait exactement 3 chiffres, c'est un séparateur de
+ * milliers : `1,234` → `1234`, `100,000,000` → `100000000`,
+ * `1.234.567` → `1234567`. Les montants OHADA ont au plus 2 décimales,
+ * donc un groupe final de 3 chiffres ne peut pas être décimal.
  *
  * Gère aussi : espaces insécables (NBSP), symboles/lettres parasites
  * (FCFA, €…), signe `-` et parenthèses comptables `(1 234,00)` = négatif.
@@ -49,10 +51,22 @@ export function parseAccountingAmount(raw: string | number | null | undefined): 
     normalized = s;
   } else {
     const decPos = Math.max(lastDot, lastComma);
-    const sepCount = (s.match(/[.,]/g) ?? []).length;
-    const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
-    const decPart = s.slice(decPos + 1).replace(/[.,]/g, '');
-    normalized = sepCount === 1 && decPart.length === 3 ? intPart + decPart : `${intPart}.${decPart}`;
+    // Un seul TYPE de séparateur présent (que des `,` OU que des `.`) :
+    // si le dernier groupe fait exactement 3 chiffres, ce séparateur est
+    // un séparateur de MILLIERS, pas une décimale. Couvre aussi bien
+    // `1,234` (→1234) que `100,000,000` (→100000000) ou `1.234.567`
+    // (→1234567). Les montants OHADA ont au plus 2 décimales, donc un
+    // groupe final de 3 chiffres ne peut pas être une partie décimale.
+    // Si les DEUX types sont présents (`1,234.56`, `1.234.567,89`), le
+    // dernier séparateur est la décimale et l'autre les milliers.
+    const onlyOneSepType = lastDot === -1 || lastComma === -1;
+    const lastGroup = s.slice(decPos + 1);
+    if (onlyOneSepType && /^\d{3}$/.test(lastGroup)) {
+      normalized = s.replace(/[.,]/g, '');
+    } else {
+      const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
+      normalized = `${intPart}.${lastGroup.replace(/[.,]/g, '')}`;
+    }
   }
 
   const n = Number.parseFloat(normalized);
