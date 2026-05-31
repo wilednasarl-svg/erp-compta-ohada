@@ -870,14 +870,18 @@ function DgDashboardView({
 
   if (!exerciseId) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-        <p className="text-sm font-medium text-ink">Sélectionnez un exercice</p>
-        <p className="text-xs text-ink-mute">
-          Choisissez un exercice dans le sélecteur ci-dessus pour consulter le tableau de bord.
+      <div className="rounded-md border border-line bg-paper px-6 py-14 text-center">
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk text-ink-mute">
+          <Calendar className="h-5 w-5" strokeWidth={1.5} />
+        </span>
+        <p className="mt-4 font-display text-lg text-ink">Choisissez un exercice</p>
+        <p className="mx-auto mt-1.5 max-w-[46ch] text-sm text-ink-mute">
+          Sélectionnez un exercice dans le menu ci-dessus pour afficher le pilotage de la performance :
+          trésorerie, marge, BFR et flux.
         </p>
         <Link
           href="/accounting-periods"
-          className="mt-2 rounded-sm border border-line-strong bg-paper px-3 py-1.5 text-xs font-medium text-ink transition-colors duration-fast hover:bg-sunk"
+          className="press mt-5 inline-flex items-center gap-1.5 rounded-sm border border-line-strong bg-canvas px-3.5 py-2 text-xs font-medium text-ink transition-colors duration-fast hover:bg-sunk"
         >
           Gérer les exercices
         </Link>
@@ -1327,11 +1331,21 @@ function DafDashboardView({
 
   if (!exerciseId) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-        <p className="text-sm font-medium text-ink">Sélectionnez un exercice</p>
-        <p className="text-xs text-ink-mute">
-          Choisissez un exercice pour consulter l'analyse financière détaillée.
+      <div className="rounded-md border border-line bg-paper px-6 py-14 text-center">
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk text-ink-mute">
+          <Calendar className="h-5 w-5" strokeWidth={1.5} />
+        </span>
+        <p className="mt-4 font-display text-lg text-ink">Choisissez un exercice</p>
+        <p className="mx-auto mt-1.5 max-w-[46ch] text-sm text-ink-mute">
+          Sélectionnez un exercice pour afficher l&apos;analyse financière détaillée : ratios, balance
+          âgée et top comptes.
         </p>
+        <Link
+          href="/accounting-periods"
+          className="press mt-5 inline-flex items-center gap-1.5 rounded-sm border border-line-strong bg-canvas px-3.5 py-2 text-xs font-medium text-ink transition-colors duration-fast hover:bg-sunk"
+        >
+          Gérer les exercices
+        </Link>
       </div>
     );
   }
