@@ -4,17 +4,21 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
   Banknote,
   BookOpen,
   BookText,
   Calendar,
+  Check,
   CheckCircle2,
   ChevronDown,
   Clock,
   FileUp,
   LayoutDashboard,
+  LineChart,
   Link2,
+  ListChecks,
   Percent,
   Scale,
   Target,
@@ -225,32 +229,8 @@ export default function DashboardPage() {
             id="detailed-dashboard"
             className="scroll-mt-8 space-y-10 animate-in fade-in slide-in-from-top-2 duration-300"
           >
-        {/* ─── Sélecteur de vue ─────────────────────────────── */}
-        <div className="flex items-center border-b border-line pb-4 overflow-x-auto scrollbar-hide">
-          <div className="flex items-center gap-1 rounded-full bg-sunk/50 p-1 whitespace-nowrap">
-            {(
-              [
-                { key: 'dg', label: 'Direction', sub: 'Synthèse' },
-                { key: 'daf', label: 'Finances', sub: 'DAF' },
-                { key: 'op', label: 'Opérationnel', sub: 'Comptable' },
-              ] as const
-            ).map(({ key, label, sub }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setViewMode(key)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-300 ${
-                  viewMode === key
-                    ? 'bg-paper text-ink shadow-sm ring-1 ring-line'
-                    : 'text-ink-mute hover:text-ink-soft'
-                }`}
-              >
-                {label}
-                <span className="ml-1 text-xs font-normal opacity-60">({sub})</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* ─── Sélecteur de vue (cartes) ────────────────────── */}
+        <ViewSelectorCards viewMode={viewMode} onSelect={setViewMode} />
 
         {/* ─── Filtres exercice ─────────────────────────────── */}
         {(viewMode === 'dg' || viewMode === 'daf') && (
@@ -1606,6 +1586,85 @@ function TopAccountsTable({
         ) : (
           <p className="py-2 text-sm text-ink-mute">{emptyText}</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Sélecteur de vues détaillées (cartes horizontales) ─────── */
+
+const DETAIL_VIEWS = [
+  {
+    key: 'dg',
+    title: 'Direction',
+    desc: 'Pilotage : trésorerie nette, marge, BFR, DSO, évolution du CA et du résultat.',
+    icon: LineChart,
+    tint: 'bg-accent-soft text-accent-ink',
+  },
+  {
+    key: 'daf',
+    title: 'Finances',
+    desc: 'Analyse : marge brute, liquidité, DSO / DPO, balance âgée, top charges et produits.',
+    icon: Percent,
+    tint: 'bg-info-soft text-info-ink',
+  },
+  {
+    key: 'op',
+    title: 'Opérationnel',
+    desc: 'Suivi : initialisation, écritures à valider, rapprochements, activité récente.',
+    icon: ListChecks,
+    tint: 'bg-warn-soft text-warn-ink',
+  },
+] as const;
+
+function ViewSelectorCards({
+  viewMode,
+  onSelect,
+}: {
+  viewMode: 'dg' | 'daf' | 'op';
+  onSelect: (v: 'dg' | 'daf' | 'op') => void;
+}) {
+  return (
+    <div>
+      <p className="eyebrow mb-3">Choisissez une vue</p>
+      <div className="space-y-3">
+        {DETAIL_VIEWS.map((v) => {
+          const Icon = v.icon;
+          const active = viewMode === v.key;
+          return (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => onSelect(v.key)}
+              aria-pressed={active}
+              className={`press flex w-full items-stretch overflow-hidden rounded-md border text-left transition-colors duration-fast ${
+                active ? 'border-line-strong bg-sunk/50' : 'border-line bg-paper hover:bg-sunk/40'
+              }`}
+            >
+              <span className={`flex w-[110px] shrink-0 items-center justify-center sm:w-[150px] ${v.tint}`}>
+                <Icon className="h-8 w-8" strokeWidth={1.5} />
+              </span>
+              <span className="flex flex-1 flex-col justify-center gap-1 px-4 py-4 sm:px-5">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-display text-lg text-ink">{v.title}</span>
+                  {active && (
+                    <span className="inline-flex items-center gap-1 rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-accent-ink">
+                      <Check className="h-3 w-3" strokeWidth={2} />
+                      Vue active
+                    </span>
+                  )}
+                </span>
+                <span className="text-xs text-ink-mute sm:text-[13px]">{v.desc}</span>
+                {!active && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-accent-ink">
+                    Ouvrir la vue
+                    <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
