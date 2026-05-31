@@ -424,6 +424,34 @@ describe('CashFlowService — smoke test nomenclature doctrine p.34', () => {
     expect(fd).toBe(-500);
   });
 
+  it('ventile les flux d’investissement FF/FG/FH/FI/FJ selon le modèle Tome 3 (incorp/corp/fin)', async () => {
+    const h = buildHarness({
+      balancesAtN1: [row({ accountCode: '521000', totalDebit: '10000.00' })],
+      balancesAtToDate: [row({ accountCode: '521000', totalDebit: '10000.00' })],
+      movements: [
+        trialRow({ accountCode: '213000', periodDebit: '1000.00' }), // acquisition incorporelle → FF
+        trialRow({ accountCode: '241000', periodDebit: '2000.00' }), // acquisition corporelle → FG
+        trialRow({ accountCode: '261000', periodDebit: '500.00' }), // acquisition financière → FH
+        trialRow({ accountCode: '822000', periodCredit: '300.00' }), // cession corp/incorp → FI
+        trialRow({ accountCode: '261000', periodCredit: '100.00' }), // cession financière → FJ
+      ],
+      sig: buildSig({}),
+    });
+    const result = await h.service.getCashFlow(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+    const inv = (c: string): number =>
+      Number(result.investingFlows.postes.find((p) => p.code === c)?.amount);
+    expect(inv('FF')).toBe(-1000); // incorporelles (20/21)
+    expect(inv('FG')).toBe(-2000); // corporelles (22-25)
+    expect(inv('FH')).toBe(-500); // financières acquises (26/27 débit)
+    expect(inv('FI')).toBe(300); // cessions corp/incorp (82, pas de Δ485/414)
+    expect(inv('FJ')).toBe(100); // cessions financières (26/27 crédit)
+    // ZC = -1000 -2000 -500 +300 +100 = -3100
+    expect(Number(result.investingFlows.subtotal)).toBe(-3100);
+  });
+
   it('comparatif N-1 quand previousFromDate / previousToDate fournis', async () => {
     const h = buildHarness({});
     const result = await h.service.getCashFlow(ORG_ID, {
