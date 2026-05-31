@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link2, Link2Off, Loader2, Wand2 } from 'lucide-react';
+import { CheckCircle2, Link2, Link2Off, Loader2, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FormError } from '@/components/ui/form-error';
 import { Label } from '@/components/ui/label';
+import { PageGuide } from '@/components/ui/page-guide';
+import { Term } from '@/components/ui/term';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -53,6 +55,24 @@ const STATUS_CLASS: Record<LetteringStatus, string> = {
   completed: 'bg-accent-soft text-accent-ink',
   broken: 'bg-sunk text-ink-mute',
 };
+
+/**
+ * Teinte déterministe d'un code de lettrage : un même code reçoit toujours la
+ * même pastille, ce qui fait ressortir visuellement les groupes rapprochés
+ * (comme les codes colorés A / AA / AAA d'un moteur de suggestions).
+ */
+const CODE_TINTS: ReadonlyArray<string> = [
+  'bg-accent-soft text-accent-ink',
+  'bg-info-soft text-info-ink',
+  'bg-warn-soft text-warn-ink',
+  'bg-critical-soft text-critical-ink',
+];
+
+function codeTint(code: string): string {
+  let h = 0;
+  for (let i = 0; i < code.length; i += 1) h = (h * 31 + code.charCodeAt(i)) >>> 0;
+  return CODE_TINTS[h % CODE_TINTS.length]!;
+}
 
 /* ─── Page ───────────────────────────────────────────────────── */
 
@@ -129,19 +149,73 @@ export default function LetteringPage() {
         <header>
           <p className="eyebrow mb-2">Tiers</p>
           <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
-            Lettrage
+            <span className="mark">Lettrage</span>
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
-            Réconciliation des comptes de tiers — créez un lettrage en sélectionnant des
-            lignes d'écriture validées sur un même compte partenaire, débit = crédit.
+            Réconciliation des{' '}
+            <Term def="Comptes des clients (41x) et des fournisseurs (40x), où se suivent créances et dettes.">
+              comptes de tiers
+            </Term>{' '}
+            : créez un{' '}
+            <Term def="Marquer comme soldées les écritures d'un compte de tiers qui s'équilibrent, par exemple une facture et son règlement.">
+              lettrage
+            </Term>{' '}
+            en sélectionnant des lignes d'écriture validées sur un même compte partenaire,
+            débit = crédit.
           </p>
         </header>
+
+        <PageGuide
+          id="lettering"
+          purpose="Le lettrage rapproche, sur un compte de tiers, les écritures qui se compensent (une facture et son règlement) pour ne laisser apparaître que ce qui reste réellement dû."
+          steps={[
+            {
+              title: 'Choisir le compte de tiers',
+              detail: 'Un client (classe 41x) ou un fournisseur (classe 40x).',
+            },
+            {
+              title: 'Lettrage automatique',
+              detail:
+                'L’outil rapproche les lignes partageant le même n° de facture ou un montant équilibré.',
+            },
+            {
+              title: 'Lettrage manuel',
+              detail:
+                'Sélectionnez au moins deux lignes dont les débits égalent les crédits, puis lettrez.',
+            },
+            {
+              title: 'Vérifier le solde',
+              detail:
+                'Les lignes lettrées sortent du restant dû. Un lettrage peut être dénoué si nécessaire.',
+            },
+          ]}
+          glossary={[
+            {
+              term: 'Lettrage',
+              definition:
+                'Marquer comme soldées les écritures d’un compte de tiers qui s’équilibrent entre elles.',
+            },
+            {
+              term: 'Compte de tiers',
+              definition:
+                'Compte d’un client (41x) ou d’un fournisseur (40x) suivant créances et dettes.',
+            },
+            {
+              term: 'Rapprochement',
+              definition: 'Mise en correspondance d’une dette ou d’une créance avec son règlement.',
+            },
+            {
+              term: 'Dénouer',
+              definition: 'Annuler un lettrage pour rouvrir les écritures concernées.',
+            },
+          ]}
+        />
 
         {/* ─── Auto-lettering by invoice ───────────────────── */}
         <section aria-labelledby="auto-lettering-title" className="space-y-4">
           <div className="border-b border-line pb-3">
             <h2 id="auto-lettering-title" className="font-display text-xl font-medium text-ink">
-              Lettrage automatique
+              <span className="mark">Lettrage automatique</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               Rapproche en un clic les lignes de tiers non lettrées partageant le même N° de
@@ -165,24 +239,27 @@ export default function LetteringPage() {
               Lettrer automatiquement par facture
             </Button>
 
-            {autoMut.data !== undefined && (
-              <p className="text-xs text-ink-soft">
-                <span className="font-medium text-accent-ink">
-                  {autoMut.data.letteringsCreated} lettrage
-                  {autoMut.data.letteringsCreated !== 1 ? 's' : ''}
-                </span>{' '}
-                créé{autoMut.data.letteringsCreated !== 1 ? 's' : ''} (
-                <span className="font-mono tabular-nums">{autoMut.data.linesLettered}</span>{' '}
-                lignes) sur{' '}
-                <span className="font-mono tabular-nums">{autoMut.data.groupsConsidered}</span>{' '}
-                facture(s) — ignorées :{' '}
-                <span className="font-mono tabular-nums">{autoMut.data.skippedUnbalanced}</span>{' '}
-                non soldées,{' '}
-                <span className="font-mono tabular-nums">{autoMut.data.skippedSingleton}</span>{' '}
-                isolées.
-              </p>
-            )}
           </div>
+
+          {autoMut.data !== undefined && (
+            <div className="flex items-start gap-3 rounded-sm border border-accent/40 bg-accent-soft px-4 py-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent-ink" strokeWidth={1.5} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-accent-ink">
+                  {autoMut.data.linesLettered} ligne{autoMut.data.linesLettered !== 1 ? 's' : ''} rapprochée
+                  {autoMut.data.linesLettered !== 1 ? 's' : ''} par N° de facture ·{' '}
+                  {autoMut.data.letteringsCreated} lettrage{autoMut.data.letteringsCreated !== 1 ? 's' : ''} créé
+                  {autoMut.data.letteringsCreated !== 1 ? 's' : ''}
+                </p>
+                <p className="mt-1 text-xs text-ink-mute">
+                  Sur <span className="num tabular-nums">{autoMut.data.groupsConsidered}</span> facture(s)
+                  analysée(s) — ignorées :{' '}
+                  <span className="num tabular-nums">{autoMut.data.skippedUnbalanced}</span> non soldée(s),{' '}
+                  <span className="num tabular-nums">{autoMut.data.skippedSingleton}</span> isolée(s).
+                </p>
+              </div>
+            </div>
+          )}
           {autoMut.isError && <FormError error={autoMut.error} />}
         </section>
 
@@ -190,7 +267,7 @@ export default function LetteringPage() {
         <section aria-labelledby="new-lettering-title" className="space-y-5">
           <div className="border-b border-line pb-3">
             <h2 id="new-lettering-title" className="font-display text-xl font-medium text-ink">
-              Nouveau lettrage
+              <span className="mark">Nouveau lettrage</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               IDs des lignes d'écriture (minimum 2, séparés par espace, virgule ou retour
@@ -230,7 +307,7 @@ export default function LetteringPage() {
           <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
             <div>
               <h2 id="list-title" className="font-display text-xl font-medium text-ink">
-                Lettrages
+                <span className="mark">Lettrages</span>
               </h2>
               {query.data !== undefined && (
                 <p className="mt-0.5 text-xs text-ink-mute">
@@ -299,8 +376,12 @@ export default function LetteringPage() {
                       key={l.id}
                       className="border-b border-line last:border-0 transition-colors duration-fast hover:bg-sunk/50"
                     >
-                      <td className="px-3 py-2.5 font-mono text-xs text-ink">
-                        {l.letteringCode}
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`inline-block rounded-xs px-1.5 py-0.5 font-mono text-[11px] font-medium ${codeTint(l.letteringCode)}`}
+                        >
+                          {l.letteringCode}
+                        </span>
                       </td>
                       <td className="px-3 py-2.5 font-mono text-xs text-ink">
                         {l.partnerAccountCode}
