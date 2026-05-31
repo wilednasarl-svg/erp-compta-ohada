@@ -268,16 +268,23 @@ export function classifyToPoste(
   const maxLen = Math.max(...matches.map((m) => m.len));
   const top = matches.filter((m) => m.len === maxLen);
 
-  // Le routage par signe ne s'applique PAS aux comptes opposants
-  // (amortissements/dépréciations 28/29/39/49/59) : bien que créditeurs,
-  // ils restent en DÉDUCTION de l'actif, pas au passif.
-  const wantSide =
-    netSign === undefined || isOpposing ? undefined : netSign === 'D' ? 'ACTIF' : 'PASSIF';
-  const bySign = wantSide === undefined ? undefined : top.find((m) => m.poste.side === wantSide);
-
-  // Compte de tiers ambigu actif/passif → tranché par le signe ; sinon, à
-  // longueur égale, le match déduction l'emporte (note 3 — amortissements).
-  const chosen: Match = bySign ?? top.find((m) => m.isDeduction) ?? top[0]!;
+  // Priorité 1 — la DÉDUCTION l'emporte toujours à longueur égale (note 3) :
+  // amortissements/dépréciations restent en déduction de l'actif, même
+  // créditeurs (ne JAMAIS les router au passif par leur signe).
+  // Priorité 2 — comptes de tiers à double appartenance (un poste actif ET
+  // un poste passif en SOURCE) : on tranche par le signe du solde
+  // (débiteur → créance/actif, créditeur → dette/passif).
+  // Priorité 3 — premier match (ordre du référentiel).
+  const deductionMatch = top.find((m) => m.isDeduction);
+  let chosen: Match;
+  if (deductionMatch !== undefined) {
+    chosen = deductionMatch;
+  } else if (netSign !== undefined && top.length > 1) {
+    const wantSide = netSign === 'D' ? 'ACTIF' : 'PASSIF';
+    chosen = top.find((m) => m.poste.side === wantSide) ?? top[0]!;
+  } else {
+    chosen = top[0]!;
+  }
 
   return {
     posteCode: chosen.poste.code,
