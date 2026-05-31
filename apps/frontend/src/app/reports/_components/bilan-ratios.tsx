@@ -9,8 +9,8 @@ import type { BalanceSheetReport, BilanMasse } from '@/types/reports';
  * Section « Ratios & analyse » affichée sous le Bilan. Calcule les
  * indicateurs financiers usuels SYSCOHADA (structure, équilibre FR/BFR/TN,
  * liquidité, solvabilité) à partir des MASSES du bilan, et fournit pour
- * chaque ratio une INTERPRÉTATION dérivée de sa valeur réelle, plus des
- * observations de synthèse. Purement dérivé du rapport — aucun appel réseau.
+ * chaque ratio le DÉTAIL chiffré du calcul + une INTERPRÉTATION dérivée de sa
+ * valeur réelle, plus des observations de synthèse. Purement dérivé du rapport.
  */
 
 const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
@@ -45,6 +45,8 @@ const TONE_DOT: Record<Tone, string> = {
 interface RatioRow {
   readonly label: string;
   readonly formula: string;
+  /** Calcul en valeurs réelles, ex. « 2 379 440 794 / 19 438 844 737 ». */
+  readonly detail: string;
   readonly value: string;
   readonly tone: Tone;
   readonly interpretation: string;
@@ -70,6 +72,8 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
 
   const equilibre = Math.abs(Number(report.totals.difference)) < 1;
   const div = (a: number, b: number): number => (b !== 0 ? a / b : NaN);
+  const ratioOf = (a: number, b: number): string => `${fcfa(a)} / ${fcfa(b)}`;
+  const diffOf = (a: number, b: number): string => `${fcfa(a)} − ${fcfa(b)}`;
 
   const autonomie = div(cp, totalPassif);
   const endettement = div(totalDettes, cp);
@@ -86,6 +90,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Autonomie financière',
       formula: 'Capitaux propres / Total passif',
+      detail: ratioOf(cp, totalPassif),
       value: pct(autonomie),
       tone: autonomie >= 0.3 ? 'ok' : autonomie >= 0.2 ? 'warn' : 'bad',
       interpretation:
@@ -98,6 +103,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Endettement',
       formula: 'Total dettes / Capitaux propres',
+      detail: ratioOf(totalDettes, cp),
       value: mult(endettement),
       tone: endettement <= 1 ? 'ok' : endettement <= 2 ? 'warn' : 'bad',
       interpretation:
@@ -110,6 +116,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Couverture des emplois stables',
       formula: 'Ressources stables / Actif immobilisé',
+      detail: ratioOf(stables, immobilise),
       value: mult(couverture),
       tone: couverture >= 1 ? 'ok' : 'bad',
       interpretation:
@@ -120,6 +127,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Fonds de roulement (FR)',
       formula: 'Ressources stables − Actif immobilisé',
+      detail: diffOf(stables, immobilise),
       value: fcfa(fr),
       tone: fr >= 0 ? 'ok' : 'bad',
       interpretation:
@@ -130,6 +138,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Besoin en fonds de roulement (BFR)',
       formula: 'Actif circulant − Passif circulant',
+      detail: diffOf(circulant, passifCirc),
       value: fcfa(bfr),
       tone: 'neutral',
       interpretation:
@@ -141,7 +150,8 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     },
     {
       label: 'Trésorerie nette',
-      formula: 'FR − BFR',
+      formula: 'Trésorerie actif − Trésorerie passif',
+      detail: diffOf(tresoA, tresoP),
       value: fcfa(tn),
       tone: tn >= 0 ? 'ok' : 'bad',
       interpretation:
@@ -151,7 +161,8 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     },
     {
       label: 'Liquidité générale',
-      formula: 'Actif circulant / Passif circulant',
+      formula: '(Actif circulant + Trésorerie) / (Passif circulant + Trésorerie passif)',
+      detail: ratioOf(circulant + tresoA, passifCirc + tresoP),
       value: mult(liqGen),
       tone: liqGen >= 1.2 ? 'ok' : liqGen >= 1 ? 'warn' : 'bad',
       interpretation:
@@ -164,6 +175,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Liquidité réduite',
       formula: '(Créances + Trésorerie) / Passif circulant',
+      detail: ratioOf(creances + tresoA, passifCirc),
       value: mult(liqRed),
       tone: liqRed >= 1 ? 'ok' : liqRed >= 0.8 ? 'warn' : 'bad',
       interpretation:
@@ -176,6 +188,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Liquidité immédiate',
       formula: 'Trésorerie / Passif circulant',
+      detail: ratioOf(tresoA, passifCirc),
       value: mult(liqImm),
       tone: liqImm >= 0.2 ? 'ok' : 'neutral',
       interpretation:
@@ -186,6 +199,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     {
       label: 'Solvabilité générale',
       formula: 'Total actif / Total dettes',
+      detail: ratioOf(totalActif, totalDettes),
       value: mult(solva),
       tone: solva >= 1.5 ? 'ok' : solva >= 1.1 ? 'warn' : 'bad',
       interpretation:
@@ -269,6 +283,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
               <span className="font-mono text-sm font-semibold tabular-nums text-ink">{r.value}</span>
             </div>
             <p className="mt-0.5 pl-3.5 text-2xs text-ink-mute">{r.formula}</p>
+            <p className="mt-0.5 pl-3.5 font-mono text-2xs tabular-nums text-ink-soft">= {r.detail}</p>
             <p className="mt-1 pl-3.5 text-xs leading-relaxed text-ink-soft">{r.interpretation}</p>
           </li>
         ))}
