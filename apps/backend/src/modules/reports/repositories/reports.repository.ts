@@ -32,6 +32,13 @@ export interface GeneralLedgerRow {
   readonly lineId: string;
   readonly entryId: string;
   readonly entryDate: string;
+  /**
+   * Date d'échéance de la ligne (`journal_entry_lines.due_date`), `null`
+   * si non renseignée. Sert au vieillissement de la balance âgée : une
+   * créance/dette est vieillie à partir de son échéance, et non de sa
+   * date de comptabilisation. Optionnel pour compat ascendante.
+   */
+  readonly dueDate?: string | null;
   readonly journalCode: string;
   readonly entryNumber: number;
   readonly description: string | null;
@@ -302,6 +309,7 @@ export class ReportsRepository {
       .select('l.id', 'lineId')
       .addSelect('e.id', 'entryId')
       .addSelect(`TO_CHAR(e.entry_date, 'YYYY-MM-DD')`, 'entryDate')
+      .addSelect(`TO_CHAR(l.due_date, 'YYYY-MM-DD')`, 'dueDate')
       .addSelect('j.code', 'journalCode')
       .addSelect('e.entry_number', 'entryNumber')
       .addSelect('e.description', 'description')
@@ -315,6 +323,7 @@ export class ReportsRepository {
         lineId: string;
         entryId: string;
         entryDate: string;
+        dueDate: string | null;
         journalCode: string;
         entryNumber: string | number;
         description: string | null;
@@ -327,6 +336,7 @@ export class ReportsRepository {
       lineId: r.lineId,
       entryId: r.entryId,
       entryDate: r.entryDate,
+      dueDate: r.dueDate,
       journalCode: r.journalCode,
       entryNumber: Number(r.entryNumber),
       description: r.description,
