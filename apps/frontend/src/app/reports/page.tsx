@@ -52,6 +52,7 @@ import type { AccountView } from '@/types/accounting-plan';
 
 import { PeriodFilter } from './_components/period-filter';
 import { usePersistedAsAt, usePersistedPeriod } from './_components/period-store';
+import { BilanRatios } from './_components/bilan-ratios';
 import { ReportHelp } from './_components/report-help';
 import { ReportNav, getReportHint, getReportLabel, type ReportMode } from './_components/report-nav';
 import type {
@@ -679,6 +680,7 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
       {report.unclassified.length > 0 && (
         <UnclassifiedAccounts items={report.unclassified} fmt={fmt} />
       )}
+      <BilanRatios report={report} />
       <ReportHelp topic="bilan" />
     </div>
   );
