@@ -9,8 +9,8 @@ import type { ProfitLossReport } from '@/types/reports';
  * Section « Ratios & analyse » affichée sous le Compte de Résultat. Lit les
  * Soldes Intermédiaires de Gestion (SIG : XB chiffre d'affaires, XC valeur
  * ajoutée, XD EBE, XE résultat d'exploitation, XI résultat net) calculés par
- * le moteur, en déduit la cascade de marge et les taux de rentabilité, avec
- * une interprétation par ratio. Purement dérivé du rapport.
+ * le moteur, en déduit la cascade de marge et les taux de rentabilité, avec le
+ * DÉTAIL chiffré du calcul et une interprétation par ratio. Purement dérivé.
  */
 
 const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
@@ -33,6 +33,8 @@ const TONE_DOT: Record<Tone, string> = {
 interface RatioRow {
   readonly label: string;
   readonly formula: string;
+  /** Calcul en valeurs réelles, ex. « 896 542 313 / 5 128 344 922 ». */
+  readonly detail: string;
   readonly value: string;
   readonly tone: Tone;
   readonly interpretation: string;
@@ -56,6 +58,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
   }
 
   const div = (a: number, b: number): number => (b !== 0 ? a / b : NaN);
+  const ratioOf = (a: number, b: number): string => `${fcfa(a)} / ${fcfa(b)}`;
   const tauxVA = div(va, ca);
   const partTravailEtat = div(va - ebe, va); // personnel + impôts/taxes dans la VA
   const tauxEBE = div(ebe, ca);
@@ -76,6 +79,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
     {
       label: 'Taux de valeur ajoutée',
       formula: 'Valeur ajoutée / Chiffre d’affaires',
+      detail: ratioOf(va, ca),
       value: pct(tauxVA),
       tone: tauxVA >= 0.35 ? 'ok' : tauxVA >= 0.2 ? 'warn' : 'neutral',
       interpretation:
@@ -88,6 +92,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
     {
       label: 'Part du travail et de l’État dans la VA',
       formula: '(Valeur ajoutée − EBE) / Valeur ajoutée',
+      detail: ratioOf(va - ebe, va),
       value: pct(partTravailEtat),
       tone: partTravailEtat <= 0.7 ? 'ok' : partTravailEtat <= 0.9 ? 'warn' : 'bad',
       interpretation:
@@ -100,6 +105,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
     {
       label: 'Taux de marge brute d’exploitation (EBE)',
       formula: 'EBE / Chiffre d’affaires',
+      detail: ratioOf(ebe, ca),
       value: pct(tauxEBE),
       tone: tauxEBE >= 0.15 ? 'ok' : tauxEBE >= 0.05 ? 'warn' : 'bad',
       interpretation:
@@ -112,6 +118,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
     {
       label: 'Rentabilité d’exploitation',
       formula: 'Résultat d’exploitation / Chiffre d’affaires',
+      detail: ratioOf(re, ca),
       value: pct(tauxRE),
       tone: tauxRE >= 0.1 ? 'ok' : tauxRE >= 0.03 ? 'warn' : 'bad',
       interpretation:
@@ -124,6 +131,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
     {
       label: 'Marge nette',
       formula: 'Résultat net / Chiffre d’affaires',
+      detail: ratioOf(rn, ca),
       value: pct(tauxNet),
       tone: rn < 0 ? 'bad' : tauxNet >= 0.05 ? 'ok' : tauxNet >= 0.02 ? 'warn' : 'bad',
       interpretation:
@@ -139,6 +147,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
     rows.push({
       label: 'Poids du résultat financier',
       formula: 'Résultat financier / Chiffre d’affaires',
+      detail: ratioOf(rf, ca),
       value: pct(tauxRF),
       tone: rf >= 0 ? 'ok' : tauxRF <= -0.02 ? 'bad' : 'warn',
       interpretation:
@@ -212,7 +221,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
         </ul>
       </div>
 
-      {/* Ratios + interprétations */}
+      {/* Ratios + détail + interprétations */}
       <ul className="divide-y divide-line/60">
         {rows.map((r) => (
           <li key={r.label} className="px-4 py-3">
@@ -224,6 +233,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
               <span className="font-mono text-sm font-semibold tabular-nums text-ink">{r.value}</span>
             </div>
             <p className="mt-0.5 pl-3.5 text-2xs text-ink-mute">{r.formula}</p>
+            <p className="mt-0.5 pl-3.5 font-mono text-2xs tabular-nums text-ink-soft">= {r.detail}</p>
             <p className="mt-1 pl-3.5 text-xs leading-relaxed text-ink-soft">{r.interpretation}</p>
           </li>
         ))}
