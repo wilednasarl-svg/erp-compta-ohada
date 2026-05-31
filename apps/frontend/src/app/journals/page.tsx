@@ -16,9 +16,9 @@ import { useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
-import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PageGuide } from '@/components/ui/page-guide';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -145,11 +145,56 @@ export default function JournalsPage() {
           </p>
         </header>
 
-        <Hint id="journals-intro" title="Comprendre les journaux">
-          Chaque écriture est enregistrée dans un journal selon sa nature : ventes (JV),
-          achats (JA), banque (BAN) ou opérations diverses (OD). Le journal regroupe les
-          écritures de même type pour faciliter le suivi et le rapprochement.
-        </Hint>
+        <PageGuide
+          id="journals"
+          purpose="Le journal est le registre où chaque opération est enregistrée sous forme d'écriture équilibrée (total débit égal au total crédit). Vous y saisissez, validez et corrigez les écritures de l'exercice."
+          steps={[
+            {
+              title: 'Choisir le journal',
+              detail:
+                'Ventes (JV), achats (JA), banque (BAN) ou opérations diverses (OD), selon la nature de l’opération.',
+            },
+            {
+              title: 'Saisir l’écriture',
+              detail:
+                'Date, n° de pièce, puis les lignes au débit et au crédit jusqu’à l’équilibre.',
+            },
+            {
+              title: 'Valider',
+              detail:
+                'Une écriture validée entre dans les états et devient immuable. Un brouillon reste modifiable.',
+            },
+            {
+              title: 'Corriger si besoin',
+              detail:
+                'Une écriture validée ne se supprime pas : on passe une contre-passation qui l’inverse.',
+            },
+          ]}
+          glossary={[
+            {
+              term: 'Écriture',
+              definition:
+                'Enregistrement d’une opération, composé de lignes au débit et au crédit dont les totaux sont égaux.',
+            },
+            {
+              term: 'Journal',
+              definition: 'Registre regroupant les écritures de même nature (JV, JA, BAN, OD).',
+            },
+            {
+              term: 'Pièce',
+              definition: 'Justificatif numéroté (facture, reçu, relevé) rattaché à l’écriture.',
+            },
+            {
+              term: 'Contre-passation',
+              definition:
+                'Écriture inverse passée pour neutraliser une écriture validée erronée, sans la supprimer.',
+            },
+            {
+              term: 'Brouillon',
+              definition: 'Écriture non encore validée, modifiable et supprimable.',
+            },
+          ]}
+        />
 
         {/* Filtres */}
         <section className={PANEL_CLASS}>

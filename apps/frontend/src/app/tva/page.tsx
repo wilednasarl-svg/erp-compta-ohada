@@ -8,9 +8,9 @@ import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
-import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PageGuide } from '@/components/ui/page-guide';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import type {
@@ -108,12 +108,53 @@ export default function TvaPage() {
           </p>
         </header>
 
-        <Hint id="tva-intro" variant="learn" title="À quoi sert cette page">
-          La TVA se déclare chaque mois à la DGI dans le cadre UEMOA. Définissez d&apos;abord
-          vos codes de taux, puis calculez la déclaration du mois : l&apos;application agrège la
-          TVA collectée sur vos ventes et la TVA déductible sur vos achats, et en déduit le net
-          à reverser ou le crédit reportable.
-        </Hint>
+        <PageGuide
+          id="tva"
+          purpose="La TVA collectée sur vos ventes, diminuée de la TVA déductible sur vos achats, donne le montant à reverser chaque mois à la DGI (cadre UEMOA). Cette page calcule la déclaration à partir des écritures validées."
+          steps={[
+            {
+              title: 'Définir les codes de taux',
+              detail: 'Taux normal, réduit, exonéré, chacun rattaché à son compte de TVA.',
+            },
+            {
+              title: 'Sélectionner le mois',
+              detail: 'La période de déclaration à calculer.',
+            },
+            {
+              title: 'Calculer la déclaration',
+              detail:
+                'L’application agrège la TVA collectée et déductible des écritures validées du mois.',
+            },
+            {
+              title: 'Lire le net dû',
+              detail:
+                'Net à reverser si la collectée dépasse la déductible, sinon crédit de TVA reportable.',
+            },
+          ]}
+          glossary={[
+            {
+              term: 'TVA collectée',
+              definition: 'TVA facturée à vos clients sur les ventes ; vous la devez à l’État.',
+            },
+            {
+              term: 'TVA déductible',
+              definition: 'TVA payée à vos fournisseurs sur les achats ; elle vient en déduction.',
+            },
+            {
+              term: 'Net dû',
+              definition: 'Collectée moins déductible : le montant à reverser à la DGI.',
+            },
+            {
+              term: 'Crédit de TVA',
+              definition: 'Excédent de TVA déductible, reporté sur les mois suivants.',
+            },
+            {
+              term: 'UEMOA',
+              definition:
+                'Union économique et monétaire ouest-africaine : cadre fiscal commun dont relève la Côte d’Ivoire.',
+            },
+          ]}
+        />
 
         {/* ─── Codes TVA ──────────────────────────────────── */}
         <section aria-labelledby="codes-title" className="space-y-5">

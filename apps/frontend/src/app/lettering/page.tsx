@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FormError } from '@/components/ui/form-error';
 import { Label } from '@/components/ui/label';
+import { PageGuide } from '@/components/ui/page-guide';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -132,10 +133,56 @@ export default function LetteringPage() {
             Lettrage
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
-            Réconciliation des comptes de tiers — créez un lettrage en sélectionnant des
+            Réconciliation des comptes de tiers : créez un lettrage en sélectionnant des
             lignes d'écriture validées sur un même compte partenaire, débit = crédit.
           </p>
         </header>
+
+        <PageGuide
+          id="lettering"
+          purpose="Le lettrage rapproche, sur un compte de tiers, les écritures qui se compensent (une facture et son règlement) pour ne laisser apparaître que ce qui reste réellement dû."
+          steps={[
+            {
+              title: 'Choisir le compte de tiers',
+              detail: 'Un client (classe 41x) ou un fournisseur (classe 40x).',
+            },
+            {
+              title: 'Lettrage automatique',
+              detail:
+                'L’outil rapproche les lignes partageant le même n° de facture ou un montant équilibré.',
+            },
+            {
+              title: 'Lettrage manuel',
+              detail:
+                'Sélectionnez au moins deux lignes dont les débits égalent les crédits, puis lettrez.',
+            },
+            {
+              title: 'Vérifier le solde',
+              detail:
+                'Les lignes lettrées sortent du restant dû. Un lettrage peut être dénoué si nécessaire.',
+            },
+          ]}
+          glossary={[
+            {
+              term: 'Lettrage',
+              definition:
+                'Marquer comme soldées les écritures d’un compte de tiers qui s’équilibrent entre elles.',
+            },
+            {
+              term: 'Compte de tiers',
+              definition:
+                'Compte d’un client (41x) ou d’un fournisseur (40x) suivant créances et dettes.',
+            },
+            {
+              term: 'Rapprochement',
+              definition: 'Mise en correspondance d’une dette ou d’une créance avec son règlement.',
+            },
+            {
+              term: 'Dénouer',
+              definition: 'Annuler un lettrage pour rouvrir les écritures concernées.',
+            },
+          ]}
+        />
 
         {/* ─── Auto-lettering by invoice ───────────────────── */}
         <section aria-labelledby="auto-lettering-title" className="space-y-4">
