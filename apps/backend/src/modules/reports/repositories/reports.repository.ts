@@ -405,6 +405,73 @@ export class ReportsRepository {
   }
 
   /**
+   * Mouvements par compte BORNÉS sur une période [fromDate, toDate] —
+   * contrairement à `accountBalancesAsAt` (cumul depuis l'origine), à
+   * utiliser pour les comptes de gestion (classes 6/7/8) afin que les
+   * notes annexes reflètent l'EXERCICE et non le cumul historique
+   * (sinon divergence avec le Compte de résultat dès le 2e exercice).
+   */
+  async accountMovementsBetween(
+    organizationId: TenantId | string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<
+    Array<{
+      accountId: string;
+      accountCode: string;
+      accountLabel: string;
+      accountClass: number;
+      isOpposing: boolean;
+      totalDebit: string;
+      totalCredit: string;
+    }>
+  > {
+    assertTenantId(organizationId);
+    const rows = await this.lineRepo
+      .createQueryBuilder('l')
+      .innerJoin('journal_entries', 'e', 'e.id = l.journal_entry_id')
+      .innerJoin('organization_chart_accounts', 'a', 'a.id = l.account_id')
+      .where('l.organization_id = :organizationId', { organizationId })
+      .andWhere(`e.status = 'validated'`)
+      .andWhere(`e.entry_date >= :fromDate::date AND e.entry_date <= :toDate::date`, {
+        fromDate,
+        toDate,
+      })
+      .select('a.id', 'accountId')
+      .addSelect('a.code', 'accountCode')
+      .addSelect('a.label', 'accountLabel')
+      .addSelect('a.class', 'accountClass')
+      .addSelect('a.is_opposing', 'isOpposing')
+      .addSelect('COALESCE(SUM(l.debit), 0)', 'totalDebit')
+      .addSelect('COALESCE(SUM(l.credit), 0)', 'totalCredit')
+      .groupBy('a.id')
+      .addGroupBy('a.code')
+      .addGroupBy('a.label')
+      .addGroupBy('a.class')
+      .addGroupBy('a.is_opposing')
+      .orderBy('a.code', 'ASC')
+      .getRawMany<{
+        accountId: string;
+        accountCode: string;
+        accountLabel: string;
+        accountClass: string | number;
+        isOpposing: boolean | string | null;
+        totalDebit: string;
+        totalCredit: string;
+      }>();
+
+    return rows.map((r) => ({
+      accountId: r.accountId,
+      accountCode: r.accountCode,
+      accountLabel: r.accountLabel,
+      accountClass: Number(r.accountClass),
+      isOpposing: r.isOpposing === true || r.isOpposing === 't' || r.isOpposing === 'true',
+      totalDebit: Number(r.totalDebit).toFixed(2),
+      totalCredit: Number(r.totalCredit).toFixed(2),
+    }));
+  }
+
+  /**
    * Agrège les mouvements de classe 6 (charges) et 7 (produits) par
    * code d'axe analytique sur une période. Sert au rapport "marge par
    * activité" qui présente une ligne par axe (chantier / BU / projet).

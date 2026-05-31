@@ -43,8 +43,15 @@ export async function computeAccountBreakdown(
   periodEnd: string,
   deps: NoteHandlerDependencies,
   options: BreakdownOptions,
+  // Notes de GESTION (classes 6/7/8) : fournir `periodStart` pour borner les
+  // mouvements sur l'exercice [periodStart, periodEnd]. Sans lui (notes de
+  // BILAN, classes 1-5), on garde le cumul « as at » (snapshot à la date).
+  periodStart?: string,
 ): Promise<{ rows: ReadonlyArray<NoteRow>; applicable: boolean }> {
-  const balances = await deps.reports.accountBalancesAsAt(organizationId, periodEnd);
+  const balances =
+    periodStart === undefined
+      ? await deps.reports.accountBalancesAsAt(organizationId, periodEnd)
+      : await deps.reports.accountMovementsBetween(organizationId, periodStart, periodEnd);
 
   const totals = new Map<string, number>();
   for (const cat of options.categories) totals.set(cat.key, 0);

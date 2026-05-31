@@ -50,4 +50,4 @@ export const handleN25ChargesPersonnel: NoteHandler = (ctx, deps) =>
   computeAccountBreakdown(ctx.organizationId as string, ctx.periodEnd, deps, {
     categories: CATEGORIES,
     totalLabel: 'TOTAL charges de personnel',
-  });
+  }, ctx.periodStart);

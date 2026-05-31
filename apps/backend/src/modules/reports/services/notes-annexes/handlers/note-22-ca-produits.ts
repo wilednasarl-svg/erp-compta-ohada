@@ -38,4 +38,4 @@ export const handleN22CaProduits: NoteHandler = (ctx, deps) =>
   computeAccountBreakdown(ctx.organizationId as string, ctx.periodEnd, deps, {
     categories: CATEGORIES,
     totalLabel: "TOTAL chiffre d'affaires et autres produits d'exploitation",
-  });
+  }, ctx.periodStart);

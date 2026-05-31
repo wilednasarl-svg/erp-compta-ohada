@@ -42,4 +42,4 @@ export const handleN27Financiers: NoteHandler = (ctx, deps) =>
   computeAccountBreakdown(ctx.organizationId as string, ctx.periodEnd, deps, {
     categories: CATEGORIES,
     totalLabel: 'TOTAL charges et produits financiers',
-  });
+  }, ctx.periodStart);

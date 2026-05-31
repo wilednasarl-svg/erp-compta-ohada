@@ -23,7 +23,7 @@ export const EXERCISE_ID = '00000000-0000-4000-8000-000000000099';
 
 export interface Harness {
   service: NotesAnnexesService;
-  reportsMock: { accountBalancesAsAt: jest.Mock };
+  reportsMock: { accountBalancesAsAt: jest.Mock; accountMovementsBetween: jest.Mock };
   assetsMock: { findAllForExercise: jest.Mock; findDepreciationForYear: jest.Mock };
   inventoryMock: { findAllItems: jest.Mock };
   accountsMock: { findById: jest.Mock };
@@ -37,7 +37,10 @@ export interface Harness {
 }
 
 export function buildHarness(): Harness {
-  const reportsMock = { accountBalancesAsAt: jest.fn().mockResolvedValue([]) };
+  const reportsMock = {
+    accountBalancesAsAt: jest.fn().mockResolvedValue([]),
+    accountMovementsBetween: jest.fn().mockResolvedValue([]),
+  };
   const assetsMock = {
     findAllForExercise: jest.fn().mockResolvedValue([]),
     findDepreciationForYear: jest.fn().mockResolvedValue([]),
