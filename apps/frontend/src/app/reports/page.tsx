@@ -52,6 +52,7 @@ import type { AccountView } from '@/types/accounting-plan';
 
 import { PeriodFilter } from './_components/period-filter';
 import { usePersistedAsAt, usePersistedPeriod } from './_components/period-store';
+import { ReportHelp } from './_components/report-help';
 import { ReportNav, getReportHint, getReportLabel, type ReportMode } from './_components/report-nav';
 import type {
   AgingBalanceReport,
@@ -678,6 +679,7 @@ function BalanceSheetView({ report }: { readonly report: BalanceSheetReport }) {
       {report.unclassified.length > 0 && (
         <UnclassifiedAccounts items={report.unclassified} fmt={fmt} />
       )}
+      <ReportHelp topic="bilan" />
     </div>
   );
 }
@@ -1362,6 +1364,7 @@ function ProfitLossView({ report }: { readonly report: ProfitLossReport }) {
           colonnes avec SIG intercalés en gras dans la cascade. La ligne
           XI (résultat net) est encadrée (ring) pour finalité visuelle. */}
       <ProfitLossDoctrinalTable lines={report.lines} hasComp={report.previous !== undefined} />
+      <ReportHelp topic="compte-resultat" />
     </div>
   );
 }
@@ -5890,6 +5893,8 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
                 </tbody>
               </table>
             </div>
+
+            <ReportHelp topic="balance" />
 
             {/* ── Type de balance — information critique ── */}
             <div className="rounded-md border border-line bg-paper">
