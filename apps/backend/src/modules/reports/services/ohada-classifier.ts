@@ -285,9 +285,9 @@ export function classifyToPoste(
     chosen = deductionMatch;
   } else if (netSign !== undefined && top.length > 1) {
     const wantSide = netSign === 'D' ? 'ACTIF' : 'PASSIF';
-    chosen = top.find((m) => m.poste.side === wantSide) ?? top[0]!;
+    chosen = top.find((m) => m.poste.side === wantSide) ?? top[0];
   } else {
-    chosen = top[0]!;
+    chosen = top[0];
   }
 
   return {

@@ -34,7 +34,13 @@ const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
 ];
 
 export const handleN26Dotations: NoteHandler = (ctx, deps) =>
-  computeAccountBreakdown(ctx.organizationId as string, ctx.periodEnd, deps, {
-    categories: CATEGORIES,
-    totalLabel: 'TOTAL dotations aux amortissements et provisions',
-  }, ctx.periodStart);
+  computeAccountBreakdown(
+    ctx.organizationId as string,
+    ctx.periodEnd,
+    deps,
+    {
+      categories: CATEGORIES,
+      totalLabel: 'TOTAL dotations aux amortissements et provisions',
+    },
+    ctx.periodStart,
+  );
