@@ -753,10 +753,11 @@ export interface AnalyticAxisSummary {
  *   - achatsConsommes    : Σ 60* net débiteur (achats + variation stocks)
  *   - margeBrute         : CA − achats
  *   - margeBrutePercent  : marge / CA × 100 (null si CA = 0)
- *   - valeurAjoutee      : CA − consommations externes (60 + 61 + 62)
- *                          ≃ poste SIG XC restreint à l'axe
+ *   - valeurAjoutee      : CA − consommations externes (60 + 61 + 62 + 63)
+ *                          − impôts/taxes (64) − autres charges (65)
+ *                          ≃ poste SIG XC restreint à l'axe (SIG officiel)
  *   - tauxValeurAjoutee  : VA / CA × 100 (null si CA = 0)
- *   - excedentBrutExploit: VA − charges personnel (66) − impôts/taxes (63)
+ *   - excedentBrutExploit: VA − charges de personnel (66)
  *                          ≃ poste SIG XD restreint à l'axe
  *   - tauxEbe            : EBE / CA × 100 (null si CA = 0)
  *   - chargesPersonnel   : Σ 66 net débiteur (compat ascendant)

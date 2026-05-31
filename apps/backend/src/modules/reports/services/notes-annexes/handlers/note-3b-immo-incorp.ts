@@ -7,6 +7,7 @@
  * découpage par sous-classe SYSCOHADA AUDCIF.
  */
 import type { NoteDepreciationRecord, NoteHandler, NoteRow } from '../types';
+import { buildReconciliationRow, RECON_PREFIXES_INCORP } from './_reconciliation';
 
 const CATEGORIES: ReadonlyArray<{
   readonly prefix: string;
@@ -177,6 +178,18 @@ export const handleN3bImmoIncorp: NoteHandler = async (ctx, deps) => {
     (r) =>
       r.key !== 'TOTAL' && (num(r.values.brutCloture) !== 0 || num(r.values.amortCloture) !== 0),
   );
+
+  // Contrôle de cohérence registre ↔ comptabilité (issue 8vny).
+  if (hasAnyMovement) {
+    const balances = await deps.reports.accountBalancesAsAt(ctx.organizationId, ctx.periodEnd);
+    const reconRow = buildReconciliationRow(
+      balances,
+      RECON_PREFIXES_INCORP,
+      total.vnc,
+      Object.keys(rows[0].values),
+    );
+    if (reconRow) rows.push(reconRow);
+  }
 
   return { rows, applicable: hasAnyMovement };
 };
