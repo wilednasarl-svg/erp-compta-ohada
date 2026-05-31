@@ -86,19 +86,19 @@
      * Default = warm neutral (no domain). Overridden per [data-domain] below.
      * Lightness stays high + chroma low so it reads as lit paper, never a stain.
      */
-    --ambient-1: 96% 0.018 85;      /* constant warm light, top-left */
-    --ambient-2: 95% 0.022 155;     /* domain-tinted light, right */
-    --ambient-strength: 0.55;
+    --ambient-1: 92% 0.05 85;       /* constant warm light, top-left */
+    --ambient-2: 89% 0.085 155;     /* domain-tinted light, right */
+    --ambient-strength: 0.95;
   }
 
   /* Domain tints — hue follows the nav signature colour of each area. */
   [data-domain='pilotage'],
-  [data-domain='etats']        { --ambient-2: 95% 0.026 155; }   /* deep green */
+  [data-domain='etats']        { --ambient-2: 88% 0.095 155; }   /* deep green */
   [data-domain='referentiel'],
-  [data-domain='analyse']      { --ambient-2: 95% 0.024 240; }   /* ink blue */
-  [data-domain='saisie']       { --ambient-2: 95% 0.030 75; }    /* ochre */
-  [data-domain='retraitement'] { --ambient-2: 95% 0.028 25; }    /* brick red */
-  [data-domain='organisation'] { --ambient-2: 96% 0.010 270; }   /* near-neutral */
+  [data-domain='analyse']      { --ambient-2: 89% 0.085 240; }   /* ink blue */
+  [data-domain='saisie']       { --ambient-2: 89% 0.10 75; }     /* ochre */
+  [data-domain='retraitement'] { --ambient-2: 88% 0.09 25; }     /* brick red */
+  [data-domain='organisation'] { --ambient-2: 92% 0.045 270; }   /* soft neutral */
 }
 
 @layer base {
@@ -116,13 +116,21 @@
   body {
     background-color: oklch(var(--canvas));
     /*
-     * Paper grain — SVG feTurbulence noise baked at 4% opacity.
-     * At this level it reads as paper texture, not digital artifact.
-     * The SVG uses fractalNoise so the pattern is aperiodic (no visible tiling).
+     * Baseline ambient (warm + brand green) so even public/login pages —
+     * which render outside the app shell — carry colour and depth, plus the
+     * paper grain (SVG feTurbulence noise, reads as texture not artifact).
+     * Inside the app, the opaque shell covers this and the domain-tinted
+     * .ambient-wash takes over.
      */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)' opacity='0.042'/%3E%3C/svg%3E");
-    background-size: 256px 256px;
-    background-repeat: repeat;
+    background-image:
+      radial-gradient(58% 50% at 12% -6%, oklch(91% 0.06 85 / 0.85) 0%, transparent 58%),
+      radial-gradient(55% 52% at 100% 4%, oklch(89% 0.085 155 / 0.7) 0%, transparent 56%),
+      radial-gradient(80% 60% at 50% 116%, oklch(90% 0.07 155 / 0.4) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)' opacity='0.042'/%3E%3C/svg%3E");
+    background-size: cover, cover, cover, 256px 256px;
+    background-position: center, center, center, top left;
+    background-attachment: fixed, fixed, fixed, scroll;
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat;
     color: oklch(var(--ink));
     font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
     /* Tabular figures + stylistic alternates (Geist) — accountant-grade numerals everywhere */
@@ -194,19 +202,19 @@
     pointer-events: none;
     background:
       radial-gradient(
-        70% 60% at 8% -8%,
+        80% 70% at 3% -12%,
         oklch(var(--ambient-1) / var(--ambient-strength)) 0%,
-        transparent 60%
+        transparent 62%
       ),
       radial-gradient(
-        60% 55% at 100% 0%,
+        72% 65% at 102% -6%,
         oklch(var(--ambient-2) / var(--ambient-strength)) 0%,
-        transparent 55%
+        transparent 60%
       ),
       radial-gradient(
-        90% 70% at 50% 120%,
-        oklch(var(--ambient-2) / calc(var(--ambient-strength) * 0.5)) 0%,
-        transparent 60%
+        100% 80% at 50% 118%,
+        oklch(var(--ambient-2) / calc(var(--ambient-strength) * 0.7)) 0%,
+        transparent 64%
       );
     transition: background 600ms var(--ease-out-quint);
   }
@@ -217,15 +225,15 @@
    * at a short total so users in flow never wait on choreography.
    */
   .reveal-stagger > * {
-    animation: fade-in-up 360ms var(--ease-out-quint) both;
+    animation: reveal-rise 480ms var(--ease-out-quint) both;
   }
   .reveal-stagger > *:nth-child(1)  { animation-delay: 0ms; }
-  .reveal-stagger > *:nth-child(2)  { animation-delay: 40ms; }
-  .reveal-stagger > *:nth-child(3)  { animation-delay: 80ms; }
-  .reveal-stagger > *:nth-child(4)  { animation-delay: 120ms; }
-  .reveal-stagger > *:nth-child(5)  { animation-delay: 160ms; }
-  .reveal-stagger > *:nth-child(6)  { animation-delay: 200ms; }
-  .reveal-stagger > *:nth-child(n+7){ animation-delay: 240ms; }
+  .reveal-stagger > *:nth-child(2)  { animation-delay: 70ms; }
+  .reveal-stagger > *:nth-child(3)  { animation-delay: 140ms; }
+  .reveal-stagger > *:nth-child(4)  { animation-delay: 210ms; }
+  .reveal-stagger > *:nth-child(5)  { animation-delay: 280ms; }
+  .reveal-stagger > *:nth-child(6)  { animation-delay: 350ms; }
+  .reveal-stagger > *:nth-child(n+7){ animation-delay: 420ms; }
 
   /*
    * .card-lift — restrained hover for interactive surfaces. Translate + soft
@@ -239,9 +247,9 @@
     will-change: transform;
   }
   .card-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 1px 2px oklch(var(--ink) / 0.05), 0 12px 28px oklch(var(--ink) / 0.07);
-    border-color: oklch(var(--line-strong));
+    transform: translateY(-3px);
+    box-shadow: 0 2px 4px oklch(var(--ink) / 0.06), 0 16px 36px oklch(var(--ink) / 0.10);
+    border-color: oklch(var(--accent) / 0.45);
   }
 
   /* Amount display — for any element rendering a FCFA/EUR/USD amount */
@@ -271,7 +279,7 @@
 
   /* Page entry animation — applied to the main content wrapper on each route */
   .animate-page-in {
-    animation: page-in 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
+    animation: page-in 360ms cubic-bezier(0.23, 1, 0.32, 1) both;
   }
 
   /*
@@ -294,7 +302,19 @@
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger child reveal — a clearly perceptible rise, used by .reveal-stagger */
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
