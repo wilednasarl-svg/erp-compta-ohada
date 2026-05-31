@@ -193,25 +193,25 @@ export default function DashboardPage() {
           onClick={() => setShowDetail((v) => !v)}
           aria-expanded={showDetail}
           aria-controls="detailed-dashboard"
-          className="press group flex w-full items-center gap-4 rounded-md border border-line bg-paper p-4 text-left transition-colors duration-fast hover:border-line-strong hover:bg-sunk/40"
+          className="press flex w-full items-center gap-4 rounded-md bg-accent p-4 text-left text-[oklch(98%_0.004_85)] transition-opacity duration-fast hover:opacity-90"
         >
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-sunk text-ink-soft transition-colors duration-fast group-hover:bg-accent-soft group-hover:text-accent-ink">
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[oklch(98%_0.004_85)] text-accent-ink">
             <LayoutDashboard className="h-5 w-5" strokeWidth={1.5} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-ink">Tableau de bord détaillé</span>
+              <span className="text-sm font-medium">Tableau de bord détaillé</span>
               {!showDetail && (
-                <span className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-accent-ink">
+                <span className="rounded-xs bg-[oklch(98%_0.004_85)] px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-accent-ink">
                   3 vues
                 </span>
               )}
             </span>
-            <span className="mt-0.5 block text-xs text-ink-mute">
+            <span className="mt-0.5 block text-xs text-[oklch(92%_0.035_155)]">
               Direction, Finances et Opérationnel : indicateurs, marges, balance âgée et flux de trésorerie.
             </span>
           </span>
-          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-ink-soft transition-colors duration-fast group-hover:text-ink">
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium">
             <span className="hidden sm:inline">{showDetail ? 'Replier' : 'Explorer'}</span>
             <ChevronDown
               className={`h-4 w-4 transition-transform duration-base ${showDetail ? 'rotate-180' : ''}`}
