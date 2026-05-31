@@ -104,6 +104,36 @@ export function IllustrationScale({ className }: IllustrationProps) {
   );
 }
 
+/** Grand-livre ouvert + courbe d'analyse — « du journal à la maîtrise ». Monochrome. */
+export function IllustrationLedger({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 188 132" fill="none" role="img" aria-hidden className={className}>
+      <g {...LINE}>
+        <path d="M94 108 L30 100 V54 L94 62 Z" />
+        <path d="M94 108 L158 100 V54 L94 62 Z" />
+        <path d="M94 62 V108" />
+        <g opacity={0.5}>
+          <path d="M42 72 L82 77 M42 82 L82 87 M42 92 L74 96" />
+          <path d="M106 77 L146 72 M106 87 L146 82 M114 96 L146 92" />
+        </g>
+      </g>
+      <path
+        d="M46 46 L74 30 L98 38 L124 18 L152 9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <g fill="currentColor">
+        <circle cx="74" cy="30" r="2.8" />
+        <circle cx="124" cy="18" r="2.8" />
+        <circle cx="152" cy="9" r="2.8" />
+      </g>
+    </svg>
+  );
+}
+
 /** Maillon rompu — connexion indisponible (page hors-ligne). */
 export function IllustrationOffline({ className }: IllustrationProps) {
   return (
