@@ -376,6 +376,13 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     side: 'ACTIF',
     section: 'Actif circulant',
     sourceAccountPrefixes: [
+      // Classe 42/43/44 à solde DÉBITEUR = créances (avances personnel,
+      // TVA récupérable, crédit de TVA, produits à recevoir…). Mêmes préfixes
+      // que le poste passif DK : classifyToPoste arbitre par le signe du solde
+      // (netSign), conformément au Guide d'application (Tome 3).
+      '42',
+      '43',
+      '44',
       '421',
       '422',
       '425',
@@ -779,7 +786,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     // aussi en SOURCE de BJ pour que classifyToPoste tranche par le signe du
     // solde (cf. comptes courants 462/463/471). Préfixes longueur 3 pour primer
     // sur '42'/'44' génériques et permettre l'arbitrage par netSign.
-    sourceAccountPrefixes: ['42', '421', '422', '445', '43', '44'],
+    sourceAccountPrefixes: ['42', '421', '422', '425', '445', '43', '44'],
     deductionPrefixes: [],
     sign: 1,
     parentGroup: 'DP',
