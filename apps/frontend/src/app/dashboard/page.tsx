@@ -204,8 +204,7 @@ export default function DashboardPage() {
         >
           Trois vues s’adaptent à votre rôle : <span className="font-medium text-ink">Direction</span> pour la
           synthèse, <span className="font-medium text-ink">Finances</span> pour le détail DAF,{' '}
-          <span className="font-medium text-ink">Opérationnel</span> pour les tâches du jour. La couleur de fond
-          change selon le module où vous vous trouvez.
+          <span className="font-medium text-ink">Opérationnel</span> pour les tâches du jour.
         </Hint>
 
         {/* ─── Sélecteur de vue ─────────────────────────────── */}
