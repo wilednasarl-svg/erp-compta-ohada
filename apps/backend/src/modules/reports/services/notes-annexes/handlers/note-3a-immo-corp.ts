@@ -23,6 +23,7 @@
  */
 
 import type { NoteDepreciationRecord, NoteHandler, NoteRow } from '../types';
+import { buildReconciliationRow, RECON_PREFIXES_CORP } from './_reconciliation';
 
 /**
  * Catégories standards SYSCOHADA pour la note 3A.
@@ -198,6 +199,20 @@ export const handleN3aImmoCorp: NoteHandler = async (ctx, deps) => {
     (r) =>
       r.key !== 'TOTAL' && (num(r.values.brutCloture) !== 0 || num(r.values.amortCloture) !== 0),
   );
+
+  // Contrôle de cohérence registre ↔ comptabilité (issue 8vny) : ajoute
+  // une ligne d'alerte seulement si la VNC du registre diverge du net
+  // comptable des comptes corporels de classe 2 à la clôture.
+  if (hasAnyMovement) {
+    const balances = await deps.reports.accountBalancesAsAt(ctx.organizationId, ctx.periodEnd);
+    const reconRow = buildReconciliationRow(
+      balances,
+      RECON_PREFIXES_CORP,
+      total.vnc,
+      Object.keys(rows[0].values),
+    );
+    if (reconRow) rows.push(reconRow);
+  }
 
   return { rows, applicable: hasAnyMovement };
 };

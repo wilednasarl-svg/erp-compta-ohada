@@ -28,7 +28,15 @@ function sched(o: Partial<NoteDepreciationRecord> & { assetId: string }): NoteDe
 
 describe('Note 3A — Immobilisations corporelles', () => {
   it('ventile en TERRAINS / CONSTRUCTIONS / MATERIEL + TOTAL et somme cohérente', async () => {
-    const { service, assetsMock, request } = buildHarness();
+    const { service, assetsMock, reportsMock, request } = buildHarness();
+
+    // Comptabilité cohérente avec le registre : brut 170 000 (22/23/24)
+    // − amort 4 000 (28x) = net 166 000 = VNC registre → aucune alerte.
+    reportsMock.accountBalancesAsAt.mockResolvedValue([
+      { accountCode: '224000', totalDebit: '50000.00', totalCredit: '0.00' },
+      { accountCode: '231000', totalDebit: '120000.00', totalCredit: '0.00' },
+      { accountCode: '283100', totalDebit: '0.00', totalCredit: '4000.00' },
+    ]);
 
     // Terrain (22x) acquis avant exercice.
     const a1 = asset({
@@ -108,6 +116,37 @@ describe('Note 3A — Immobilisations corporelles', () => {
     expect(total.values.amortCloture).toBe('4000.00');
     // VNC = brutCloture - amortCloture = 170000 - 4000 = 166000
     expect(total.values.vnc).toBe('166000.00');
+
+    // Registre et comptabilité concordants → pas de ligne de contrôle.
+    expect(byKey.has('CONTROLE_COHERENCE')).toBe(false);
+  });
+
+  it('signale un écart registre/comptabilité (contrôle de cohérence 8vny)', async () => {
+    const { service, assetsMock, reportsMock, request } = buildHarness();
+
+    // Registre : un terrain à 50 000, non amorti → VNC registre = 50 000.
+    assetsMock.findAllForExercise.mockResolvedValue([
+      asset({
+        id: 'a1',
+        assetAccountCode: '224000',
+        acquisitionCost: '50000.00',
+        acquisitionDate: '2023-06-01',
+      }),
+    ]);
+    // Comptabilité : le compte 224 ne porte que 40 000 → écart de 10 000.
+    reportsMock.accountBalancesAsAt.mockResolvedValue([
+      { accountCode: '224000', totalDebit: '40000.00', totalCredit: '0.00' },
+    ]);
+
+    const n3a = await service.getNote(request, 'N3A' as NoteId);
+    const byKey = new Map(n3a.rows.map((r) => [r.key, r]));
+
+    const controle = byKey.get('CONTROLE_COHERENCE');
+    expect(controle).toBeDefined();
+    // La colonne VNC porte le net comptable du bilan (40 000).
+    expect(controle?.values.vnc).toBe('40000.00');
+    // L'écart (50 000 − 40 000 = 10 000) est mentionné dans le libellé.
+    expect(controle?.label).toContain('10000.00');
   });
 
   it('renvoie applicable=false si aucun asset corporel', async () => {
