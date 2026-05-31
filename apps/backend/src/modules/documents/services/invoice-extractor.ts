@@ -65,7 +65,7 @@ export function extractInvoice(markdown: string): ExtractedInvoice {
 
   const result: ExtractedInvoice = {
     supplier: extractSupplier(text, flat),
-    customer: extractCustomer(text, flat),
+    customer: extractCustomer(flat),
     totals: extractTotals(flat),
     lines: extractLines(text),
   };
@@ -113,7 +113,7 @@ function extractSupplier(raw: string, flat: string): InvoiceParty {
   return party;
 }
 
-function extractCustomer(raw: string, flat: string): InvoiceParty {
+function extractCustomer(flat: string): InvoiceParty {
   const party: InvoiceParty = {};
   // The client block follows a "Client" header.
   const clientIdx = flat.search(/\bClient\b/i);
