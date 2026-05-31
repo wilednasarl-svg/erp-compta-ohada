@@ -198,7 +198,7 @@ export function AccueilBento({
   if (isError) {
     return (
       <section aria-label="Accueil" className="space-y-6">
-        <DossierHeader greeting={greeting} userName={userName} dateLabel={dateLabel} verdict={null} orgName={orgName} />
+        <DossierHeader greeting={greeting} userName={userName} dateLabel={dateLabel} orgName={orgName} />
         <div className="rounded-md border border-line bg-paper px-6 py-12 text-center">
           <p className="text-sm font-medium text-ink">Impossible de charger les données du dossier.</p>
           <p className="mx-auto mt-1 max-w-[44ch] text-xs text-ink-mute">
@@ -221,29 +221,15 @@ export function AccueilBento({
 
   return (
     <section aria-label="Accueil" className="space-y-8">
-      <DossierHeader
-        greeting={greeting}
-        userName={userName}
-        dateLabel={dateLabel}
-        orgName={orgName}
-        verdict={
-          isLoading
-            ? null
-            : notConfigured
-              ? 'setup'
-              : pendingTotal === 0
-                ? 'clear'
-                : 'pending'
-        }
-        pendingTotal={pendingTotal}
-        exerciseDays={exerciseDays}
-        exerciseLabel={summary?.exercise?.label}
-      />
+      <DossierHeader greeting={greeting} userName={userName} dateLabel={dateLabel} orgName={orgName} />
 
       {notConfigured ? (
         <WelcomeSetup />
       ) : (
         <>
+          {/* ── Priorité intelligente : LA chose à faire maintenant ── */}
+          <PriorityFocus isLoading={isLoading} priority={computePriority(pending, exerciseDays, cashPct)} />
+
           {/* ── Bande d'état du dossier (filets, pas de cartes) ── */}
           <div className="grid divide-y divide-line border-y border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             <ScoreCell isLoading={isLoading} score={summary?.score ?? null} />
@@ -299,19 +285,11 @@ function DossierHeader({
   userName,
   dateLabel,
   orgName,
-  verdict,
-  pendingTotal = 0,
-  exerciseDays,
-  exerciseLabel,
 }: {
   greeting: string;
   userName: string;
   dateLabel: string;
   orgName: string;
-  verdict: 'clear' | 'pending' | 'setup' | null;
-  pendingTotal?: number;
-  exerciseDays?: number | null;
-  exerciseLabel?: string;
 }) {
   return (
     <header>
@@ -320,36 +298,172 @@ function DossierHeader({
         {greeting} {userName}
       </h1>
       <p className="mt-2 max-w-[60ch] text-base text-ink-soft">
-        {verdict === 'clear' ? (
-          <>
-            Tout est à jour sur <span className="font-medium text-ink">{orgName}</span>. Rien ne presse
-            aujourd&apos;hui.
-          </>
-        ) : verdict === 'pending' ? (
-          <>
-            <span className="font-medium text-ink">
-              {pendingTotal} élément{pendingTotal > 1 ? 's' : ''}
-            </span>{' '}
-            {pendingTotal > 1 ? 'vous attendent' : 'vous attend'} sur{' '}
-            <span className="font-medium text-ink">{orgName}</span>
-            {exerciseDays != null && exerciseLabel ? (
-              <>
-                , et il reste <span className="mark-warn font-medium">{exerciseDays} jours</span> avant la
-                clôture de {exerciseLabel}.
-              </>
-            ) : (
-              '.'
-            )}
-          </>
-        ) : verdict === 'setup' ? (
-          <>
-            Bienvenue. Configurons <span className="font-medium text-ink">{orgName}</span> pour commencer.
-          </>
-        ) : (
-          <span className="inline-block h-4 w-72 max-w-full animate-pulse rounded-xs bg-sunk align-middle" />
-        )}
+        Voici l&apos;essentiel de <span className="font-medium text-ink">{orgName}</span> aujourd&apos;hui.
       </p>
     </header>
+  );
+}
+
+/* ─── Priorité intelligente du moment ─────────────────────────── */
+
+interface Priority {
+  readonly tone: 'critical' | 'warn' | 'info';
+  readonly icon: LucideIcon;
+  readonly title: string;
+  readonly why: string;
+  readonly href: string;
+  readonly cta: string;
+}
+
+/**
+ * Désigne LA chose la plus importante à faire maintenant, à partir des données
+ * réelles du dossier. Ordre métier : échéance fiscale > clôture imminente >
+ * écritures bloquantes > risque de trésorerie > hygiène (lettrage, banque).
+ * Renvoie null quand le dossier est à jour.
+ */
+function computePriority(
+  pending: PendingCounts | undefined,
+  exerciseDays: number | null,
+  cashPct: number | null,
+): Priority | null {
+  if (!pending) return null;
+
+  if (pending.tvaDeclarations > 0) {
+    const n = pending.tvaDeclarations;
+    return {
+      tone: 'critical',
+      icon: Percent,
+      title: `${n} déclaration${n > 1 ? 's' : ''} TVA à finaliser`,
+      why: 'Le dépôt DGI est soumis à échéance : à traiter avant le reste.',
+      href: '/tva',
+      cta: 'Ouvrir la TVA',
+    };
+  }
+
+  if (exerciseDays != null && exerciseDays <= 7) {
+    return {
+      tone: 'warn',
+      icon: CalendarClock,
+      title: exerciseDays === 0 ? "Clôture de l'exercice aujourd'hui" : `Clôture de l'exercice dans ${exerciseDays} j`,
+      why: 'Vérifiez les écritures et les états financiers avant de clôturer.',
+      href: '/accounting-periods',
+      cta: 'Préparer la clôture',
+    };
+  }
+
+  if (pending.entries > 0) {
+    const n = pending.entries;
+    return {
+      tone: 'warn',
+      icon: PenLine,
+      title: `${n} écriture${n > 1 ? 's' : ''} à valider`,
+      why: 'En brouillon, elles ne remontent ni dans les états ni dans le lettrage.',
+      href: '/entry-workflow',
+      cta: 'Valider',
+    };
+  }
+
+  if (cashPct != null && cashPct <= -10) {
+    return {
+      tone: 'info',
+      icon: TrendingDown,
+      title: `Trésorerie en baisse de ${Math.abs(Math.round(cashPct))} % sur 6 mois`,
+      why: 'Surveillez les encaissements clients et le besoin en fonds de roulement.',
+      href: '/dashboards/treasury',
+      cta: 'Analyser',
+    };
+  }
+
+  if (pending.auxLettering > 0) {
+    const n = pending.auxLettering;
+    return {
+      tone: 'info',
+      icon: Link2,
+      title: `${n} lettrage${n > 1 ? 's' : ''} à rapprocher`,
+      why: 'Le lettrage fiabilise les soldes auxiliaires 40x / 41x.',
+      href: '/lettering',
+      cta: 'Lettrer',
+    };
+  }
+
+  if (pending.bankLines > 0) {
+    const n = pending.bankLines;
+    return {
+      tone: 'info',
+      icon: Banknote,
+      title: `${n} ligne${n > 1 ? 's' : ''} bancaire${n > 1 ? 's' : ''} à pointer`,
+      why: 'Le rapprochement garantit la cohérence avec le relevé bancaire.',
+      href: '/bank-reconciliation',
+      cta: 'Pointer',
+    };
+  }
+
+  return null;
+}
+
+function PriorityFocus({ isLoading, priority }: { isLoading: boolean; priority: Priority | null }) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-4 rounded-md border border-line bg-paper p-4" aria-hidden>
+        <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-sunk" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-2/5 animate-pulse rounded-xs bg-sunk" />
+          <div className="h-3 w-3/5 animate-pulse rounded-xs bg-sunk" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!priority) {
+    return (
+      <div className="flex items-center gap-3 rounded-md border border-line bg-paper px-4 py-3.5">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-ink">
+          <CheckCircle2 className="h-5 w-5" strokeWidth={1.5} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink">Tout est à jour, rien d&apos;urgent aujourd&apos;hui.</p>
+          <p className="text-xs text-ink-mute">Vous pouvez avancer sereinement sur le reste.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const Icon = priority.icon;
+  const iconWrap = {
+    critical: 'bg-critical-soft text-critical-ink',
+    warn: 'bg-warn-soft text-warn-ink',
+    info: 'bg-info-soft text-info-ink',
+  }[priority.tone];
+  const ctaPrimary = priority.tone !== 'info';
+
+  return (
+    <section
+      aria-labelledby="priority-title"
+      className="flex flex-col gap-3 rounded-md border border-line bg-paper p-4 sm:flex-row sm:items-center"
+    >
+      <span className={cn('inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full', iconWrap)}>
+        <Icon className="h-5 w-5" strokeWidth={1.5} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p id="priority-title" className="eyebrow">
+          À faire en priorité
+        </p>
+        <p className="mt-0.5 text-sm font-medium text-ink">{priority.title}</p>
+        <p className="mt-0.5 text-xs text-ink-mute">{priority.why}</p>
+      </div>
+      <Link
+        href={priority.href}
+        className={cn(
+          'press inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm px-3.5 py-2 text-sm font-medium transition-colors duration-fast',
+          ctaPrimary
+            ? 'bg-accent text-[oklch(98%_0.004_85)] hover:opacity-90'
+            : 'border border-line-strong bg-canvas text-ink hover:bg-sunk',
+        )}
+      >
+        {priority.cta}
+        <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+      </Link>
+    </section>
   );
 }
 
