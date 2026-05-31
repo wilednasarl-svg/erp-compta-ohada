@@ -26,6 +26,7 @@ import {
   PenLine,
   Percent,
   PieChart,
+  Rows3,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -108,6 +109,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     items: [
       { href: '/reports', label: 'États financiers', icon: BarChart3, hint: 'Bilan, compte de résultat, TFT, SIG, Annexe' },
       { href: '/reports/console', label: 'Console des états', icon: SlidersHorizontal, hint: 'Parcours guidé : période → générer (14 états)' },
+      { href: '/grand-livre', label: 'Grand-livre', icon: Rows3, hint: 'Balance par compte + détail des écritures' },
       { href: '/tva', label: 'TVA', icon: Percent, hint: 'Déclarations UEMOA / DGI' },
       { href: '/tax-breakdown', label: 'Ventilation TVA', icon: Percent, hint: 'Cumuls par code taxe' },
       { href: '/fiscal', label: 'Fiscal & social', icon: Landmark, hint: 'Échéancier IS/TVA/CNPS, déclarations' },
