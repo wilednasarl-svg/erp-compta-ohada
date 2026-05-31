@@ -622,7 +622,7 @@ function BankBalancesPanel({ banks, balanceOf, total, multiCurrency }: BankBalan
                 <td className="px-5 py-2 text-right font-mono font-semibold tabular-nums text-ink">
                   {total === null ? (
                     <span className="text-xs font-normal text-ink-mute">
-                      multidevise &mdash; voir par devise
+                      multidevise (voir par devise)
                     </span>
                   ) : (
                     formatAmount(total)
@@ -677,7 +677,7 @@ function ThresholdPanel({
         <div>
           <h2 className="font-display text-xl font-medium text-ink">Alertes de seuil</h2>
           <p className="mt-1 text-sm text-ink-mute">
-            Seuil de trésorerie minimal &mdash; configurable et stocké localement dans ce
+            Seuil de trésorerie minimal : configurable et stocké localement dans ce
             navigateur.
           </p>
         </div>

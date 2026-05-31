@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
+import { Hint } from '@/components/ui/hint';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
@@ -324,6 +325,14 @@ export default function AccountingScorePage() {
             l&apos;exhaustivité des états, la conformité aux normes SYSCOHADA.
           </p>
         </header>
+
+        <Hint id="score-intro" variant="learn">
+          Le score de santé est un indice qualité OHADA sur 100 points. Il
+          combine quatre critères pondérés (anomalies, justificatifs,
+          rapprochements, délais workflow) pour mesurer la rigueur de votre
+          tenue comptable. Recalculez-le après avoir validé de nouvelles
+          écritures.
+        </Hint>
 
         {/* ─── Controls ───────────────────────────────────── */}
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">

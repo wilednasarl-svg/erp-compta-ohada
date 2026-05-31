@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 
 import { AppShell } from '@/components/app-shell';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
 
@@ -255,6 +256,13 @@ export default function FiscalPage() {
             suivi à faire / déposé / payé et génération des déclarations.
           </p>
         </header>
+
+        <Hint id="fiscal-intro" variant="learn" title="Suivre vos échéances sans rien oublier">
+          Cette page regroupe le calendrier de vos obligations fiscales (IS, IMF, TVA, patente)
+          et sociales (CNPS, FDFP). Chaque déclaration passe par à déposer, déposé, puis payé.
+          Filtrez par période, générez une déclaration à partir du barème, et surveillez les
+          échéances en retard signalées en rouge.
+        </Hint>
 
         <FilterBar
           year={year}

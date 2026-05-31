@@ -35,6 +35,7 @@ import {
 } from 'recharts';
 
 import { AppShell } from '@/components/app-shell';
+import { Hint } from '@/components/ui/hint';
 import { api, ApiError } from '@/lib/api-client';
 import { useCurrentOrg, useCurrentUser } from '@/stores/auth-store';
 import type { AccountingPeriodView } from '@/types/journals';
@@ -186,6 +187,26 @@ export default function DashboardPage() {
             </span>
           </p>
         </header>
+
+        {/* ─── Conseil de prise en main (nouveaux utilisateurs) ── */}
+        <Hint
+          id="dashboard-intro"
+          variant="learn"
+          title="Premiers pas dans votre dossier"
+          action={
+            <Link
+              href="/welcome"
+              className="inline-flex items-center gap-1 text-xs font-medium text-accent-ink underline-offset-2 hover:underline"
+            >
+              Ouvrir le guide pas à pas
+            </Link>
+          }
+        >
+          Trois vues s’adaptent à votre rôle : <span className="font-medium text-ink">Direction</span> pour la
+          synthèse, <span className="font-medium text-ink">Finances</span> pour le détail DAF,{' '}
+          <span className="font-medium text-ink">Opérationnel</span> pour les tâches du jour. La couleur de fond
+          change selon le module où vous vous trouvez.
+        </Hint>
 
         {/* ─── Sélecteur de vue ─────────────────────────────── */}
         <div className="flex items-center border-b border-line pb-4 overflow-x-auto scrollbar-hide">

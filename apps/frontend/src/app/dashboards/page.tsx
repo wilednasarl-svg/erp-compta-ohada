@@ -31,6 +31,7 @@ import {
 
 import { AppShell } from '@/components/app-shell';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
 import type { AccountingPeriodView } from '@/types/journals';
@@ -96,10 +97,15 @@ export default function DashboardsPage() {
             Tableaux de bord
           </h1>
           <p className="mt-2 max-w-[64ch] text-sm text-ink-soft">
-            Trésorerie, créances, dettes, résultat YTD et balance âgée des tiers — scoped
+            Trésorerie, créances, dettes, résultat YTD et balance âgée des tiers, scopés
             sur l'exercice fiscal sélectionné.
           </p>
         </header>
+
+        <Hint id="dashboards-overview" variant="learn">
+          Commencez par choisir un exercice ci-dessous : tous les indicateurs (trésorerie,
+          résultat, balance âgée) sont recalculés pour cet exercice uniquement.
+        </Hint>
 
         {/* ── Period selector ──────────────────────────────────── */}
         <section className={PANEL_PADDED}>
@@ -241,7 +247,7 @@ function SummarySection({ orgId, exerciseId }: { orgId: string; exerciseId: stri
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="reveal-stagger grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Trésorerie"
           value={s.cashBalance}

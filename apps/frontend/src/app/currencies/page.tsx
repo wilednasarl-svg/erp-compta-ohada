@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -287,6 +288,13 @@ export default function CurrenciesPage() {
             Ajouter une devise
           </button>
         </header>
+
+        <Hint id="currencies-intro" variant="learn">
+          XOF (le FCFA) est la devise de base, déjà enregistrée. Ajoutez EUR,
+          USD ou toute devise utile à vos flux, puis saisissez un taux par paire
+          et par date. Un taux indique combien d&apos;unités de la devise cible
+          valent une unité de la devise de départ.
+        </Hint>
 
         <section className="space-y-4">
           <div className="flex items-baseline justify-between border-b border-line pb-3">

@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -187,6 +188,13 @@ export default function InventoryPage() {
             {creatingItem ? 'Annuler' : (<><Plus className="mr-2 h-4 w-4" /> Nouvel article</>)}
           </Button>
         </div>
+
+        <Hint id="inventory-intro" variant="learn" title="Stocks et inventaire physique">
+          Chaque article suit son stock et sa valeur au coût moyen pondéré (CMP), recalculé à
+          chaque entrée. Saisissez les achats, les ventes et les ajustements via les mouvements ;
+          l&apos;inventaire physique permet de recaler le stock théorique sur le comptage réel.
+          Les stocks nuls ou négatifs sont signalés pour vous alerter.
+        </Hint>
 
         {/* Summary bar */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

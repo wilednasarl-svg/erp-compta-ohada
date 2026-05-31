@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -267,6 +268,13 @@ export default function AiPage() {
             </span>
           )}
         </header>
+
+        <Hint id="ai-intro" variant="learn">
+          L&apos;IA examine vos écritures validées pour signaler les anomalies
+          (montants extrêmes, doublons, comptes sensibles) et propose un mapping
+          des colonnes lors des imports. Ce sont des aides à la décision : un
+          signalement reste à vérifier, il ne bloque jamais une écriture.
+        </Hint>
 
         {/* ─── Scan ───────────────────────────────────────── */}
         <ScanSection

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { FormError } from '@/components/ui/form-error';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -268,7 +269,16 @@ export default function LetteringPage() {
               ))}
             </div>
           ) : (query.data?.length ?? 0) === 0 ? (
-            <p className="py-8 text-center text-sm text-ink-mute">Aucun lettrage.</p>
+            <EmptyState
+              icon={Link2}
+              title="Aucun lettrage"
+              description="Le lettrage rapproche les débits et les crédits d'un même compte de tiers (clients 41x, fournisseurs 40x) : une facture et son règlement se soldent mutuellement."
+              tips={[
+                'Lancez le lettrage automatique pour rapprocher les lignes partageant le même N° de facture.',
+                'Ou sélectionnez manuellement au moins deux lignes équilibrées (débit = crédit) sur un même compte.',
+                "Un lettrage dénoué peut être refait : rien n'est définitif tant que la facture reste ouverte.",
+              ]}
+            />
           ) : (
             <div className="overflow-x-auto rounded-sm border border-line">
               <table className="w-full text-sm">

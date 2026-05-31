@@ -218,7 +218,7 @@ export default function ConsolidatedDashboardPage() {
 function ConsolidatedResults({ data }: { data: DashboardConsolidatedSummary }) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="reveal-stagger grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Trésorerie globale"
           value={data.metrics.cashBalance}
@@ -337,7 +337,7 @@ function OrgContributionList({ data }: { data: DashboardConsolidatedSummary }) {
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-sunk font-mono text-2xs font-medium tabular-nums text-ink-soft">
-                  {initials || '—'}
+                  {initials || '··'}
                 </span>
                 <span
                   className="truncate text-sm font-medium text-ink"

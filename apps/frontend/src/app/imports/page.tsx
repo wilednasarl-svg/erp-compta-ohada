@@ -23,6 +23,7 @@ import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -281,6 +282,13 @@ export default function ImportsPage() {
           </p>
         </header>
 
+        <Hint id="imports-intro" title="Comment fonctionne un import">
+          Déposez un export Sage Saari, un CSV, un fichier Excel ou un PDF natif. Le mapping
+          des colonnes est assisté : l&apos;outil reconnaît automatiquement Compte, Journal,
+          Date, Débit et Crédit, et vous corrigez les associations si besoin avant le passage
+          au journal.
+        </Hint>
+
         {/* ─── Stats summary bar ──────────────────────────── */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line bg-paper px-4 py-3 text-xs">
           <span className="text-ink-soft">
@@ -465,7 +473,7 @@ export default function ImportsPage() {
                   <li
                     key={s.id}
                     className={cn(
-                      'group flex items-center gap-3 px-5 py-3.5 transition-colors duration-fast',
+                      'card-lift group flex items-center gap-3 px-5 py-3.5 transition-colors duration-fast',
                       isSelected
                         ? 'bg-accent-soft/60 ring-1 ring-inset ring-accent/30'
                         : 'hover:bg-sunk/60',

@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -144,6 +145,12 @@ export default function JournalsPage() {
           </p>
         </header>
 
+        <Hint id="journals-intro" title="Comprendre les journaux">
+          Chaque écriture est enregistrée dans un journal selon sa nature : ventes (JV),
+          achats (JA), banque (BAN) ou opérations diverses (OD). Le journal regroupe les
+          écritures de même type pour faciliter le suivi et le rapprochement.
+        </Hint>
+
         {/* Filtres */}
         <section className={PANEL_CLASS}>
           <div className="border-b border-line pb-3">
@@ -249,7 +256,7 @@ export default function JournalsPage() {
                     const isSelected = e.id === selectedId;
                     const journal = journalById.get(e.journalId);
                     return (
-                      <li key={e.id}>
+                      <li key={e.id} className="card-lift">
                         <button
                           type="button"
                           onClick={() => setSelectedId(e.id)}
