@@ -194,6 +194,14 @@ export function AccueilBento({
   const exerciseDays = daysUntil(summary?.exercise?.endDate);
   const periodDays = daysUntil(summary?.activePeriod?.endDate);
 
+  // Initialisation : le dossier a-t-il déjà ses premières écritures ?
+  const hasEntries =
+    (summary?.entriesThisMonth ?? 0) > 0 ||
+    (summary?.pending.entries ?? 0) > 0 ||
+    (summary?.recentActivity ?? []).some((e) => e.module === 'journal_entries');
+  // Dossier neuf : exercice ouvert mais encore vide (aucun score calculé).
+  const isFreshDossier = !isLoading && !!summary?.exercise && !hasEntries && summary?.score == null;
+
   /* ── État : erreur de chargement du dossier ── */
   if (isError) {
     return (
@@ -224,11 +232,15 @@ export function AccueilBento({
       <DossierHeader greeting={greeting} userName={userName} dateLabel={dateLabel} orgName={orgName} />
 
       {notConfigured ? (
-        <WelcomeSetup />
+        <SetupGuide hasExercise={false} hasEntries={hasEntries} />
       ) : (
         <>
-          {/* ── Priorité intelligente : LA chose à faire maintenant ── */}
-          <PriorityFocus isLoading={isLoading} priority={computePriority(pending, exerciseDays, cashPct)} />
+          {/* ── Initialisation guidée (dossier neuf) OU priorité du moment ── */}
+          {isFreshDossier ? (
+            <SetupGuide hasExercise hasEntries={false} compact />
+          ) : (
+            <PriorityFocus isLoading={isLoading} priority={computePriority(pending, exerciseDays, cashPct)} />
+          )}
 
           {/* ── Bande d'état du dossier (filets, pas de cartes) ── */}
           <div className="grid divide-y divide-line border-y border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
@@ -991,62 +1003,79 @@ function RecentActivity({ isLoading, events }: { isLoading: boolean; events: Rea
 interface SetupStep {
   readonly label: string;
   readonly detail: string;
-  readonly state: 'done' | 'current' | 'next';
+  readonly done: boolean;
   readonly href?: string;
   readonly cta?: string;
 }
 
 /**
- * Premier écran d'un dossier vide. Au lieu d'un CTA isolé, montre le chemin
- * d'initialisation : ce qui est déjà prêt, l'étape en cours (avec action), et
- * ce qui suit. Guide sans noyer.
+ * Parcours d'initialisation, piloté par les vraies données du dossier.
+ * Les étapes se cochent en temps réel (exercice ouvert → écritures saisies).
+ * `compact` : variante bandeau quand le dossier a un exercice mais reste vide ;
+ * variante pleine quand aucun exercice n'existe encore. L'étape courante est la
+ * première non terminée et porte l'action.
  */
-function WelcomeSetup() {
+function SetupGuide({
+  hasExercise,
+  hasEntries,
+  compact = false,
+}: {
+  hasExercise: boolean;
+  hasEntries: boolean;
+  compact?: boolean;
+}) {
   const steps: ReadonlyArray<SetupStep> = [
     {
       label: 'Plan comptable SYSCOHADA',
       detail: 'Pré-chargé, prêt à l’emploi.',
-      state: 'done',
+      done: true,
     },
     {
       label: 'Ouvrir le premier exercice',
       detail: 'Définissez la période de départ et la date de clôture.',
-      state: 'current',
+      done: hasExercise,
       href: '/accounting-periods',
       cta: 'Ouvrir l’exercice',
     },
     {
-      label: 'Paramétrer les journaux',
-      detail: 'Vente, achat, banque et opérations diverses.',
-      state: 'next',
-    },
-    {
-      label: 'Importer ou saisir vos écritures',
-      detail: 'Sage Saari, CSV, ou saisie manuelle.',
-      state: 'next',
+      label: 'Saisir ou importer vos écritures',
+      detail: 'Sage Saari, CSV, ou saisie manuelle pour démarrer le dossier.',
+      done: hasEntries,
+      href: '/imports',
+      cta: 'Démarrer la saisie',
     },
   ];
+  const doneCount = steps.filter((s) => s.done).length;
+  const currentIndex = steps.findIndex((s) => !s.done);
 
   return (
-    <div className="rounded-lg border border-line bg-paper p-6 sm:p-8">
-      <div className="flex items-start gap-4">
-        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
-          <CalendarClock className="h-6 w-6" strokeWidth={1.5} />
-        </span>
-        <div className="min-w-0">
-          <p className="eyebrow">Premiers pas</p>
-          <h2 className="mt-1 font-display text-2xl text-ink">Configurons votre dossier</h2>
-          <p className="mt-1.5 max-w-[56ch] text-base leading-relaxed text-ink-soft">
-            Voici par où commencer. L&apos;étape clé : ouvrir l&apos;exercice, qui débloque la saisie, les
-            états financiers et le suivi du dossier.
-          </p>
+    <div className={cn('rounded-lg border border-line bg-paper', compact ? 'p-4 sm:p-5' : 'p-6 sm:p-8')}>
+      {compact ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="eyebrow">Initialisation du dossier</p>
+          <span className="num text-xs font-medium tabular-nums text-ink-mute">
+            {doneCount} / {steps.length}
+          </span>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-start gap-4">
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
+            <CalendarClock className="h-6 w-6" strokeWidth={1.5} />
+          </span>
+          <div className="min-w-0">
+            <p className="eyebrow">Premiers pas</p>
+            <h2 className="mt-1 font-display text-2xl text-ink">Configurons votre dossier</h2>
+            <p className="mt-1.5 max-w-[56ch] text-base leading-relaxed text-ink-soft">
+              Voici par où commencer. L&apos;étape clé : ouvrir l&apos;exercice, qui débloque la saisie, les
+              états financiers et le suivi du dossier.
+            </p>
+          </div>
+        </div>
+      )}
 
-      <ol className="mt-6 space-y-1">
+      <ol className={cn('space-y-1', compact ? 'mt-3' : 'mt-6')}>
         {steps.map((step, i) => {
-          const isCurrent = step.state === 'current';
-          const isDone = step.state === 'done';
+          const isCurrent = i === currentIndex;
           return (
             <li
               key={step.label}
@@ -1058,17 +1087,17 @@ function WelcomeSetup() {
               <span
                 className={cn(
                   'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums',
-                  isDone
+                  step.done
                     ? 'bg-accent-soft text-accent-ink'
                     : isCurrent
                       ? 'bg-accent text-[oklch(98%_0.004_85)]'
                       : 'border border-line-strong text-ink-mute',
                 )}
               >
-                {isDone ? <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} /> : i + 1}
+                {step.done ? <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} /> : i + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <p className={cn('text-sm font-medium', isDone ? 'text-ink-soft' : 'text-ink')}>
+                <p className={cn('text-sm font-medium', step.done ? 'text-ink-soft' : 'text-ink')}>
                   {step.label}
                 </p>
                 <p className="mt-0.5 text-xs text-ink-mute">{step.detail}</p>
@@ -1081,7 +1110,7 @@ function WelcomeSetup() {
                   {step.cta}
                   <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
                 </Link>
-              ) : isDone ? (
+              ) : step.done ? (
                 <span className="shrink-0 text-2xs uppercase tracking-wider text-accent-ink">Prêt</span>
               ) : null}
             </li>
