@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -185,6 +186,13 @@ export default function WorkflowsPage() {
             approuvé → verrouillé.
           </p>
         </header>
+
+        <Hint id="workflows-intro" variant="learn">
+          Un workflow encadre la validation d&apos;un objet comptable par une
+          séquence d&apos;étapes contrôlées : brouillon, revue, approuvé,
+          verrouillé. Chaque transition est tracée avec son auteur et son motif,
+          ce qui sécurise l&apos;approbation à plusieurs niveaux.
+        </Hint>
 
         {/* ─── Start instance ─────────────────────────────── */}
         <section className="rounded-sm border border-line bg-paper">

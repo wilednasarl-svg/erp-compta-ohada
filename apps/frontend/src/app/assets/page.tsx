@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -301,6 +302,13 @@ export default function AssetsPage() {
             {showCreate ? 'Annuler' : 'Nouvelle immobilisation'}
           </Button>
         </header>
+
+        <Hint id="assets-intro" variant="learn" title="Amortir vos actifs dans les règles">
+          Une immobilisation perd de la valeur dans le temps : l&apos;amortissement répartit son
+          coût sur sa durée d&apos;usage. Saisissez l&apos;actif avec sa durée et sa méthode
+          (linéaire ou dégressif) ; l&apos;application établit le plan d&apos;amortissement et
+          vous laisse passer chaque dotation en journal depuis le détail de l&apos;actif.
+        </Hint>
 
         {/* Summary bar */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

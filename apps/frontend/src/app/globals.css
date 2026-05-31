@@ -78,7 +78,27 @@
     --duration-fast: 120ms;
     --duration-base: 180ms;
     --duration-slow: 280ms;
+
+    /*
+     * Domain ambient — a faint coloured light cast into the page background,
+     * tinted by the functional area the user is in. This is wayfinding, not
+     * decoration: the eye learns "blue wing = Référentiel, ochre = Saisie".
+     * Default = warm neutral (no domain). Overridden per [data-domain] below.
+     * Lightness stays high + chroma low so it reads as lit paper, never a stain.
+     */
+    --ambient-1: 96% 0.018 85;      /* constant warm light, top-left */
+    --ambient-2: 95% 0.022 155;     /* domain-tinted light, right */
+    --ambient-strength: 0.55;
   }
+
+  /* Domain tints — hue follows the nav signature colour of each area. */
+  [data-domain='pilotage'],
+  [data-domain='etats']        { --ambient-2: 95% 0.026 155; }   /* deep green */
+  [data-domain='referentiel'],
+  [data-domain='analyse']      { --ambient-2: 95% 0.024 240; }   /* ink blue */
+  [data-domain='saisie']       { --ambient-2: 95% 0.030 75; }    /* ochre */
+  [data-domain='retraitement'] { --ambient-2: 95% 0.028 25; }    /* brick red */
+  [data-domain='organisation'] { --ambient-2: 96% 0.010 270; }   /* near-neutral */
 }
 
 @layer base {
@@ -161,6 +181,69 @@
 }
 
 @layer utilities {
+  /*
+   * .ambient-wash — fixed, behind-content layer of two soft radial glows.
+   * Rendered once in the app shell. Colour transitions when --ambient-2
+   * changes (i.e. when the user moves between functional domains), giving a
+   * gentle "the lighting changes as you walk into another wing" effect.
+   */
+  .ambient-wash {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        70% 60% at 8% -8%,
+        oklch(var(--ambient-1) / var(--ambient-strength)) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        60% 55% at 100% 0%,
+        oklch(var(--ambient-2) / var(--ambient-strength)) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        90% 70% at 50% 120%,
+        oklch(var(--ambient-2) / calc(var(--ambient-strength) * 0.5)) 0%,
+        transparent 60%
+      );
+    transition: background 600ms var(--ease-out-quint);
+  }
+
+  /*
+   * .reveal-stagger — children fade-and-rise in sequence on mount. Conveys
+   * the page assembling itself once; it is not a looping decoration. Capped
+   * at a short total so users in flow never wait on choreography.
+   */
+  .reveal-stagger > * {
+    animation: fade-in-up 360ms var(--ease-out-quint) both;
+  }
+  .reveal-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+  .reveal-stagger > *:nth-child(2)  { animation-delay: 40ms; }
+  .reveal-stagger > *:nth-child(3)  { animation-delay: 80ms; }
+  .reveal-stagger > *:nth-child(4)  { animation-delay: 120ms; }
+  .reveal-stagger > *:nth-child(5)  { animation-delay: 160ms; }
+  .reveal-stagger > *:nth-child(6)  { animation-delay: 200ms; }
+  .reveal-stagger > *:nth-child(n+7){ animation-delay: 240ms; }
+
+  /*
+   * .card-lift — restrained hover for interactive surfaces. Translate + soft
+   * shadow only (compositor-friendly). No scale, no colour shift.
+   */
+  .card-lift {
+    transition:
+      transform 180ms var(--ease-out-quart),
+      box-shadow 180ms var(--ease-out-quart),
+      border-color 180ms var(--ease-out-quart);
+    will-change: transform;
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 1px 2px oklch(var(--ink) / 0.05), 0 12px 28px oklch(var(--ink) / 0.07);
+    border-color: oklch(var(--line-strong));
+  }
+
   /* Amount display — for any element rendering a FCFA/EUR/USD amount */
   .num {
     font-family: var(--font-geist-mono), ui-monospace, monospace;

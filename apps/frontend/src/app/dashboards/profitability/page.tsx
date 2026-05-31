@@ -157,7 +157,7 @@ export default function ProfitabilityDashboardPage() {
           </h1>
           <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">
             Le résultat SYSCOHADA reste global ; cette vue le décompose par segment
-            analytique pour identifier ce qui crée — ou détruit — de la valeur.
+            analytique pour identifier ce qui crée, ou détruit, de la valeur.
           </p>
         </header>
 

@@ -96,6 +96,32 @@ const GROUP_COLORS: Record<string, GroupColors> = {
 };
 const DEFAULT_COLORS = GROUP_COLORS['Organisation']!;
 
+/* ─── Domain resolution — drives the ambient background tint ──── */
+/**
+ * Maps a nav-group title to the `data-domain` slug consumed by the ambient
+ * wash in globals.css. Keeping the mapping here (not in navigation.ts) avoids
+ * coupling the data model to a presentation concern.
+ */
+const DOMAIN_SLUGS: Record<string, string> = {
+  'Pilotage': 'pilotage',
+  'Référentiel': 'referentiel',
+  'Saisie': 'saisie',
+  'Retraitement': 'retraitement',
+  'États': 'etats',
+  'Analyse & IA': 'analyse',
+  'Organisation': 'organisation',
+};
+
+/** Resolve the active functional domain from the current path. */
+function resolveDomain(pathname: string): string {
+  for (const group of NAV_GROUPS) {
+    if (group.items.some((item) => isActive(item.href, pathname))) {
+      return DOMAIN_SLUGS[group.title] ?? 'organisation';
+    }
+  }
+  return 'pilotage';
+}
+
 /* ─── AppShell ─────────────────────────────────────────────────── */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -156,8 +182,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     .map((s) => s[0]?.toUpperCase() ?? '')
     .join('');
 
+  const domain = resolveDomain(pathname);
+
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="relative min-h-screen bg-canvas" data-domain={domain}>
+      {/* ─── Ambient wash — domain-tinted background light ───────── */}
+      <div className="ambient-wash no-print" aria-hidden />
 
       {/* ─── Topbar ─────────────────────────────────────────────── */}
       <header
@@ -302,8 +332,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* ─── Main ───────────────────────────────────────────────── */}
-      <main className="min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-        {children}
+      <main className="relative z-10 min-w-0 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+        {/* Keyed on the route so each page gently assembles itself on entry. */}
+        <div key={pathname} className="animate-page-in">
+          {children}
+        </div>
       </main>
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />

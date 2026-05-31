@@ -8,6 +8,7 @@ import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -106,6 +107,13 @@ export default function TvaPage() {
             le net dû.
           </p>
         </header>
+
+        <Hint id="tva-intro" variant="learn" title="À quoi sert cette page">
+          La TVA se déclare chaque mois à la DGI dans le cadre UEMOA. Définissez d&apos;abord
+          vos codes de taux, puis calculez la déclaration du mois : l&apos;application agrège la
+          TVA collectée sur vos ventes et la TVA déductible sur vos achats, et en déduit le net
+          à reverser ou le crédit reportable.
+        </Hint>
 
         {/* ─── Codes TVA ──────────────────────────────────── */}
         <section aria-labelledby="codes-title" className="space-y-5">
