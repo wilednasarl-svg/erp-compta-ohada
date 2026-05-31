@@ -2,7 +2,7 @@
 
 import { Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { NAV_FLAT } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
@@ -141,33 +141,37 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             filtered.map((item, index) => {
               const Icon = item.icon;
               const active = index === activeIndex;
+              const showHeader = index === 0 || item.group !== filtered[index - 1]!.group;
               return (
-                <li
-                  key={item.href}
-                  data-index={index}
-                  role="option"
-                  aria-selected={active}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => handleSelect(item.href)}
-                  className={cn(
-                    'mx-1 flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors duration-fast',
-                    active ? 'bg-accent-soft text-accent-ink' : 'text-ink hover:bg-sunk',
+                <Fragment key={item.href}>
+                  {showHeader && (
+                    <li role="presentation" className="px-4 pb-1 pt-3 first:pt-2">
+                      <span className="eyebrow">{item.group}</span>
+                    </li>
                   )}
-                >
-                  <Icon
-                    className={cn('h-4 w-4 shrink-0', active ? 'text-accent-ink' : 'text-ink-mute')}
-                    strokeWidth={1.5}
-                  />
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {item.hint ? (
-                    <span className="hidden text-2xs uppercase tracking-wider text-ink-mute sm:inline">
-                      {item.hint}
-                    </span>
-                  ) : null}
-                  <span className="text-2xs uppercase tracking-wider text-ink-mute">
-                    {item.group}
-                  </span>
-                </li>
+                  <li
+                    data-index={index}
+                    role="option"
+                    aria-selected={active}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => handleSelect(item.href)}
+                    className={cn(
+                      'mx-1 flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors duration-fast',
+                      active ? 'bg-accent-soft text-accent-ink' : 'text-ink hover:bg-sunk',
+                    )}
+                  >
+                    <Icon
+                      className={cn('h-4 w-4 shrink-0', active ? 'text-accent-ink' : 'text-ink-mute')}
+                      strokeWidth={1.5}
+                    />
+                    <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
+                    {item.hint ? (
+                      <span className="hidden max-w-[45%] shrink-0 truncate text-2xs text-ink-mute sm:inline">
+                        {item.hint}
+                      </span>
+                    ) : null}
+                  </li>
+                </Fragment>
               );
             })
           )}
