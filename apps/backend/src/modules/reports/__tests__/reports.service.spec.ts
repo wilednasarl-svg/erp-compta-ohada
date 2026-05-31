@@ -1938,6 +1938,35 @@ describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => 
     expect(report.rows).toHaveLength(2);
     expect(report.bucketTotals).toEqual(['1000.00', '0.00', '0.00', '2000.00']);
     expect(report.grandTotal).toBe('3000.00');
+    expect(report.advances).toEqual([]);
+  });
+
+  it('signale les avances (client créditeur) hors des buckets et du grandTotal', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      // Créance normale (débiteur) → vieillie.
+      balanceRow({ accountId: 'a-1', accountCode: '411001', totalDebit: '1000.00' }),
+      // Client globalement créditeur (avance reçue) → signalé à part.
+      balanceRow({ accountId: 'a-2', accountCode: '411002', totalCredit: '500.00' }),
+    ]);
+    h.repo.generalLedger.mockImplementation(async (_o: unknown, f: { accountId: string }) => {
+      if (f.accountId === 'a-1') return [ledger({ entryDate: '2026-12-21', debit: '1000.00' })];
+      return [ledger({ entryDate: '2026-12-21', credit: '500.00' })];
+    });
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'CLIENT',
+      asAtDate: '2026-12-31',
+    });
+
+    // a-1 vieilli normalement ; a-2 exclu des rows et du grandTotal.
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].accountCode).toBe('411001');
+    expect(report.grandTotal).toBe('1000.00');
+    // a-2 signalé comme avance (valeur absolue du solde créditeur).
+    expect(report.advances).toHaveLength(1);
+    expect(report.advances[0].accountCode).toBe('411002');
+    expect(report.advances[0].amount).toBe('500.00');
   });
 
   it('filtre par prefixes CLIENT elargi : 411/412/416/418', async () => {
