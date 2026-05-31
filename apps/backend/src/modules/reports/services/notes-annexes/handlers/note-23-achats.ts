@@ -9,21 +9,28 @@
 import { computeAccountBreakdown, type BreakdownCategory } from './_account-breakdown';
 import type { NoteHandler } from '../types';
 
+// Catégories MUTUELLEMENT EXCLUSIVES : `computeAccountBreakdown` attribue
+// chaque compte à la PREMIÈRE catégorie dont un préfixe matche. Les
+// anciennes catégories EAU_ENERGIE (6051-6053) et EMBALLAGES (608)
+// venaient APRÈS « Autres approvisionnements (604,605,608) » qui captait
+// déjà 605/608 → elles restaient toujours à 0 (lignes mortes). On éclate
+// désormais 604 / 605 / 608 en lignes distinctes (le total est inchangé,
+// chaque compte 60x reste compté une seule fois).
 const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
   { key: 'ACHATS_MARCHANDISES', label: 'Achats de marchandises (601)', prefixes: ['601'] },
   { key: 'ACHATS_MATIERES', label: 'Achats de matières premières (602)', prefixes: ['602'] },
   { key: 'VAR_STOCKS', label: 'Variations des stocks de biens achetés (603)', prefixes: ['603'] },
   {
     key: 'AUTRES_APPROS',
-    label: 'Autres approvisionnements (604, 605, 608)',
-    prefixes: ['604', '605', '608'],
+    label: 'Autres achats — matières et fournitures consommables (604)',
+    prefixes: ['604'],
   },
   {
     key: 'EAU_ENERGIE',
-    label: 'Eau, électricité, autres énergies (605 détail)',
-    prefixes: ['6051', '6052', '6053'],
+    label: 'Fournitures non stockables — eau, électricité, énergie (605)',
+    prefixes: ['605'],
   },
-  { key: 'EMBALLAGES', label: 'Emballages (608)', prefixes: ['608'] },
+  { key: 'EMBALLAGES', label: "Achats d'emballages (608)", prefixes: ['608'] },
 ];
 
 export const handleN23Achats: NoteHandler = (ctx, deps) =>

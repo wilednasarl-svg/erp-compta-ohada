@@ -228,7 +228,10 @@ export const PRODUIT_POSTES: ReadonlyArray<SyscohadaPoste> = [
     code: 'TJ',
     label: "Reprises de provisions et de dépréciations d'exploitation",
     side: 'PRODUIT',
-    accountPrefixes: ['791', '798'],
+    // 791/798 + 799 (reprises de subventions d'investissement). Le Tome 3
+    // (p. 33, l.177) rattache explicitement le compte 799 au poste TJ —
+    // déjà présent dans pl-postes.ts (CR), ajouté ici pour cohérence SIG.
+    accountPrefixes: ['791', '798', '799'],
   },
   {
     code: 'TK',

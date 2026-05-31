@@ -1169,6 +1169,30 @@ describe('ReportsService.getSig (Soldes Intermédiaires de Gestion)', () => {
     expect(soldeByCode('XI')).toBe('7000000.00');
   });
 
+  it('intègre le compte 799 (reprises de subventions d’investissement) au poste TJ', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({
+        accountId: 'a-ta',
+        accountCode: '701000',
+        accountClass: 7,
+        periodCredit: '100000000.00',
+      }),
+      tbRow({
+        accountId: 'a-tj',
+        accountCode: '799000',
+        accountClass: 7,
+        periodCredit: '5000000.00',
+      }),
+    ]);
+    const report = await h.service.getSig(ORG_ID, { fromDate: '2026-01-01', toDate: '2026-12-31' });
+    const s = (code: string): string =>
+      report.soldes.find((x) => x.code === code)?.amount ?? 'missing';
+    // 799 → poste TJ (reprises) ; XE = XD + TJ − RL = 100M + 5M = 105M.
+    // Avant le fix, 799 ne matchait aucun poste et était ignoré (XE = 100M).
+    expect(s('XE')).toBe('105000000.00');
+  });
+
   it('conserve le signe d’une variation de stock favorable (stockage) — RB créditeur augmente la marge', async () => {
     const h = buildHarness();
     h.repo.trialBalance.mockResolvedValue([
