@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FormError } from '@/components/ui/form-error';
 import { Label } from '@/components/ui/label';
+import { PageGuide } from '@/components/ui/page-guide';
+import { Term } from '@/components/ui/term';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -129,19 +131,73 @@ export default function LetteringPage() {
         <header>
           <p className="eyebrow mb-2">Tiers</p>
           <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
-            Lettrage
+            <span className="mark">Lettrage</span>
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
-            Réconciliation des comptes de tiers — créez un lettrage en sélectionnant des
-            lignes d'écriture validées sur un même compte partenaire, débit = crédit.
+            Réconciliation des{' '}
+            <Term def="Comptes des clients (41x) et des fournisseurs (40x), où se suivent créances et dettes.">
+              comptes de tiers
+            </Term>{' '}
+            : créez un{' '}
+            <Term def="Marquer comme soldées les écritures d'un compte de tiers qui s'équilibrent, par exemple une facture et son règlement.">
+              lettrage
+            </Term>{' '}
+            en sélectionnant des lignes d'écriture validées sur un même compte partenaire,
+            débit = crédit.
           </p>
         </header>
+
+        <PageGuide
+          id="lettering"
+          purpose="Le lettrage rapproche, sur un compte de tiers, les écritures qui se compensent (une facture et son règlement) pour ne laisser apparaître que ce qui reste réellement dû."
+          steps={[
+            {
+              title: 'Choisir le compte de tiers',
+              detail: 'Un client (classe 41x) ou un fournisseur (classe 40x).',
+            },
+            {
+              title: 'Lettrage automatique',
+              detail:
+                'L’outil rapproche les lignes partageant le même n° de facture ou un montant équilibré.',
+            },
+            {
+              title: 'Lettrage manuel',
+              detail:
+                'Sélectionnez au moins deux lignes dont les débits égalent les crédits, puis lettrez.',
+            },
+            {
+              title: 'Vérifier le solde',
+              detail:
+                'Les lignes lettrées sortent du restant dû. Un lettrage peut être dénoué si nécessaire.',
+            },
+          ]}
+          glossary={[
+            {
+              term: 'Lettrage',
+              definition:
+                'Marquer comme soldées les écritures d’un compte de tiers qui s’équilibrent entre elles.',
+            },
+            {
+              term: 'Compte de tiers',
+              definition:
+                'Compte d’un client (41x) ou d’un fournisseur (40x) suivant créances et dettes.',
+            },
+            {
+              term: 'Rapprochement',
+              definition: 'Mise en correspondance d’une dette ou d’une créance avec son règlement.',
+            },
+            {
+              term: 'Dénouer',
+              definition: 'Annuler un lettrage pour rouvrir les écritures concernées.',
+            },
+          ]}
+        />
 
         {/* ─── Auto-lettering by invoice ───────────────────── */}
         <section aria-labelledby="auto-lettering-title" className="space-y-4">
           <div className="border-b border-line pb-3">
             <h2 id="auto-lettering-title" className="font-display text-xl font-medium text-ink">
-              Lettrage automatique
+              <span className="mark">Lettrage automatique</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               Rapproche en un clic les lignes de tiers non lettrées partageant le même N° de
@@ -190,7 +246,7 @@ export default function LetteringPage() {
         <section aria-labelledby="new-lettering-title" className="space-y-5">
           <div className="border-b border-line pb-3">
             <h2 id="new-lettering-title" className="font-display text-xl font-medium text-ink">
-              Nouveau lettrage
+              <span className="mark">Nouveau lettrage</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               IDs des lignes d'écriture (minimum 2, séparés par espace, virgule ou retour
@@ -230,7 +286,7 @@ export default function LetteringPage() {
           <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
             <div>
               <h2 id="list-title" className="font-display text-xl font-medium text-ink">
-                Lettrages
+                <span className="mark">Lettrages</span>
               </h2>
               {query.data !== undefined && (
                 <p className="mt-0.5 text-xs text-ink-mute">

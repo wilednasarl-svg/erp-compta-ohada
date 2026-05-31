@@ -8,9 +8,11 @@ import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
-import { Hint } from '@/components/ui/hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NextStep } from '@/components/ui/next-step';
+import { PageGuide } from '@/components/ui/page-guide';
+import { Term } from '@/components/ui/term';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import type {
@@ -100,26 +102,91 @@ export default function TvaPage() {
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
           <p className="eyebrow mb-2">Fiscalité</p>
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">TVA</h1>
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
+            <span className="mark">TVA</span>
+          </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
             Codes TVA et déclarations mensuelles SYSCOHADA. La déclaration agrège
-            automatiquement les écritures validées en collectée / déductible et calcule
-            le net dû.
+            automatiquement les écritures validées en{' '}
+            <Term def="TVA facturée à vos clients sur les ventes ; vous la devez à l'État.">
+              collectée
+            </Term>{' '}
+            /{' '}
+            <Term def="TVA payée à vos fournisseurs sur les achats ; elle vient en déduction de la collectée.">
+              déductible
+            </Term>{' '}
+            et calcule le{' '}
+            <Term def="Collectée moins déductible : le montant à reverser à la DGI (ou le crédit reportable).">
+              net dû
+            </Term>
+            .
           </p>
         </header>
 
-        <Hint id="tva-intro" variant="learn" title="À quoi sert cette page">
-          La TVA se déclare chaque mois à la DGI dans le cadre UEMOA. Définissez d&apos;abord
-          vos codes de taux, puis calculez la déclaration du mois : l&apos;application agrège la
-          TVA collectée sur vos ventes et la TVA déductible sur vos achats, et en déduit le net
-          à reverser ou le crédit reportable.
-        </Hint>
+        <PageGuide
+          id="tva"
+          purpose="La TVA collectée sur vos ventes, diminuée de la TVA déductible sur vos achats, donne le montant à reverser chaque mois à la DGI (cadre UEMOA). Cette page calcule la déclaration à partir des écritures validées."
+          steps={[
+            {
+              title: 'Définir les codes de taux',
+              detail: 'Taux normal, réduit, exonéré, chacun rattaché à son compte de TVA.',
+            },
+            {
+              title: 'Sélectionner le mois',
+              detail: 'La période de déclaration à calculer.',
+            },
+            {
+              title: 'Calculer la déclaration',
+              detail:
+                'L’application agrège la TVA collectée et déductible des écritures validées du mois.',
+            },
+            {
+              title: 'Lire le net dû',
+              detail:
+                'Net à reverser si la collectée dépasse la déductible, sinon crédit de TVA reportable.',
+            },
+          ]}
+          glossary={[
+            {
+              term: 'TVA collectée',
+              definition: 'TVA facturée à vos clients sur les ventes ; vous la devez à l’État.',
+            },
+            {
+              term: 'TVA déductible',
+              definition: 'TVA payée à vos fournisseurs sur les achats ; elle vient en déduction.',
+            },
+            {
+              term: 'Net dû',
+              definition: 'Collectée moins déductible : le montant à reverser à la DGI.',
+            },
+            {
+              term: 'Crédit de TVA',
+              definition: 'Excédent de TVA déductible, reporté sur les mois suivants.',
+            },
+            {
+              term: 'UEMOA',
+              definition:
+                'Union économique et monétaire ouest-africaine : cadre fiscal commun dont relève la Côte d’Ivoire.',
+            },
+          ]}
+        />
+
+        {!codesQuery.isLoading && (codesQuery.data ?? []).length === 0 ? (
+          <NextStep>
+            Définissez votre premier code de taux ci-dessous : par défaut TVA-N-18 (18 %).
+          </NextStep>
+        ) : !declarationsQuery.isLoading && (declarationsQuery.data ?? []).length === 0 ? (
+          <NextStep>
+            Sélectionnez un mois, puis calculez la déclaration : l’application agrège vos
+            écritures validées du mois.
+          </NextStep>
+        ) : null}
 
         {/* ─── Codes TVA ──────────────────────────────────── */}
         <section aria-labelledby="codes-title" className="space-y-5">
           <div className="border-b border-line pb-3">
             <h2 id="codes-title" className="font-display text-xl font-medium text-ink">
-              Codes TVA
+              <span className="mark">Codes TVA</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               Référentiel des taux applicables. Par défaut OHADA : TVA-N-18 (18 %),
@@ -280,7 +347,7 @@ export default function TvaPage() {
         <section aria-labelledby="decl-title" className="space-y-5">
           <div className="border-b border-line pb-3">
             <h2 id="decl-title" className="font-display text-xl font-medium text-ink">
-              Déclarations mensuelles
+              <span className="mark">Déclarations mensuelles</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               Calcule la déclaration TVA pour un mois donné — agrège les écritures
