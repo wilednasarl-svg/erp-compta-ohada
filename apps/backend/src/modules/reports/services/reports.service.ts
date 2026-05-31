@@ -2447,7 +2447,13 @@ export class ReportsService {
           if (net === 0) continue;
           const isOpen = openCreatesDebit ? net > 0 : net < 0;
           const amt = Math.abs(net);
-          const date = new Date(`${ln.entryDate}T00:00:00Z`).getTime();
+          // Vieillissement à l'échéance : on date la créance/dette par sa
+          // date d'échéance (`dueDate`) si renseignée, sinon par sa date de
+          // comptabilisation (fallback = comportement historique). L'ordre
+          // d'imputation FIFO reste chronologique (lignes triées par
+          // entry_date côté repo).
+          const ageRef = ln.dueDate ?? ln.entryDate;
+          const date = new Date(`${ageRef}T00:00:00Z`).getTime();
           if (isOpen) {
             opens.push({ date, amount: amt });
           } else {

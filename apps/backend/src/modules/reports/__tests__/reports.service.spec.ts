@@ -1893,6 +1893,28 @@ describe('ReportsService.getAgingBalance (Tome 3 buckets standardisés)', () => 
     expect(row.total).toBe('2500.00');
   });
 
+  it('vieillit les créances à partir de la date d’échéance (dueDate), pas de la comptabilisation', async () => {
+    // Facture comptabilisée le 2026-06-14 (âge 200j à l'arrêté) MAIS échéance
+    // le 2026-12-25 (âge 6j). Le vieillissement doit suivre l'échéance → 0-30j.
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest
+      .fn()
+      .mockResolvedValue([balanceRow({ accountCode: '411000', totalDebit: '700.00' })]);
+    h.repo.generalLedger.mockResolvedValue([
+      ledger({ lineId: 'l-1', entryDate: '2026-06-14', dueDate: '2026-12-25', debit: '700.00' }),
+    ]);
+
+    const report = await h.service.getAgingBalance(ORG_ID, {
+      side: 'CLIENT',
+      asAtDate: '2026-12-31',
+    });
+
+    const row = report.rows[0];
+    expect(row.buckets[0].amount).toBe('700.00'); // 0-30j (selon échéance)
+    expect(row.buckets[3].amount).toBe('0.00'); // PAS >90j (selon comptabilisation)
+    expect(row.total).toBe('700.00');
+  });
+
   it('agrege bucketTotals + grandTotal sur plusieurs comptes', async () => {
     const h = buildHarness();
     h.repo.accountBalancesAsAt = jest
