@@ -168,6 +168,26 @@ export interface NoteReportsDeps {
       totalCredit: string;
     }>
   >;
+  /**
+   * Mouvements bornés [fromDate, toDate] — pour les notes de GESTION
+   * (classes 6/7/8) qui doivent refléter l'exercice, pas le cumul depuis
+   * l'origine (sinon divergence avec le Compte de résultat).
+   */
+  readonly accountMovementsBetween: (
+    organizationId: TenantId | string,
+    fromDate: string,
+    toDate: string,
+  ) => Promise<
+    ReadonlyArray<{
+      accountId: string;
+      accountCode: string;
+      accountLabel: string;
+      accountClass: number;
+      isOpposing: boolean;
+      totalDebit: string;
+      totalCredit: string;
+    }>
+  >;
 }
 
 export interface NoteAssetsDeps {

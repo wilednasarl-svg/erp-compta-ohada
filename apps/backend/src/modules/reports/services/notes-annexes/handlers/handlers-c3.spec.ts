@@ -32,18 +32,20 @@ function depsWithBalances(
     totalCredit: string;
   }>,
 ): NoteHandlerDependencies {
+  const mapped = balances.map((b, i) => ({
+    accountId: `id-${i}`,
+    accountCode: b.accountCode,
+    accountLabel: b.accountLabel,
+    accountClass: Number(b.accountCode[0]) || 0,
+    isOpposing: false,
+    totalDebit: b.totalDebit,
+    totalCredit: b.totalCredit,
+  }));
   return {
     reports: {
-      accountBalancesAsAt: async () =>
-        balances.map((b, i) => ({
-          accountId: `id-${i}`,
-          accountCode: b.accountCode,
-          accountLabel: b.accountLabel,
-          accountClass: Number(b.accountCode[0]) || 0,
-          isOpposing: false,
-          totalDebit: b.totalDebit,
-          totalCredit: b.totalCredit,
-        })),
+      accountBalancesAsAt: async () => mapped,
+      // Notes de gestion bornées : mêmes données mockées sur la période.
+      accountMovementsBetween: async () => mapped,
     },
     assets: {
       findAllForExercise: async () => [],

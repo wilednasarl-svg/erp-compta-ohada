@@ -21,4 +21,4 @@ export const handleN24ServicesExterieurs: NoteHandler = (ctx, deps) =>
   computeAccountBreakdown(ctx.organizationId as string, ctx.periodEnd, deps, {
     categories: CATEGORIES,
     totalLabel: 'TOTAL services extérieurs et autres consommations',
-  });
+  }, ctx.periodStart);

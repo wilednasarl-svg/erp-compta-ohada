@@ -141,6 +141,8 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
         const reports: NoteReportsDeps = {
           accountBalancesAsAt: (orgId, asAtDate) =>
             reportsRepo.accountBalancesAsAt(orgId, asAtDate),
+          accountMovementsBetween: (orgId, fromDate, toDate) =>
+            reportsRepo.accountMovementsBetween(orgId, fromDate, toDate),
         };
 
         const assets: NoteAssetsDeps = {

@@ -30,4 +30,4 @@ export const handleN23Achats: NoteHandler = (ctx, deps) =>
   computeAccountBreakdown(ctx.organizationId as string, ctx.periodEnd, deps, {
     categories: CATEGORIES,
     totalLabel: 'TOTAL achats consommés',
-  });
+  }, ctx.periodStart);
