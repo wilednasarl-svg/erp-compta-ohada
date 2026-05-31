@@ -2,9 +2,11 @@
 
 import {
   Building2,
+  Check,
   ChevronDown,
   ChevronsUpDown,
   LogOut,
+  Plus,
   Search,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -16,7 +18,8 @@ import { useApiMutation } from '@/hooks/use-api-mutation';
 import { api } from '@/lib/api-client';
 import { NAV_GROUPS, type NavGroup } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
-import { useAuthStore, useCurrentOrg, useCurrentUser } from '@/stores/auth-store';
+import { useAuthStore, useCurrentOrg, useCurrentUser, useOrganizations } from '@/stores/auth-store';
+import type { SelectOrganizationResponse } from '@/types/auth';
 
 /* ─── Per-group colour + meta ─────────────────────────────────── */
 type GroupColors = {
@@ -101,7 +104,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const user = useCurrentUser();
-  const currentOrg = useCurrentOrg();
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const signout = useAuthStore((s) => s.signout);
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
@@ -182,19 +184,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Separator />
 
           {/* Org selector */}
-          <button
-            type="button"
-            className="group flex items-center gap-2 rounded-sm border border-line-strong/60 bg-canvas px-2.5 py-1.5 text-sm text-ink transition-colors duration-fast hover:border-line-strong hover:bg-sunk"
-          >
-            <Building2 className="h-3.5 w-3.5 text-ink-mute" strokeWidth={1.5} />
-            <span className="max-w-[100px] truncate font-medium sm:max-w-[180px]">
-              {currentOrg?.name ?? 'Aucune organisation'}
-            </span>
-            <span className="hidden text-2xs uppercase tracking-wider text-ink-mute md:inline">
-              {currentOrg?.role ?? ''}
-            </span>
-            <ChevronsUpDown className="h-3 w-3 text-ink-mute" strokeWidth={1.5} />
-          </button>
+          <OrgSwitcher />
 
           {/* Exercise badge */}
           <span className="hidden items-center gap-1.5 rounded-xs bg-sunk px-2 py-1 text-2xs uppercase tracking-wider text-ink-soft md:inline-flex">
@@ -484,4 +474,163 @@ function isActive(href: string, pathname: string): boolean {
 
 function Separator() {
   return <span aria-hidden className="hidden h-5 w-px bg-line md:inline-block" />;
+}
+
+/* ─── Org switcher — bascule de dossier ───────────────────────── */
+
+const ORG_TINTS: ReadonlyArray<string> = [
+  'bg-accent-soft text-accent-ink',
+  'bg-info-soft text-info-ink',
+  'bg-warn-soft text-warn-ink',
+  'bg-sunk text-ink-soft',
+];
+function orgTint(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return ORG_TINTS[h % ORG_TINTS.length]!;
+}
+function orgInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('');
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin',
+  expert_comptable: 'Expert-comptable',
+  chef_mission: 'Chef de mission',
+  comptable: 'Comptable',
+  auditeur: 'Auditeur',
+};
+function roleLabel(role: string | undefined): string {
+  if (!role) return '';
+  return ROLE_LABEL[role] ?? role.replace(/_/g, ' ');
+}
+
+function OrgSwitcher() {
+  const router = useRouter();
+  const currentOrg = useCurrentOrg();
+  const orgs = useOrganizations() ?? [];
+  const setOrg = useAuthStore((s) => s.setOrg);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const select = useApiMutation((organizationId: string) =>
+    api.post<SelectOrganizationResponse>('/auth/select-organization', { organizationId }),
+  );
+
+  async function switchTo(id: string): Promise<void> {
+    if (id === currentOrg?.id) {
+      setOpen(false);
+      return;
+    }
+    try {
+      const result = await select.mutateAsync(id);
+      setOrg({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        organization: result.organization,
+      });
+      setOpen(false);
+      router.replace('/dashboard');
+    } catch {
+      // L'erreur remonte via le toast/mutation ; on garde le menu ouvert.
+    }
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="group flex items-center gap-2 rounded-sm border border-line-strong/60 bg-canvas px-2.5 py-1.5 text-sm text-ink transition-colors duration-fast hover:border-line-strong hover:bg-sunk"
+      >
+        <Building2 className="h-3.5 w-3.5 text-ink-mute" strokeWidth={1.5} />
+        <span className="max-w-[100px] truncate font-medium sm:max-w-[180px]">
+          {currentOrg?.name ?? 'Aucun dossier'}
+        </span>
+        <span className="hidden text-2xs uppercase tracking-wider text-ink-mute md:inline">
+          {roleLabel(currentOrg?.role)}
+        </span>
+        <ChevronsUpDown className="h-3 w-3 text-ink-mute" strokeWidth={1.5} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-50 mt-1 w-64 overflow-hidden rounded-sm border border-line bg-paper shadow-lg animate-in fade-in-0 slide-in-from-top-1 duration-150"
+        >
+          <p className="eyebrow px-3 pb-1.5 pt-2.5">Vos dossiers</p>
+          <ul className="max-h-72 overflow-y-auto pb-1">
+            {orgs.length === 0 ? (
+              <li className="px-3 py-2 text-xs text-ink-mute">Aucun dossier disponible</li>
+            ) : (
+              orgs.map((o) => {
+                const active = o.id === currentOrg?.id;
+                return (
+                  <li key={o.id}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={select.isPending}
+                      onClick={() => void switchTo(o.id)}
+                      className={cn(
+                        'press flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-fast hover:bg-sunk disabled:opacity-50',
+                        active && 'bg-sunk/60',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-sm font-mono text-2xs font-semibold',
+                          orgTint(o.name),
+                        )}
+                      >
+                        {orgInitials(o.name) || <Building2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink">{o.name}</span>
+                        <span className="block text-2xs text-ink-mute">{roleLabel(o.role)}</span>
+                      </span>
+                      {active && <Check className="h-4 w-4 shrink-0 text-accent-ink" strokeWidth={2} />}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+          <div className="border-t border-line p-1">
+            <Link
+              href="/organizations"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-xs px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors duration-fast hover:bg-sunk hover:text-ink"
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Tous les dossiers
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
