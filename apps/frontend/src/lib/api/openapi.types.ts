@@ -3330,6 +3330,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/budget/capex/generate-amortization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BudgetCapexController_generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/fiscal/parameters": {
         parameters: {
             query?: never;
@@ -5969,6 +5985,30 @@ export interface components {
              */
             skipped: number;
             errors: components["schemas"]["BudgetImportRowErrorResponse"][];
+        };
+        GenerateAmortizationDto: {
+            /**
+             * Format: uuid
+             * @description Ligne budgétaire CAPEX (investissement)
+             */
+            capexLineId: string;
+            /**
+             * @description Date de mise en service (AAAA-MM-JJ)
+             * @example 2026-04-01
+             */
+            serviceDate: string;
+            /**
+             * @description Durée d'amortissement (années)
+             * @example 3
+             */
+            durationYears: number;
+            /**
+             * @description Compte de dotation (défaut 6811)
+             * @example 6811
+             */
+            dotationAccount?: string;
+            /** @enum {string} */
+            scenario?: "BI" | "BR" | "REAL";
         };
         FiscalParameterResponse: {
             /** Format: uuid */
@@ -11794,6 +11834,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetImportReportResponse"];
+                };
+            };
+        };
+    };
+    BudgetCapexController_generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateAmortizationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListBudgetLinesResponse"];
                 };
             };
         };
