@@ -233,7 +233,7 @@ export default function GrandLivrePage() {
         ) : (
           <div className="grid overflow-hidden rounded-md border border-line bg-paper lg:grid-cols-[360px_1fr]">
             {/* ── Panneau gauche : comptes ── */}
-            <aside className="flex max-h-[72vh] min-h-[420px] flex-col border-b border-line lg:border-b-0 lg:border-r">
+            <aside className="flex min-h-[420px] flex-col border-b border-line lg:max-h-[72vh] lg:border-b-0 lg:border-r">
               <div className="space-y-3 border-b border-line bg-sunk/40 p-3">
                 <div className="relative">
                   <Search
@@ -260,7 +260,7 @@ export default function GrandLivrePage() {
                 </label>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 lg:overflow-y-auto">
                 {tbQuery.isLoading ? (
                   <ListSkeleton />
                 ) : tbQuery.error ? (
@@ -315,7 +315,7 @@ export default function GrandLivrePage() {
             </aside>
 
             {/* ── Panneau droit : grand-livre du compte ── */}
-            <section className="flex max-h-[72vh] min-h-[420px] flex-col">
+            <section className="flex min-h-[420px] flex-col lg:max-h-[72vh]">
               {selectedAccountId === null ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sunk text-ink-mute">
@@ -381,7 +381,7 @@ function LedgerDetail({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-x-auto lg:overflow-auto">
         {report.lines.length === 0 ? (
           <p className="p-6 text-sm text-ink-mute">Aucune écriture sur la période.</p>
         ) : (
