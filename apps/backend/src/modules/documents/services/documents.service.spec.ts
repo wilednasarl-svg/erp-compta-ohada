@@ -14,6 +14,7 @@ import type {
 } from '../repositories/document.repository';
 import type { DocumentEntryRepository } from '../repositories/document-entry.repository';
 import type { JournalEntryRepository } from '../../journals/repositories/journal-entry.repository';
+import type { EntriesService } from '../../journals/services/entries.service';
 import type { DocumentStorage, SaveDocumentResult } from './document-storage.interface';
 import type { DocumentOcrService } from './document-ocr.service';
 import { DocumentsService } from './documents.service';
@@ -127,6 +128,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
   let audit: jest.Mocked<AuditTrailService>;
   let ocrProvider: jest.Mocked<OcrProvider>;
   let journalEntries: jest.Mocked<JournalEntryRepository>;
+  let entriesService: jest.Mocked<EntriesService>;
   let service: DocumentsService;
 
   beforeEach(() => {
@@ -142,6 +144,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
     audit = buildAuditStub();
     ocrProvider = buildOcrProviderStub();
     journalEntries = buildJournalEntriesRepoStub();
+    entriesService = { createDraft: jest.fn() } as unknown as jest.Mocked<EntriesService>;
     service = new DocumentsService(
       docs,
       entries,
@@ -151,6 +154,7 @@ describe('DocumentsService (BE-DOC-04)', () => {
       buildConfigService(),
       ocrProvider,
       journalEntries,
+      entriesService,
     );
   });
 

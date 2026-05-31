@@ -5,10 +5,12 @@ import {
   AlertTriangle,
   Download,
   Eye,
+  FilePlus2,
   FileSpreadsheet,
   FileText,
   Loader2,
   Paperclip,
+  ScanText,
   Trash2,
   Upload,
   X,
@@ -35,7 +37,7 @@ const MAX_FILE_SIZE_MB = 25;
 const ACCEPT_ATTR =
   'image/*,application/pdf,.csv,.txt,.xls,.xlsx,.doc,.docx,.ods,.odt';
 
-type OcrStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
+type OcrStatus = 'pending' | 'processing' | 'processed' | 'failed' | 'skipped';
 
 interface DocumentView {
   readonly id: string;
@@ -58,7 +60,7 @@ interface ListResponse {
 const OCR_TONE: Record<OcrStatus, string> = {
   pending: 'bg-sunk text-ink-soft',
   processing: 'bg-info-soft text-info-ink',
-  completed: 'bg-accent-soft text-accent-ink',
+  processed: 'bg-accent-soft text-accent-ink',
   failed: 'bg-critical-soft text-critical-ink',
   skipped: 'bg-sunk text-ink-mute',
 };
@@ -66,10 +68,63 @@ const OCR_TONE: Record<OcrStatus, string> = {
 const OCR_LABEL: Record<OcrStatus, string> = {
   pending: 'En attente',
   processing: 'OCR en cours',
-  completed: 'OCR terminé',
+  processed: 'OCR terminé',
   failed: 'OCR échoué',
   skipped: 'OCR ignoré',
 };
+
+interface OcrInvoiceParty {
+  readonly name?: string;
+  readonly ncc?: string;
+  readonly taxRegime?: string;
+}
+interface OcrProposedLine {
+  readonly accountCode: string;
+  readonly debit: number;
+  readonly credit: number;
+  readonly description?: string | null;
+}
+interface OcrProposedEntry {
+  readonly journalCode: string;
+  readonly entryDate: string | null;
+  readonly description: string;
+  readonly reference: string | null;
+  readonly lines: ReadonlyArray<OcrProposedLine>;
+  readonly balanced: boolean;
+  readonly warnings: ReadonlyArray<string>;
+}
+interface OcrInvoice {
+  readonly supplier?: OcrInvoiceParty;
+  readonly customer?: OcrInvoiceParty;
+  readonly invoiceNumber?: string;
+  readonly erpInvoiceNumber?: string;
+  readonly invoiceDate?: string;
+  readonly paymentMode?: string;
+  readonly totals?: {
+    readonly totalHt?: number;
+    readonly totalVat?: number;
+    readonly totalTtc?: number;
+    readonly totalToPay?: number;
+  };
+  readonly lines?: ReadonlyArray<{
+    readonly designation?: string;
+    readonly quantity?: number;
+    readonly unitPriceHt?: number;
+    readonly amountHt?: number;
+  }>;
+}
+interface OcrResult {
+  readonly ocrStatus: OcrStatus;
+  readonly ocrText: string | null;
+  readonly extractedMetadata:
+    | { readonly invoice?: OcrInvoice; readonly proposedEntry?: OcrProposedEntry }
+    | null;
+}
+
+function formatAmount(n: number | undefined): string {
+  if (n === undefined || !Number.isFinite(n)) return '—';
+  return n.toLocaleString('fr-FR');
+}
 
 function fileExtension(filename: string): string {
   const idx = filename.lastIndexOf('.');
@@ -568,6 +623,49 @@ function DocumentRow({
   const [preview, setPreview] = useState<{ url: string; mime: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showOcr, setShowOcr] = useState(false);
+  const [ocr, setOcr] = useState<OcrResult | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [chargeAccount, setChargeAccount] = useState('');
+
+  const toggleOcr = async () => {
+    if (showOcr) {
+      setShowOcr(false);
+      return;
+    }
+    setShowOcr(true);
+    if (ocr !== null) return; // already loaded
+    setOcrLoading(true);
+    setOcrError(null);
+    try {
+      const data = await api.get<OcrResult>(`/documents/${doc.id}/ocr`);
+      setOcr(data);
+      const proposed = data.extractedMetadata?.proposedEntry;
+      const firstCharge = proposed?.lines.find((l) => l.debit > 0)?.accountCode;
+      if (firstCharge && chargeAccount === '') setChargeAccount(firstCharge);
+    } catch (err) {
+      setOcrError(err instanceof Error ? err.message : 'Impossible de charger les données OCR.');
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  const createEntry = useApiMutation(
+    async () =>
+      api.post<{ entry?: { entryNumber?: number; journalCode?: string } }>(
+        `/documents/${doc.id}/create-entry`,
+        chargeAccount.trim() !== '' ? { chargeAccount: chargeAccount.trim() } : {},
+      ),
+    {
+      onSuccess: (res) => {
+        const num = res?.entry?.entryNumber;
+        toast.success(num ? `Écriture brouillon créée (n° ${num}).` : 'Écriture brouillon créée.');
+        void qc.invalidateQueries({ queryKey: ['documents'] });
+      },
+      onError: (err) => toast.error(err.message),
+    },
+  );
 
   const openPreview = async () => {
     setLoadingPreview(true);
@@ -736,6 +834,26 @@ function DocumentRow({
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" strokeWidth={1.5} />}
           </button>
+          {doc.ocrStatus === 'processed' && (
+            <button
+              type="button"
+              onClick={toggleOcr}
+              aria-expanded={showOcr}
+              aria-label={`Données OCR et écriture pour ${doc.filename}`}
+              className={`press inline-flex h-7 w-7 items-center justify-center rounded-xs border transition-colors duration-fast ${
+                showOcr
+                  ? 'border-accent bg-accent-soft text-accent-ink'
+                  : 'border-line text-ink-soft hover:border-accent hover:text-accent-ink'
+              }`}
+              title="OCR & proposition d'écriture"
+            >
+              {ocrLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <ScanText className="h-3.5 w-3.5" strokeWidth={1.5} />
+              )}
+            </button>
+          )}
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <button
@@ -778,6 +896,26 @@ function DocumentRow({
         </div>
       </li>
 
+      {showOcr && (
+        <li className="border-t border-line bg-canvas px-4 py-4">
+          {ocrLoading ? (
+            <div className="flex items-center gap-2 text-xs text-ink-mute">
+              <Loader2 className="h-4 w-4 animate-spin" /> Chargement des données OCR…
+            </div>
+          ) : ocrError ? (
+            <p className="text-xs text-critical-ink">{ocrError}</p>
+          ) : ocr ? (
+            <OcrPanel
+              ocr={ocr}
+              chargeAccount={chargeAccount}
+              setChargeAccount={setChargeAccount}
+              onCreate={() => createEntry.mutate(undefined)}
+              creating={createEntry.isPending}
+            />
+          ) : null}
+        </li>
+      )}
+
       {previewError && (
         <li className="flex items-center gap-2 border-t border-critical-soft bg-critical-soft px-4 py-2 text-xs text-critical-ink">
           <span className="font-medium">Aperçu indisponible :</span>
@@ -802,5 +940,169 @@ function DocumentRow({
         />
       )}
     </>
+  );
+}
+
+function OcrField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[10px] font-medium uppercase tracking-wider text-ink-mute">{label}</dt>
+      <dd className="mt-0.5 truncate text-sm text-ink" title={value}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function OcrPanel({
+  ocr,
+  chargeAccount,
+  setChargeAccount,
+  onCreate,
+  creating,
+}: {
+  ocr: OcrResult;
+  chargeAccount: string;
+  setChargeAccount: (v: string) => void;
+  onCreate: () => void;
+  creating: boolean;
+}) {
+  const invoice = ocr.extractedMetadata?.invoice;
+  const proposed = ocr.extractedMetadata?.proposedEntry;
+  const totals = invoice?.totals;
+
+  if (!invoice && !proposed) {
+    return (
+      <p className="text-xs text-ink-mute">
+        Aucune donnée structurée n&apos;a été extraite de ce document.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="eyebrow mb-2">Données extraites</p>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+          <OcrField label="Fournisseur" value={invoice?.supplier?.name ?? '—'} />
+          <OcrField label="N° facture" value={invoice?.invoiceNumber ?? '—'} />
+          <OcrField label="Date" value={invoice?.invoiceDate ?? '—'} />
+          <OcrField label="N° ERP" value={invoice?.erpInvoiceNumber ?? '—'} />
+          <OcrField label="Total HT" value={formatAmount(totals?.totalHt)} />
+          <OcrField label="TVA" value={formatAmount(totals?.totalVat)} />
+          <OcrField label="Total TTC" value={formatAmount(totals?.totalTtc)} />
+          <OcrField label="Mode paiement" value={invoice?.paymentMode ?? '—'} />
+        </dl>
+
+        {invoice?.lines && invoice.lines.length > 0 && (
+          <div className="mt-3 overflow-hidden rounded-xs border border-line">
+            <table className="w-full text-xs">
+              <thead className="bg-sunk text-ink-mute">
+                <tr>
+                  <th className="px-2 py-1 text-left font-medium">Désignation</th>
+                  <th className="px-2 py-1 text-right font-medium">Qté</th>
+                  <th className="px-2 py-1 text-right font-medium">P.U HT</th>
+                  <th className="px-2 py-1 text-right font-medium">Montant HT</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {invoice.lines.map((l, i) => (
+                  <tr key={i}>
+                    <td className="px-2 py-1 text-ink">{l.designation ?? '—'}</td>
+                    <td className="px-2 py-1 text-right font-mono tabular-nums text-ink-soft">
+                      {l.quantity ?? '—'}
+                    </td>
+                    <td className="px-2 py-1 text-right font-mono tabular-nums text-ink-soft">
+                      {formatAmount(l.unitPriceHt)}
+                    </td>
+                    <td className="px-2 py-1 text-right font-mono tabular-nums text-ink">
+                      {formatAmount(l.amountHt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {proposed && (
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <p className="eyebrow">Proposition d&apos;écriture (achat)</p>
+            <span
+              className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                proposed.balanced
+                  ? 'bg-accent-soft text-accent-ink'
+                  : 'bg-critical-soft text-critical-ink'
+              }`}
+            >
+              {proposed.balanced ? 'Équilibrée' : 'Déséquilibrée'}
+            </span>
+            <span className="text-xs text-ink-mute">
+              Journal {proposed.journalCode} · {proposed.entryDate ?? '—'}
+              {proposed.reference ? ` · réf ${proposed.reference}` : ''}
+            </span>
+          </div>
+
+          <div className="overflow-hidden rounded-xs border border-line">
+            <table className="w-full text-xs">
+              <thead className="bg-sunk text-ink-mute">
+                <tr>
+                  <th className="px-2 py-1 text-left font-medium">Compte</th>
+                  <th className="px-2 py-1 text-left font-medium">Libellé</th>
+                  <th className="px-2 py-1 text-right font-medium">Débit</th>
+                  <th className="px-2 py-1 text-right font-medium">Crédit</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {proposed.lines.map((l, i) => (
+                  <tr key={i}>
+                    <td className="px-2 py-1 font-mono text-ink">{l.accountCode}</td>
+                    <td className="px-2 py-1 text-ink-soft">{l.description ?? '—'}</td>
+                    <td className="px-2 py-1 text-right font-mono tabular-nums text-ink">
+                      {l.debit > 0 ? formatAmount(l.debit) : ''}
+                    </td>
+                    <td className="px-2 py-1 text-right font-mono tabular-nums text-ink">
+                      {l.credit > 0 ? formatAmount(l.credit) : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {proposed.warnings.length > 0 && (
+            <ul className="mt-2 space-y-0.5">
+              {proposed.warnings.map((w, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-[11px] text-ink-mute">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} /> {w}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label>Compte de charge</Label>
+              <Input
+                value={chargeAccount}
+                onChange={(e) => setChargeAccount(e.target.value)}
+                placeholder="601000"
+                className="w-32 font-mono"
+              />
+            </div>
+            <Button type="button" onClick={onCreate} disabled={creating || !proposed.balanced} className="press">
+              {creating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FilePlus2 className="mr-2 h-4 w-4" />
+              )}
+              Créer l&apos;écriture
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

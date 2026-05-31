@@ -103,6 +103,11 @@ interface GradioClientModule {
   };
 }
 
+interface PdfToImgModule {
+  /** Render a PDF to an async-iterable of per-page PNG buffers. */
+  pdf(src: string | Buffer, options?: { scale?: number }): Promise<AsyncIterable<Buffer>>;
+}
+
 /**
  * Coerce the `parse_doc` output array `[md_preview, vis_html, md_raw]`
  * into the raw Markdown string. Prefer the raw Markdown (index 2); fall
@@ -132,16 +137,11 @@ export class PaddleOcrVlProvider implements OcrProvider {
   // `false` once a load attempt failed (dep absent) so we don't retry
   // the import on every call.
   private gradioModule: GradioClientModule | false | null = null;
+  private pdfModule: PdfToImgModule | false | null = null;
 
   async extract(filePath: string, mimeType: string): Promise<OcrExtractionResult | null> {
-    if (!SUPPORTED_IMAGE_MIMES.has(mimeType)) {
-      if (mimeType === PDF_MIME) {
-        this.logger.debug(
-          'PaddleOcrVlProvider.extract: PDF declined (image-only demo Space) — TODO rasterise',
-        );
-      } else {
-        this.logger.debug(`PaddleOcrVlProvider.extract: skipped (unsupported MIME: ${mimeType})`);
-      }
+    if (!SUPPORTED_IMAGE_MIMES.has(mimeType) && mimeType !== PDF_MIME) {
+      this.logger.debug(`PaddleOcrVlProvider.extract: skipped (unsupported MIME: ${mimeType})`);
       return null;
     }
 
@@ -185,12 +185,66 @@ export class PaddleOcrVlProvider implements OcrProvider {
       connectOptions.hf_token = hfToken;
     }
 
+    const image = await this.resolveImageBytes(filePath, mimeType);
+    if (image === null) {
+      return null;
+    }
+
     const client = await gradio.Client.connect(space, connectOptions);
     const root = client.config?.root?.replace(/\/+$/, '') || deriveSpaceHost(space);
 
-    const fileData = await this.uploadImage(root, filePath, mimeType, hfToken);
+    const fileData = await this.uploadImage(root, image.bytes, image.ext, image.mime, hfToken);
     const result = await client.predict(endpoint, [fileData, null, true, false, false]);
     return extractMarkdownFromData(result.data);
+  }
+
+  /**
+   * Resolve the bytes to send to the Space as an image. Raster images are
+   * read as-is; a PDF is rasterised to a PNG of its first page (the Space
+   * is image-only). Returns null if a PDF cannot be rasterised (dep absent
+   * / render error) — the contract treats that as "OCR skipped".
+   */
+  private async resolveImageBytes(
+    filePath: string,
+    mimeType: string,
+  ): Promise<{ bytes: Buffer; mime: string; ext: string } | null> {
+    if (mimeType === PDF_MIME) {
+      return this.rasterisePdfFirstPage(filePath);
+    }
+    const bytes = await fs.readFile(filePath);
+    return { bytes, mime: mimeType, ext: EXTENSION_BY_MIME[mimeType] ?? 'png' };
+  }
+
+  /**
+   * Rasterise the first page of a PDF to a PNG buffer via the lazily
+   * loaded, optional `pdf-to-img` package. `scale: 2` ≈ 144 DPI, a good
+   * trade-off for OCR legibility vs upload size. Returns null on any
+   * failure (dep missing, unreadable PDF) so the upload path is never
+   * bricked.
+   */
+  private async rasterisePdfFirstPage(
+    filePath: string,
+  ): Promise<{ bytes: Buffer; mime: string; ext: string } | null> {
+    const pdfMod = await this.loadPdfToImg();
+    if (pdfMod === false) {
+      this.logger.warn('PaddleOcrVlProvider: pdf-to-img not installed — PDF skipped');
+      return null;
+    }
+    try {
+      const document = await pdfMod.pdf(filePath, { scale: 2 });
+      for await (const page of document) {
+        return { bytes: page, mime: 'image/png', ext: 'png' };
+      }
+      this.logger.warn('PaddleOcrVlProvider: PDF has no pages');
+      return null;
+    } catch (error: unknown) {
+      this.logger.warn(
+        `PaddleOcrVlProvider: PDF rasterisation failed (${
+          error instanceof Error ? error.message : String(error)
+        })`,
+      );
+      return null;
+    }
   }
 
   /**
@@ -200,12 +254,11 @@ export class PaddleOcrVlProvider implements OcrProvider {
    */
   private async uploadImage(
     root: string,
-    filePath: string,
+    bytes: Buffer,
+    ext: string,
     mimeType: string,
     hfToken: string | undefined,
   ): Promise<Record<string, unknown>> {
-    const bytes = await fs.readFile(filePath);
-    const ext = EXTENSION_BY_MIME[mimeType] ?? 'png';
     const file = new File([new Uint8Array(bytes)], `facture.${ext}`, { type: mimeType });
 
     const form = new FormData();
@@ -271,6 +324,29 @@ export class PaddleOcrVlProvider implements OcrProvider {
         })`,
       );
       this.gradioModule = false;
+      return false;
+    }
+  }
+
+  /** Lazy dynamic-import of the optional ESM `pdf-to-img` package. */
+  protected async loadPdfToImg(): Promise<PdfToImgModule | false> {
+    if (this.pdfModule !== null) {
+      return this.pdfModule;
+    }
+    try {
+      const importDynamic = new Function('specifier', 'return import(specifier)') as (
+        specifier: string,
+      ) => Promise<unknown>;
+      const mod = (await importDynamic('pdf-to-img')) as PdfToImgModule;
+      this.pdfModule = mod;
+      return mod;
+    } catch (error: unknown) {
+      this.logger.debug(
+        `PaddleOcrVlProvider.loadPdfToImg: not available (${
+          error instanceof Error ? error.message : String(error)
+        })`,
+      );
+      this.pdfModule = false;
       return false;
     }
   }

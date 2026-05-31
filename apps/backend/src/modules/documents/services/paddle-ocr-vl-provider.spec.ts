@@ -29,9 +29,17 @@ describe('PaddleOcrVlProvider.extract', () => {
     expect(called).toBe(false);
   });
 
-  it('declines PDF (image-only Space) and returns null', async () => {
-    const provider = new StubProvider(() => Promise.resolve('markdown'));
-    expect(await provider.extract('/tmp/x.pdf', 'application/pdf')).toBeNull();
+  it('accepts PDF and delegates to the round-trip (rasterised there)', async () => {
+    let called = false;
+    const provider = new StubProvider(() => {
+      called = true;
+      return Promise.resolve('# from pdf');
+    });
+
+    const result = await provider.extract('/tmp/x.pdf', 'application/pdf');
+
+    expect(called).toBe(true);
+    expect(result?.text).toBe('# from pdf');
   });
 
   it('returns text + non-zero confidence on a successful parse', async () => {
