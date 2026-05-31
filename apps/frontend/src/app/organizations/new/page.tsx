@@ -19,6 +19,7 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { IllustrationPlant } from '@/components/ui/illustrations';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -290,7 +291,8 @@ export default function NewOrganizationPage() {
           {/* ── Colonne valeur (réassurance) ───────────────── */}
           <aside className="hidden lg:block">
             <div className="sticky top-16 rounded-lg border border-line bg-paper p-6">
-              <p className="eyebrow">Ce que vous obtenez</p>
+              <IllustrationPlant className="h-16 w-16 text-ink-mute" />
+              <p className="eyebrow mt-3">Ce que vous obtenez</p>
               <h2 className="mt-1.5 font-display text-xl text-ink">Un dossier prêt à travailler</h2>
               <ul className="mt-6 space-y-5">
                 {VALUE_POINTS.map((p) => {

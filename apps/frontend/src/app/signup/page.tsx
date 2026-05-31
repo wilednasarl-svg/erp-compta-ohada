@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
+import { IllustrationLedger } from '@/components/ui/illustrations';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
@@ -173,7 +174,9 @@ export default function SignupPage() {
             organisation juste après — cabinet ou entreprise, à votre choix.
           </p>
 
-          <ul className="mt-10 space-y-3.5">
+          <IllustrationLedger className="mt-9 h-24 w-auto text-[oklch(74%_0.065_155)]" />
+
+          <ul className="mt-9 space-y-3.5">
             {FEATURES.map((f) => (
               <li key={f} className="flex items-start gap-3">
                 <CheckCircle2
