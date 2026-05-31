@@ -1471,18 +1471,22 @@ export class ReportsService {
     });
     const posteAmounts = new Map<string, number>();
 
+    // Postes de VARIATION de stock (603x → RB/RD/RF) et de PRODUCTION
+    // stockée (73 → TG) : leur net peut être légitimement négatif (un
+    // stockage réduit le coût des ventes / un déstockage diminue la
+    // production). On conserve donc leur signe — l'écrêter à 0
+    // sous-évaluerait la marge commerciale et la valeur ajoutée. Les autres
+    // postes restent écrêtés (un net négatif y traduit une contre-passation
+    // qui ne doit pas distordre la cascade).
+    const SIGNED_VARIATION_POSTES = new Set(['RB', 'RD', 'RF', 'TG']);
+
     for (const row of rows) {
       const poste = matchPoste(row.accountCode);
       if (poste === null) continue;
       const periodD = Number(row.periodDebit);
       const periodC = Number(row.periodCredit);
       const net = poste.side === 'CHARGE' ? periodD - periodC : periodC - periodD;
-      // Valeur absolue par convention d'affichage : un poste de charges
-      // affiche un montant positif et la formule XA = TA + RA + RB
-      // applique le signe ailleurs. Net <= 0 pour un poste signifie
-      // qu'il a été annulé/contre-passé — on l'écrête à 0 pour ne pas
-      // distordre la cascade.
-      const display = Math.max(net, 0);
+      const display = SIGNED_VARIATION_POSTES.has(poste.code) ? net : Math.max(net, 0);
       posteAmounts.set(poste.code, (posteAmounts.get(poste.code) ?? 0) + display);
     }
 

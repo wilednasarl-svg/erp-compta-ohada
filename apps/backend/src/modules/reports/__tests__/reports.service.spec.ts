@@ -1169,6 +1169,23 @@ describe('ReportsService.getSig (Soldes Intermédiaires de Gestion)', () => {
     expect(soldeByCode('XI')).toBe('7000000.00');
   });
 
+  it('conserve le signe d’une variation de stock favorable (stockage) — RB créditeur augmente la marge', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountId: 'a-ta', accountCode: '701000', accountClass: 7, periodCredit: '110000000.00' }),
+      tbRow({ accountId: 'a-ra', accountCode: '601000', accountClass: 6, periodDebit: '75000000.00' }),
+      // Stockage : 6031 créditeur 5M (le stock augmente → réduit le coût des ventes).
+      tbRow({ accountId: 'a-rb', accountCode: '603100', accountClass: 6, periodCredit: '5000000.00' }),
+    ]);
+    const report = await h.service.getSig(ORG_ID, { fromDate: '2026-01-01', toDate: '2026-12-31' });
+    const soldeByCode = (code: string): string =>
+      report.soldes.find((s) => s.code === code)?.amount ?? 'missing';
+    // RB net = D-C = -5M, CONSERVÉ (pas écrêté à 0). XA = TA - RA - RB = 110 - 75 - (-5) = 40M.
+    // (Avant le fix, RB était écrêté à 0 → XA = 35M, marge sous-évaluée.)
+    expect(soldeByCode('XA')).toBe('40000000.00');
+    expect(soldeByCode('XC')).toBe('40000000.00');
+  });
+
   it('maps 6031 to RB (variation stocks marchandises) not RA via longest-prefix match', async () => {
     const h = buildHarness();
     h.repo.trialBalance.mockResolvedValue([
