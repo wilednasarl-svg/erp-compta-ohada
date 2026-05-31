@@ -10,6 +10,7 @@ import {
   BookText,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   Clock,
   FileUp,
   Link2,
@@ -35,10 +36,11 @@ import {
 } from 'recharts';
 
 import { AppShell } from '@/components/app-shell';
-import { Hint } from '@/components/ui/hint';
 import { api, ApiError } from '@/lib/api-client';
 import { useCurrentOrg, useCurrentUser } from '@/stores/auth-store';
 import type { AccountingPeriodView } from '@/types/journals';
+
+import { AccueilBento } from './accueil-bento';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -121,13 +123,14 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<'dg' | 'daf' | 'op'>('dg');
   const [primaryExerciseId, setPrimaryExerciseId] = useState<string>('');
   const [compExerciseId, setCompExerciseId] = useState<string>('');
+  const [showDetail, setShowDetail] = useState(false);
 
   const now = new Date();
   const dayName = now.toLocaleDateString('fr-FR', { weekday: 'long' });
   const dayMonth = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   const year = now.getFullYear().toString();
 
-  const { data, isLoading } = useQuery<{ daySummary: DaySummary }, ApiError>({
+  const { data, isLoading, isError, refetch } = useQuery<{ daySummary: DaySummary }, ApiError>({
     queryKey: ['day-summary', orgId],
     queryFn: () => api.get<{ daySummary: DaySummary }>(`/organizations/${orgId}/dashboards/day-summary`),
     enabled: orgId !== '',
@@ -169,44 +172,40 @@ export default function DashboardPage() {
     <AppShell>
       <div className="w-full animate-page-in space-y-10">
 
-        {/* ─── En-tête : oriente vers le dossier et le jour ──── */}
-        <header className="border-b border-line pb-4">
-          <p className="eyebrow mb-2">
-            Tableau de bord
-            {' · '}
-            {dayName.charAt(0).toUpperCase() + dayName.slice(1)} {dayMonth} {year}
-          </p>
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
-            {currentOrg?.name ?? 'Tableau de bord'}
-          </h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            <span className="text-ink-mute">{currentOrg?.role ?? '—'}</span>
-            {' · Bonjour '}
-            <span className="font-medium text-ink">
-              {user?.firstName ?? user?.email?.split('@')[0] ?? ''}
-            </span>
-          </p>
-        </header>
+        {/* ─── Accueil visuel ─────────────────────────────────── */}
+        <AccueilBento
+          orgId={orgId}
+          exerciseId={primaryExerciseId}
+          userName={user?.firstName ?? user?.email?.split('@')[0] ?? ''}
+          orgName={currentOrg?.name ?? 'votre dossier'}
+          summary={s}
+          isLoading={isLoading}
+          isError={isError}
+          onRetry={() => void refetch()}
+          greeting="Bonjour"
+          dateLabel={`${dayName} ${dayMonth} ${year}`}
+        />
 
-        {/* ─── Conseil de prise en main (nouveaux utilisateurs) ── */}
-        <Hint
-          id="dashboard-intro"
-          variant="learn"
-          title="Premiers pas dans votre dossier"
-          action={
-            <Link
-              href="/welcome"
-              className="inline-flex items-center gap-1 text-xs font-medium text-accent-ink underline-offset-2 hover:underline"
-            >
-              Ouvrir le guide pas à pas
-            </Link>
-          }
-        >
-          Trois vues s’adaptent à votre rôle : <span className="font-medium text-ink">Direction</span> pour la
-          synthèse, <span className="font-medium text-ink">Finances</span> pour le détail DAF,{' '}
-          <span className="font-medium text-ink">Opérationnel</span> pour les tâches du jour.
-        </Hint>
+        {/* ─── Tableau de bord détaillé (repliable) ───────────── */}
+        <div className="border-t border-line pt-6">
+          <button
+            type="button"
+            onClick={() => setShowDetail((v) => !v)}
+            aria-expanded={showDetail}
+            className="flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors duration-fast hover:text-ink"
+          >
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-base ${showDetail ? 'rotate-180' : ''}`}
+              strokeWidth={1.5}
+            />
+            {showDetail
+              ? 'Masquer le tableau de bord détaillé'
+              : 'Voir le tableau de bord détaillé'}
+          </button>
+        </div>
 
+        {showDetail && (
+          <>
         {/* ─── Sélecteur de vue ─────────────────────────────── */}
         <div className="flex items-center border-b border-line pb-4 overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-1 rounded-full bg-sunk/50 p-1 whitespace-nowrap">
@@ -511,6 +510,8 @@ export default function DashboardPage() {
               </div>
             </section>
           </div>
+        )}
+          </>
         )}
       </div>
     </AppShell>
