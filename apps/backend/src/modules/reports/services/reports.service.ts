@@ -1147,10 +1147,16 @@ export class ReportsService {
     };
 
     const buildRow = (axisCode: string, b: Bucket): MarginByAxisRow => {
-      // Note 34 indicateurs principaux
+      // Note 34 — cascade alignée sur le SIG officiel SYSCOHADA
+      // (computeSigBare) : la Valeur Ajoutée déduit TOUTES les
+      // consommations externes, y compris les impôts et taxes (63/64) et
+      // les autres charges d'exploitation (65). L'EBE = VA − charges de
+      // personnel uniquement. (Auparavant : VA sans 63/64/65 et EBE − 63,
+      // ce qui divergeait du SIG.)
       const margeBrute = b.ca - b.achats;
-      const valeurAjoutee = b.ca - b.achats - b.servicesExt;
-      const ebe = valeurAjoutee - b.personnel - b.impotsTaxes;
+      const valeurAjoutee =
+        b.ca - b.achats - b.servicesExt - b.impotsTaxes - b.autresChargesExpl;
+      const ebe = valeurAjoutee - b.personnel;
 
       // Compat ascendant : `autresCharges` = tout ce qui n'est ni achats
       // ni personnel (services ext + impôts + autres expl + financiers

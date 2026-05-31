@@ -2100,9 +2100,10 @@ describe('ReportsService.getMarginByAxis (D3 — Note 34 par axe)', () => {
   it('calcule valeur ajoutée et EBE conformes à Note 34 par axe', async () => {
     // Chantier X : CA 100 000, achats (60) 30 000, services ext (62) 10 000,
     //  impôts/taxes (63) 5 000, charges personnel (66) 25 000, autres (64) 2 000.
-    //   Marge brute = 100 000 − 30 000          = 70 000  (70 %)
-    //   Valeur ajoutée = 100 000 − 30 000 − 10 000 = 60 000  (60 %)
-    //   EBE = VA − personnel − impôts = 60 000 − 25 000 − 5 000 = 30 000 (30 %)
+    //   Marge brute = 100 000 − 30 000                           = 70 000 (70 %)
+    //   VA (SIG officiel) = CA − achats − services − impôts − autres
+    //                     = 100 000 − 30 000 − 10 000 − 5 000 − 2 000 = 53 000 (53 %)
+    //   EBE = VA − personnel = 53 000 − 25 000                    = 28 000 (28 %)
     const rawRows: MbaRawRow[] = [
       raw('X', '701000', 7, '0.00', '100000.00'),
       raw('X', '601000', 6, '30000.00', '0.00'),
@@ -2123,10 +2124,10 @@ describe('ReportsService.getMarginByAxis (D3 — Note 34 par axe)', () => {
     expect(x.axisCode).toBe('X');
     expect(x.margeBrute).toBe('70000.00');
     expect(x.margeBrutePercent).toBe('70.00');
-    expect(x.valeurAjoutee).toBe('60000.00');
-    expect(x.tauxValeurAjoutee).toBe('60.00');
-    expect(x.excedentBrutExploit).toBe('30000.00');
-    expect(x.tauxEbe).toBe('30.00');
+    expect(x.valeurAjoutee).toBe('53000.00');
+    expect(x.tauxValeurAjoutee).toBe('53.00');
+    expect(x.excedentBrutExploit).toBe('28000.00');
+    expect(x.tauxEbe).toBe('28.00');
     expect(x.chargesPersonnel).toBe('25000.00');
     // Résultat net = CA − (achats + personnel + autres compat)
     //   autres = services ext + impôts + autres expl = 10 000 + 5 000 + 2 000 = 17 000
