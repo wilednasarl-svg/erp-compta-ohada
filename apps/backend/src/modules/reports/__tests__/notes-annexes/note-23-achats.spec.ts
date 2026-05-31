@@ -12,7 +12,10 @@ describe('Note 23 — Achats consommés', () => {
       { accountCode: '608000', totalDebit: '1000.00', totalCredit: '0.00' }, // emballages
     ]);
 
-    const n23 = await service.getNote(request, 'N23' as NoteId);
+    // Le handler « Achats » (handleN23Achats) est enregistré sous le
+    // NoteId 'N22' dans le registry (remapping historique « N23 Achats → N22 » ;
+    // 'N23' correspond aux Transports).
+    const n23 = await service.getNote(request, 'N22' as NoteId);
     const byKey = new Map(n23.rows.map((r) => [r.key, r]));
 
     expect(byKey.get('ACHATS_MARCHANDISES')?.values.debit).toBe('10000.00');
