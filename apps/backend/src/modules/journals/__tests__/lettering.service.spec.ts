@@ -528,3 +528,85 @@ describe('LetteringService.autoLetterByInvoice', () => {
     });
   });
 });
+
+describe('LetteringService.previewAutoLetterByInvoice', () => {
+  it('reports a balanced invoice group as a suggestion WITHOUT persisting anything (dry-run)', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([
+      buildLine('l1', { invoiceNumber: 'FAC-001', debit: '1000.00', credit: '0' }),
+      buildLine('l2', { invoiceNumber: 'FAC-001', debit: '0', credit: '1000.00' }),
+    ]);
+
+    const result = await h.service.previewAutoLetterByInvoice(ORG_ID, {});
+
+    expect(result).toMatchObject({
+      groupsConsidered: 1,
+      wouldLetter: 1,
+      wouldLetterLines: 2,
+      skippedSingleton: 0,
+      skippedUnbalanced: 0,
+    });
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0]).toMatchObject({
+      invoiceNumber: 'FAC-001',
+      partnerAccountId: ACCOUNT_ID,
+      partnerAccountCode: '411000',
+      partnerLabel: 'CLIENT X',
+      lineCount: 2,
+      totalAmount: '1000.00',
+    });
+    // Dry-run invariant: no write path is ever touched.
+    expect(h.letteringRepo.create).not.toHaveBeenCalled();
+    expect(h.lineRepo.attachLettering).not.toHaveBeenCalled();
+    expect(h.audit.record).not.toHaveBeenCalled();
+  });
+
+  it('skips an invoice that has a single line (skippedSingleton, no suggestion)', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([
+      buildLine('l1', { invoiceNumber: 'FAC-002', debit: '500.00', credit: '0' }),
+    ]);
+
+    const result = await h.service.previewAutoLetterByInvoice(ORG_ID, {});
+
+    expect(result).toMatchObject({ wouldLetter: 0, skippedSingleton: 1, skippedUnbalanced: 0 });
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it('skips an unbalanced group — partial settlement (skippedUnbalanced, no suggestion)', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([
+      buildLine('l1', { invoiceNumber: 'FAC-003', debit: '1000.00', credit: '0' }),
+      buildLine('l2', { invoiceNumber: 'FAC-003', debit: '0', credit: '400.00' }),
+    ]);
+
+    const result = await h.service.previewAutoLetterByInvoice(ORG_ID, {});
+
+    expect(result).toMatchObject({ wouldLetter: 0, skippedSingleton: 0, skippedUnbalanced: 1 });
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it('ignores lines without an invoice number (not counted as a group)', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([
+      buildLine('l1', { invoiceNumber: null, debit: '100.00', credit: '0' }),
+      buildLine('l2', { invoiceNumber: '   ', debit: '0', credit: '100.00' }),
+    ]);
+
+    const result = await h.service.previewAutoLetterByInvoice(ORG_ID, {});
+
+    expect(result).toMatchObject({ groupsConsidered: 0, wouldLetter: 0 });
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it('forwards the partnerAccountId filter to the repository', async () => {
+    const h = buildHarness();
+    h.lineRepo.listUnletteredPartnerLinesWithInvoice.mockResolvedValue([]);
+
+    await h.service.previewAutoLetterByInvoice(ORG_ID, { partnerAccountId: ACCOUNT_ID });
+
+    expect(h.lineRepo.listUnletteredPartnerLinesWithInvoice).toHaveBeenCalledWith(ORG_ID, {
+      partnerAccountId: ACCOUNT_ID,
+    });
+  });
+});
