@@ -283,7 +283,7 @@ function StepCard({ step, isLast }: StepCardProps) {
           </ul>
 
           {step.tip !== undefined && (
-            <div className="rounded-sm border-l-2 border-info bg-info-soft px-3 py-2">
+            <div className="rounded-sm bg-info-soft px-3 py-2">
               <p className="text-xs leading-relaxed text-info-ink">
                 <span className="font-semibold">Astuce — </span>
                 {step.tip}

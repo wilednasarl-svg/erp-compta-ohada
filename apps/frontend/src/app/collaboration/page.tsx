@@ -344,7 +344,7 @@ function RequestDetail({ requestId }: { requestId: string }) {
       </div>
       <div className="space-y-5 p-5">
         {req.description && (
-          <div className="whitespace-pre-wrap border-l-2 border-accent pl-3 text-sm text-ink-soft">
+          <div className="whitespace-pre-wrap rounded-sm bg-sunk px-3 py-2 text-sm text-ink-soft">
             {req.description}
           </div>
         )}

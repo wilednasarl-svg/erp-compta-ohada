@@ -87,7 +87,7 @@ export default function ConsolidatedDashboardPage() {
       <div className="w-full animate-page-in space-y-8">
         <header>
           <p className="eyebrow">Pilotage · Multi-dossiers</p>
-          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-ink">
+          <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink">
             Vue consolidée
           </h1>
           <p className="mt-2 max-w-[64ch] text-sm text-ink-soft">
