@@ -1,5 +1,6 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import {
   Building2,
   Check,
@@ -186,11 +187,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Org selector */}
           <OrgSwitcher />
 
-          {/* Exercise badge */}
-          <span className="hidden items-center gap-1.5 rounded-xs bg-sunk px-2 py-1 text-2xs uppercase tracking-wider text-ink-soft md:inline-flex">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-            Exercice 2026
-          </span>
+          {/* Exercise badge — exercice actif réel */}
+          <ExerciseBadge />
 
           <div className="flex-1" />
 
@@ -474,6 +472,47 @@ function isActive(href: string, pathname: string): boolean {
 
 function Separator() {
   return <span aria-hidden className="hidden h-5 w-px bg-line md:inline-block" />;
+}
+
+/* ─── Exercice actif (pastille barre) ─────────────────────────── */
+
+interface ShellPeriod {
+  readonly id: string;
+  readonly label: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly parentId: string | null;
+}
+
+function ExerciseBadge() {
+  const orgId = useCurrentOrg()?.id ?? '';
+  const { data } = useQuery({
+    queryKey: ['shell-exercise', orgId],
+    queryFn: async () => {
+      const resp = await api.get<{ periods: ReadonlyArray<ShellPeriod> }>(
+        `/organizations/${orgId}/accounting-periods`,
+      );
+      return resp.periods;
+    },
+    enabled: orgId !== '',
+    staleTime: 300_000,
+  });
+
+  const roots = (data ?? []).filter((p) => p.parentId === null);
+  if (roots.length === 0) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const active =
+    roots.find((p) => p.startDate.slice(0, 10) <= today && today <= p.endDate.slice(0, 10)) ??
+    [...roots].sort((a, b) => b.startDate.localeCompare(a.startDate))[0];
+  if (active === undefined) return null;
+
+  return (
+    <span className="hidden items-center gap-1.5 rounded-xs bg-sunk px-2 py-1 text-2xs uppercase tracking-wider text-ink-soft md:inline-flex">
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+      {active.label}
+    </span>
+  );
 }
 
 /* ─── Org switcher — bascule de dossier ───────────────────────── */
