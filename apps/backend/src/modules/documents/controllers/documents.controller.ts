@@ -32,6 +32,7 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { AttachEntryDto } from '../dto/attach-entry.dto';
+import { CreateEntryFromOcrDto } from '../dto/create-entry-from-ocr.dto';
 import { ListDocumentsQueryDto } from '../dto/list-documents-query.dto';
 import { UploadDocumentDto } from '../dto/upload-document.dto';
 import {
@@ -236,6 +237,37 @@ export class DocumentsController {
       scope.organizationId,
       docId,
       body.journalEntryId,
+      scope.actorUserId,
+      buildAuditRequestContext(req),
+    );
+  }
+
+  /**
+   * Create a draft journal entry from this document's OCR-extracted
+   * invoice (SYSCOHADA purchase: 60x charge / 4452 TVA / 401 fournisseur).
+   * Optional body overrides the charge/VAT/supplier accounts and journal.
+   * The created entry is auto-linked to the document.
+   */
+  @Post(':id/create-entry')
+  @RequirePermission('documents.write')
+  @HttpCode(HttpStatus.CREATED)
+  async createEntry(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() body: CreateEntryFromOcrDto,
+    @CurrentOrg() org: CurrentOrgContext | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+    @Req() req: Request,
+  ) {
+    const scope = this.assertActorScope(org, actorUserId);
+    return this.documents.createEntryFromOcr(
+      scope.organizationId,
+      id,
+      {
+        journalCode: body.journalCode,
+        chargeAccount: body.chargeAccount,
+        vatAccount: body.vatAccount,
+        supplierAccount: body.supplierAccount,
+      },
       scope.actorUserId,
       buildAuditRequestContext(req),
     );

@@ -60,6 +60,7 @@
   },
   "optionalDependencies": {
     "@gradio/client": "^1.19.1",
+    "pdf-to-img": "^6.1.0",
     "qrcode": "^1.5.4",
     "tesseract.js": "^5.1.1"
   },

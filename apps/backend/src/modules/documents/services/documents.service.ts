@@ -12,6 +12,11 @@ import type { TenantId } from '../../../common/persistence/tenant-scope';
 import type { AppConfig } from '../../../config/configuration';
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import { JournalEntryRepository } from '../../journals/repositories/journal-entry.repository';
+import {
+  EntriesService,
+  type CreateEntryInput,
+  type EntryView,
+} from '../../journals/services/entries.service';
 import type { DocumentEntity } from '../entities/document.entity';
 import type { OcrStatus } from '../types/ocr-status';
 import {
@@ -22,8 +27,12 @@ import {
 import { DocumentEntryRepository } from '../repositories/document-entry.repository';
 import { DOCUMENT_STORAGE, type DocumentStorage } from './document-storage.interface';
 import { DocumentOcrService } from './document-ocr.service';
-import { extractInvoice } from './invoice-extractor';
-import { buildPurchaseEntryProposal } from './journal-entry-proposal';
+import { extractInvoice, type ExtractedInvoice } from './invoice-extractor';
+import {
+  buildPurchaseEntryProposal,
+  type ProposalOptions,
+  type ProposedEntry,
+} from './journal-entry-proposal';
 import { extractInvoiceMetadata } from './metadata-extractor';
 import { OCR_PROVIDER, type OcrProvider } from './ocr-provider';
 
@@ -163,6 +172,7 @@ export class DocumentsService {
     config: ConfigService,
     @Inject(OCR_PROVIDER) private readonly ocrProvider: OcrProvider,
     private readonly journalEntries: JournalEntryRepository,
+    private readonly entriesService: EntriesService,
   ) {
     const docConfig = config.get<AppConfig['documents']>('documents');
     if (docConfig === undefined) {
@@ -383,6 +393,97 @@ export class DocumentsService {
     });
 
     return { documentId, entryId: journalEntryId };
+  }
+
+  /**
+   * Create a draft journal entry from a document's OCR-extracted invoice.
+   * Rebuilds the SYSCOHADA purchase proposal from `extracted_metadata`
+   * (applying any account/journal overrides), posts it via the journals
+   * service (which enforces balance, journal existence and an open
+   * period), then links the document to the new entry.
+   *
+   * Throws:
+   *   - DOC_NOT_FOUND               : document missing / cross-tenant.
+   *   - JOURNAL_ENTRY_EMPTY_LINES   : no usable OCR proposal (run OCR first).
+   *   - (journals errors)           : JOURNAL_NOT_FOUND, ACCOUNTING_PERIOD_*,
+   *                                   JOURNAL_ENTRY_UNBALANCED, … bubble up.
+   */
+  async createEntryFromOcr(
+    organizationId: TenantId,
+    documentId: string,
+    overrides: ProposalOptions,
+    actorUserId: string,
+    ctx: AuditContext = { ipAddress: null, userAgent: null },
+  ): Promise<{ entry: EntryView; documentId: string; warnings: ReadonlyArray<string> }> {
+    const doc = await this.documents.findById(organizationId, documentId);
+    if (doc === null) {
+      throw new AppException(ERROR_CODES.DOC_NOT_FOUND, { message: 'Document not found' });
+    }
+
+    const proposal = this.buildProposalFromMetadata(doc.extractedMetadata, overrides);
+    if (proposal === null || proposal.entryDate === null || proposal.lines.length < 2) {
+      throw new AppException(ERROR_CODES.JOURNAL_ENTRY_EMPTY_LINES, {
+        message:
+          "Aucune écriture exploitable n'a pu être construite depuis l'OCR de ce document — lancez l'OCR d'abord.",
+      });
+    }
+
+    const input: CreateEntryInput = {
+      journalCode: proposal.journalCode,
+      entryDate: proposal.entryDate,
+      description: proposal.description,
+      reference: proposal.reference,
+      lines: proposal.lines.map((l) => ({
+        accountCode: l.accountCode,
+        debit: l.debit,
+        credit: l.credit,
+        description: l.description ?? null,
+      })),
+    };
+
+    const entry = await this.entriesService.createDraft(organizationId, input, actorUserId, ctx);
+
+    await this.entries.link({
+      organizationId,
+      documentId,
+      entryIds: [entry.id],
+      createdBy: actorUserId,
+    });
+
+    await this.audit.record({
+      module: DocumentsService.MODULE,
+      action: 'linked_entry',
+      entityType: DocumentsService.ENTITY_TYPE,
+      entityId: documentId,
+      after: { entryIds: [entry.id] },
+      metadata: { entryCount: 1, source: 'create-entry-from-ocr', journalEntryNumber: entry.entryNumber },
+      ctx: { ...ctx, userId: actorUserId, organizationId },
+      legacyEventType: 'documents.linked_entry',
+    });
+
+    return { entry, documentId, warnings: proposal.warnings };
+  }
+
+  /**
+   * Rebuild the purchase proposal from a document's `extracted_metadata`.
+   * Prefers the rich `invoice` object (so overrides re-apply); falls back
+   * to a previously stored `proposedEntry`. Returns null when neither is
+   * present (document not OCR-processed, or OCR found nothing).
+   */
+  private buildProposalFromMetadata(
+    metadata: Record<string, unknown> | null,
+    overrides: ProposalOptions,
+  ): ProposedEntry | null {
+    if (metadata === null) return null;
+    const invoice = metadata.invoice;
+    if (invoice !== null && typeof invoice === 'object') {
+      return buildPurchaseEntryProposal(invoice as ExtractedInvoice, overrides);
+    }
+    const stored = metadata.proposedEntry;
+    if (stored !== null && typeof stored === 'object') {
+      return stored as ProposedEntry;
+    }
+    return null;
   }
 
   /**
