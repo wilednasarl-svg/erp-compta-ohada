@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Ban,
+  BookOpen,
   CheckCircle2,
   ChevronUp,
   Loader2,
@@ -29,6 +30,7 @@ import type {
   EntryRow,
   EntryView,
   JournalEntryStatus,
+  JournalKind,
   JournalView,
 } from '@/types/journals';
 
@@ -129,6 +131,9 @@ export default function JournalsPage() {
   });
 
   const [showCreate, setShowCreate] = useState(false);
+  const [showJournals, setShowJournals] = useState(false);
+
+  const hasNoJournals = !journalsQuery.isLoading && (journalsQuery.data ?? []).length === 0;
 
   return (
     <AppShell>
@@ -150,6 +155,26 @@ export default function JournalsPage() {
           achats (JA), banque (BAN) ou opérations diverses (OD). Le journal regroupe les
           écritures de même type pour faciliter le suivi et le rapprochement.
         </Hint>
+
+        {hasNoJournals ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-accent/25 bg-accent-soft/55 px-4 py-3">
+            <p className="flex-1 text-sm text-accent-ink">
+              <span className="font-semibold">Prochaine étape : </span>
+              votre organisation n’a encore aucun journal. Créez les journaux standards
+              SYSCOHADA (AC achats, VE ventes, BQ banque, CA caisse, OD divers, PA paie) pour
+              pouvoir enregistrer des écritures.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setShowJournals(true)}
+              className="press shrink-0"
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Gérer les journaux
+            </Button>
+          </div>
+        ) : null}
 
         {/* Filtres */}
         <section className={PANEL_CLASS}>
@@ -193,11 +218,28 @@ export default function JournalsPage() {
                 <option value="cancelled">Contre-passé</option>
               </select>
             </div>
-            <div className="flex items-end justify-end">
+            <div className="flex items-end justify-end gap-2">
+              <Button
+                type="button"
+                variant={showJournals ? 'secondary' : 'outline'}
+                onClick={() => setShowJournals((v) => !v)}
+                className="press"
+              >
+                {showJournals ? (
+                  <ChevronUp className="mr-2 h-4 w-4" />
+                ) : (
+                  <BookOpen className="mr-2 h-4 w-4" />
+                )}
+                {showJournals ? 'Masquer les journaux' : 'Gérer les journaux'}
+              </Button>
               <Button
                 type="button"
                 variant={showCreate ? 'secondary' : 'default'}
                 onClick={() => setShowCreate((v) => !v)}
+                disabled={hasNoJournals}
+                title={
+                  hasNoJournals ? 'Créez d’abord un journal pour saisir une écriture.' : undefined
+                }
                 className="press"
               >
                 {showCreate ? (
@@ -210,6 +252,18 @@ export default function JournalsPage() {
             </div>
           </div>
         </section>
+
+        {/* Gestion des journaux */}
+        {showJournals && (
+          <ManageJournalsSection
+            orgId={orgId}
+            journals={journalsQuery.data ?? []}
+            isLoading={journalsQuery.isLoading}
+            onChanged={() => {
+              void queryClient.invalidateQueries({ queryKey: ['journals', orgId] });
+            }}
+          />
+        )}
 
         {/* Création */}
         {showCreate && (
@@ -879,6 +933,225 @@ function CreateEntrySection({ orgId, journals, onCreated }: CreateProps) {
             </span>
           </div>
           <FormError error={create.error} />
+        </form>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Gestion des journaux
+// ─────────────────────────────────────────────────────────────────────
+
+interface StandardJournalSeed {
+  readonly code: string;
+  readonly label: string;
+  readonly kind: JournalKind;
+}
+
+/** Miroir de `STANDARD_JOURNALS` (backend journal.types.ts). */
+const STANDARD_JOURNAL_SEEDS: ReadonlyArray<StandardJournalSeed> = [
+  { code: 'AC', label: 'Journal des Achats', kind: 'AC' },
+  { code: 'VE', label: 'Journal des Ventes', kind: 'VE' },
+  { code: 'BQ', label: 'Journal de Banque', kind: 'BQ' },
+  { code: 'CA', label: 'Journal de Caisse', kind: 'CA' },
+  { code: 'OD', label: 'Journal des Opérations Diverses', kind: 'OD' },
+  { code: 'PA', label: 'Journal de Paie', kind: 'PA' },
+];
+
+const KIND_OPTIONS: ReadonlyArray<{ value: JournalKind; label: string }> = [
+  { value: 'AC', label: 'Achats' },
+  { value: 'VE', label: 'Ventes' },
+  { value: 'BQ', label: 'Banque' },
+  { value: 'CA', label: 'Caisse' },
+  { value: 'OD', label: 'Opérations diverses' },
+  { value: 'PA', label: 'Paie' },
+];
+
+const JOURNAL_CODE_PATTERN = '^[A-Z0-9-]{1,8}$';
+
+interface ManageJournalsProps {
+  readonly orgId: string;
+  readonly journals: ReadonlyArray<JournalView>;
+  readonly isLoading: boolean;
+  readonly onChanged: () => void;
+}
+
+function ManageJournalsSection({ orgId, journals, isLoading, onChanged }: ManageJournalsProps) {
+  const existingCodes = useMemo(() => new Set(journals.map((j) => j.code)), [journals]);
+  const missingStandards = STANDARD_JOURNAL_SEEDS.filter((s) => !existingCodes.has(s.code));
+
+  const [code, setCode] = useState('');
+  const [label, setLabel] = useState('');
+  const [kind, setKind] = useState<JournalKind>('OD');
+
+  const seedStandards = useApiMutation(
+    async () => {
+      // Création séquentielle des journaux standards manquants. Un code déjà
+      // pris (JOURNAL_CODE_TAKEN) est ignoré pour rester idempotent.
+      for (const j of missingStandards) {
+        try {
+          await api.post(`/organizations/${orgId}/journals`, {
+            code: j.code,
+            label: j.label,
+            kind: j.kind,
+          });
+        } catch (e) {
+          if (!(e instanceof ApiError && e.code === 'JOURNAL_CODE_TAKEN')) throw e;
+        }
+      }
+    },
+    { onSuccess: onChanged },
+  );
+
+  const createCustom = useApiMutation(
+    async () => {
+      await api.post(`/organizations/${orgId}/journals`, {
+        code: code.trim().toUpperCase(),
+        label: label.trim(),
+        kind,
+      });
+    },
+    {
+      onSuccess: () => {
+        setCode('');
+        setLabel('');
+        setKind('OD');
+        onChanged();
+      },
+    },
+  );
+
+  return (
+    <section className={PANEL_CLASS}>
+      <div className="border-b border-line pb-3">
+        <h2 className="font-display text-xl font-medium text-ink">Gérer les journaux</h2>
+        <p className="mt-1 text-sm text-ink-mute">
+          Les journaux classent vos écritures par nature. Créez les journaux standards SYSCOHADA
+          en un clic, ou ajoutez un journal personnalisé (ex. BQ-01, BQ-02 pour plusieurs banques).
+        </p>
+      </div>
+
+      <div className="space-y-6 pt-4">
+        {/* Liste des journaux existants */}
+        <div>
+          <h3 className="eyebrow mb-2">Journaux existants</h3>
+          {isLoading ? (
+            <p className="text-sm text-ink-mute">
+              <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+              Chargement…
+            </p>
+          ) : journals.length === 0 ? (
+            <p className="text-sm text-ink-mute">Aucun journal pour le moment.</p>
+          ) : (
+            <ul className="flex flex-wrap gap-2">
+              {journals.map((j) => (
+                <li
+                  key={j.id}
+                  className="inline-flex items-center gap-2 rounded-sm border border-line bg-sunk/40 px-3 py-1.5 text-sm"
+                >
+                  <span className="font-mono font-medium text-ink">{j.code}</span>
+                  <span className="text-ink-mute">{j.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Seed des journaux standards */}
+        <div className="rounded-sm border border-line bg-sunk/30 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">Journaux standards SYSCOHADA</p>
+              <p className="mt-0.5 text-xs text-ink-mute">
+                {missingStandards.length === 0
+                  ? 'Tous les journaux standards sont déjà créés.'
+                  : `${missingStandards.length} journal(aux) manquant(s) : ${missingStandards
+                      .map((j) => j.code)
+                      .join(', ')}.`}
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => seedStandards.mutate(undefined)}
+              disabled={seedStandards.isPending || missingStandards.length === 0}
+              className="press"
+            >
+              {seedStandards.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <BookOpen className="mr-2 h-4 w-4" />
+              )}
+              Créer les journaux standards
+            </Button>
+          </div>
+          <FormError error={seedStandards.error} className="mt-3" />
+        </div>
+
+        {/* Journal personnalisé */}
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            createCustom.mutate(undefined);
+          }}
+        >
+          <h3 className="eyebrow">Ajouter un journal personnalisé</h3>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[160px_1fr_200px]">
+            <div className="space-y-1">
+              <Label htmlFor="journal-code">Code</Label>
+              <Input
+                id="journal-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="BQ-01"
+                pattern={JOURNAL_CODE_PATTERN}
+                title="1 à 8 caractères : lettres majuscules, chiffres ou tirets."
+                maxLength={8}
+                required
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="journal-label">Libellé</Label>
+              <Input
+                id="journal-label"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Ex. Banque BICICI"
+                maxLength={120}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="journal-kind">Nature</Label>
+              <select
+                id="journal-kind"
+                value={kind}
+                onChange={(e) => setKind(e.target.value as JournalKind)}
+                className={SELECT_CLASS}
+              >
+                {KIND_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <Button
+            type="submit"
+            disabled={createCustom.isPending || code.trim() === '' || label.trim() === ''}
+            className="press"
+          >
+            {createCustom.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="mr-2 h-4 w-4" />
+            )}
+            Ajouter le journal
+          </Button>
+          <FormError error={createCustom.error} />
         </form>
       </div>
     </section>
