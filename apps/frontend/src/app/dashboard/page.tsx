@@ -16,9 +16,7 @@ import {
   Clock,
   FileUp,
   LayoutDashboard,
-  LineChart,
   Link2,
-  ListChecks,
   Percent,
   Scale,
   Target,
@@ -41,6 +39,7 @@ import {
 } from 'recharts';
 
 import { AppShell } from '@/components/app-shell';
+import { IllustrationChart, IllustrationDocs, IllustrationScale } from '@/components/ui/illustrations';
 import { api, ApiError } from '@/lib/api-client';
 import { useCurrentOrg, useCurrentUser } from '@/stores/auth-store';
 import type { AccountingPeriodView } from '@/types/journals';
@@ -1612,21 +1611,21 @@ const DETAIL_VIEWS = [
     key: 'dg',
     title: 'Direction',
     desc: 'Pilotage : trésorerie nette, marge, BFR, DSO, évolution du CA et du résultat.',
-    icon: LineChart,
+    illustration: IllustrationChart,
     tint: 'bg-accent-soft text-accent-ink',
   },
   {
     key: 'daf',
     title: 'Finances',
     desc: 'Analyse : marge brute, liquidité, DSO / DPO, balance âgée, top charges et produits.',
-    icon: Percent,
+    illustration: IllustrationScale,
     tint: 'bg-info-soft text-info-ink',
   },
   {
     key: 'op',
     title: 'Opérationnel',
     desc: 'Suivi : initialisation, écritures à valider, rapprochements, activité récente.',
-    icon: ListChecks,
+    illustration: IllustrationDocs,
     tint: 'bg-warn-soft text-warn-ink',
   },
 ] as const;
@@ -1643,7 +1642,7 @@ function ViewSelectorCards({
       <p className="eyebrow mb-3">Choisissez une vue</p>
       <div className="space-y-3">
         {DETAIL_VIEWS.map((v) => {
-          const Icon = v.icon;
+          const Illus = v.illustration;
           const active = viewMode === v.key;
           return (
             <button
@@ -1655,8 +1654,8 @@ function ViewSelectorCards({
                 active ? 'border-line-strong bg-sunk/50' : 'border-line bg-paper hover:bg-sunk/40'
               }`}
             >
-              <span className={`flex w-[110px] shrink-0 items-center justify-center sm:w-[150px] ${v.tint}`}>
-                <Icon className="h-8 w-8" strokeWidth={1.5} />
+              <span className={`flex w-[120px] shrink-0 items-center justify-center py-4 sm:w-[160px] ${v.tint}`}>
+                <Illus className="h-14 w-24" />
               </span>
               <span className="flex flex-1 flex-col justify-center gap-1 px-4 py-4 sm:px-5">
                 <span className="flex flex-wrap items-center gap-2">

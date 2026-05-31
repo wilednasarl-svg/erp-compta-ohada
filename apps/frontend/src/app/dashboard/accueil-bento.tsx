@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import { IllustrationPlant } from '@/components/ui/illustrations';
 import { api, ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
@@ -1064,13 +1065,11 @@ function SetupGuide({
           </span>
         </div>
       ) : (
-        <div className="flex items-start gap-4">
-          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
-            <CalendarClock className="h-6 w-6" strokeWidth={1.5} />
-          </span>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+          <IllustrationPlant className="h-24 w-24 shrink-0 text-ink-mute sm:h-28 sm:w-28" />
           <div className="min-w-0">
             <p className="eyebrow">Premiers pas</p>
-            <h2 className="mt-1 font-display text-2xl text-ink">Configurons votre dossier</h2>
+            <h2 className="mt-1 font-display text-2xl text-ink sm:text-3xl">Configurons votre dossier</h2>
             <p className="mt-1.5 max-w-[56ch] text-base leading-relaxed text-ink-soft">
               Voici par où commencer. L&apos;étape clé : ouvrir l&apos;exercice, qui débloque la saisie, les
               états financiers et le suivi du dossier.

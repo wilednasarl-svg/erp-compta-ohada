@@ -1,0 +1,103 @@
+/**
+ * Illustrations « spot » maison — direction papier ivoire.
+ *
+ * Trait fin à `currentColor` (réglé par la couleur de texte du parent), accents
+ * en vert de marque via les tokens OKLCH pour la `IllustrationPlant`, monochrome
+ * pour les autres (elles prennent la teinte sémantique de leur contexte). Pensées
+ * pour les MOMENTS (onboarding, choix, états vides), pas les pages denses.
+ * Aucune dépendance, aucun asset binaire : du SVG inline, net à toute taille.
+ */
+
+interface IllustrationProps {
+  readonly className?: string;
+}
+
+const LINE = {
+  stroke: 'currentColor',
+  strokeWidth: 2.2,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  fill: 'none',
+};
+const ACCENT = 'oklch(var(--accent))';
+const ACCENT_SOFT = 'oklch(var(--accent-soft))';
+
+/** Pousse en pot — un dossier qui démarre et grandit. Feuilles en vert de marque. */
+export function IllustrationPlant({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 120 116" fill="none" role="img" aria-hidden className={className}>
+      <g {...LINE} stroke={ACCENT} fill={ACCENT_SOFT}>
+        <path d="M60 60 C49 59 41 51 38 41 C49 42 57 50 60 60 Z" />
+        <path d="M60 52 C71 51 79 43 82 33 C71 34 63 42 60 52 Z" />
+        <path d="M60 46 C57 35 58 26 60 18 C62 26 63 35 60 46 Z" />
+      </g>
+      <g {...LINE}>
+        <path d="M60 82 C60 70 60 60 60 46" />
+        <path d="M38 82 H82 L75 106 H45 Z" />
+        <path d="M34 82 H86" />
+        <path d="M47 90 H73" stroke={ACCENT} opacity={0.55} />
+      </g>
+    </svg>
+  );
+}
+
+/** Courbe ascendante — pilotage, direction. Monochrome (prend la teinte du parent). */
+export function IllustrationChart({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 120 96" fill="none" role="img" aria-hidden className={className}>
+      <path {...LINE} d="M26 18 V74 H102" opacity={0.45} />
+      <path
+        d="M32 64 L50 52 L64 58 L80 38 L100 28"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <g fill="currentColor">
+        <circle cx="50" cy="52" r="2.8" />
+        <circle cx="80" cy="38" r="2.8" />
+        <circle cx="100" cy="28" r="2.8" />
+      </g>
+    </svg>
+  );
+}
+
+/** Balance — équilibre, analyse financière. Monochrome. */
+export function IllustrationScale({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 120 96" fill="none" role="img" aria-hidden className={className}>
+      <g {...LINE}>
+        <path d="M60 28 V74" />
+        <path d="M46 78 H74" />
+        <path d="M30 36 H90" />
+        <path d="M30 36 L23 54 M30 36 L37 54" />
+        <path d="M90 36 L83 54 M90 36 L97 54" />
+        <path d="M21 54 Q30 66 39 54" />
+        <path d="M81 54 Q90 66 99 54" />
+      </g>
+      <circle cx="60" cy="26" r="3.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Documents + coche — suivi opérationnel, à traiter. Monochrome. */
+export function IllustrationDocs({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 120 96" fill="none" role="img" aria-hidden className={className}>
+      <g {...LINE}>
+        <rect x="44" y="16" width="46" height="60" rx="5" opacity={0.45} />
+        <rect x="30" y="26" width="46" height="60" rx="5" fill="oklch(var(--paper))" />
+        <path d="M40 56 H66 M40 66 H58" opacity={0.5} />
+      </g>
+      <path
+        d="M39 44 l5 5 L53 39"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
