@@ -377,7 +377,9 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     section: 'Actif circulant',
     sourceAccountPrefixes: [
       '421',
+      '422',
       '425',
+      '445',
       '4287',
       '4387',
       '4486',
@@ -771,7 +773,13 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     note: '18',
     side: 'PASSIF',
     section: 'Passif circulant',
-    sourceAccountPrefixes: ['42', '43', '44'],
+    // 421/422/425 (personnel) et 445 (État, TVA récupérable) sont des comptes
+    // à DOUBLE SENS : créditeurs = dettes (ici, passif), débiteurs = créances
+    // (avances au personnel, TVA déductible → poste actif BJ). On les déclare
+    // aussi en SOURCE de BJ pour que classifyToPoste tranche par le signe du
+    // solde (cf. comptes courants 462/463/471). Préfixes longueur 3 pour primer
+    // sur '42'/'44' génériques et permettre l'arbitrage par netSign.
+    sourceAccountPrefixes: ['42', '421', '422', '445', '43', '44'],
     deductionPrefixes: [],
     sign: 1,
     parentGroup: 'DP',
