@@ -5528,7 +5528,12 @@ function parseBalanceCsv(text: string): BalanceParsed {
     let cur = '';
     let inQ = false;
     for (const ch of line) {
-      if (ch === '"' || ch === "'") { inQ = !inQ; continue; }
+      // Seul le guillemet DOUBLE délimite un champ en CSV. L'apostrophe
+      // simple est un caractère courant des libellés FR (« D'AVANCE »,
+      // « L'ENTR », « D'APPRENTISSAGE »…) : la traiter comme un guillemet
+      // décalait les colonnes de ces lignes (et des suivantes en cascade),
+      // faisant disparaître des soldes de débit → faux déséquilibre du bilan.
+      if (ch === '"') { inQ = !inQ; continue; }
       if (!inQ && ch === sep) { cols.push(cur.trim()); cur = ''; continue; }
       cur += ch;
     }
