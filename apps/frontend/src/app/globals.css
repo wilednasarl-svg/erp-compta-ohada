@@ -185,11 +185,11 @@
   .mark {
     background-image: linear-gradient(
       to top,
-      oklch(var(--accent-soft)) 0,
-      oklch(var(--accent-soft)) 0.5em,
-      transparent 0.5em
+      oklch(86% 0.085 155) 0,
+      oklch(86% 0.085 155) 0.64em,
+      transparent 0.64em
     );
-    padding-inline: 0.1em;
+    padding-inline: 0.12em;
     border-radius: 2px;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
@@ -197,17 +197,17 @@
   .mark-info {
     background-image: linear-gradient(
       to top,
-      oklch(var(--info-soft)) 0,
-      oklch(var(--info-soft)) 0.5em,
-      transparent 0.5em
+      oklch(86% 0.075 240) 0,
+      oklch(86% 0.075 240) 0.64em,
+      transparent 0.64em
     );
   }
   .mark-warn {
     background-image: linear-gradient(
       to top,
-      oklch(var(--warn-soft)) 0,
-      oklch(var(--warn-soft)) 0.5em,
-      transparent 0.5em
+      oklch(85% 0.105 75) 0,
+      oklch(85% 0.105 75) 0.64em,
+      transparent 0.64em
     );
   }
 
