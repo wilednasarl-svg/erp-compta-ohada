@@ -3,18 +3,18 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
-  BookText,
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart3,
   CalendarCheck,
   FileUp,
   Link2,
-  Percent,
-  Banknote,
   PenLine,
-  BarChart3,
-  Sparkles,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 
 import { api, ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -28,20 +28,12 @@ interface PendingCounts {
   tvaDeclarations: number;
 }
 
-interface RecentActivity {
-  module: string;
-  action: string;
-  entityType: string | null;
-  createdAt: string;
-}
-
 export interface AccueilSummary {
   pending: PendingCounts;
   exercise: { label: string } | null;
   activePeriod: { label: string; endDate: string } | null;
   entriesThisMonth: number;
   score: { value: number; grade: string } | null;
-  recentActivity: RecentActivity[];
 }
 
 interface AccueilBentoProps {
@@ -55,49 +47,40 @@ interface AccueilBentoProps {
   readonly dateLabel: string;
 }
 
+interface CashTrend {
+  points: ReadonlyArray<{ yearMonth: string; netCash: string }>;
+  currentNetCash: string;
+}
+
 /* ─── Helpers ─────────────────────────────────────────────────── */
 
-function formatFcfa(value: number): string {
-  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value)} FCFA`;
+function formatCompact(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M`;
+  if (abs >= 1_000) return `${(value / 1_000).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} k`;
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
 }
 
-function scoreTone(value: number): { ring: string; text: string; word: string } {
-  if (value >= 80) return { ring: 'oklch(var(--accent))', text: 'text-accent-ink', word: 'Très bon' };
-  if (value >= 60) return { ring: 'oklch(var(--warn))', text: 'text-warn-ink', word: 'Correct' };
-  return { ring: 'oklch(var(--critical))', text: 'text-critical-ink', word: 'À surveiller' };
+function scoreTone(value: number): { stroke: string; text: string; word: string } {
+  if (value >= 80) return { stroke: 'oklch(var(--accent))', text: 'text-accent-ink', word: 'Très bon' };
+  if (value >= 60) return { stroke: 'oklch(var(--warn))', text: 'text-warn-ink', word: 'Correct' };
+  return { stroke: 'oklch(var(--critical))', text: 'text-critical-ink', word: 'À surveiller' };
 }
 
-const MODULE_ICON: Record<string, LucideIcon> = {
-  journal: BookText,
-  entry: PenLine,
-  lettering: Link2,
-  bank: Banknote,
-  tva: Percent,
-  report: BarChart3,
-  import: FileUp,
-};
-
-function moduleIcon(module: string): LucideIcon {
-  const key = Object.keys(MODULE_ICON).find((k) => module.toLowerCase().includes(k));
-  return key ? MODULE_ICON[key]! : Sparkles;
-}
-
-function relTime(iso: string, now: number): string {
-  const diff = Math.max(0, now - new Date(iso).getTime());
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "à l'instant";
-  if (min < 60) return `il y a ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `il y a ${h} h`;
-  const d = Math.floor(h / 24);
-  return d === 1 ? 'hier' : `il y a ${d} j`;
+function monthRange(): { fromMonth: string; toMonth: string } {
+  const ym = (back: number): string => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - back);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  return { fromMonth: ym(5), toMonth: ym(0) };
 }
 
 /* ─── Component ────────────────────────────────────────────────── */
 
 export function AccueilBento({
   orgId,
-  exerciseId,
   userName,
   orgName,
   summary,
@@ -105,15 +88,16 @@ export function AccueilBento({
   greeting,
   dateLabel,
 }: AccueilBentoProps) {
-  const treasuryQuery = useQuery<number | null, ApiError>({
-    queryKey: ['accueil-treasury', orgId, exerciseId],
+  const range = useMemo(() => monthRange(), []);
+  const trendQuery = useQuery<CashTrend, ApiError>({
+    queryKey: ['accueil-cash-trend', orgId, range.fromMonth, range.toMonth],
     queryFn: async () => {
-      const data = await api.get<{ cashBalance?: string }>(
-        `/organizations/${orgId}/dashboards/summary?exerciseId=${exerciseId}`,
+      const data = await api.get<{ report: CashTrend }>(
+        `/organizations/${orgId}/reports/cash-trend?fromMonth=${range.fromMonth}&toMonth=${range.toMonth}`,
       );
-      return data.cashBalance != null ? parseFloat(data.cashBalance) : null;
+      return data.report;
     },
-    enabled: orgId !== '' && exerciseId !== '',
+    enabled: orgId !== '',
     staleTime: 60_000,
   });
 
@@ -122,133 +106,99 @@ export function AccueilBento({
   const pendingTotal = pending
     ? pending.entries + pending.bankLines + pending.auxLettering + pending.tvaDeclarations
     : 0;
-  const now = Date.now();
+
+  const series = (trendQuery.data?.points ?? []).map((p) => Number(p.netCash));
+  const cash = trendQuery.data?.currentNetCash != null ? Number(trendQuery.data.currentNetCash) : null;
+  const cashTrendPct =
+    series.length >= 2 && series[0] !== 0
+      ? ((series[series.length - 1]! - series[0]!) / Math.abs(series[0]!)) * 100
+      : null;
 
   return (
-    <section aria-label="Accueil" className="space-y-6">
-      {/* Greeting */}
-      <div>
-        <h1 className="font-display text-4xl leading-none text-ink">
+    <section aria-label="Accueil" className="space-y-7">
+      {/* Greeting — warm but compact, the instruments carry the page */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h1 className="font-display text-3xl leading-none text-ink">
           {greeting} {userName}
         </h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          Voici l’essentiel de <span className="font-medium text-ink">{orgName}</span>, {dateLabel}.
-        </p>
+        <p className="text-sm text-ink-mute">{dateLabel}</p>
       </div>
 
       {notConfigured ? (
         <WelcomeSetup />
       ) : (
         <>
-          {/* Bento grid — varied tile sizes, never a uniform card grid */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:grid-rows-2">
-            {/* Santé — large focal tile */}
-            <div className="col-span-2 row-span-2 flex flex-col justify-between rounded-lg border border-line bg-paper p-6">
-              <p className="eyebrow">Santé du dossier</p>
-              <div className="flex items-center gap-6 py-2">
-                <ScoreGauge value={summary?.score?.value ?? null} loading={isLoading} />
-                <div>
-                  {summary?.score ? (
-                    <>
-                      <p className={cn('text-2xl font-semibold', scoreTone(summary.score.value).text)}>
-                        {scoreTone(summary.score.value).word}
-                      </p>
-                      <p className="mt-1 text-sm text-ink-mute">
-                        Indice qualité OHADA, mis à jour en continu.
-                      </p>
-                      <Link
-                        href="/accounting-score"
-                        className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-accent-ink hover:underline"
-                      >
-                        Voir le détail <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      </Link>
-                    </>
-                  ) : (
-                    <p className="text-sm text-ink-mute">Le score apparaîtra dès vos premières écritures.</p>
+          <p className="-mt-3 text-sm text-ink-soft">
+            Voici l’état de <span className="font-medium text-ink">{orgName}</span> en un coup d’œil.
+          </p>
+
+          {/* Instrument panel — four distinct visual instruments */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {/* 1. Santé — full ring */}
+            <Instrument label="Santé du dossier">
+              <ScoreRing value={summary?.score?.value ?? null} loading={isLoading} />
+              <Caption>
+                {summary?.score ? scoreTone(summary.score.value).word : 'En attente d’écritures'}
+              </Caption>
+            </Instrument>
+
+            {/* 2. Trésorerie — real sparkline */}
+            <Instrument label="Trésorerie">
+              <div className="flex h-[88px] w-full flex-col justify-center">
+                <div className="flex items-baseline gap-2">
+                  <span className="num text-2xl font-semibold tabular-nums text-ink">
+                    {trendQuery.isLoading ? '···' : cash != null ? formatCompact(cash) : '—'}
+                  </span>
+                  {cashTrendPct != null && (
+                    <span
+                      className={cn(
+                        'inline-flex items-center text-xs font-medium',
+                        cashTrendPct >= 0 ? 'text-accent-ink' : 'text-critical-ink',
+                      )}
+                    >
+                      {cashTrendPct >= 0 ? (
+                        <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
+                      ) : (
+                        <ArrowDownRight className="h-3.5 w-3.5" strokeWidth={2} />
+                      )}
+                      {Math.abs(cashTrendPct).toFixed(0)} %
+                    </span>
                   )}
                 </div>
+                <Sparkline values={series} positive={(cashTrendPct ?? 0) >= 0} />
               </div>
-            </div>
+              <Caption>FCFA, 6 derniers mois</Caption>
+            </Instrument>
 
-            {/* Trésorerie — wide tile */}
-            <div className="col-span-2 flex flex-col justify-between rounded-lg border border-line bg-paper p-6">
-              <div className="flex items-center justify-between">
-                <p className="eyebrow">Trésorerie</p>
-                <Banknote className="h-4 w-4 text-ink-mute" strokeWidth={1.5} />
+            {/* 3. À traiter — segmented pastille */}
+            <Instrument label="À traiter">
+              <div className="flex h-[88px] flex-col items-center justify-center">
+                <span
+                  className={cn(
+                    'num text-4xl font-semibold tabular-nums',
+                    pendingTotal > 0 ? 'text-warn-ink' : 'text-accent-ink',
+                  )}
+                >
+                  {pendingTotal}
+                </span>
               </div>
-              <p className="num mt-3 text-3xl font-semibold tabular-nums text-ink">
-                {treasuryQuery.isLoading
-                  ? '···'
-                  : treasuryQuery.data != null
-                    ? formatFcfa(treasuryQuery.data)
-                    : '—'}
-              </p>
-              <Link
-                href="/dashboards/treasury"
-                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent-ink hover:underline"
-              >
-                Trésorerie détaillée <ArrowRight className="h-3 w-3" strokeWidth={1.5} />
-              </Link>
-            </div>
+              <div className="mt-1 flex w-full justify-center gap-3">
+                <Segment href="/entry-workflow" label="Écr." count={pending?.entries ?? 0} />
+                <Segment href="/bank-reconciliation" label="Banq." count={pending?.bankLines ?? 0} />
+                <Segment href="/lettering" label="Lettr." count={pending?.auxLettering ?? 0} />
+                <Segment href="/tva" label="TVA" count={pending?.tvaDeclarations ?? 0} />
+              </div>
+            </Instrument>
 
-            {/* À traiter — count + breakdown */}
-            <div className="col-span-1 rounded-lg border border-line bg-paper p-5">
-              <p className="eyebrow">À traiter</p>
-              <p
-                className={cn(
-                  'mt-1 text-3xl font-semibold tabular-nums',
-                  pendingTotal > 0 ? 'text-warn-ink' : 'text-accent-ink',
-                )}
-              >
-                {pendingTotal}
-              </p>
-              <ul className="mt-3 space-y-1.5">
-                <PendingRow href="/entry-workflow" label="Écritures" count={pending?.entries ?? 0} />
-                <PendingRow href="/bank-reconciliation" label="Banque" count={pending?.bankLines ?? 0} />
-                <PendingRow href="/lettering" label="Lettrage" count={pending?.auxLettering ?? 0} />
-                <PendingRow href="/tva" label="TVA" count={pending?.tvaDeclarations ?? 0} />
-              </ul>
-            </div>
-
-            {/* Période */}
-            <div className="col-span-1 flex flex-col justify-between rounded-lg border border-line bg-paper p-5">
-              <div className="flex items-center justify-between">
-                <p className="eyebrow">Période</p>
-                <CalendarCheck className="h-4 w-4 text-ink-mute" strokeWidth={1.5} />
-              </div>
-              <div className="mt-3">
-                <p className="text-lg font-semibold text-ink">
-                  {summary?.activePeriod?.label ?? '—'}
-                </p>
-                <p className="mt-0.5 text-xs text-ink-mute">{summary?.exercise?.label ?? ''}</p>
-              </div>
-              <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-xs bg-accent-soft px-2 py-1 text-2xs uppercase tracking-wider text-accent-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-                Ouverte
-              </span>
-            </div>
+            {/* 4. Période — semicircle progress arc */}
+            <Instrument label="Période">
+              <PeriodArc endDate={summary?.activePeriod?.endDate ?? null} />
+              <Caption>
+                <span className="font-medium text-ink">{summary?.activePeriod?.label ?? '—'}</span>
+                {summary?.activePeriod ? ' ouverte' : ''}
+              </Caption>
+            </Instrument>
           </div>
-
-          {/* Activité récente — full-width visual strip */}
-          {(summary?.recentActivity.length ?? 0) > 0 && (
-            <div className="rounded-lg border border-line bg-paper p-5">
-              <p className="eyebrow mb-3">Activité récente</p>
-              <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                {summary!.recentActivity.slice(0, 6).map((a, i) => {
-                  const Icon = moduleIcon(a.module);
-                  return (
-                    <li key={`${a.createdAt}-${i}`} className="flex items-center gap-2.5">
-                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-sunk text-ink-soft">
-                        <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{a.action}</span>
-                      <span className="shrink-0 text-2xs text-ink-mute">{relTime(a.createdAt, now)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
 
           {/* Action launchers */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -263,62 +213,156 @@ export function AccueilBento({
   );
 }
 
-/* ─── Subcomponents ───────────────────────────────────────────── */
+/* ─── Instrument frame + caption ──────────────────────────────── */
 
-function ScoreGauge({ value, loading }: { value: number | null; loading: boolean }) {
-  const r = 42;
+function Instrument({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center rounded-lg border border-line bg-paper p-5 text-center">
+      <p className="eyebrow mb-3">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function Caption({ children }: { children: ReactNode }) {
+  return <p className="mt-3 text-xs text-ink-mute">{children}</p>;
+}
+
+/* ─── Instrument 1 — score ring ───────────────────────────────── */
+
+function ScoreRing({ value, loading }: { value: number | null; loading: boolean }) {
+  const r = 38;
   const c = 2 * Math.PI * r;
   const pct = value != null ? Math.max(0, Math.min(100, value)) / 100 : 0;
-  const tone = value != null ? scoreTone(value).ring : 'oklch(var(--line-strong))';
+  const stroke = value != null ? scoreTone(value).stroke : 'oklch(var(--line-strong))';
 
   return (
-    <div className="relative h-28 w-28 shrink-0">
-      <svg viewBox="0 0 100 100" className="h-28 w-28 -rotate-90">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="oklch(var(--sunk))" strokeWidth="9" />
+    <div className="relative h-[88px] w-[88px]">
+      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="oklch(var(--sunk))" strokeWidth="8" />
         {value != null && (
           <circle
             cx="50"
             cy="50"
             r={r}
             fill="none"
-            stroke={tone}
-            strokeWidth="9"
+            stroke={stroke}
+            strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - pct)}
           />
         )}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <div className="absolute inset-0 flex items-center justify-center">
         <span className="num text-2xl font-semibold tabular-nums text-ink">
           {loading ? '··' : value != null ? value : '—'}
         </span>
-        {value != null && <span className="text-2xs uppercase tracking-wider text-ink-mute">sur 100</span>}
       </div>
     </div>
   );
 }
 
-function PendingRow({ href, label, count }: { href: string; label: string; count: number }) {
+/* ─── Instrument 2 — sparkline ────────────────────────────────── */
+
+function Sparkline({ values, positive }: { values: number[]; positive: boolean }) {
+  if (values.length < 2) {
+    return <div className="mt-2 h-9 w-full rounded-sm bg-sunk/50" aria-hidden />;
+  }
+  const w = 120;
+  const h = 34;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - ((v - min) / span) * (h - 4) - 2;
+    return [x, y] as const;
+  });
+  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const color = positive ? 'oklch(var(--accent))' : 'oklch(var(--critical))';
+
   return (
-    <li>
-      <Link
-        href={href}
-        className="flex items-center justify-between rounded-sm px-1.5 py-1 text-xs transition-colors duration-fast hover:bg-sunk"
-      >
-        <span className="text-ink-soft">{label}</span>
-        <span
-          className={cn(
-            'num tabular-nums font-medium',
-            count > 0 ? 'text-warn-ink' : 'text-ink-mute',
-          )}
-        >
-          {count}
-        </span>
-      </Link>
-    </li>
+    <svg viewBox={`0 0 ${w} ${h}`} className="mt-2 h-9 w-full" preserveAspectRatio="none">
+      <path d={area} fill={color} fillOpacity={0.1} />
+      <path
+        d={line}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }
+
+/* ─── Instrument 3 — pending segment ──────────────────────────── */
+
+function Segment({ href, label, count }: { href: string; label: string; count: number }) {
+  const active = count > 0;
+  return (
+    <Link href={href} className="group flex flex-col items-center gap-1" title={`${count} ${label}`}>
+      <span
+        className={cn(
+          'inline-flex h-6 w-6 items-center justify-center rounded-full text-2xs font-semibold tabular-nums',
+          active ? 'bg-warn-soft text-warn-ink' : 'bg-sunk text-ink-mute',
+        )}
+      >
+        {count}
+      </span>
+      <span className="text-[10px] text-ink-mute group-hover:text-ink-soft">{label}</span>
+    </Link>
+  );
+}
+
+/* ─── Instrument 4 — period arc ───────────────────────────────── */
+
+function PeriodArc({ endDate }: { endDate: string | null }) {
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const frac = Math.max(0, Math.min(1, now.getDate() / daysInMonth));
+
+  const remaining = endDate
+    ? Math.max(0, Math.ceil((new Date(endDate).getTime() - now.getTime()) / 86_400_000))
+    : null;
+
+  // Semicircle: radius 38, from (7,45) to (83,45)
+  const len = Math.PI * 38;
+
+  return (
+    <div className="relative flex h-[88px] w-full items-end justify-center">
+      <svg viewBox="0 0 90 50" className="h-[72px] w-[120px]">
+        <path
+          d="M7,45 A38,38 0 0 1 83,45"
+          fill="none"
+          stroke="oklch(var(--sunk))"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M7,45 A38,38 0 0 1 83,45"
+          fill="none"
+          stroke="oklch(var(--accent))"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={len}
+          strokeDashoffset={len * (1 - frac)}
+        />
+      </svg>
+      <div className="absolute bottom-1 flex flex-col items-center">
+        <span className="num text-lg font-semibold tabular-nums text-ink">
+          {remaining != null ? `J-${remaining}` : '—'}
+        </span>
+        <span className="text-[10px] text-ink-mute">avant clôture</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Action launchers + welcome ──────────────────────────────── */
 
 function ActionTile({
   href,
@@ -336,7 +380,7 @@ function ActionTile({
       href={href}
       className="group flex flex-col gap-2 rounded-lg border border-line bg-paper p-5 transition-colors duration-fast hover:border-line-strong hover:bg-sunk/40"
     >
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-accent-soft text-accent-ink transition-transform duration-base group-hover:-translate-y-0.5">
         <Icon className="h-5 w-5" strokeWidth={1.5} />
       </span>
       <span className="mt-1 text-sm font-semibold text-ink">{label}</span>
