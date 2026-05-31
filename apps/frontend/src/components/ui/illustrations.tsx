@@ -104,6 +104,24 @@ export function IllustrationScale({ className }: IllustrationProps) {
   );
 }
 
+/** Maillon rompu — connexion indisponible (page hors-ligne). */
+export function IllustrationOffline({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 132 80" fill="none" role="img" aria-hidden className={className}>
+      <g {...LINE}>
+        <path d="M62 26 H42 a14 14 0 0 0 0 28 h20" />
+        <path d="M70 26 H90 a14 14 0 0 1 0 28 H70" />
+      </g>
+      <g stroke={ACCENT} strokeWidth={2.4} strokeLinecap="round">
+        <path d="M66 16 v8" />
+        <path d="M66 56 v8" />
+        <path d="M78 14 l-4 7" opacity={0.7} />
+        <path d="M54 14 l4 7" opacity={0.7} />
+      </g>
+    </svg>
+  );
+}
+
 /** Documents + coche — suivi opérationnel, à traiter. Monochrome. */
 export function IllustrationDocs({ className }: IllustrationProps) {
   return (
