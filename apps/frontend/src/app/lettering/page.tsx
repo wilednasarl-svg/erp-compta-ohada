@@ -1,7 +1,7 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Link2, Link2Off, Loader2, Wand2 } from 'lucide-react';
+import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { Check, CheckCircle2, Link2, Link2Off, Loader2, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -43,6 +43,22 @@ interface AutoLetterResult {
   readonly skippedError: number;
 }
 
+interface AutoLetterPreview {
+  readonly groupsConsidered: number;
+  readonly wouldLetter: number;
+  readonly wouldLetterLines: number;
+  readonly skippedSingleton: number;
+  readonly skippedUnbalanced: number;
+  readonly suggestions: ReadonlyArray<{
+    readonly invoiceNumber: string;
+    readonly partnerAccountId: string;
+    readonly partnerAccountCode: string;
+    readonly partnerLabel: string;
+    readonly lineCount: number;
+    readonly totalAmount: string;
+  }>;
+}
+
 const STATUS_LABEL: Record<LetteringStatus, string> = {
   open: 'Ouvert',
   completed: 'Soldé',
@@ -74,6 +90,132 @@ function codeTint(code: string): string {
   return CODE_TINTS[h % CODE_TINTS.length]!;
 }
 
+const PREVIEW_FMT = new Intl.NumberFormat('fr-FR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/* ─── Panneau de prévisualisation (dry-run avant validation) ─── */
+
+function LetteringPreviewPanel({
+  query,
+  validating,
+  onCancel,
+  onValidate,
+}: {
+  query: UseQueryResult<AutoLetterPreview, ApiError>;
+  validating: boolean;
+  onCancel: () => void;
+  onValidate: () => void;
+}) {
+  if (query.isLoading) {
+    return (
+      <div className="flex items-center gap-2 rounded-sm border border-line bg-paper px-4 py-4 text-sm text-ink-mute">
+        <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
+        Analyse des factures à rapprocher…
+      </div>
+    );
+  }
+
+  if (query.isError || query.data === undefined) {
+    return (
+      <div className="space-y-3 rounded-sm border border-line bg-paper p-5">
+        <p className="text-sm font-medium text-ink">Impossible de calculer la prévisualisation.</p>
+        {query.error ? <FormError error={query.error} /> : null}
+        <Button type="button" variant="secondary" className="press" onClick={onCancel}>
+          Fermer
+        </Button>
+      </div>
+    );
+  }
+
+  const p = query.data;
+
+  if (p.wouldLetter === 0) {
+    return (
+      <div className="rounded-sm border border-line bg-paper p-5">
+        <p className="text-sm font-medium text-ink">Aucune facture à lettrer automatiquement.</p>
+        <p className="mt-1 text-xs text-ink-mute">
+          {p.groupsConsidered} groupe(s) analysé(s) : {p.skippedUnbalanced} non soldé(s),{' '}
+          {p.skippedSingleton} isolé(s).
+        </p>
+        <Button type="button" variant="secondary" className="press mt-4" onClick={onCancel}>
+          Fermer
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 rounded-sm border border-line bg-paper p-5">
+      <div className="flex items-start gap-3 rounded-sm border border-accent/40 bg-accent-soft px-4 py-3">
+        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent-ink" strokeWidth={1.5} />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-accent-ink">
+            {p.wouldLetter} facture{p.wouldLetter > 1 ? 's' : ''} ({p.wouldLetterLines} lignes) peuvent
+            être lettrées par montant identique
+          </p>
+          <p className="mt-1 text-xs text-ink-mute">
+            Aucune écriture n&apos;est encore modifiée : vérifiez puis validez.
+          </p>
+        </div>
+      </div>
+
+      <div className="max-h-[42vh] overflow-auto rounded-sm border border-line">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-sunk">
+            <tr className="border-b border-line">
+              <th className="px-3 py-2.5 text-left"><span className="eyebrow">N° facture</span></th>
+              <th className="px-3 py-2.5 text-left"><span className="eyebrow">Compte tiers</span></th>
+              <th className="px-3 py-2.5 text-center"><span className="eyebrow">Lignes</span></th>
+              <th className="px-3 py-2.5 text-right"><span className="eyebrow">Montant</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {p.suggestions.map((s) => (
+              <tr
+                key={`${s.partnerAccountId}-${s.invoiceNumber}`}
+                className="border-b border-line last:border-0"
+              >
+                <td className="px-3 py-2.5 font-mono text-xs text-ink">{s.invoiceNumber}</td>
+                <td className="px-3 py-2.5">
+                  <span className="mr-2 rounded-xs bg-sunk px-1.5 py-0.5 font-mono text-[10px] text-ink-soft">
+                    {s.partnerAccountCode}
+                  </span>
+                  <span className="text-ink-soft">{s.partnerLabel}</span>
+                </td>
+                <td className="px-3 py-2.5 text-center font-mono text-xs text-ink">{s.lineCount}</td>
+                <td className="num px-3 py-2.5 text-right text-xs tabular-nums text-ink">
+                  {PREVIEW_FMT.format(Number(s.totalAmount))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={validating}
+          className="press rounded-sm border border-line-strong bg-canvas px-4 py-2 text-sm font-medium text-ink transition-colors duration-fast hover:bg-sunk disabled:opacity-50"
+        >
+          Annuler
+        </button>
+        <Button type="button" className="press" disabled={validating} onClick={onValidate}>
+          {validating ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="mr-2 h-4 w-4" />
+          )}
+          Valider le lettrage ({p.wouldLetter})
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Page ───────────────────────────────────────────────────── */
 
 export default function LetteringPage() {
@@ -83,6 +225,7 @@ export default function LetteringPage() {
 
   const [lineIdsText, setLineIdsText] = useState('');
   const [statusFilter, setStatusFilter] = useState<LetteringStatus | ''>('');
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const query = useQuery<ReadonlyArray<LetteringView>, ApiError>({
     queryKey: ['letterings', orgId, statusFilter],
@@ -112,6 +255,17 @@ export default function LetteringPage() {
       {},
     );
     return data.result;
+  });
+
+  const previewQuery = useQuery<AutoLetterPreview, ApiError>({
+    queryKey: ['lettering-preview', orgId],
+    queryFn: async () => {
+      const data = await api.get<{ preview: AutoLetterPreview }>(
+        `/organizations/${orgId}/letterings/auto-by-invoice/preview`,
+      );
+      return data.preview;
+    },
+    enabled: previewOpen && orgId !== '',
   });
 
   async function handleAuto(): Promise<void> {
@@ -223,23 +377,30 @@ export default function LetteringPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <Button
-              type="button"
-              variant="secondary"
-              className="press"
-              disabled={autoMut.isPending || orgId === ''}
-              onClick={() => void handleAuto()}
-            >
-              {autoMut.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
+          {!previewOpen ? (
+            <div className="flex flex-wrap items-center gap-4">
+              <Button
+                type="button"
+                variant="secondary"
+                className="press"
+                disabled={orgId === ''}
+                onClick={() => setPreviewOpen(true)}
+              >
                 <Wand2 className="mr-2 h-4 w-4" />
-              )}
-              Lettrer automatiquement par facture
-            </Button>
-
-          </div>
+                Prévisualiser le lettrage automatique
+              </Button>
+            </div>
+          ) : (
+            <LetteringPreviewPanel
+              query={previewQuery}
+              validating={autoMut.isPending}
+              onCancel={() => setPreviewOpen(false)}
+              onValidate={async () => {
+                await handleAuto();
+                setPreviewOpen(false);
+              }}
+            />
+          )}
 
           {autoMut.data !== undefined && (
             <div className="flex items-start gap-3 rounded-sm border border-accent/40 bg-accent-soft px-4 py-3">

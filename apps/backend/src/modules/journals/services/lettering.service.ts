@@ -59,6 +59,25 @@ export interface AutoLetterByInvoiceResult {
 }
 
 /**
+ * Résultat du dry-run d'auto-lettrage : ce qui SERAIT lettré, sans rien créer.
+ */
+export interface AutoLetterPreviewResult {
+  readonly groupsConsidered: number;
+  readonly wouldLetter: number;
+  readonly wouldLetterLines: number;
+  readonly skippedSingleton: number;
+  readonly skippedUnbalanced: number;
+  readonly suggestions: ReadonlyArray<{
+    readonly invoiceNumber: string;
+    readonly partnerAccountId: string;
+    readonly partnerAccountCode: string;
+    readonly partnerLabel: string;
+    readonly lineCount: number;
+    readonly totalAmount: string;
+  }>;
+}
+
+/**
  * `LetteringService` — Module 8 wave 2 partner-account reconciliation.
  *
  * Lettrage groups N journal-entry lines on the same partner account
@@ -369,6 +388,89 @@ export class LetteringService {
       skippedUnbalanced,
       skippedError,
       letterings,
+    };
+  }
+
+  /**
+   * Dry-run de `autoLetterByInvoice` : applique le MÊME regroupement
+   * (compte, facture) et le MÊME contrôle d'équilibre, mais ne crée RIEN.
+   * Retourne les factures qui SERAIENT lettrées, pour prévisualisation
+   * avant validation. Lecture seule, aucun effet de bord.
+   */
+  async previewAutoLetterByInvoice(
+    organizationId: TenantId,
+    options: AutoLetterByInvoiceOptions,
+  ): Promise<AutoLetterPreviewResult> {
+    assertTenantId(organizationId);
+
+    const candidates = await this.lineRepo.listUnletteredPartnerLinesWithInvoice(organizationId, {
+      partnerAccountId: options.partnerAccountId,
+    });
+
+    const groups = new Map<
+      string,
+      {
+        partnerAccountId: string;
+        partnerAccountCode: string;
+        partnerLabel: string;
+        invoiceNumber: string;
+        lines: typeof candidates;
+      }
+    >();
+    for (const line of candidates) {
+      const invoice = (line.invoiceNumber ?? '').trim();
+      if (invoice === '') continue;
+      const key = `${line.accountId}|${invoice}`;
+      const bucket = groups.get(key);
+      if (bucket === undefined) {
+        groups.set(key, {
+          partnerAccountId: line.accountId,
+          partnerAccountCode: line.account.code,
+          partnerLabel: line.account.label,
+          invoiceNumber: invoice,
+          lines: [line],
+        });
+      } else {
+        bucket.lines.push(line);
+      }
+    }
+
+    let wouldLetter = 0;
+    let wouldLetterLines = 0;
+    let skippedSingleton = 0;
+    let skippedUnbalanced = 0;
+    const suggestions: Array<AutoLetterPreviewResult['suggestions'][number]> = [];
+
+    for (const group of groups.values()) {
+      if (group.lines.length < 2) {
+        skippedSingleton += 1;
+        continue;
+      }
+      const totalDebit = group.lines.reduce((s, l) => s + Number(l.debit), 0);
+      const totalCredit = group.lines.reduce((s, l) => s + Number(l.credit), 0);
+      if (Math.abs(totalDebit - totalCredit) > LetteringService.BALANCE_TOLERANCE) {
+        skippedUnbalanced += 1;
+        continue;
+      }
+      wouldLetter += 1;
+      wouldLetterLines += group.lines.length;
+      suggestions.push({
+        invoiceNumber: group.invoiceNumber,
+        partnerAccountId: group.partnerAccountId,
+        partnerAccountCode: group.partnerAccountCode,
+        partnerLabel: group.partnerLabel,
+        lineCount: group.lines.length,
+        totalAmount: totalDebit.toFixed(2),
+      });
+    }
+
+    return {
+      groupsConsidered: groups.size,
+      wouldLetter,
+      wouldLetterLines,
+      skippedSingleton,
+      skippedUnbalanced,
+      suggestions,
     };
   }
 

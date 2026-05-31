@@ -31,6 +31,7 @@ import type { LetteringStatus } from '../entities/partner-lettering.entity';
 import {
   LetteringService,
   type AutoLetterByInvoiceResult,
+  type AutoLetterPreviewResult,
   type LetteringView,
 } from '../services/lettering.service';
 
@@ -93,6 +94,26 @@ export class LetteringsController {
       buildAuditRequestContext(req),
     );
     return { result };
+  }
+
+  @Get('auto-by-invoice/preview')
+  @RequirePermission('journals.read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Prévisualisation du lettrage automatique par N° de facture (dry-run)',
+    description:
+      'Calcule les factures qui seraient lettrées (mêmes règles que le lettrage ' +
+      'automatique) sans rien créer. Permet de valider avant de lettrer.',
+  })
+  async previewAutoByInvoice(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Query('partnerAccountId') partnerAccountId?: string,
+  ): Promise<{ preview: AutoLetterPreviewResult }> {
+    const preview = await this.letterings.previewAutoLetterByInvoice(asTenantId(org.id), {
+      partnerAccountId,
+    });
+    return { preview };
   }
 
   @Get()
