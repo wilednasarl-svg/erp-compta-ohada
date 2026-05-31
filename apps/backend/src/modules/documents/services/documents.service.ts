@@ -22,6 +22,8 @@ import {
 import { DocumentEntryRepository } from '../repositories/document-entry.repository';
 import { DOCUMENT_STORAGE, type DocumentStorage } from './document-storage.interface';
 import { DocumentOcrService } from './document-ocr.service';
+import { extractInvoice } from './invoice-extractor';
+import { buildPurchaseEntryProposal } from './journal-entry-proposal';
 import { extractInvoiceMetadata } from './metadata-extractor';
 import { OCR_PROVIDER, type OcrProvider } from './ocr-provider';
 
@@ -411,14 +413,27 @@ export class DocumentsService {
         return;
       }
 
+      // Quick canonical fields (back-compat top-level keys) + the rich
+      // structured invoice (full header, lines, totals) + a proposed
+      // SYSCOHADA purchase entry. All persisted in the `extracted_metadata`
+      // jsonb column; the proposal is a suggestion the UI can turn into a
+      // journal entry (charge account flagged for user confirmation).
       const metadata = extractInvoiceMetadata(result.text);
+      let extractedMetadata: Record<string, unknown> | null = null;
+      if (result.text.trim().length > 0) {
+        const invoice = extractInvoice(result.text);
+        const proposedEntry = buildPurchaseEntryProposal(invoice);
+        extractedMetadata = { ...metadata, invoice, proposedEntry };
+      } else if (Object.keys(metadata).length > 0) {
+        extractedMetadata = metadata;
+      }
 
       await this.documents.updateOcrResult(organizationId, documentId, {
         ocrStatus: 'processed',
         ocrText: result.text,
         ocrConfidence: result.confidence,
         ocrProcessedAt: new Date(),
-        extractedMetadata: Object.keys(metadata).length > 0 ? metadata : null,
+        extractedMetadata,
       });
     } catch (error: unknown) {
       this.logger.warn(
