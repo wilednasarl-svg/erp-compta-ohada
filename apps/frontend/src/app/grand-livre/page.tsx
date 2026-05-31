@@ -170,7 +170,7 @@ export default function GrandLivrePage() {
     enabled: orgId !== '' && datesReady && selectedAccountId !== null,
   });
 
-  const accounts = tbQuery.data?.rows ?? [];
+  const accounts = useMemo(() => tbQuery.data?.rows ?? [], [tbQuery.data]);
   const filteredAccounts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (q === '') return accounts;

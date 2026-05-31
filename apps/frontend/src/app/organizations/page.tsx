@@ -84,7 +84,7 @@ export default function OrganizationsPage() {
     api.post<SelectOrganizationResponse>('/auth/select-organization', { organizationId }),
   );
 
-  const orgs = orgsQuery.data ?? [];
+  const orgs = useMemo(() => orgsQuery.data ?? [], [orgsQuery.data]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
