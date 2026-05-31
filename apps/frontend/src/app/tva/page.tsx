@@ -100,7 +100,9 @@ export default function TvaPage() {
         {/* ─── Header ─────────────────────────────────────── */}
         <header>
           <p className="eyebrow mb-2">Fiscalité</p>
-          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">TVA</h1>
+          <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
+            <span className="mark">TVA</span>
+          </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
             Codes TVA et déclarations mensuelles SYSCOHADA. La déclaration agrège
             automatiquement les écritures validées en collectée / déductible et calcule
@@ -160,7 +162,7 @@ export default function TvaPage() {
         <section aria-labelledby="codes-title" className="space-y-5">
           <div className="border-b border-line pb-3">
             <h2 id="codes-title" className="font-display text-xl font-medium text-ink">
-              Codes TVA
+              <span className="mark">Codes TVA</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               Référentiel des taux applicables. Par défaut OHADA : TVA-N-18 (18 %),
@@ -321,7 +323,7 @@ export default function TvaPage() {
         <section aria-labelledby="decl-title" className="space-y-5">
           <div className="border-b border-line pb-3">
             <h2 id="decl-title" className="font-display text-xl font-medium text-ink">
-              Déclarations mensuelles
+              <span className="mark">Déclarations mensuelles</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               Calcule la déclaration TVA pour un mois donné — agrège les écritures

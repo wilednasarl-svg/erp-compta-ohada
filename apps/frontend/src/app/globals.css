@@ -176,6 +176,41 @@
     letter-spacing: -0.02em;
   }
 
+  /*
+   * .mark — editorial highlighter ("surligneur") behind heading text.
+   * Paints an accent-soft band across the lower part of the text only, so it
+   * hugs the words and wraps cleanly across lines. Draws the eye to titles and
+   * sharpens the reading hierarchy. Tone variants for non-accent contexts.
+   */
+  .mark {
+    background-image: linear-gradient(
+      to top,
+      oklch(var(--accent-soft)) 0,
+      oklch(var(--accent-soft)) 0.5em,
+      transparent 0.5em
+    );
+    padding-inline: 0.1em;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  .mark-info {
+    background-image: linear-gradient(
+      to top,
+      oklch(var(--info-soft)) 0,
+      oklch(var(--info-soft)) 0.5em,
+      transparent 0.5em
+    );
+  }
+  .mark-warn {
+    background-image: linear-gradient(
+      to top,
+      oklch(var(--warn-soft)) 0,
+      oklch(var(--warn-soft)) 0.5em,
+      transparent 0.5em
+    );
+  }
+
   /* Section eyebrow — uppercase microlabel */
   .eyebrow {
     font-size: 11px;

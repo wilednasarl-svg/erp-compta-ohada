@@ -130,7 +130,7 @@ export default function LetteringPage() {
         <header>
           <p className="eyebrow mb-2">Tiers</p>
           <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
-            Lettrage
+            <span className="mark">Lettrage</span>
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
             Réconciliation des comptes de tiers : créez un lettrage en sélectionnant des
@@ -188,7 +188,7 @@ export default function LetteringPage() {
         <section aria-labelledby="auto-lettering-title" className="space-y-4">
           <div className="border-b border-line pb-3">
             <h2 id="auto-lettering-title" className="font-display text-xl font-medium text-ink">
-              Lettrage automatique
+              <span className="mark">Lettrage automatique</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               Rapproche en un clic les lignes de tiers non lettrées partageant le même N° de
@@ -237,7 +237,7 @@ export default function LetteringPage() {
         <section aria-labelledby="new-lettering-title" className="space-y-5">
           <div className="border-b border-line pb-3">
             <h2 id="new-lettering-title" className="font-display text-xl font-medium text-ink">
-              Nouveau lettrage
+              <span className="mark">Nouveau lettrage</span>
             </h2>
             <p className="mt-1 text-xs text-ink-mute">
               IDs des lignes d'écriture (minimum 2, séparés par espace, virgule ou retour
@@ -277,7 +277,7 @@ export default function LetteringPage() {
           <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
             <div>
               <h2 id="list-title" className="font-display text-xl font-medium text-ink">
-                Lettrages
+                <span className="mark">Lettrages</span>
               </h2>
               {query.data !== undefined && (
                 <p className="mt-0.5 text-xs text-ink-mute">

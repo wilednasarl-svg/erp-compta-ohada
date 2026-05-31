@@ -136,7 +136,7 @@ export default function JournalsPage() {
         <header>
           <p className="eyebrow mb-2">Module 8 · Saisie</p>
           <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
-            Journaux &amp; Écritures
+            <span className="mark">Journaux &amp; Écritures</span>
           </h1>
           <p className="mt-2 text-sm text-ink-mute">
             Saisie, validation et contre-passation des écritures comptables. Un brouillon
@@ -199,7 +199,9 @@ export default function JournalsPage() {
         {/* Filtres */}
         <section className={PANEL_CLASS}>
           <div className="border-b border-line pb-3">
-            <h2 className="font-display text-xl font-medium text-ink">Filtres</h2>
+            <h2 className="font-display text-xl font-medium text-ink">
+              <span className="mark">Filtres</span>
+            </h2>
           </div>
           <div className="grid grid-cols-1 gap-3 pt-4 md:grid-cols-[200px_200px_1fr]">
             <div className="space-y-1">
@@ -272,7 +274,9 @@ export default function JournalsPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_2fr]">
           <section className={PANEL_CLASS}>
             <div className="border-b border-line pb-3">
-              <h2 className="font-display text-xl font-medium text-ink">Écritures</h2>
+              <h2 className="font-display text-xl font-medium text-ink">
+                <span className="mark">Écritures</span>
+              </h2>
               <p className="mt-1 text-sm text-ink-mute">
                 {entriesQuery.data?.total ?? 0} résultat(s) — page {page}
               </p>
@@ -734,7 +738,9 @@ function CreateEntrySection({ orgId, journals, onCreated }: CreateProps) {
   return (
     <section className={PANEL_CLASS}>
       <div className="border-b border-line pb-3">
-        <h2 className="font-display text-xl font-medium text-ink">Nouvelle écriture</h2>
+        <h2 className="font-display text-xl font-medium text-ink">
+          <span className="mark">Nouvelle écriture</span>
+        </h2>
         <p className="mt-1 text-sm text-ink-mute">
           Saisir l&apos;en-tête, puis au moins deux lignes équilibrées (Σ débit = Σ crédit).
           L&apos;écriture est créée en brouillon et peut être validée ensuite.
