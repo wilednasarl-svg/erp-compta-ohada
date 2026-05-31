@@ -53,6 +53,7 @@ import type { AccountView } from '@/types/accounting-plan';
 import { PeriodFilter } from './_components/period-filter';
 import { usePersistedAsAt, usePersistedPeriod } from './_components/period-store';
 import { BilanRatios } from './_components/bilan-ratios';
+import { CompteResultatRatios } from './_components/compte-resultat-ratios';
 import { ReportHelp } from './_components/report-help';
 import { ReportNav, getReportHint, getReportLabel, type ReportMode } from './_components/report-nav';
 import type {
@@ -1366,6 +1367,7 @@ function ProfitLossView({ report }: { readonly report: ProfitLossReport }) {
           colonnes avec SIG intercalés en gras dans la cascade. La ligne
           XI (résultat net) est encadrée (ring) pour finalité visuelle. */}
       <ProfitLossDoctrinalTable lines={report.lines} hasComp={report.previous !== undefined} />
+      <CompteResultatRatios report={report} />
       <ReportHelp topic="compte-resultat" />
     </div>
   );
