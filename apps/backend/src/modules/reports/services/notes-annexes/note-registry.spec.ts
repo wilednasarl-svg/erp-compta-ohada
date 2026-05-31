@@ -76,7 +76,7 @@ const STILL_STUB: ReadonlyArray<NoteId> = [] as ReadonlyArray<NoteId>;
 
 function emptyDeps(): NoteHandlerDependencies {
   return {
-    reports: { accountBalancesAsAt: async () => [] },
+    reports: { accountBalancesAsAt: async () => [], accountMovementsBetween: async () => [] },
     assets: {
       findAllForExercise: async () => [],
       findDepreciationForYear: async () => [],
