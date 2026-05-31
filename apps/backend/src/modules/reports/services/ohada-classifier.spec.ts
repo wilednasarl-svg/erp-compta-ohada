@@ -26,6 +26,14 @@ describe('classifyToPoste — routage par signe des comptes de tiers', () => {
     expect(amort?.asDeduction).toBe(true);
   });
 
+  it('garde les amortissements OPPOSANTS créditeurs en déduction de l’actif (pas au passif)', () => {
+    // Un amortissement a un solde créditeur ; le routage par signe ne doit
+    // PAS l'envoyer au passif — il reste en déduction du poste actif.
+    const amort = classifyToPoste('28110000', true, 'C');
+    expect(amort?.side).toBe('ACTIF');
+    expect(amort?.asDeduction).toBe(true);
+  });
+
   it('reste rétro-compatible sans signe fourni', () => {
     expect(classifyToPoste('41100000')?.side).toBe('ACTIF');
   });

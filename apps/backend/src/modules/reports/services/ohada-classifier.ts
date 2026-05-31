@@ -268,11 +268,15 @@ export function classifyToPoste(
   const maxLen = Math.max(...matches.map((m) => m.len));
   const top = matches.filter((m) => m.len === maxLen);
 
-  const wantSide = netSign === undefined ? undefined : netSign === 'D' ? 'ACTIF' : 'PASSIF';
+  // Le routage par signe ne s'applique PAS aux comptes opposants
+  // (amortissements/dépréciations 28/29/39/49/59) : bien que créditeurs,
+  // ils restent en DÉDUCTION de l'actif, pas au passif.
+  const wantSide =
+    netSign === undefined || isOpposing ? undefined : netSign === 'D' ? 'ACTIF' : 'PASSIF';
   const bySign = wantSide === undefined ? undefined : top.find((m) => m.poste.side === wantSide);
 
-  // Compte ambigu actif/passif → tranché par le signe ; sinon, à longueur
-  // égale, le match déduction l'emporte (note 3 — amortissements).
+  // Compte de tiers ambigu actif/passif → tranché par le signe ; sinon, à
+  // longueur égale, le match déduction l'emporte (note 3 — amortissements).
   const chosen: Match = bySign ?? top.find((m) => m.isDeduction) ?? top[0]!;
 
   return {
