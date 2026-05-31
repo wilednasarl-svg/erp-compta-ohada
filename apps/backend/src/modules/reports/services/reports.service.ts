@@ -1173,8 +1173,7 @@ export class ReportsService {
       // personnel uniquement. (Auparavant : VA sans 63/64/65 et EBE − 63,
       // ce qui divergeait du SIG.)
       const margeBrute = b.ca - b.achats;
-      const valeurAjoutee =
-        b.ca - b.achats - b.servicesExt - b.impotsTaxes - b.autresChargesExpl;
+      const valeurAjoutee = b.ca - b.achats - b.servicesExt - b.impotsTaxes - b.autresChargesExpl;
       const ebe = valeurAjoutee - b.personnel;
 
       // Compat ascendant : `autresCharges` = tout ce qui n'est ni achats
