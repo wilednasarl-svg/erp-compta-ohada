@@ -741,7 +741,11 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     note: '7',
     side: 'PASSIF',
     section: 'Passif circulant',
-    sourceAccountPrefixes: ['4191', '4192'],
+    // '419' (clients créditeurs) figure aussi en BI (actif) : un solde
+    // créditeur (avance reçue) est routé ici au passif par le signe. Le
+    // préfixe générique '419' (en plus de 4191/4192) couvre le cas d'un
+    // compte 419 tenu sans sous-compte, sinon classé à tort en créance.
+    sourceAccountPrefixes: ['4191', '4192', '419'],
     deductionPrefixes: [],
     sign: 1,
     parentGroup: 'DP',
@@ -833,12 +837,17 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     note: '20',
     side: 'PASSIF',
     section: 'Trésorerie-Passif',
-    sourceAccountPrefixes: ['561', '562', '563', '566'],
+    // Les comptes 52/53/54 figurent AUSSI en BS (actif) : un solde
+    // créditeur (découvert / concours bancaire) est routé ici au passif
+    // par le signe, un solde débiteur reste en BS. La paire de préfixes à
+    // longueur égale (BS et DR) déclenche l'arbitrage par signe dans
+    // `classifyToPoste` (cf. comptes de tiers 462/463).
+    sourceAccountPrefixes: ['52', '53', '54', '561', '562', '563', '566'],
     deductionPrefixes: [],
     sign: 1,
     parentGroup: 'DT',
     doctrinePage: 32,
-    notes: 'Solde créditeur — découverts (52/53 crédit incl.). Note 20.',
+    notes: 'Solde créditeur — découverts (52/53/54 crédit incl.). Note 20.',
   },
   {
     code: 'DT',

@@ -1801,6 +1801,41 @@ describe('ReportsService.getBalanceSheet — W2.1 hiérarchie 35 postes lettrés
     expect(result.totals.passif).toBe(result.passif.total);
   });
 
+  it('classe un découvert bancaire (52/53 créditeur) au passif (DR) et garde le bilan équilibré', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '231000', accountClass: 2, totalDebit: '100000' }),
+      buildRow({ accountCode: '521000', accountClass: 5, totalCredit: '30000' }), // banque créditrice = découvert
+      buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '70000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    // Le découvert doit aller au PASSIF (DR), pas gonfler l'actif → bilan W2.1 équilibré.
+    expect(result.totals.actif).toBe('100000.00');
+    expect(result.totals.passif).toBe('100000.00');
+    const dr = result.passifMasses
+      .flatMap((m) => m.rubriques)
+      .flatMap((r) => r.postes)
+      .find((p) => p.code === 'DR');
+    expect(dr?.net).toBe('30000.00');
+  });
+
+  it('classe une avance client (419 créditeur sans sous-compte) au passif (DI)', async () => {
+    const h = buildHarness();
+    h.repo.accountBalancesAsAt = jest.fn().mockResolvedValue([
+      buildRow({ accountCode: '521000', accountClass: 5, totalDebit: '50000' }),
+      buildRow({ accountCode: '419000', accountClass: 4, totalCredit: '20000' }), // client créditeur = avance reçue
+      buildRow({ accountCode: '101000', accountClass: 1, totalCredit: '30000' }),
+    ]);
+    const result = await h.service.getBalanceSheet(ORG_ID, { asAtDate: '2026-12-31' });
+    expect(result.totals.actif).toBe('50000.00');
+    expect(result.totals.passif).toBe('50000.00'); // 30000 capital + 20000 avance
+    const di = result.passifMasses
+      .flatMap((m) => m.rubriques)
+      .flatMap((r) => r.postes)
+      .find((p) => p.code === 'DI');
+    expect(di?.net).toBe('20000.00');
+  });
+
   it('incorporation du résultat net : ajoute le bénéfice au poste CJ sous CP', async () => {
     const h = buildHarness();
     h.repo.accountBalancesAsAt = jest
