@@ -352,7 +352,9 @@ function DossierHero({
           <span className="font-medium text-ink">{orgName}</span> aujourd&apos;hui.
         </p>
       </div>
-      <HeroScore isLoading={isLoading} score={score} />
+      {/* Score affiché seulement s'il existe (ou en chargement) : sinon le hero
+          reste pleine largeur, pour un démarrage net sur dossier neuf. */}
+      {(isLoading || score) && <HeroScore isLoading={isLoading} score={score} />}
     </header>
   );
 }
