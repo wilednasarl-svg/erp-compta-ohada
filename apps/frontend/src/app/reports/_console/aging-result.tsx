@@ -19,6 +19,11 @@ const fmt = (raw: string): string => {
 export function AgingResult({ report }: { readonly report: AgingBalanceReport }) {
   const bucketLabels = report.rows[0]?.buckets.map((b) => b.label) ?? [];
   const sideLabel = report.side === 'CLIENT' ? 'Créances clients' : 'Dettes fournisseurs';
+  const advances = report.advances ?? [];
+  const advanceLabel =
+    report.side === 'CLIENT'
+      ? 'Avances reçues (clients créditeurs)'
+      : 'Avances versées (fournisseurs débiteurs)';
 
   return (
     <div className="space-y-4">
@@ -67,6 +72,34 @@ export function AgingResult({ report }: { readonly report: AgingBalanceReport })
           </table>
         </div>
       </div>
+
+      {advances.length > 0 && (
+        <div className="overflow-hidden rounded-md border border-warn/40 bg-warn/5">
+          <div className="flex items-center gap-2 border-b border-warn/30 bg-warn/10 px-4 py-2 text-2xs uppercase tracking-wider text-warn-ink">
+            {advanceLabel} · {advances.length} compte{advances.length > 1 ? 's' : ''}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <tbody>
+                {advances.map((adv) => (
+                  <tr key={adv.accountId} className="border-b border-warn/15 transition-colors hover:bg-warn/5">
+                    <td className="px-4 py-1.5 text-ink">
+                      <span className="font-mono text-ink-mute">{adv.accountCode}</span> {adv.accountLabel}
+                    </td>
+                    <td className="px-4 py-1.5 text-right font-mono tabular-nums font-medium text-ink">
+                      {fmt(adv.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="border-t border-warn/20 px-4 py-2 text-2xs text-ink-mute">
+            Soldes de sens inverse, non vieillis et exclus du total ci-dessus — à reclasser
+            (acomptes 4191/4091) ou à régulariser.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

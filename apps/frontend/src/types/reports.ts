@@ -314,6 +314,17 @@ export interface AgingAccountRow {
   readonly buckets: ReadonlyArray<AgingBucket>;
 }
 
+/**
+ * Solde inverse (avance) : client créditeur (avance reçue) ou fournisseur
+ * débiteur (avance versée). Non vieilli, signalé à part.
+ */
+export interface AgingAdvanceRow {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  readonly amount: string;
+}
+
 export interface AgingBalanceReport {
   readonly side: AgingSide;
   readonly asAtDate: string;
@@ -321,6 +332,8 @@ export interface AgingBalanceReport {
   readonly rows: ReadonlyArray<AgingAccountRow>;
   readonly bucketTotals: ReadonlyArray<string>;
   readonly grandTotal: string;
+  /** Optionnel : tolère une réponse d'API antérieure au champ `advances`. */
+  readonly advances?: ReadonlyArray<AgingAdvanceRow>;
 }
 
 export interface MultiYearPeriod {
