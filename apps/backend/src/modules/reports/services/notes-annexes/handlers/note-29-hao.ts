@@ -38,7 +38,13 @@ const CATEGORIES: ReadonlyArray<BreakdownCategory> = [
 ];
 
 export const handleN29Hao: NoteHandler = (ctx, deps) =>
-  computeAccountBreakdown(ctx.organizationId as string, ctx.periodEnd, deps, {
-    categories: CATEGORIES,
-    totalLabel: 'TOTAL charges et produits HAO',
-  }, ctx.periodStart);
+  computeAccountBreakdown(
+    ctx.organizationId as string,
+    ctx.periodEnd,
+    deps,
+    {
+      categories: CATEGORIES,
+      totalLabel: 'TOTAL charges et produits HAO',
+    },
+    ctx.periodStart,
+  );
