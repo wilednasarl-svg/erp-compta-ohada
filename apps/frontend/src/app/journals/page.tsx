@@ -18,7 +18,9 @@ import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NextStep } from '@/components/ui/next-step';
 import { PageGuide } from '@/components/ui/page-guide';
+import { Term } from '@/components/ui/term';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -139,9 +141,17 @@ export default function JournalsPage() {
             <span className="mark">Journaux &amp; Écritures</span>
           </h1>
           <p className="mt-2 text-sm text-ink-mute">
-            Saisie, validation et contre-passation des écritures comptables. Un brouillon
-            peut être supprimé ; une écriture validée est immuable et ne s&apos;annule que
-            par contre-passation.
+            Saisie, validation et{' '}
+            <Term def="Écriture inverse passée pour neutraliser une écriture validée, sans la supprimer.">
+              contre-passation
+            </Term>{' '}
+            des écritures comptables. Un{' '}
+            <Term def="Écriture non encore validée : modifiable et supprimable.">brouillon</Term>{' '}
+            peut être supprimé ; une écriture validée est{' '}
+            <Term def="Définitive : elle ne se modifie ni ne se supprime, on la corrige par contre-passation.">
+              immuable
+            </Term>{' '}
+            et ne s&apos;annule que par contre-passation.
           </p>
         </header>
 
@@ -196,12 +206,22 @@ export default function JournalsPage() {
           ]}
         />
 
+        {!journalsQuery.isLoading && (journalsQuery.data ?? []).length === 0 ? (
+          <NextStep>
+            Configurez d’abord vos journaux (JV ventes, JA achats, BAN banque, OD divers)
+            pour pouvoir enregistrer des écritures.
+          </NextStep>
+        ) : null}
+
         {/* Filtres */}
         <section className={PANEL_CLASS}>
           <div className="border-b border-line pb-3">
             <h2 className="font-display text-xl font-medium text-ink">
               <span className="mark">Filtres</span>
             </h2>
+            <p className="mt-1 text-xs text-ink-mute">
+              Restreignez la liste par journal, période ou statut pour retrouver une écriture.
+            </p>
           </div>
           <div className="grid grid-cols-1 gap-3 pt-4 md:grid-cols-[200px_200px_1fr]">
             <div className="space-y-1">
@@ -278,7 +298,7 @@ export default function JournalsPage() {
                 <span className="mark">Écritures</span>
               </h2>
               <p className="mt-1 text-sm text-ink-mute">
-                {entriesQuery.data?.total ?? 0} résultat(s) — page {page}
+                {entriesQuery.data?.total ?? 0} résultat(s), page {page}
               </p>
             </div>
             <div className="pt-4">
@@ -741,6 +761,10 @@ function CreateEntrySection({ orgId, journals, onCreated }: CreateProps) {
         <h2 className="font-display text-xl font-medium text-ink">
           <span className="mark">Nouvelle écriture</span>
         </h2>
+        <p className="mt-1 text-xs text-ink-mute">
+          Saisissez les lignes au débit et au crédit jusqu’à l’équilibre, puis enregistrez en
+          brouillon ou validez.
+        </p>
         <p className="mt-1 text-sm text-ink-mute">
           Saisir l&apos;en-tête, puis au moins deux lignes équilibrées (Σ débit = Σ crédit).
           L&apos;écriture est créée en brouillon et peut être validée ensuite.

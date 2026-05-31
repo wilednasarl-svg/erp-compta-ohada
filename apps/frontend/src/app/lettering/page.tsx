@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { FormError } from '@/components/ui/form-error';
 import { Label } from '@/components/ui/label';
 import { PageGuide } from '@/components/ui/page-guide';
+import { Term } from '@/components/ui/term';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -133,8 +134,16 @@ export default function LetteringPage() {
             <span className="mark">Lettrage</span>
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
-            Réconciliation des comptes de tiers : créez un lettrage en sélectionnant des
-            lignes d'écriture validées sur un même compte partenaire, débit = crédit.
+            Réconciliation des{' '}
+            <Term def="Comptes des clients (41x) et des fournisseurs (40x), où se suivent créances et dettes.">
+              comptes de tiers
+            </Term>{' '}
+            : créez un{' '}
+            <Term def="Marquer comme soldées les écritures d'un compte de tiers qui s'équilibrent, par exemple une facture et son règlement.">
+              lettrage
+            </Term>{' '}
+            en sélectionnant des lignes d'écriture validées sur un même compte partenaire,
+            débit = crédit.
           </p>
         </header>
 

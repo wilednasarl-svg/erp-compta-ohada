@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NextStep } from '@/components/ui/next-step';
 import { PageGuide } from '@/components/ui/page-guide';
+import { Term } from '@/components/ui/term';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import type {
@@ -105,8 +107,19 @@ export default function TvaPage() {
           </h1>
           <p className="mt-3 max-w-[64ch] text-sm leading-relaxed text-ink-soft">
             Codes TVA et déclarations mensuelles SYSCOHADA. La déclaration agrège
-            automatiquement les écritures validées en collectée / déductible et calcule
-            le net dû.
+            automatiquement les écritures validées en{' '}
+            <Term def="TVA facturée à vos clients sur les ventes ; vous la devez à l'État.">
+              collectée
+            </Term>{' '}
+            /{' '}
+            <Term def="TVA payée à vos fournisseurs sur les achats ; elle vient en déduction de la collectée.">
+              déductible
+            </Term>{' '}
+            et calcule le{' '}
+            <Term def="Collectée moins déductible : le montant à reverser à la DGI (ou le crédit reportable).">
+              net dû
+            </Term>
+            .
           </p>
         </header>
 
@@ -157,6 +170,17 @@ export default function TvaPage() {
             },
           ]}
         />
+
+        {!codesQuery.isLoading && (codesQuery.data ?? []).length === 0 ? (
+          <NextStep>
+            Définissez votre premier code de taux ci-dessous : par défaut TVA-N-18 (18 %).
+          </NextStep>
+        ) : !declarationsQuery.isLoading && (declarationsQuery.data ?? []).length === 0 ? (
+          <NextStep>
+            Sélectionnez un mois, puis calculez la déclaration : l’application agrège vos
+            écritures validées du mois.
+          </NextStep>
+        ) : null}
 
         {/* ─── Codes TVA ──────────────────────────────────── */}
         <section aria-labelledby="codes-title" className="space-y-5">
