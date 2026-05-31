@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Clock,
   FileUp,
+  LayoutDashboard,
   Link2,
   Percent,
   Scale,
@@ -186,26 +187,44 @@ export default function DashboardPage() {
           dateLabel={`${dayName} ${dayMonth} ${year}`}
         />
 
-        {/* ─── Tableau de bord détaillé (repliable) ───────────── */}
-        <div className="border-t border-line pt-6">
-          <button
-            type="button"
-            onClick={() => setShowDetail((v) => !v)}
-            aria-expanded={showDetail}
-            className="flex items-center gap-1.5 text-sm font-medium text-ink-soft transition-colors duration-fast hover:text-ink"
-          >
+        {/* ─── Tableau de bord détaillé (point d'entrée découvrable) ─ */}
+        <button
+          type="button"
+          onClick={() => setShowDetail((v) => !v)}
+          aria-expanded={showDetail}
+          aria-controls="detailed-dashboard"
+          className="press group flex w-full items-center gap-4 rounded-md border border-line bg-paper p-4 text-left transition-colors duration-fast hover:border-line-strong hover:bg-sunk/40"
+        >
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-sunk text-ink-soft transition-colors duration-fast group-hover:bg-accent-soft group-hover:text-accent-ink">
+            <LayoutDashboard className="h-5 w-5" strokeWidth={1.5} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-ink">Tableau de bord détaillé</span>
+              {!showDetail && (
+                <span className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-accent-ink">
+                  3 vues
+                </span>
+              )}
+            </span>
+            <span className="mt-0.5 block text-xs text-ink-mute">
+              Direction, Finances et Opérationnel : indicateurs, marges, balance âgée et flux de trésorerie.
+            </span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-ink-soft transition-colors duration-fast group-hover:text-ink">
+            <span className="hidden sm:inline">{showDetail ? 'Replier' : 'Explorer'}</span>
             <ChevronDown
               className={`h-4 w-4 transition-transform duration-base ${showDetail ? 'rotate-180' : ''}`}
               strokeWidth={1.5}
             />
-            {showDetail
-              ? 'Masquer le tableau de bord détaillé'
-              : 'Voir le tableau de bord détaillé'}
-          </button>
-        </div>
+          </span>
+        </button>
 
         {showDetail && (
-          <>
+          <div
+            id="detailed-dashboard"
+            className="scroll-mt-8 space-y-10 animate-in fade-in slide-in-from-top-2 duration-300"
+          >
         {/* ─── Sélecteur de vue ─────────────────────────────── */}
         <div className="flex items-center border-b border-line pb-4 overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-1 rounded-full bg-sunk/50 p-1 whitespace-nowrap">
@@ -511,7 +530,7 @@ export default function DashboardPage() {
             </section>
           </div>
         )}
-          </>
+          </div>
         )}
       </div>
     </AppShell>
