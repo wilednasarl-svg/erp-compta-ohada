@@ -3469,7 +3469,9 @@ export class ReportsService {
       const net = debit - credit;
       if (Math.abs(net) < 0.005) continue;
 
-      const classification = classifyToPoste(row.accountCode, row.isOpposing);
+      // Le signe du solde tranche les comptes de tiers à double appartenance
+      // (462/463/471… présents en poste actif ET passif).
+      const classification = classifyToPoste(row.accountCode, row.isOpposing, net >= 0 ? 'D' : 'C');
       if (classification === null) {
         // Bilan-relevant class (1-5) mais aucun préfixe matché → bucket
         // dédié pour visibilité. Les classes 6-9 retournent aussi null
