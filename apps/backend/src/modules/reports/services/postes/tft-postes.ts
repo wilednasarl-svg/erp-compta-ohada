@@ -29,11 +29,11 @@
  *   - FC = - Variation des stocks
  *   - FD = - Variation des créances et emplois assimilés
  *   - FE = + Variation du passif circulant
- *   - FF = - Décaissements liés aux acquisitions d'immobilisations
- *   - FG = - Décaissements liés aux acquisitions d'immobilisations financières
- *   - FH = + Encaissements liés aux cessions d'immobilisations
- *   - FI = + Encaissements liés aux cessions d'immobilisations financières
- *   - FJ = ± Variation des créances sur cessions d'immobilisations
+ *   - FF = - Décaissements acquisitions d'immobilisations incorporelles
+ *   - FG = - Décaissements acquisitions d'immobilisations corporelles
+ *   - FH = - Décaissements acquisitions d'immobilisations financières
+ *   - FI = + Encaissements cessions immob. incorporelles et corporelles
+ *   - FJ = + Encaissements cessions immob. financières
  *   - FK = + Augmentations de capital par apports nouveaux
  *   - FL = + Subventions d'investissement reçues
  *   - FM = - Prélèvements sur le capital
@@ -154,7 +154,7 @@ export const TFT_POSTES: readonly TftPosteRef[] = [
   // ── INVESTISSEMENT : FF..FJ → ZC ──────────────────────────────────
   {
     code: 'FF',
-    label: "Décaissements liés aux acquisitions d'immobilisations corporelles et incorporelles",
+    label: "Décaissements liés aux acquisitions d'immobilisations incorporelles",
     kind: 'POSTE',
     section: 'INVESTISSEMENT',
     sign: '-',
@@ -162,7 +162,7 @@ export const TFT_POSTES: readonly TftPosteRef[] = [
   },
   {
     code: 'FG',
-    label: "Décaissements liés aux acquisitions d'immobilisations financières",
+    label: "Décaissements liés aux acquisitions d'immobilisations corporelles",
     kind: 'POSTE',
     section: 'INVESTISSEMENT',
     sign: '-',
@@ -170,15 +170,15 @@ export const TFT_POSTES: readonly TftPosteRef[] = [
   },
   {
     code: 'FH',
-    label: "Encaissements liés aux cessions d'immobilisations corporelles et incorporelles",
+    label: "Décaissements liés aux acquisitions d'immobilisations financières",
     kind: 'POSTE',
     section: 'INVESTISSEMENT',
-    sign: '+',
+    sign: '-',
     doctrinePage: 34,
   },
   {
     code: 'FI',
-    label: "Encaissements liés aux cessions d'immobilisations financières",
+    label: "Encaissements liés aux cessions d'immobilisations incorporelles et corporelles",
     kind: 'POSTE',
     section: 'INVESTISSEMENT',
     sign: '+',
@@ -186,10 +186,10 @@ export const TFT_POSTES: readonly TftPosteRef[] = [
   },
   {
     code: 'FJ',
-    label: "Variation des créances sur cessions d'immobilisations",
+    label: "Encaissements liés aux cessions d'immobilisations financières",
     kind: 'POSTE',
     section: 'INVESTISSEMENT',
-    sign: '-/+',
+    sign: '+',
     doctrinePage: 34,
   },
   {

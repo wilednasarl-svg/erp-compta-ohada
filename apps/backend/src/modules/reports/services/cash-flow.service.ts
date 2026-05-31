@@ -341,38 +341,48 @@ export class CashFlowService {
     // ZB = FA + FB + FC + FD + FE
     const zb = fa + fb + fc + fd + fe;
 
-    // ── FF-FJ — flux d'investissement ──────────────────────────────
-    // FF = - acquisitions corporelles/incorporelles (débit cumulé 20-25
-    //      hors 26/27 immo financières, hors 28/29 amort./déprec.)
-    const ffAcquisitions = CashFlowService.sumDebitForPrefixes(
+    // ── FF-FJ — flux d'investissement (grille conforme Tome 3 p.34) ──
+    // FF = - acquisitions d'immobilisations INCORPORELLES (débit 20/21,
+    //      hors 28/29 amort./déprec.)
+    const ff = -CashFlowService.sumDebitForPrefixes(
       movements,
-      ['20', '21', '22', '23', '24', '25'],
+      ['20', '21'],
       (code) => !code.startsWith('28') && !code.startsWith('29'),
     );
-    const ff = -ffAcquisitions;
 
-    // FG = - acquisitions immobilisations financières (débit 26/27)
-    const fgAcquisitions = CashFlowService.sumDebitForPrefixes(
+    // FG = - acquisitions d'immobilisations CORPORELLES (débit 22-25,
+    //      hors 28/29)
+    const fg = -CashFlowService.sumDebitForPrefixes(
+      movements,
+      ['22', '23', '24', '25'],
+      (code) => !code.startsWith('28') && !code.startsWith('29'),
+    );
+
+    // FH = - acquisitions d'immobilisations FINANCIÈRES (débit 26/27)
+    const fh = -CashFlowService.sumDebitForPrefixes(
       movements,
       IMMOBILISATION_FIN_PREFIXES,
       (code) => !code.startsWith('28') && !code.startsWith('29'),
     );
-    const fg = -fgAcquisitions;
 
-    // FH = + cessions corporelles/incorporelles (crédit 82, hors part fin.)
-    const fh = CashFlowService.sumPeriodForPrefix(movements, '82', 'credit-debit');
-
-    // FI = + cessions immobilisations financières (crédit sur 26/27)
-    const fi = CashFlowService.sumCreditForPrefixes(movements, IMMOBILISATION_FIN_PREFIXES);
-
-    // FJ = ± Δ créances sur cessions immobilisations (485, 414)
-    const fj = CashFlowService.deltaSignedByFilter(
+    // FI = + encaissements sur cessions d'immobilisations INCORPORELLES
+    //      et CORPORELLES : produit de cession (crédit 82) corrigé de la
+    //      variation des créances de cession non encaissées (485/414),
+    //      pour passer du produit comptable à l'encaissement réel.
+    const deltaCreancesCession = CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
       (code) => code.startsWith('485') || code.startsWith('414'),
     );
+    const fi =
+      CashFlowService.sumPeriodForPrefix(movements, '82', 'credit-debit') + deltaCreancesCession;
 
-    // ZC = FF + FG + FH + FI + FJ
+    // FJ = + encaissements sur cessions d'immobilisations FINANCIÈRES
+    //      (crédit 26/27)
+    const fj = CashFlowService.sumCreditForPrefixes(movements, IMMOBILISATION_FIN_PREFIXES);
+
+    // ZC = FF + FG + FH + FI + FJ (total inchangé vs grille précédente :
+    // simple ré-affectation incorp/corp/fin conforme au modèle officiel).
     const zc = ff + fg + fh + fi + fj;
 
     // ── FK-FN — flux financement capitaux propres ──────────────────
@@ -471,12 +481,22 @@ export class CashFlowService {
             code: 'FF',
             label: getTftLabel('FF'),
             amount: ff.toFixed(2),
-            source: 'débits 20-25 hors 28/29',
+            source: 'débits 20-21 hors 28/29',
           },
-          { code: 'FG', label: getTftLabel('FG'), amount: fg.toFixed(2), source: 'débits 26-27' },
-          { code: 'FH', label: getTftLabel('FH'), amount: fh.toFixed(2), source: 'crédit 82' },
-          { code: 'FI', label: getTftLabel('FI'), amount: fi.toFixed(2), source: 'crédits 26-27' },
-          { code: 'FJ', label: getTftLabel('FJ'), amount: fj.toFixed(2), source: 'Δ 485 + Δ 414' },
+          {
+            code: 'FG',
+            label: getTftLabel('FG'),
+            amount: fg.toFixed(2),
+            source: 'débits 22-25 hors 28/29',
+          },
+          { code: 'FH', label: getTftLabel('FH'), amount: fh.toFixed(2), source: 'débits 26-27' },
+          {
+            code: 'FI',
+            label: getTftLabel('FI'),
+            amount: fi.toFixed(2),
+            source: 'crédit 82 − Δ(485+414)',
+          },
+          { code: 'FJ', label: getTftLabel('FJ'), amount: fj.toFixed(2), source: 'crédits 26-27' },
         ],
       },
       financingFlowsEquity: {
