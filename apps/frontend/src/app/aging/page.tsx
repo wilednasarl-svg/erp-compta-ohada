@@ -1,10 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { CalendarClock } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { IllustrationCheck } from '@/components/ui/illustrations';
 import { Label } from '@/components/ui/label';
 import { ApiError, api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -163,7 +163,7 @@ export default function AgingPage() {
             </div>
           ) : !hasRows ? (
             <div className="rounded-sm border border-line bg-paper px-6 py-12 text-center">
-              <CalendarClock className="mx-auto h-6 w-6 text-ink-mute" strokeWidth={1.5} />
+              <IllustrationCheck className="mx-auto h-20 w-24" />
               <p className="mt-3 font-display text-base font-medium text-ink">Rien à échéance</p>
               <p className="mx-auto mt-1 max-w-md text-sm text-ink-mute">
                 Aucune créance client ni dette fournisseur ouverte (non lettrée) à cette date de

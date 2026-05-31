@@ -41,6 +41,29 @@ export function IllustrationPlant({ className }: IllustrationProps) {
   );
 }
 
+/** Pastille validée + étincelles — « tout est en ordre », états vides positifs. */
+export function IllustrationCheck({ className }: IllustrationProps) {
+  return (
+    <svg viewBox="0 0 120 96" fill="none" role="img" aria-hidden className={className}>
+      <circle cx="60" cy="50" r="28" stroke={ACCENT} strokeWidth={2.2} fill={ACCENT_SOFT} />
+      <path
+        d="M48 50 l8 8 L74 40"
+        fill="none"
+        stroke={ACCENT}
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <g stroke={ACCENT} strokeWidth={2} strokeLinecap="round" opacity={0.85}>
+        <path d="M97 20 V29 M92.5 24.5 H101.5" />
+        <path d="M23 26 V33 M19.5 29.5 H26.5" />
+      </g>
+      <circle cx="99" cy="66" r="2.4" fill={ACCENT} />
+      <circle cx="21" cy="58" r="2" fill={ACCENT} />
+    </svg>
+  );
+}
+
 /** Courbe ascendante — pilotage, direction. Monochrome (prend la teinte du parent). */
 export function IllustrationChart({ className }: IllustrationProps) {
   return (

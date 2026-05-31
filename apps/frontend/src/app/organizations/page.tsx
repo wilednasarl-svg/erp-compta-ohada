@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import { FormError } from '@/components/ui/form-error';
+import { IllustrationPlant } from '@/components/ui/illustrations';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -288,10 +289,8 @@ function SkeletonGrid({ n = 6 }: { n?: number }) {
 function EmptyState() {
   return (
     <div className="rounded-md border border-line bg-paper px-6 py-16 text-center">
-      <span className="inline-flex h-14 w-14 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
-        <Building2 className="h-6 w-6" strokeWidth={1.5} />
-      </span>
-      <p className="mt-5 font-display text-xl text-ink">Aucun dossier pour le moment</p>
+      <IllustrationPlant className="mx-auto h-28 w-28 text-ink-mute" />
+      <p className="mt-3 font-display text-xl text-ink">Aucun dossier pour le moment</p>
       <p className="mx-auto mt-2 max-w-[44ch] text-sm text-ink-soft">
         Créez votre premier dossier client, ou rejoignez-en un sur invitation, pour commencer à
         travailler.
