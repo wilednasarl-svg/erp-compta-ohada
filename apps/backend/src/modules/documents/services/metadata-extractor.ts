@@ -15,6 +15,8 @@
 export interface ExtractedInvoiceMetadata {
   /** ISO-8601 date string (YYYY-MM-DD) parsed from the invoice. */
   invoiceDate: string;
+  /** Total HT (pre-tax) amount in major currency units. */
+  totalAmountHt: number;
   /** Total TTC amount in major currency units (e.g. 12345.67). */
   totalAmountTtc: number;
   /** VAT (TVA) amount in major currency units. */
@@ -38,22 +40,44 @@ export function extractInvoiceMetadata(text: string): Partial<ExtractedInvoiceMe
 
   const out: Partial<ExtractedInvoiceMetadata> = {};
 
-  const invoiceDate = parseInvoiceDate(text);
+  // PaddleOCR-VL renders tables as HTML (`<table><td>…`). Flatten HTML
+  // into pipe-delimited rows + newlines so the same regexes that handle
+  // Tesseract flat text and Markdown tables also handle the VLM output.
+  const cleaned = normalizeOcrText(text);
+
+  const invoiceDate = parseInvoiceDate(cleaned);
   if (invoiceDate !== null) out.invoiceDate = invoiceDate;
 
-  const totalTtc = parseAmount(text, /(?:Total\s*TTC|Montant\s*TTC|Net\s*à\s*payer)/i);
+  const totalHt = parseAmount(cleaned, /(?:Total\s*HT|Montant\s*HT|Base\s*HT|Total\s*hors\s*taxes?)/i);
+  if (totalHt !== null) out.totalAmountHt = totalHt;
+
+  const totalTtc = parseAmount(cleaned, /(?:Total\s*TTC|Montant\s*TTC|Net\s*à\s*payer)/i);
   if (totalTtc !== null) out.totalAmountTtc = totalTtc;
 
-  const tva = parseAmount(text, /(?:Total\s*TVA|TVA(?:\s*\([^)]*\))?|Montant\s*TVA)/i);
+  const tva = parseAmount(cleaned, /(?:Total\s*TVA|TVA(?:\s*\([^)]*\))?|Montant\s*TVA)/i);
   if (tva !== null) out.tvaAmount = tva;
 
-  const partnerName = parsePartnerName(text);
+  const partnerName = parsePartnerName(cleaned);
   if (partnerName !== null) out.partnerName = partnerName;
 
-  const invoiceNumber = parseInvoiceNumber(text);
+  const invoiceNumber = parseInvoiceNumber(cleaned);
   if (invoiceNumber !== null) out.invoiceNumber = invoiceNumber;
 
   return out;
+}
+
+/**
+ * Flatten an OCR document into plain text the field parsers can read.
+ * PaddleOCR-VL emits HTML tables and `<div><img …></div>` blocks; we
+ * convert table/row boundaries to newlines, cell boundaries to ` | `,
+ * and strip every other tag (so attribute URLs never leak digits).
+ * Plain text / Markdown input is unaffected (no tags → no-op).
+ */
+function normalizeOcrText(text: string): string {
+  return text
+    .replace(/<\/?(?:tr|table|thead|tbody|div|p|br)[^>]*>/gi, '\n')
+    .replace(/<\/?td[^>]*>/gi, ' | ')
+    .replace(/<[^>]+>/g, ' ');
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -171,15 +195,31 @@ function parseAmount(text: string, labelPattern: RegExp): number | null {
   // Build a flexible regex: label, optional colon / dash / spaces, then
   // the amount (digits + . , spaces) and optionally a currency suffix.
   const labelSource = labelPattern.source;
+  // Gap between the label and the amount. Tolerant of the shapes
+  // PaddleOCR-VL emits as Markdown tables / labelled rows:
+  //   - an optional parenthetical rate right after the label
+  //     ("Total TVA (18%)"), skipped so it is not mistaken for the value,
+  //   - then any run of horizontal separators (spaces, tabs, `:`, `-`,
+  //     and the `|` markdown-table cell delimiter). No newline, so the
+  //     amount must sit on the same line as its label.
+  const gap = '(?:\\s*\\([^)]*\\))?[ \\t:|\\-]*';
   const composite = new RegExp(
-    `${labelSource}\\s*[:\\-]?\\s*([0-9][0-9\\s\\.,]*[0-9])(?:\\s*(?:F\\s*CFA|FCFA|XOF|EUR|€|\\$|USD))?`,
-    labelPattern.flags.includes('i') ? 'i' : 'i',
+    `${labelSource}${gap}([0-9][0-9\\s\\.,]*[0-9])(?:\\s*(?:F\\s*CFA|FCFA|XOF|EUR|€|\\$|USD))?`,
+    'gi',
   );
-  const match = composite.exec(text);
-  if (match === null) return null;
-
-  const raw = match[1].replace(/\s+/g, '');
-  return parseNumericString(raw);
+  // A label can appear several times (line-item rate "TVA (18)", the
+  // totals row "TVA", a summary row). The figure we want is the total,
+  // which is the LARGEST amount among the label's matches — so scan all
+  // occurrences and keep the max rather than the first.
+  let best: number | null = null;
+  let match: RegExpExecArray | null;
+  while ((match = composite.exec(text)) !== null) {
+    const value = parseNumericString(match[1].replace(/\s+/g, ''));
+    if (value !== null && (best === null || value > best)) {
+      best = value;
+    }
+  }
+  return best;
 }
 
 function parseNumericString(raw: string): number | null {
@@ -251,18 +291,22 @@ function parseInvoiceNumber(text: string): string | null {
   // the captured value so a plain sentence like "no invoice fields"
   // does not falsely match "fields" as the number.
   const patterns = [
-    /(?:Facture|Invoice)\s*N[°º\.][^\S\r\n]*([A-Z0-9][A-Z0-9_\-\/]{2,40})/i,
-    /(?:Facture|Invoice)\s*#[^\S\r\n]*([A-Z0-9][A-Z0-9_\-\/]{2,40})/i,
-    /(?:Facture|Invoice)\s*(?:No|N°|Numero|Numéro)\s*[:\-]?\s*([A-Z0-9][A-Z0-9_\-\/]{2,40})/i,
-    /N[°º][^\S\r\n]*([A-Z0-9][A-Z0-9_\-\/]{2,40})/i,
-    /(?:Ref(?:erence|érence)?)\s*[:\-]\s*([A-Z0-9][A-Z0-9_\-\/]{2,40})/i,
+    /(?:Facture|Invoice)\s*N[°º\.][^\S\r\n]*([A-Z0-9][A-Z0-9_\-\/]{2,40})/gi,
+    /(?:Facture|Invoice)\s*#[^\S\r\n]*([A-Z0-9][A-Z0-9_\-\/]{2,40})/gi,
+    /(?:Facture|Invoice)\s*(?:No|N°|Numero|Numéro)\s*[:\-]?\s*([A-Z0-9][A-Z0-9_\-\/]{2,40})/gi,
+    /N[°º][^\S\r\n]*([A-Z0-9][A-Z0-9_\-\/]{2,40})/gi,
+    /(?:Ref(?:erence|érence)?)\s*[:\-]\s*([A-Z0-9][A-Z0-9_\-\/]{2,40})/gi,
   ];
+  // Scan patterns in priority order; within a pattern, scan all matches.
+  // A real invoice number always contains a digit — that single rule
+  // rejects false positives where a label keyword overlaps a word
+  // (e.g. "No" inside "NORMALISÉE", or "N°Facture" capturing "Facture").
   for (const re of patterns) {
-    const match = re.exec(text);
-    if (match !== null) {
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(text)) !== null) {
       const candidate = match[1].trim();
-      // Reject pure-digit very-short values (likely a date fragment).
-      if (/^\d{1,3}$/.test(candidate)) continue;
+      if (!/\d/.test(candidate)) continue; // must contain a digit
+      if (/^\d{1,3}$/.test(candidate)) continue; // too short — likely a date fragment
       return candidate;
     }
   }

@@ -22,6 +22,7 @@ import { DOCUMENT_STORAGE } from './services/document-storage.interface';
 import { DocumentsService } from './services/documents.service';
 import { NullOcrProvider } from './services/null-ocr-provider';
 import { OCR_PROVIDER, type OcrProvider } from './services/ocr-provider';
+import { PaddleOcrVlProvider } from './services/paddle-ocr-vl-provider';
 import {
   SUPABASE_STORAGE_CONFIG,
   SupabaseDocumentStorage,
@@ -85,6 +86,7 @@ import { TesseractOcrProvider } from './services/tesseract-ocr-provider';
     DocumentsService,
     TesseractOcrProvider,
     NullOcrProvider,
+    PaddleOcrVlProvider,
     {
       provide: DOCUMENT_STORAGE_ROOT,
       inject: [ConfigService],
@@ -125,14 +127,27 @@ import { TesseractOcrProvider } from './services/tesseract-ocr-provider';
         return docConfig?.storageDriver === 'supabase' ? supabase : local;
       },
     },
-    // Module 10 wave 2 — OcrProvider binding. Tesseract when
-    // `OCR_ENABLED=true`, no-op (`NullOcrProvider`) otherwise.
+    // OcrProvider binding. Selection order:
+    //   1. `OCR_ENGINE` (explicit): 'paddle' | 'tesseract' | 'none'.
+    //   2. legacy `OCR_ENABLED=true` → tesseract (back-compat).
+    //   3. default → NullOcrProvider (OCR disabled).
+    // `paddle` = PaddleOCR-VL via a free HF ZeroGPU Space (best invoice
+    // quality); `tesseract` = local tesseract.js fallback.
     {
       provide: OCR_PROVIDER,
-      inject: [TesseractOcrProvider, NullOcrProvider],
-      useFactory: (tesseract: TesseractOcrProvider, nullProvider: NullOcrProvider): OcrProvider => {
-        const enabled = (process.env.OCR_ENABLED ?? '').toLowerCase() === 'true';
-        return enabled ? tesseract : nullProvider;
+      inject: [PaddleOcrVlProvider, TesseractOcrProvider, NullOcrProvider],
+      useFactory: (
+        paddle: PaddleOcrVlProvider,
+        tesseract: TesseractOcrProvider,
+        nullProvider: NullOcrProvider,
+      ): OcrProvider => {
+        const engine = (process.env.OCR_ENGINE ?? '').trim().toLowerCase();
+        if (engine === 'paddle') return paddle;
+        if (engine === 'tesseract') return tesseract;
+        if (engine === 'none') return nullProvider;
+        // Legacy switch — kept so existing deployments keep working.
+        const legacyEnabled = (process.env.OCR_ENABLED ?? '').toLowerCase() === 'true';
+        return legacyEnabled ? tesseract : nullProvider;
       },
     },
   ],

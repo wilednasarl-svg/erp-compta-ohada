@@ -59,6 +59,7 @@
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
+    "@gradio/client": "^1.19.1",
     "qrcode": "^1.5.4",
     "tesseract.js": "^5.1.1"
   },
