@@ -275,7 +275,11 @@ export function classifyToPoste(
   // un poste passif en SOURCE) : on tranche par le signe du solde
   // (débiteur → créance/actif, créditeur → dette/passif).
   // Priorité 3 — premier match (ordre du référentiel).
-  const deductionMatch = top.find((m) => m.isDeduction);
+  // NB : parmi les déductions à longueur égale, on retient la DERNIÈRE —
+  // équivalent au `>=` de l'implémentation historique : un sous-poste plus
+  // spécifique (ex. AE frais de dév.) déclaré après le poste générique
+  // (AD incorporel) doit l'emporter pour la même clé d'amortissement 2811.
+  const deductionMatch = [...top].reverse().find((m) => m.isDeduction);
   let chosen: Match;
   if (deductionMatch !== undefined) {
     chosen = deductionMatch;
