@@ -4,10 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   ArrowUpRight,
-  BarChart3,
   Banknote,
+  BarChart3,
   CalendarClock,
+  CalendarDays,
   CheckCircle2,
+  FileText,
   FileUp,
   Link2,
   Minus,
@@ -51,6 +53,7 @@ export interface AccueilSummary {
   readonly exercise: { readonly label: string; readonly endDate?: string } | null;
   readonly activePeriod: { readonly label: string; readonly endDate: string } | null;
   readonly entriesThisMonth: number;
+  readonly pendingThisMonth?: number;
   readonly score: { readonly value: number; readonly grade: string } | null;
   readonly recentActivity?: ReadonlyArray<ActivityEvent>;
 }
@@ -78,7 +81,10 @@ type Trend = 'up' | 'flat' | 'down';
 /* ─── Formatters & métier ─────────────────────────────────────── */
 
 const FCFA = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
-const FCFA_COMPACT = new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 });
+
+function fmtInt(n: number): string {
+  return FCFA.format(n);
+}
 
 function formatFcfa(value: number): string {
   return `${FCFA.format(value)} FCFA`;
@@ -176,9 +182,6 @@ export function AccueilBento({
 
   const notConfigured = !isLoading && !isError && !summary?.exercise;
   const pending = summary?.pending;
-  const pendingTotal = pending
-    ? pending.entries + pending.bankLines + pending.auxLettering + pending.tvaDeclarations
-    : 0;
 
   const series = (trendQuery.data?.points ?? []).map((p) => ({
     month: monthShort(p.yearMonth),
@@ -205,8 +208,8 @@ export function AccueilBento({
   /* ── État : erreur de chargement du dossier ── */
   if (isError) {
     return (
-      <section aria-label="Accueil" className="space-y-6">
-        <DossierHeader greeting={greeting} userName={userName} dateLabel={dateLabel} orgName={orgName} />
+      <section aria-label="Accueil" className="space-y-8">
+        <DossierHero greeting={greeting} userName={userName} dateLabel={dateLabel} orgName={orgName} isLoading={false} score={null} />
         <div className="rounded-md border border-line bg-paper px-6 py-12 text-center">
           <p className="text-sm font-medium text-ink">Impossible de charger les données du dossier.</p>
           <p className="mx-auto mt-1 max-w-[44ch] text-xs text-ink-mute">
@@ -227,9 +230,18 @@ export function AccueilBento({
     );
   }
 
+  const exUrgent = exerciseDays != null && exerciseDays <= 15;
+
   return (
     <section aria-label="Accueil" className="space-y-8">
-      <DossierHeader greeting={greeting} userName={userName} dateLabel={dateLabel} orgName={orgName} />
+      <DossierHero
+        greeting={greeting}
+        userName={userName}
+        dateLabel={dateLabel}
+        orgName={orgName}
+        isLoading={isLoading}
+        score={summary?.score ?? null}
+      />
 
       {notConfigured ? (
         <SetupGuide hasExercise={false} hasEntries={hasEntries} />
@@ -242,22 +254,43 @@ export function AccueilBento({
             <PriorityFocus isLoading={isLoading} priority={computePriority(pending, exerciseDays, cashPct)} />
           )}
 
-          {/* ── Bande d'état du dossier (filets, pas de cartes) ── */}
+          {/* ── Bande d'état secondaire (filets, pas de cartes) ── */}
           <div className="grid divide-y divide-line border-y border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            <ScoreCell isLoading={isLoading} score={summary?.score ?? null} />
-            <TreasuryCell isLoading={trendQuery.isLoading} cash={cash} pct={cashPct} trend={trend} />
-            <DeadlineCell
+            <StatCell
+              position="first"
               isLoading={isLoading}
-              exerciseLabel={summary?.exercise?.label ?? null}
-              exerciseDays={exerciseDays}
-              periodLabel={summary?.activePeriod?.label ?? null}
-              periodDays={periodDays}
+              icon={CalendarClock}
+              tone={exUrgent ? 'warn' : 'neutral'}
+              eyebrow="Exercice"
+              value={summary?.exercise?.label ?? '—'}
+              sub={exerciseDays != null ? `clôture dans ${exerciseDays} j` : 'ouvert'}
+            />
+            <StatCell
+              position="mid"
+              isLoading={isLoading}
+              icon={FileText}
+              eyebrow="Écritures du mois"
+              mono
+              value={fmtInt(summary?.entriesThisMonth ?? 0)}
+              sub={
+                summary?.pendingThisMonth
+                  ? `dont ${fmtInt(summary.pendingThisMonth)} en attente`
+                  : 'à jour'
+              }
+            />
+            <StatCell
+              position="last"
+              isLoading={isLoading}
+              icon={CalendarDays}
+              eyebrow="Période active"
+              value={summary?.activePeriod?.label ?? '—'}
+              sub={periodDays != null ? `clôture dans ${periodDays} j` : 'ouverte'}
             />
           </div>
 
           {/* ── Priorités + trésorerie ── */}
           <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-            <TaskSection isLoading={isLoading} pending={pending} pendingTotal={pendingTotal} />
+            <TaskSection isLoading={isLoading} pending={pending} />
             <TreasuryPanel
               isLoading={trendQuery.isLoading}
               isError={trendQuery.isError}
@@ -290,29 +323,107 @@ export function AccueilBento({
   );
 }
 
-/* ─── En-tête éditorial + verdict ─────────────────────────────── */
+/* ─── Hero éditorial : salutation + score focal ───────────────── */
 
-function DossierHeader({
+function DossierHero({
   greeting,
   userName,
   dateLabel,
   orgName,
+  isLoading,
+  score,
 }: {
   greeting: string;
   userName: string;
   dateLabel: string;
   orgName: string;
+  isLoading: boolean;
+  score: { value: number; grade: string } | null;
 }) {
   return (
-    <header>
-      <p className="eyebrow">{dateLabel}</p>
-      <h1 className="mt-1.5 font-display text-3xl leading-tight">
-        {greeting} {userName}
-      </h1>
-      <p className="mt-2 max-w-[60ch] text-base text-ink-soft">
-        Voici l&apos;essentiel de <span className="font-medium text-ink">{orgName}</span> aujourd&apos;hui.
-      </p>
+    <header className="flex flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="eyebrow">{dateLabel}</p>
+        <h1 className="mt-2 font-display text-4xl leading-[1.05] sm:text-[2.75rem]">
+          {greeting} {userName}
+        </h1>
+        <p className="mt-3 max-w-[48ch] text-base text-ink-soft">
+          Content de vous revoir. Voici l&apos;essentiel de{' '}
+          <span className="font-medium text-ink">{orgName}</span> aujourd&apos;hui.
+        </p>
+      </div>
+      <HeroScore isLoading={isLoading} score={score} />
     </header>
+  );
+}
+
+function HeroScore({ isLoading, score }: { isLoading: boolean; score: { value: number; grade: string } | null }) {
+  if (isLoading) {
+    return (
+      <div className="flex shrink-0 items-center gap-4 sm:flex-col sm:gap-3" aria-hidden>
+        <div className="h-28 w-28 animate-pulse rounded-full bg-sunk" />
+        <div className="h-4 w-24 animate-pulse rounded-xs bg-sunk" />
+      </div>
+    );
+  }
+
+  if (!score) {
+    return (
+      <div className="flex shrink-0 flex-col items-center gap-2 text-center">
+        <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-dashed border-line-strong text-ink-mute">
+          <Minus className="h-6 w-6" strokeWidth={1.5} />
+        </div>
+        <p className="text-xs text-ink-mute">Score à venir</p>
+      </div>
+    );
+  }
+
+  const { text } = scoreTone(score.value);
+  return (
+    <div className="flex shrink-0 items-center gap-5 sm:flex-col sm:gap-3">
+      <HeroScoreRing value={score.value} />
+      <Link href="/accounting-score" className="group sm:text-center">
+        <p className={cn('font-display text-xl leading-none', text)}>{scoreLabel(score.value)}</p>
+        <p className="eyebrow mt-1.5 inline-flex items-center gap-1 transition-colors duration-fast group-hover:text-ink-soft">
+          Santé du dossier
+          <ArrowUpRight className="h-3 w-3" strokeWidth={1.5} />
+        </p>
+      </Link>
+    </div>
+  );
+}
+
+function HeroScoreRing({ value }: { value: number }) {
+  const r = 44;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - value / 100);
+  const { stroke, text } = scoreTone(value);
+
+  return (
+    <div
+      className="relative flex h-28 w-28 shrink-0 items-center justify-center"
+      role="img"
+      aria-label={`Score de santé ${value} sur 100, ${scoreLabel(value)}`}
+    >
+      <svg width="112" height="112" viewBox="0 0 112 112" fill="none" className="absolute inset-0 -rotate-90" aria-hidden>
+        <circle cx="56" cy="56" r={r} stroke="oklch(var(--line-strong))" strokeWidth="6" />
+        <circle
+          cx="56"
+          cy="56"
+          r={r}
+          stroke={stroke}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 1000ms var(--ease-out-quint)' }}
+        />
+      </svg>
+      <div className="text-center">
+        <span className={cn('block font-display text-3xl leading-none tabular-nums', text)}>{value}</span>
+        <span className="mt-1 block text-2xs uppercase tracking-wider text-ink-mute">/ 100</span>
+      </div>
+    </div>
   );
 }
 
@@ -479,173 +590,55 @@ function PriorityFocus({ isLoading, priority }: { isLoading: boolean; priority: 
   );
 }
 
-/* ─── Bande d'état : Score ─────────────────────────────────────── */
+/* ─── Cellule de la bande d'état ──────────────────────────────── */
 
-function ScoreCell({ isLoading, score }: { isLoading: boolean; score: { value: number; grade: string } | null }) {
-  return (
-    <div className="flex items-center gap-4 py-5 sm:pr-6">
-      {isLoading ? (
-        <SkeletonRing />
-      ) : score ? (
-        <ScoreRing value={score.value} />
-      ) : (
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-line-strong text-ink-mute">
-          <Minus className="h-5 w-5" strokeWidth={1.5} />
-        </div>
-      )}
-      <div className="min-w-0">
-        <p className="eyebrow">Santé du dossier</p>
-        {isLoading ? (
-          <div className="mt-1.5 h-5 w-24 animate-pulse rounded-xs bg-sunk" />
-        ) : score ? (
-          <>
-            <p className={cn('mt-0.5 font-display text-xl', scoreTone(score.value).text)}>
-              {scoreLabel(score.value)}
-            </p>
-            <Link
-              href="/accounting-score"
-              className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-mute transition-colors duration-fast hover:text-ink-soft"
-            >
-              {score.value} / 100 <ArrowUpRight className="h-3 w-3" strokeWidth={1.5} />
-            </Link>
-          </>
-        ) : (
-          <p className="mt-0.5 text-sm text-ink-mute">Bientôt disponible</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ScoreRing({ value }: { value: number }) {
-  const r = 24;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - value / 100);
-  const { stroke, text } = scoreTone(value);
-
-  return (
-    <div
-      className="relative flex h-14 w-14 shrink-0 items-center justify-center"
-      role="img"
-      aria-label={`Score de santé ${value} sur 100, ${scoreLabel(value)}`}
-    >
-      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="absolute inset-0" aria-hidden>
-        <circle cx="28" cy="28" r={r} stroke="oklch(var(--line-strong))" strokeWidth="3.5" />
-        <circle
-          cx="28"
-          cy="28"
-          r={r}
-          stroke={stroke}
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={offset}
-          transform="rotate(-90 28 28)"
-          style={{ transition: 'stroke-dashoffset 900ms var(--ease-out-quint)' }}
-        />
-      </svg>
-      <span className={cn('num text-sm font-medium tabular-nums', text)}>{value}</span>
-    </div>
-  );
-}
-
-function SkeletonRing() {
-  return <div className="h-14 w-14 shrink-0 animate-pulse rounded-full bg-sunk" aria-hidden />;
-}
-
-/* ─── Bande d'état : Trésorerie (synthèse) ────────────────────── */
-
-function TreasuryCell({
-  isLoading,
-  cash,
-  pct,
-  trend,
+function StatCell({
+  icon: Icon,
+  tone = 'neutral',
+  eyebrow,
+  value,
+  sub,
+  mono = false,
+  isLoading = false,
+  position,
 }: {
-  isLoading: boolean;
-  cash: number | null;
-  pct: number | null;
-  trend: Trend;
+  icon: LucideIcon;
+  tone?: 'neutral' | 'warn';
+  eyebrow: string;
+  value: string;
+  sub?: string;
+  mono?: boolean;
+  isLoading?: boolean;
+  position: 'first' | 'mid' | 'last';
 }) {
+  const pad = position === 'first' ? 'sm:pr-6' : position === 'last' ? 'sm:pl-6' : 'sm:px-6';
   return (
-    <div className="flex items-center gap-4 py-5 sm:px-6">
-      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sunk text-ink-soft">
-        <Wallet className="h-5 w-5" strokeWidth={1.5} />
-      </span>
-      <div className="min-w-0">
-        <p className="eyebrow">Trésorerie</p>
-        {isLoading ? (
-          <div className="mt-1.5 h-5 w-28 animate-pulse rounded-xs bg-sunk" />
-        ) : cash != null ? (
-          <>
-            <p className="num mt-0.5 text-xl font-medium tabular-nums text-ink">{formatFcfa(cash)}</p>
-            <TrendPill trend={trend} pct={pct} />
-          </>
-        ) : (
-          <p className="mt-0.5 text-sm text-ink-mute">Aucun solde calculé</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TrendPill({ trend, pct }: { trend: Trend; pct: number | null }) {
-  const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const label = trend === 'up' ? 'en hausse' : trend === 'down' ? 'en baisse' : 'stable';
-  const tone =
-    trend === 'up' ? 'text-accent-ink' : trend === 'down' ? 'text-critical-ink' : 'text-ink-mute';
-  return (
-    <span className={cn('mt-1 inline-flex items-center gap-1 text-xs font-medium', tone)}>
-      <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
-      {pct != null && trend !== 'flat' ? `${pct > 0 ? '+' : ''}${pct.toFixed(0)} % sur 6 mois` : label}
-    </span>
-  );
-}
-
-/* ─── Bande d'état : Échéance ─────────────────────────────────── */
-
-function DeadlineCell({
-  isLoading,
-  exerciseLabel,
-  exerciseDays,
-  periodLabel,
-  periodDays,
-}: {
-  isLoading: boolean;
-  exerciseLabel: string | null;
-  exerciseDays: number | null;
-  periodLabel: string | null;
-  periodDays: number | null;
-}) {
-  const urgent = exerciseDays != null && exerciseDays <= 15;
-  return (
-    <div className="flex items-center gap-4 py-5 sm:pl-6">
+    <div className={cn('flex items-center gap-4 py-5', pad)}>
       <span
         className={cn(
           'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
-          urgent ? 'bg-warn-soft text-warn-ink' : 'bg-sunk text-ink-soft',
+          tone === 'warn' ? 'bg-warn-soft text-warn-ink' : 'bg-sunk text-ink-soft',
         )}
       >
-        <CalendarClock className="h-5 w-5" strokeWidth={1.5} />
+        <Icon className="h-5 w-5" strokeWidth={1.5} />
       </span>
       <div className="min-w-0">
-        <p className="eyebrow">Exercice en cours</p>
+        <p className="eyebrow">{eyebrow}</p>
         {isLoading ? (
           <div className="mt-1.5 h-5 w-24 animate-pulse rounded-xs bg-sunk" />
-        ) : exerciseLabel ? (
-          <>
-            <p className="mt-0.5 truncate font-display text-xl text-ink" title={exerciseLabel}>
-              {exerciseLabel}
-            </p>
-            <p className={cn('mt-0.5 text-xs', urgent ? 'font-medium text-warn-ink' : 'text-ink-mute')}>
-              {exerciseDays != null
-                ? `clôture dans ${exerciseDays} j`
-                : periodLabel && periodDays != null
-                  ? `${periodLabel} · ${periodDays} j`
-                  : 'ouvert'}
-            </p>
-          </>
         ) : (
-          <p className="mt-0.5 text-sm text-ink-mute">Aucun exercice ouvert</p>
+          <>
+            <p
+              className={cn(
+                'mt-0.5 truncate',
+                mono ? 'num text-xl font-medium tabular-nums text-ink' : 'font-display text-xl text-ink',
+              )}
+              title={value}
+            >
+              {value}
+            </p>
+            {sub && <p className="mt-0.5 text-xs text-ink-mute">{sub}</p>}
+          </>
         )}
       </div>
     </div>
@@ -654,15 +647,11 @@ function DeadlineCell({
 
 /* ─── À traiter ───────────────────────────────────────────────── */
 
-function TaskSection({
-  isLoading,
-  pending,
-  pendingTotal,
-}: {
-  isLoading: boolean;
-  pending?: PendingCounts;
-  pendingTotal: number;
-}) {
+function TaskSection({ isLoading, pending }: { isLoading: boolean; pending?: PendingCounts }) {
+  const pendingTotal = pending
+    ? pending.entries + pending.bankLines + pending.auxLettering + pending.tvaDeclarations
+    : 0;
+
   return (
     <section aria-labelledby="todo-title">
       <div className="mb-3 flex items-baseline justify-between gap-4">
@@ -800,6 +789,19 @@ function TaskRow({
 
 /* ─── Trésorerie · 6 mois ─────────────────────────────────────── */
 
+function TrendPill({ trend, pct }: { trend: Trend; pct: number | null }) {
+  const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+  const label = trend === 'up' ? 'en hausse' : trend === 'down' ? 'en baisse' : 'stable';
+  const tone =
+    trend === 'up' ? 'text-accent-ink' : trend === 'down' ? 'text-critical-ink' : 'text-ink-mute';
+  return (
+    <span className={cn('inline-flex items-center gap-1 text-xs font-medium', tone)}>
+      <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+      {pct != null && trend !== 'flat' ? `${pct > 0 ? '+' : ''}${pct.toFixed(0)} % sur 6 mois` : label}
+    </span>
+  );
+}
+
 function TreasuryPanel({
   isLoading,
   isError,
@@ -820,10 +822,11 @@ function TreasuryPanel({
   return (
     <section aria-labelledby="cash-title" className="flex flex-col rounded-md border border-line bg-paper p-5">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 id="cash-title" className="eyebrow">
+        <div className="min-w-0">
+          <p id="cash-title" className="eyebrow inline-flex items-center gap-1.5">
+            <Wallet className="h-3.5 w-3.5" strokeWidth={1.5} />
             Trésorerie · 6 mois
-          </h2>
+          </p>
           {cash != null ? (
             <p className="num mt-1 text-2xl font-medium tabular-nums text-ink">{formatFcfa(cash)}</p>
           ) : (
@@ -855,7 +858,8 @@ function TreasuryPanel({
         ) : (
           <>
             <span className="sr-only">
-              Évolution de la trésorerie nette sur les six derniers mois, tendance {trend === 'up' ? 'à la hausse' : trend === 'down' ? 'à la baisse' : 'stable'}.
+              Évolution de la trésorerie nette sur les six derniers mois, tendance{' '}
+              {trend === 'up' ? 'à la hausse' : trend === 'down' ? 'à la baisse' : 'stable'}.
             </span>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series as { month: string; cash: number }[]} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
@@ -998,7 +1002,7 @@ function RecentActivity({ isLoading, events }: { isLoading: boolean; events: Rea
   );
 }
 
-/* ─── Écran de bienvenue (nouveau dossier) ────────────────────── */
+/* ─── Parcours d'initialisation (data-driven) ─────────────────── */
 
 interface SetupStep {
   readonly label: string;
