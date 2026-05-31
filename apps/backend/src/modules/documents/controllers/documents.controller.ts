@@ -164,6 +164,22 @@ export class DocumentsController {
   }
 
   /**
+   * OCR result for a document: status, extracted invoice fields and the
+   * proposed SYSCOHADA entry (read by the documents page OCR panel).
+   */
+  @Get(':id/ocr')
+  @RequirePermission('documents.read')
+  @HttpCode(HttpStatus.OK)
+  async getOcr(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentOrg() org: CurrentOrgContext | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+  ) {
+    const scope = this.assertActorScope(org, actorUserId);
+    return this.documents.getOcrResult(scope.organizationId, id);
+  }
+
+  /**
    * Proxy endpoint that streams the bytes back to the client. Wave 1
    * ships the local-FS driver so we can't hand out a signed URL —
    * everything routes through this Express response. Wave 2 will swap

@@ -618,6 +618,30 @@ export class DocumentsService {
   }
 
   /**
+   * OCR result view for a single document: status, raw text, and the
+   * structured `extracted_metadata` (canonical fields + rich `invoice`
+   * + `proposedEntry`). Powers the OCR panel on the documents page.
+   */
+  async getOcrResult(
+    organizationId: TenantId,
+    id: string,
+  ): Promise<{
+    readonly ocrStatus: OcrStatus;
+    readonly ocrText: string | null;
+    readonly extractedMetadata: Record<string, unknown> | null;
+  }> {
+    const row = await this.documents.findById(organizationId, id);
+    if (row === null) {
+      throw new AppException(ERROR_CODES.DOC_NOT_FOUND, { message: 'Document not found' });
+    }
+    return {
+      ocrStatus: row.ocrStatus,
+      ocrText: row.ocrText,
+      extractedMetadata: row.extractedMetadata,
+    };
+  }
+
+  /**
    * Returns the binary stream alongside the metadata the controller
    * needs to write the response headers (filename, content type).
    * Translates a storage-level miss into `DOC_NOT_FOUND` so a row
