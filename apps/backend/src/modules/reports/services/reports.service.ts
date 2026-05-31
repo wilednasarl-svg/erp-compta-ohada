@@ -693,6 +693,20 @@ export interface AgingAccountRow {
   readonly buckets: readonly AgingBucket[];
 }
 
+/**
+ * Solde « inverse » d'un compte tiers : un client globalement créditeur
+ * (avance reçue) ou un fournisseur globalement débiteur (avance versée).
+ * Ces soldes ne sont pas vieillis (ce ne sont pas des créances/dettes en
+ * retard) mais signalés à part pour ne pas disparaître du rapport.
+ */
+export interface AgingAdvanceRow {
+  readonly accountId: string;
+  readonly accountCode: string;
+  readonly accountLabel: string;
+  /** Montant positif de l'avance (valeur absolue du solde inverse). */
+  readonly amount: string;
+}
+
 export interface AgingBalanceQuery {
   readonly side: AgingSide;
   readonly asAtDate: string;
@@ -712,6 +726,11 @@ export interface AgingBalanceReport {
   readonly rows: readonly AgingAccountRow[];
   readonly bucketTotals: readonly string[];
   readonly grandTotal: string;
+  /**
+   * Soldes inverses (avances) : clients créditeurs / fournisseurs
+   * débiteurs. Liste vide si aucun. Exclus des `rows` et de `grandTotal`.
+   */
+  readonly advances: readonly AgingAdvanceRow[];
 }
 
 // ─── Annexes (états OHADA composés) ─────────────────────────────────
@@ -2434,6 +2453,24 @@ export class ReportsService {
     const asAt = new Date(`${query.asAtDate}T00:00:00Z`).getTime();
     const openCreatesDebit = query.side === 'CLIENT';
 
+    // Soldes inverses (avances) : client globalement créditeur ou
+    // fournisseur globalement débiteur. Détectés sur le solde net du
+    // compte (pas vieillis) et listés à part pour ne pas disparaître.
+    const advances: AgingAdvanceRow[] = [];
+    for (const p of partners) {
+      const net = Number(p.totalDebit) - Number(p.totalCredit);
+      const isReversed = openCreatesDebit ? net < 0 : net > 0;
+      if (isReversed && Math.abs(net) > 0.005) {
+        advances.push({
+          accountId: p.accountId,
+          accountCode: p.accountCode,
+          accountLabel: p.accountLabel,
+          amount: Math.abs(net).toFixed(2),
+        });
+      }
+    }
+    advances.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+
     const rows: AgingAccountRow[] = await Promise.all(
       partners.map(async (p) => {
         const lines = await this.repo.generalLedger(organizationId, {
@@ -2519,6 +2556,7 @@ export class ReportsService {
       rows: filtered,
       bucketTotals: bucketTotals.map((n: number) => n.toFixed(2)),
       grandTotal: grandTotal.toFixed(2),
+      advances,
     };
   }
 

@@ -131,6 +131,7 @@ describe('ReportsController.agingBalance', () => {
       rows: [],
       bucketTotals: [],
       grandTotal: '0.00',
+      advances: [],
     };
     h.reports.getAgingBalance.mockResolvedValue(fake);
     const q = new AgingBalanceQueryDto();
@@ -157,6 +158,7 @@ describe('ReportsController.agingBalance', () => {
       rows: [],
       bucketTotals: [],
       grandTotal: '0.00',
+      advances: [],
     });
     h.pdf.agingBalancePdf.mockResolvedValue(Buffer.from('fake-pdf'));
     const res = buildRes();
