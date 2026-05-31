@@ -1,0 +1,11 @@
+# Garde-fou : empêche de pousser un pnpm-lock.yaml désynchronisé du package.json
+# (cause des builds Vercel cassés en ~7s sur `--frozen-lockfile`).
+echo "🔒 pre-push : vérification du lockfile (pnpm --frozen-lockfile)…"
+if ! pnpm install --frozen-lockfile >/dev/null 2>&1; then
+  echo ""
+  echo "❌ pnpm-lock.yaml est désynchronisé de package.json."
+  echo "   Lance 'pnpm install' puis committe pnpm-lock.yaml avant de pousser."
+  echo "   (Sinon le build Vercel échoue en quelques secondes.)"
+  exit 1
+fi
+echo "✅ lockfile synchronisé."
