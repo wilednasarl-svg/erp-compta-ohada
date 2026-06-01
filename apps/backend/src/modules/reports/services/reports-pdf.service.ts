@@ -265,16 +265,18 @@ export class ReportsPdfService {
       y = this.crDoctrinalRow(doc, cols, line, y, hasComparison);
     }
 
-    // ── Pied : devise + récap totaux + écart de bouclage ──
+    // ── Pied : devise + sous-totaux classe 6/7 + résultat net (XI) ──
+    // Le résultat net SYSCOHADA (poste XI) inclut le HAO et l'impôt sur
+    // le résultat ; il ne se déduit donc PAS de (Produits − Charges) dès
+    // qu'il existe du HAO / de l'impôt. On l'affiche tel quel plutôt que
+    // comme un « écart de bouclage » qui serait trompeur.
     y += 10;
-    const ecart =
-      Number(report.totalProduits) - Number(report.totalCharges) - Number(report.resultat);
     doc
       .font('Helvetica')
       .fontSize(7)
       .fillColor('#555555')
       .text(
-        `Devise : XOF — Total charges : ${this.fmtPar(report.totalCharges)} — Total produits : ${this.fmtPar(report.totalProduits)} — Écart Produits − Charges − Résultat : ${this.fmtPar(ecart.toFixed(2))}`,
+        `Devise : XOF — Total charges (cl. 6) : ${this.fmtPar(report.totalCharges)} — Total produits (cl. 7) : ${this.fmtPar(report.totalProduits)} — Résultat net (XI, inclut HAO et impôt) : ${this.fmtPar(report.resultat)}`,
         ReportsPdfService.MARGIN,
         y,
       );

@@ -483,6 +483,105 @@ describe('ReportsService.getProfitLoss', () => {
   });
 });
 
+describe('résultat net — inclut HAO et impôt (XI)', () => {
+  // Conformité SYSCOHADA (Guide Tome 3 p. 33) : le résultat net (poste XI)
+  // = XG + XH − participation (RQ) − impôt (RS). Il INCLUT donc le HAO
+  // (classes 81-88) et l'impôt sur le résultat (89). Le sous-total
+  // (Σ classe 7 − Σ classe 6) n'est PAS le résultat net dès qu'il existe
+  // du HAO ou de l'impôt.
+
+  // Comptes mappés (cf. pl-postes.ts) :
+  //   841 → TO (produit HAO, +)   831 → RP (charge HAO, −)
+  //   891 → RS (impôt, −)
+  // RAO = 100000 − 60000 = 40000
+  // XH  = TO(5000) − RP(3000) = 2000
+  // XI  = 40000 + 2000 − RS(8000) = 34000  ≠  Σcl7 − Σcl6 (= 40000)
+  const haoRows = (): TrialBalanceRow[] => [
+    tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '100000.00' }),
+    tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '60000.00' }),
+    tbRow({ accountCode: '841000', accountClass: 8, periodCredit: '5000.00' }), // produit HAO
+    tbRow({ accountCode: '831000', accountClass: 8, periodDebit: '3000.00' }), // charge HAO
+    tbRow({ accountCode: '891000', accountClass: 8, periodDebit: '8000.00' }), // impôt résultat
+  ];
+
+  it('(a) cr.resultat == ligne XI et diffère du sous-total (Σcl7 − Σcl6)', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue(haoRows());
+
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    const xi = result.lines.find((l) => l.ref === 'XI');
+    expect(xi).toBeDefined();
+    // Le résultat exposé est bien le résultat net doctrinal (XI).
+    expect(result.resultat).toBe(xi?.amountN);
+    expect(Number(result.resultat)).toBeCloseTo(34000, 2);
+
+    // Sous-totaux classe 6/7 conservés (libellés inchangés).
+    expect(result.totalProduits).toBe('100000.00');
+    expect(result.totalCharges).toBe('60000.00');
+
+    // Preuve que le résultat net n'est PAS le sous-total partiel.
+    const sousTotalPartiel = Number(result.totalProduits) - Number(result.totalCharges);
+    expect(sousTotalPartiel).toBeCloseTo(40000, 2);
+    expect(Number(result.resultat)).not.toBeCloseTo(sousTotalPartiel, 2);
+  });
+
+  it('(b) le bilan équilibre via getReportsFromBalance même avec HAO/impôt', async () => {
+    const h = buildHarness();
+    // Balance de soldes globalement équilibrée (Σ débit = Σ crédit) :
+    //   Débits  : 601=60000, 831=3000, 891=8000, banque 521=84000  → 155000
+    //   Crédits : 701=100000, 841=5000, capital 101=50000          → 155000
+    // Actif (banque) − Passif hors résultat (capital) = 84000 − 50000 = 34000
+    //   = résultat net XI → le bilan équilibre après incorporation.
+    const { bilan, cr } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows: [
+        { code: '70100000', label: 'VENTES', debit: '0', credit: '100000' },
+        { code: '60100000', label: 'ACHATS', debit: '60000', credit: '0' },
+        { code: '84100000', label: 'PRODUITS HAO', debit: '0', credit: '5000' },
+        { code: '83100000', label: 'CHARGES HAO', debit: '3000', credit: '0' },
+        { code: '89100000', label: 'IMPOT SUR RESULTAT', debit: '8000', credit: '0' },
+        { code: '52100000', label: 'BANQUE', debit: '84000', credit: '0' },
+        { code: '10100000', label: 'CAPITAL', debit: '0', credit: '50000' },
+      ],
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+
+    // Le compte de résultat dérivé porte le résultat net XI (34000).
+    expect(Number(cr.resultat)).toBeCloseTo(34000, 2);
+    const xi = cr.lines.find((l) => l.ref === 'XI');
+    expect(Number(xi?.amountN)).toBeCloseTo(34000, 2);
+
+    // Preuve de conformité : le bilan équilibre (Actif = Passif).
+    expect(Number(bilan.totals.difference)).toBeCloseTo(0, 2);
+    expect(Number(bilan.difference)).toBeCloseTo(0, 2);
+    expect(Number(bilan.netResultIncorporated)).toBeCloseTo(34000, 2);
+  });
+
+  it('(c) non-régression : sans classe 8, cr.resultat == Σcl7 − Σcl6', async () => {
+    const h = buildHarness();
+    h.repo.trialBalance.mockResolvedValue([
+      tbRow({ accountCode: '701000', accountClass: 7, periodCredit: '100000.00' }),
+      tbRow({ accountCode: '601000', accountClass: 6, periodDebit: '60000.00' }),
+    ]);
+
+    const result = await h.service.getProfitLoss(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    const sousTotal = Number(result.totalProduits) - Number(result.totalCharges);
+    expect(sousTotal).toBeCloseTo(40000, 2);
+    expect(Number(result.resultat)).toBeCloseTo(40000, 2);
+    // En l'absence de HAO/impôt, XI coïncide avec le sous-total.
+    const xi = result.lines.find((l) => l.ref === 'XI');
+    expect(Number(xi?.amountN)).toBeCloseTo(40000, 2);
+  });
+});
+
 describe('ReportsService.getBalanceSheet', () => {
   function balancesAsAt(
     overrides: Array<{

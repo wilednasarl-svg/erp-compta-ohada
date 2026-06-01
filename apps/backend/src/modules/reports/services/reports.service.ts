@@ -3058,10 +3058,17 @@ export class ReportsService {
 
     const totalCharges = charges.reduce((s, sect) => s + Number(sect.amount), 0);
     const totalProduits = produits.reduce((s, sect) => s + Number(sect.amount), 0);
-    const resultat = totalProduits - totalCharges;
 
     // Lignes doctrinales Tome 3 p. 33 (postes lettrés + SIG intercalés).
     const lines = ReportsService.buildProfitLossDoctrinalLines(rows);
+
+    // Résultat net SYSCOHADA = poste XI (XG + XH − RQ − RS) : il INCLUT le
+    // HAO (classe 81-88) et l'impôt sur le résultat (89). Le sous-total
+    // (Σ classe 7 − Σ classe 6) est volontairement conservé pour les
+    // libellés « Total produits / Total charges », mais NE constitue PAS
+    // le résultat net dès qu'il existe du HAO ou de l'impôt.
+    const xiLine = lines.find((l) => l.ref === 'XI');
+    const resultat = xiLine ? Number(xiLine.amountN) : totalProduits - totalCharges;
 
     return {
       fromDate,
@@ -3359,8 +3366,13 @@ export class ReportsService {
 
     const totalCharges = charges.reduce((s, sect) => s + Number(sect.amount), 0);
     const totalProduits = produits.reduce((s, sect) => s + Number(sect.amount), 0);
-    const resultat = totalProduits - totalCharges;
     const lines = ReportsService.buildProfitLossDoctrinalLines(trialRows);
+
+    // Résultat net SYSCOHADA = poste XI (inclut HAO classe 81-88 + impôt 89).
+    // C'est ce résultat qui est incorporé au bilan (`netResultIncorporated`)
+    // pour qu'il équilibre même en présence de HAO / d'impôt sur le résultat.
+    const xiLine = lines.find((l) => l.ref === 'XI');
+    const resultat = xiLine ? Number(xiLine.amountN) : totalProduits - totalCharges;
 
     const fromDate = fiscalYearStartDate ?? `${asAtDate.slice(0, 4)}-01-01`;
 

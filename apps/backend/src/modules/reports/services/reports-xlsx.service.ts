@@ -196,13 +196,15 @@ export class ReportsXlsxService {
       ]);
     }
 
-    // Pied de tableau récap (Devise + totaux + écart de bouclage).
+    // Pied de tableau récap (Devise + sous-totaux classe 6/7 + résultat net).
+    // Le résultat net SYSCOHADA (poste XI) inclut le HAO et l'impôt sur le
+    // résultat ; il ne se déduit donc pas de (Produits − Charges) en
+    // présence de HAO / d'impôt. On affiche le résultat net plutôt qu'un
+    // « écart » trompeur.
     rows.push([]);
-    const ecart =
-      Number(report.totalProduits) - Number(report.totalCharges) - Number(report.resultat);
     rows.push([
       '',
-      `Devise : XOF — Total charges ${report.totalCharges} — Total produits ${report.totalProduits} — Écart : ${ecart.toFixed(2)}`,
+      `Devise : XOF — Total charges (cl. 6) ${report.totalCharges} — Total produits (cl. 7) ${report.totalProduits} — Résultat net (XI, inclut HAO et impôt) ${report.resultat}`,
       '',
       '',
       '',
