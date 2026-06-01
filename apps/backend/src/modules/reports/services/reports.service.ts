@@ -733,6 +733,73 @@ export interface AgingBalanceReport {
   readonly advances: readonly AgingAdvanceRow[];
 }
 
+/**
+ * Solde « inhabituel » détecté à l'import d'une balance : compte dont le
+ * SIGNE est contraire à sa nature usuelle (fournisseur débiteur, client
+ * créditeur, banque créditrice) ou compte sensible aux erreurs
+ * d'imputation (compte courant associé/groupe). Ces soldes sont souvent
+ * des avances LÉGITIMES, mais aussi le symptôme typique d'une erreur de
+ * saisie dans le logiciel source (mauvais compte choisi). Contrôle
+ * qualité non bloquant : on génère le rapport ET on signale.
+ */
+export interface UnusualBalanceRow {
+  readonly code: string;
+  readonly label: string;
+  /** Valeur absolue du solde. */
+  readonly amount: string;
+  readonly sign: 'D' | 'C';
+  readonly severity: 'warning' | 'info';
+  readonly reason: string;
+}
+
+/**
+ * Détecte les soldes inhabituels d'une balance importée. Pure (testable
+ * isolément). Exclut les comptes d'avance dédiés (409 fournisseurs
+ * débiteurs, 419 clients créditeurs) dont le sens inversé est NORMAL.
+ */
+export function detectUnusualBalances(
+  rows: ReadonlyArray<{ code: string; label: string; debit: string; credit: string }>,
+): UnusualBalanceRow[] {
+  const out: UnusualBalanceRow[] = [];
+  for (const r of rows) {
+    const net = Number(r.debit || '0') - Number(r.credit || '0');
+    if (!Number.isFinite(net) || Math.abs(net) < 0.005) continue;
+    const sign: 'D' | 'C' = net > 0 ? 'D' : 'C';
+    const p2 = r.code.slice(0, 2);
+    const p3 = r.code.slice(0, 3);
+    let hit: { severity: 'warning' | 'info'; reason: string } | null = null;
+    if (p2 === '40' && p3 !== '409' && sign === 'D') {
+      hit = {
+        severity: 'warning',
+        reason: "Fournisseur à solde débiteur — avance versée/avoir, ou erreur d'imputation (mauvais compte ?).",
+      };
+    } else if (p2 === '41' && p3 !== '419' && sign === 'C') {
+      hit = {
+        severity: 'warning',
+        reason: "Client à solde créditeur — avance reçue/trop-perçu, ou erreur d'imputation (mauvais compte ?).",
+      };
+    } else if ((p2 === '52' || p2 === '53' || p2 === '54') && sign === 'C') {
+      hit = {
+        severity: 'info',
+        reason: 'Banque à solde créditeur — découvert/concours bancaire, ou erreur d’imputation.',
+      };
+    } else if (p3 === '462' || p3 === '463' || p3 === '466') {
+      hit = {
+        severity: 'info',
+        reason: "Compte courant associé/groupe — vérifier l'imputation (compte souvent choisi par erreur).",
+      };
+    }
+    if (hit) {
+      out.push({ code: r.code, label: r.label, amount: Math.abs(net).toFixed(2), sign, ...hit });
+    }
+  }
+  // Warnings d'abord, puis montant décroissant.
+  return out.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === 'warning' ? -1 : 1;
+    return Number(b.amount) - Number(a.amount);
+  });
+}
+
 // ─── Annexes (états OHADA composés) ─────────────────────────────────
 //
 // NOTE: `TftReport` legacy supprimé (B4). Le TFT est désormais exposé
@@ -3156,7 +3223,11 @@ export class ReportsService {
       asAtDate: string;
       fiscalYearStartDate?: string;
     },
-  ): Promise<{ bilan: BalanceSheetReport; cr: ProfitLossReport }> {
+  ): Promise<{
+    bilan: BalanceSheetReport;
+    cr: ProfitLossReport;
+    unusualBalances: ReadonlyArray<UnusualBalanceRow>;
+  }> {
     const { rows, asAtDate, fiscalYearStartDate } = input;
 
     // ── 1. Convert uploaded rows to internal formats ────────────────
@@ -3303,6 +3374,9 @@ export class ReportsService {
     const totalActif = actifSections.reduce((s, sect) => s + Number(sect.total), 0);
     const totalPassif = passifSections.reduce((s, sect) => s + Number(sect.total), 0);
 
+    // Contrôle qualité : soldes inhabituels (erreurs d'imputation probables).
+    const unusualBalances = detectUnusualBalances(rows);
+
     const hierarchy = this.buildBilanHierarchy(accountRows, netResultIncorporated);
 
     const bilan: BalanceSheetReport = {
@@ -3321,7 +3395,7 @@ export class ReportsService {
       difference: (totalActif - totalPassif).toFixed(2),
     };
 
-    return { bilan, cr };
+    return { bilan, cr, unusualBalances };
   }
 
   private async computeBalanceSheetBare(
