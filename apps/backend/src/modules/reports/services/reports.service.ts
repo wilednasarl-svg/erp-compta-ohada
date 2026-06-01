@@ -27,6 +27,12 @@ import {
   buildTrialBalanceFromRows,
 } from './from-balance-states';
 import {
+  buildComparativeFromRows,
+  buildMultiYearFromRows,
+  buildTftFromRows,
+} from './from-balance-multi-period';
+import type { CashFlowReport } from './cash-flow.service';
+import {
   PL_POSTES,
   getPlNoteRef,
   getPlSignSymbol,
@@ -3296,6 +3302,10 @@ export class ReportsService {
       rows: ReadonlyArray<{ code: string; label: string; debit: string; credit: string }>;
       asAtDate: string;
       fiscalYearStartDate?: string;
+      previousRows?: ReadonlyArray<{ code: string; label: string; debit: string; credit: string }>;
+      previousAsAtDate?: string;
+      previous2Rows?: ReadonlyArray<{ code: string; label: string; debit: string; credit: string }>;
+      previous2AsAtDate?: string;
     },
   ): Promise<{
     bilan: BalanceSheetReport;
@@ -3306,6 +3316,9 @@ export class ReportsService {
     sig: SigReport;
     ratios: FinancialRatiosReport;
     annexe: AnnexeReport | null;
+    comparative: ComparativeBalanceReport | null;
+    tft: CashFlowReport | null;
+    multiYear: MultiYearBalanceReport | null;
   }> {
     const { rows, asAtDate, fiscalYearStartDate } = input;
 
@@ -3482,7 +3495,37 @@ export class ReportsService {
     const ratios = buildRatiosFromReports(bilan, sig, asAtDate, fromDate);
     const annexe = buildPartialAnnexeFromRows(trialRows, asAtDate, fromDate);
 
-    return { bilan, cr, unusualBalances, stockBreakdown, trialBalance, sig, ratios, annexe };
+    // ── États multi-périodes (helpers purs net-new, hors fichier chaud) ──
+    let comparative: ComparativeBalanceReport | null = null;
+    let tft: CashFlowReport | null = null;
+    let multiYear: MultiYearBalanceReport | null = null;
+    if (input.previousRows !== undefined && input.previousAsAtDate !== undefined) {
+      const prevAsAt = input.previousAsAtDate;
+      comparative = buildComparativeFromRows(rows, asAtDate, input.previousRows, prevAsAt);
+      tft = buildTftFromRows(rows, asAtDate, input.previousRows, prevAsAt, fiscalYearStartDate);
+      const periods: Array<{ rows: typeof rows; asAtDate: string }> = [
+        { rows, asAtDate },
+        { rows: input.previousRows, asAtDate: prevAsAt },
+      ];
+      if (input.previous2Rows !== undefined && input.previous2AsAtDate !== undefined) {
+        periods.push({ rows: input.previous2Rows, asAtDate: input.previous2AsAtDate });
+      }
+      multiYear = buildMultiYearFromRows(periods);
+    }
+
+    return {
+      bilan,
+      cr,
+      unusualBalances,
+      stockBreakdown,
+      trialBalance,
+      sig,
+      ratios,
+      annexe,
+      comparative,
+      tft,
+      multiYear,
+    };
   }
 
   private async computeBalanceSheetBare(

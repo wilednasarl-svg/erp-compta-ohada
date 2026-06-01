@@ -17,12 +17,15 @@
 import { useMutation } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  ArrowDownUp,
   BarChart3,
   BookText,
   CheckCircle2,
+  Columns3,
   Download,
   FileSpreadsheet,
   Info,
+  Layers,
   Loader2,
   Percent,
   PieChart,
@@ -47,7 +50,10 @@ import { cn } from '@/lib/utils';
 import type {
   AnnexeReport,
   BalanceSheetReport,
+  CashFlowReport,
+  ComparativeBalanceReport,
   FinancialRatiosReport,
+  MultiYearBalanceReport,
   ProfitLossReport,
   SigReport,
   TrialBalanceReport,
@@ -56,10 +62,16 @@ import type {
 import { AnnexeResult } from './annexe-result';
 import { BalanceSheetResult } from './balance-sheet-result';
 import { type BalanceParsed, parseBalanceCsv, parseBalanceXlsx } from './balance-parse';
+import { type BalanceInventoryType, BalanceTypeSelector } from './balance-type-selector';
+import { ComparativeResult } from './comparative-result';
+import { MultiYearResult } from './multi-year-result';
+import { PreviousBalancesUpload } from './previous-balances-upload';
 import { todayIso, yearStartIso } from './presets';
 import { ProfitLossResult } from './profit-loss-result';
 import { RatiosResult } from './ratios-result';
 import { SigResult } from './sig-result';
+import { type StockBreakdown, StockBreakdownNote } from './stock-breakdown-note';
+import { TftResult } from './tft-result';
 import { TrialBalanceResult } from './trial-balance-result';
 
 interface UnusualBalanceRow {
@@ -71,18 +83,6 @@ interface UnusualBalanceRow {
   reason: string;
 }
 
-interface StockBreakdownLine {
-  label: string;
-  prefixes: string;
-  amount: string;
-}
-interface StockBreakdown {
-  lines: StockBreakdownLine[];
-  totalBrut: string;
-  depreciation: string;
-  totalNet: string;
-}
-
 interface FromBalanceResult {
   bilan: BalanceSheetReport;
   cr: ProfitLossReport;
@@ -92,9 +92,21 @@ interface FromBalanceResult {
   sig: SigReport;
   ratios: FinancialRatiosReport;
   annexe: AnnexeReport | null;
+  comparative: ComparativeBalanceReport | null;
+  tft: CashFlowReport | null;
+  multiYear: MultiYearBalanceReport | null;
 }
 
-type ResultTab = 'bilan' | 'cr' | 'sig' | 'ratios' | 'balance' | 'annexe';
+type ResultTab =
+  | 'bilan'
+  | 'cr'
+  | 'sig'
+  | 'ratios'
+  | 'balance'
+  | 'annexe'
+  | 'comparative'
+  | 'multiyear'
+  | 'tft';
 
 const RESULT_TABS: ReadonlyArray<{ key: ResultTab; label: string; Icon: typeof Scale }> = [
   { key: 'bilan', label: 'Bilan', Icon: Scale },
@@ -103,9 +115,10 @@ const RESULT_TABS: ReadonlyArray<{ key: ResultTab; label: string; Icon: typeof S
   { key: 'ratios', label: 'Ratios', Icon: Percent },
   { key: 'balance', label: 'Balance générale', Icon: Table2 },
   { key: 'annexe', label: 'Annexe', Icon: BookText },
+  { key: 'comparative', label: 'Comparative', Icon: Columns3 },
+  { key: 'multiyear', label: 'Pluriannuelle', Icon: Layers },
+  { key: 'tft', label: 'TFT', Icon: ArrowDownUp },
 ];
-
-type BalanceInventoryType = 'avant-inventaire' | 'apres-inventaire';
 
 const fmt = (amount: string): string => {
   const n = Number(amount);
@@ -153,6 +166,13 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
   const [showAllRows, setShowAllRows] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // ── Balances antérieures (optionnelles) — débloquent Comparative/Pluriannuelle/TFT.
+  const [parsedPrev, setParsedPrev] = useState<BalanceParsed | null>(null);
+  const [prevAsAtDate, setPrevAsAtDate] = useState('');
+  const [parsedPrev2, setParsedPrev2] = useState<BalanceParsed | null>(null);
+  const [prev2AsAtDate, setPrev2AsAtDate] = useState('');
+  const [prevParseError, setPrevParseError] = useState<string | null>(null);
+
   const mutation = useMutation<FromBalanceResult>({
     mutationFn: async () => {
       if (!parsed) throw new Error('Aucune donnée');
@@ -160,24 +180,30 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
         rows: parsed.rows,
         asAtDate,
         ...(incorporateResult ? { fiscalYearStartDate: fyStart } : {}),
+        ...(parsedPrev ? { previousRows: parsedPrev.rows, previousAsAtDate: prevAsAtDate } : {}),
+        ...(parsedPrev2
+          ? { previous2Rows: parsedPrev2.rows, previous2AsAtDate: prev2AsAtDate }
+          : {}),
       });
     },
   });
 
+  const parseFile = async (f: File): Promise<BalanceParsed> => {
+    const isExcel =
+      /\.(xlsx|xls)$/i.test(f.name) ||
+      f.type.includes('spreadsheetml') ||
+      f.type.includes('ms-excel');
+    if (isExcel) {
+      const buffer = await f.arrayBuffer();
+      return parseBalanceXlsx(buffer);
+    }
+    const text = await f.text();
+    return parseBalanceCsv(text);
+  };
+
   const handleFile = async (f: File): Promise<void> => {
     try {
-      const isExcel =
-        /\.(xlsx|xls)$/i.test(f.name) ||
-        f.type.includes('spreadsheetml') ||
-        f.type.includes('ms-excel');
-      let result: BalanceParsed;
-      if (isExcel) {
-        const buffer = await f.arrayBuffer();
-        result = await parseBalanceXlsx(buffer);
-      } else {
-        const text = await f.text();
-        result = parseBalanceCsv(text);
-      }
+      const result = await parseFile(f);
       setParsed(result);
       setParseError(null);
       setShowAllRows(false);
@@ -185,6 +211,34 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
     } catch (e) {
       setParseError(e instanceof Error ? e.message : 'Erreur de lecture du fichier.');
       setParsed(null);
+    }
+  };
+
+  const handlePrevFile = async (f: File): Promise<void> => {
+    try {
+      const result = await parseFile(f);
+      setParsedPrev(result);
+      setPrevParseError(null);
+      mutation.reset();
+    } catch (e) {
+      setPrevParseError(
+        e instanceof Error ? e.message : 'Erreur de lecture du fichier (balance N-1).',
+      );
+      setParsedPrev(null);
+    }
+  };
+
+  const handlePrev2File = async (f: File): Promise<void> => {
+    try {
+      const result = await parseFile(f);
+      setParsedPrev2(result);
+      setPrevParseError(null);
+      mutation.reset();
+    } catch (e) {
+      setPrevParseError(
+        e instanceof Error ? e.message : 'Erreur de lecture du fichier (balance N-2).',
+      );
+      setParsedPrev2(null);
     }
   };
 
@@ -270,8 +324,10 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
           Uploadez une balance CSV ou Excel (Sage Saari, CIEL, export tableur…) pour générer, sans
           passer par les écritures validées, l&apos;ensemble des états dérivables des soldes : Bilan,
           Compte de résultat, Balance générale, SIG, Ratios (fiche de synthèse) et Annexe partielle.
-          Utile pour des simulations ou des reprises d&apos;antériorité. Le TFT, la balance âgée et le
-          grand livre exigent le détail des écritures et ne sont pas disponibles ici.
+          Utile pour des simulations ou des reprises d&apos;antériorité. En chargeant en plus une
+          balance de l&apos;exercice antérieur (N-1), vous débloquez les états Comparative,
+          Pluriannuelle et TFT (flux de trésorerie). La balance âgée et le grand livre exigent le
+          détail des écritures et ne sont pas disponibles ici.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
@@ -457,115 +513,20 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
             </div>
 
             {/* ── Type de balance — information critique ── */}
-            <div className="rounded-md border border-line bg-paper">
-              <div className="border-b border-line px-4 py-3">
-                <p className="font-display text-sm font-medium tracking-tight text-ink">
-                  Type de balance{' '}
-                  <span className="ml-1 text-[oklch(0.45_0.18_25)] text-xs font-normal">
-                    (obligatoire — conditionne la validité des états)
-                  </span>
-                </p>
-                <p className="mt-0.5 text-xs text-ink-soft">
-                  En SYSCOHADA, un bilan et un compte de résultat ne peuvent être certifiés que sur
-                  une balance après inventaire. Précisez le type pour que les états générés soient
-                  correctement étiquetés.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-                {(
-                  [
-                    {
-                      value: 'apres-inventaire',
-                      label: 'Balance après inventaire',
-                      description:
-                        'Tous les travaux de clôture ont été passés : amortissements (28x), dépréciations (29x/39x/49x/59x), régularisations (476/477/408/418), provision IS (444), variations de stocks (603/73x). Cette balance peut servir à établir les états financiers définitifs.',
-                      badge: {
-                        text: 'États certifiables',
-                        color: 'bg-[oklch(0.93_0.08_145)] text-[oklch(0.35_0.14_145)]',
-                      },
-                    },
-                    {
-                      value: 'avant-inventaire',
-                      label: 'Balance avant inventaire',
-                      description:
-                        "Les écritures d'inventaire n'ont pas encore été passées. Le bilan et le CR générés sont incomplets et non certifiables : les amortissements, dépréciations et régularisations sont absents. Utiliser uniquement pour simulation ou état intermédiaire.",
-                      badge: {
-                        text: 'États provisoires',
-                        color: 'bg-[oklch(0.94_0.06_55)] text-[oklch(0.42_0.14_55)]',
-                      },
-                    },
-                  ] as const
-                ).map(({ value, label, description, badge }) => {
-                  const isSelected = balanceType === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setBalanceType(value)}
-                      className={cn(
-                        'flex flex-col items-start gap-2 bg-paper px-4 py-4 text-left transition-colors',
-                        isSelected
-                          ? 'bg-accent-soft/40 ring-2 ring-inset ring-accent/40'
-                          : 'hover:bg-sunk/40',
-                      )}
-                    >
-                      <div className="flex w-full items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            className={cn(
-                              'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-                              isSelected ? 'border-accent bg-accent' : 'border-line-strong bg-paper',
-                            )}
-                          >
-                            {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-sm font-medium',
-                              isSelected ? 'text-ink' : 'text-ink-soft',
-                            )}
-                          >
-                            {label}
-                          </span>
-                        </div>
-                        <span
-                          className={cn(
-                            'shrink-0 rounded-sm px-2 py-0.5 text-2xs font-medium',
-                            badge.color,
-                          )}
-                        >
-                          {badge.text}
-                        </span>
-                      </div>
-                      <p className="pl-6.5 text-xs leading-relaxed text-ink-mute">{description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <BalanceTypeSelector value={balanceType} onChange={setBalanceType} />
 
-            {/* Bandeau d'avertissement avant inventaire */}
-            {balanceType === 'avant-inventaire' && (
-              <div className="flex items-start gap-3 rounded-md border border-[oklch(0.75_0.12_55)] bg-[oklch(0.97_0.03_55)] px-4 py-3.5">
-                <AlertTriangle
-                  className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.50_0.15_55)]"
-                  strokeWidth={1.5}
-                />
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium text-[oklch(0.38_0.12_55)]">
-                    Balance avant inventaire — états provisoires
-                  </p>
-                  <p className="text-xs text-[oklch(0.45_0.10_55)]">
-                    Les états générés ci-dessous sont <strong>incomplets</strong> : les dotations aux
-                    amortissements, les dépréciations, les charges et produits constatés d&apos;avance,
-                    les charges à payer, les produits à recevoir, la provision IS et les variations de
-                    stocks ne figurent pas encore dans la balance. Le bilan et le CR ne sont{' '}
-                    <strong>pas certifiables</strong> en l&apos;état. Passez les écritures
-                    d&apos;inventaire, puis régénérez à partir d&apos;une balance après inventaire.
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* ── Comparaison & TFT (balances antérieures, optionnel) ── */}
+            <PreviousBalancesUpload
+              parsedPrev={parsedPrev}
+              prevAsAtDate={prevAsAtDate}
+              onPrevFile={(f) => void handlePrevFile(f)}
+              onPrevAsAtDateChange={setPrevAsAtDate}
+              parsedPrev2={parsedPrev2}
+              prev2AsAtDate={prev2AsAtDate}
+              onPrev2File={(f) => void handlePrev2File(f)}
+              onPrev2AsAtDateChange={setPrev2AsAtDate}
+              error={prevParseError}
+            />
 
             {/* ── Paramètres ── */}
             <form
@@ -642,9 +603,13 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
               <div className="flex gap-1">
-                {RESULT_TABS.filter(
-                  (t) => t.key !== 'annexe' || mutation.data.annexe !== null,
-                ).map(({ key, label, Icon }) => (
+                {RESULT_TABS.filter((t) => {
+                  if (t.key === 'annexe') return mutation.data.annexe !== null;
+                  if (t.key === 'comparative') return mutation.data.comparative !== null;
+                  if (t.key === 'multiyear') return mutation.data.multiYear !== null;
+                  if (t.key === 'tft') return mutation.data.tft !== null;
+                  return true;
+                }).map(({ key, label, Icon }) => (
                   <button
                     key={key}
                     type="button"
@@ -758,61 +723,7 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
             {activeTab === 'bilan' ? (
               <div className="space-y-4">
                 <BalanceSheetResult report={mutation.data.bilan} />
-                {mutation.data.stockBreakdown.lines.length > 0 && (
-                  <div className="rounded-sm border border-line bg-paper p-4">
-                    <p className="eyebrow mb-1 text-ink-mute">
-                      Note 6 — Détail des stocks et en-cours
-                    </p>
-                    <p className="mb-3 max-w-[80ch] text-xs text-ink-mute">
-                      Au bilan SYSCOHADA, les stocks tiennent en une seule ligne « BB — Stocks et
-                      en-cours ». Voici leur ventilation par famille (annexe Note 6), reconstituée
-                      depuis les comptes 31-38 de votre balance.
-                    </p>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-line text-left text-xs text-ink-mute">
-                          <th className="py-1.5 font-medium">Famille</th>
-                          <th className="py-1.5 text-right font-medium">Montant brut</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-line">
-                        {mutation.data.stockBreakdown.lines.map((l) => (
-                          <tr key={l.prefixes}>
-                            <td className="py-1.5 text-ink">
-                              {l.label}{' '}
-                              <span className="font-mono text-xs text-ink-mute">({l.prefixes})</span>
-                            </td>
-                            <td className="py-1.5 text-right font-mono tabular-nums text-ink">
-                              {fmt(l.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t border-line">
-                          <td className="py-1.5 font-medium text-ink">Total brut</td>
-                          <td className="py-1.5 text-right font-mono tabular-nums text-ink">
-                            {fmt(mutation.data.stockBreakdown.totalBrut)}
-                          </td>
-                        </tr>
-                        {Number(mutation.data.stockBreakdown.depreciation) > 0 && (
-                          <tr>
-                            <td className="py-1 text-ink-soft">− Dépréciations (39)</td>
-                            <td className="py-1 text-right font-mono tabular-nums text-ink-soft">
-                              {fmt(mutation.data.stockBreakdown.depreciation)}
-                            </td>
-                          </tr>
-                        )}
-                        <tr className="border-t border-line-strong">
-                          <td className="py-1.5 font-medium text-ink">Net — poste BB du bilan</td>
-                          <td className="py-1.5 text-right font-mono tabular-nums font-medium text-ink">
-                            {fmt(mutation.data.stockBreakdown.totalNet)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )}
+                <StockBreakdownNote breakdown={mutation.data.stockBreakdown} />
               </div>
             ) : activeTab === 'cr' ? (
               <ProfitLossResult report={mutation.data.cr} />
@@ -824,6 +735,12 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
               <TrialBalanceResult report={mutation.data.trialBalance} />
             ) : activeTab === 'annexe' && mutation.data.annexe !== null ? (
               <AnnexeResult report={mutation.data.annexe} />
+            ) : activeTab === 'comparative' && mutation.data.comparative !== null ? (
+              <ComparativeResult report={mutation.data.comparative} />
+            ) : activeTab === 'multiyear' && mutation.data.multiYear !== null ? (
+              <MultiYearResult report={mutation.data.multiYear} />
+            ) : activeTab === 'tft' && mutation.data.tft !== null ? (
+              <TftResult report={mutation.data.tft} />
             ) : null}
           </div>
         )}

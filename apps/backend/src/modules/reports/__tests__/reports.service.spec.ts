@@ -2582,3 +2582,122 @@ describe('getReportsFromBalance — états dérivés (balance, SIG, ratios, anne
   });
 });
 
+describe('getReportsFromBalance — multi-période (comparative, TFT, pluriannuelle)', () => {
+  // Scénario doctrinal SYSCOHADA dépouillé pour l'invariant TFT :
+  //   N-1 : Banque 52 = 5 000 D, Capital 10 = 5 000 C.
+  //   N   : Banque 52 = 8 000 D (après encaissement d'un emprunt),
+  //         Capital 10 = 5 000 C, Emprunt 16 = 3 000 C.
+  //   La variation de trésorerie (+3 000) s'explique INTÉGRALEMENT par
+  //   le nouvel emprunt → ZE = FO = 3 000, ZG = 3 000, ZH = ZA + ZG.
+  const rowsN1 = [
+    { code: '52110000', label: 'BANQUE', debit: '5000', credit: '0' },
+    { code: '10100000', label: 'CAPITAL', debit: '0', credit: '5000' },
+  ];
+  const rowsN = [
+    { code: '52110000', label: 'BANQUE', debit: '8000', credit: '0' },
+    { code: '10100000', label: 'CAPITAL', debit: '0', credit: '5000' },
+    { code: '16100000', label: 'EMPRUNT', debit: '0', credit: '3000' },
+  ];
+
+  it('comparative N vs N-1 cohérente (variation des mouvements nets + SOLDE de N)', async () => {
+    const h = buildHarness();
+    const { comparative } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows: rowsN,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+      previousRows: rowsN1,
+      previousAsAtDate: '2025-12-31',
+    });
+    expect(comparative).not.toBeNull();
+    expect(comparative?.toDate).toBe('2026-12-31');
+    expect(comparative?.previousToDate).toBe('2025-12-31');
+
+    const banque = comparative?.rows.find((r) => r.accountCode === '52110000');
+    // Banque : N-1 net = +5 000, N net = +8 000 → variation +3 000.
+    expect(Number(banque?.previousPeriodDebit)).toBeCloseTo(5000, 2);
+    expect(Number(banque?.periodDebit)).toBeCloseTo(8000, 2);
+    expect(Number(banque?.netVariation)).toBeCloseTo(3000, 2);
+    expect(banque?.netVariationPercent).toBe('60.00');
+
+    // L'emprunt n'existe qu'en N (présent uniquement côté courant).
+    const emprunt = comparative?.rows.find((r) => r.accountCode === '16100000');
+    expect(emprunt).toBeDefined();
+    expect(Number(emprunt?.previousPeriodCredit)).toBeCloseTo(0, 2);
+    expect(Number(emprunt?.periodCredit)).toBeCloseTo(3000, 2);
+  });
+
+  it('TFT : INVARIANT ZH == trésorerie nette N (coherenceCheck ≈ 0)', async () => {
+    const h = buildHarness();
+    const { tft } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows: rowsN,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+      previousRows: rowsN1,
+      previousAsAtDate: '2025-12-31',
+    });
+    expect(tft).not.toBeNull();
+
+    // Trésorerie nette réelle au bilan N = Σ trésorerie active − passive.
+    const tresorerieNetteN = rowsN
+      .filter((r) => /^5/.test(r.code) && !/^59/.test(r.code))
+      .reduce((s, r) => s + (Number(r.debit || '0') - Number(r.credit || '0')), 0);
+    expect(tresorerieNetteN).toBeCloseTo(8000, 2);
+
+    // ZA = trésorerie nette N-1 = 5 000 ; ZH = clôture calculée.
+    expect(Number(tft?.openingCash)).toBeCloseTo(5000, 2);
+    // INVARIANT DE CONTRÔLE : ZH == trésorerie nette réelle N.
+    expect(Number(tft?.closingCash)).toBeCloseTo(tresorerieNetteN, 2);
+    // L'écart de cohérence doit être ~ 0 (sinon défaut de mapping = bug).
+    expect(Math.abs(Number(tft?.coherenceCheck))).toBeLessThan(1);
+
+    // La variation (ZG = +3 000) provient des capitaux étrangers (emprunt).
+    expect(Number(tft?.netCashVariation)).toBeCloseTo(3000, 2);
+    expect(Number(tft?.financingFlowsDebt.subtotal)).toBeCloseTo(3000, 2);
+    const fo = tft?.financingFlowsDebt.postes.find((p) => p.code === 'FO');
+    expect(Number(fo?.amount)).toBeCloseTo(3000, 2);
+  });
+
+  it('pluriannuelle 3 périodes (N, N-1, N-2) : un net par période + solde de la dernière', async () => {
+    const h = buildHarness();
+    const rowsN2 = [
+      { code: '52110000', label: 'BANQUE', debit: '4000', credit: '0' },
+      { code: '10100000', label: 'CAPITAL', debit: '0', credit: '4000' },
+    ];
+    const { multiYear } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows: rowsN,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+      previousRows: rowsN1,
+      previousAsAtDate: '2025-12-31',
+      previous2Rows: rowsN2,
+      previous2AsAtDate: '2024-12-31',
+    });
+    expect(multiYear).not.toBeNull();
+    expect(multiYear?.periods).toHaveLength(3);
+    // Ordre : N en premier, puis N-1, puis N-2.
+    expect(multiYear?.periods.map((p) => p.toDate)).toEqual([
+      '2026-12-31',
+      '2025-12-31',
+      '2024-12-31',
+    ]);
+
+    const banque = multiYear?.rows.find((r) => r.accountCode === '52110000');
+    // Net banque par période : N=8000, N-1=5000, N-2=4000.
+    expect(banque?.netByPeriod).toEqual(['8000.00', '5000.00', '4000.00']);
+    // SOLDE = côté de la DERNIÈRE période fournie (N-2 = 4 000 D).
+    expect(Number(banque?.endingDebit)).toBeCloseTo(4000, 2);
+  });
+
+  it('champs comparative/tft/multiYear valent null sans balance antérieure', async () => {
+    const h = buildHarness();
+    const res = await h.service.getReportsFromBalance(ORG_ID, {
+      rows: rowsN,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    expect(res.comparative).toBeNull();
+    expect(res.tft).toBeNull();
+    expect(res.multiYear).toBeNull();
+  });
+});
+

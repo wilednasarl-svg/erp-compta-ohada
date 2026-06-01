@@ -58,6 +58,43 @@ const FROM_BALANCE = {
   sig: { fromDate: '2026-01-01', toDate: '2026-12-31', charges: [], produits: [], soldes: [] },
   ratios: { asAtDate: '2026-12-31', fiscalYearStartDate: '2026-01-01', ratios: [] },
   annexe: { asAtDate: '2026-12-31', fiscalYearStartDate: '2026-01-01', notes: [] },
+  comparative: null,
+  tft: null,
+  multiYear: null,
+};
+
+// Variante avec balance N-1 chargée : le backend renvoie comparative/tft/multiYear.
+const FROM_BALANCE_WITH_PREV = {
+  ...FROM_BALANCE,
+  comparative: {
+    fromDate: '2026-01-01',
+    toDate: '2026-12-31',
+    previousFromDate: '2025-01-01',
+    previousToDate: '2025-12-31',
+    rows: [],
+    totals: {
+      previousPeriodDebit: '0.00',
+      previousPeriodCredit: '0.00',
+      periodDebit: '0.00',
+      periodCredit: '0.00',
+      endingDebit: '0.00',
+      endingCredit: '0.00',
+    },
+  },
+  tft: {
+    fromDate: '2026-01-01',
+    toDate: '2026-12-31',
+    openingCash: '0.00',
+    operatingFlows: { code: 'ZB', label: 'Flux opérationnels', postes: [], subtotal: '0.00' },
+    investingFlows: { code: 'ZC', label: 'Flux investissement', postes: [], subtotal: '0.00' },
+    financingFlowsEquity: { code: 'ZD', label: 'Capitaux propres', postes: [], subtotal: '0.00' },
+    financingFlowsDebt: { code: 'ZE', label: 'Capitaux étrangers', postes: [], subtotal: '0.00' },
+    financingFlowsTotal: '0.00',
+    netCashVariation: '0.00',
+    closingCash: '0.00',
+    coherenceCheck: '0.00',
+  },
+  multiYear: { periods: [], rows: [] },
 };
 
 // Balance CSV simple : 2 comptes équilibrés (∑Débit = ∑Crédit = 1000).
@@ -142,5 +179,27 @@ describe('BalanceUploadConsole', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Balance générale/ }));
     await waitFor(() => expect(screen.getByText(/Balance équilibrée/)).toBeInTheDocument());
+  });
+
+  it('affiche les onglets Comparative / Pluriannuelle / TFT quand une balance N-1 est chargée', async () => {
+    vi.spyOn(api, 'post').mockResolvedValue(FROM_BALANCE_WITH_PREV as unknown as never);
+
+    renderWithClient(<BalanceUploadConsole orgId="org-1" />);
+    await userEvent.upload(screen.getByLabelText('Fichier de balance'), uploadCsv());
+    await waitFor(() => expect(screen.getByText('601000')).toBeInTheDocument());
+
+    // Charger la balance N-1 sur l'input dédié.
+    await userEvent.upload(
+      screen.getByLabelText('Fichier de balance N-1'),
+      new File([CSV_CONTENT], 'balance-n1.csv', { type: 'text/csv' }),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Générer les états/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^Comparative$/ })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: /^Pluriannuelle$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^TFT$/ })).toBeInTheDocument();
   });
 });
