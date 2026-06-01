@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bar,
   BarChart,
@@ -18,6 +18,7 @@ import {
   FileWarning,
   Users,
   UserCog,
+  RefreshCw,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -60,6 +61,14 @@ interface BudgetVarianceReport {
   totalBudget: string;
   totalActual: string;
   totalVariance: string;
+}
+
+// Miroir de budget/dto/responses/sync-actuals.response.ts
+interface SyncActualsResult {
+  fiscalYear: number;
+  linesCreated: number;
+  accountsCount: number;
+  totalActual: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,6 +148,18 @@ export default function BudgetVsRealisePage() {
     enabled: orgId !== '',
   });
 
+  const queryClient = useQueryClient();
+
+  // Synchronise le scénario REAL depuis la comptabilité validée, puis rafraîchit
+  // l'analyse d'écart. Idempotent : rejouable après toute nouvelle écriture.
+  const syncMutation = useMutation<SyncActualsResult, ApiError, void>({
+    mutationFn: async () =>
+      api.post(`/organizations/${orgId}/budget/actuals/sync`, { fiscalYear }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['budget-variance', orgId] });
+    },
+  });
+
   const report = reportQuery.data;
   const rows = report?.rows ?? [];
 
@@ -172,15 +193,43 @@ export default function BudgetVsRealisePage() {
   return (
     <AppShell>
       <div className="w-full animate-page-in space-y-8">
-        <header>
-          <p className="eyebrow">Pilotage · Contrôle budgétaire</p>
-          <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink">
-            Budget vs Réalisé
-          </h1>
-          <p className="mt-2 max-w-[64ch] text-sm text-ink-soft">
-            Suivez la consommation du budget et analysez les écarts entre le budget
-            voté et le réalisé comptable, par axe ou par compte.
-          </p>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="eyebrow">Pilotage · Contrôle budgétaire</p>
+            <h1 className="mt-2 font-display text-3xl font-medium tracking-tight text-ink">
+              Budget vs Réalisé
+            </h1>
+            <p className="mt-2 max-w-[64ch] text-sm text-ink-soft">
+              Suivez la consommation du budget et analysez les écarts entre le budget
+              voté et le réalisé comptable, par axe ou par compte.
+            </p>
+          </div>
+          <div className="flex flex-col items-stretch gap-1 sm:items-end">
+            <button
+              type="button"
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending || orgId === ''}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-sm border border-line bg-paper px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+              title={`Recalcule le réalisé ${fiscalYear} depuis les écritures comptables validées`}
+            >
+              <RefreshCw
+                className={`h-4 w-4${syncMutation.isPending ? ' animate-spin' : ''}`}
+                aria-hidden
+              />
+              {syncMutation.isPending ? 'Synchronisation…' : 'Synchroniser le réalisé'}
+            </button>
+            {syncMutation.isSuccess && (
+              <p className="text-xs text-ink-soft">
+                {syncMutation.data.linesCreated} lignes · {syncMutation.data.accountsCount} comptes ·{' '}
+                exercice {syncMutation.data.fiscalYear}
+              </p>
+            )}
+            {syncMutation.isError && (
+              <p className="text-xs text-destructive">
+                Échec de la synchronisation : {syncMutation.error.message}
+              </p>
+            )}
+          </div>
         </header>
 
         {/* Barre de filtres */}
