@@ -190,6 +190,41 @@ describe('CashFlowService — exclusions BFR', () => {
     expect(fe).toBe(0);
   });
 
+  it("FB calcule la variation de l'actif circulant HAO (488), 485 restant exclu", async () => {
+    // Compte 488 (charges/produits HAO constatés d'avance — actif circ. HAO,
+    // poste BA) augmente de 600 → 1000 (Δ +400). FB = -Δ = -400.
+    // Le compte 485 augmente aussi (Δ +200) mais est EXCLU du BFR
+    // (créances sur cessions d'immo, capturé en FI) → ne contribue PAS à FB.
+    // Trésorerie : pour préserver la cohérence ZH, la sortie de cash de 400
+    // (acquisition de l'actif HAO 488) et l'encaissement de 200 (Δ485, FI)
+    // se reflètent dans la trésorerie réelle.
+    const h = buildHarness({
+      sig: buildSig({}),
+      balancesAtN1: [
+        row({ accountCode: '521000', totalDebit: '5000.00', totalCredit: '0.00' }),
+        row({ accountCode: '488000', totalDebit: '600.00', totalCredit: '0.00' }),
+        row({ accountCode: '485000', totalDebit: '0.00', totalCredit: '0.00' }),
+      ],
+      balancesAtToDate: [
+        // Trésorerie clôture = 5000 - 400 (acquisition 488) + 200 (encaiss. cession 485) = 4800
+        row({ accountCode: '521000', totalDebit: '4800.00', totalCredit: '0.00' }),
+        row({ accountCode: '488000', totalDebit: '1000.00', totalCredit: '0.00' }),
+        row({ accountCode: '485000', totalDebit: '200.00', totalCredit: '0.00' }),
+      ],
+    });
+
+    const result = await h.service.getCashFlow(ORG_ID, {
+      fromDate: '2026-01-01',
+      toDate: '2026-12-31',
+    });
+
+    const fb = Number(result.operatingFlows.postes.find((p) => p.code === 'FB')?.amount);
+    expect(fb).toBe(-400); // -Δ(488) ; 485 exclu
+
+    // Invariant doctrinal : ZH calculé ≈ trésorerie réelle (classe 5) → coherence < 1.
+    expect(Math.abs(Number(result.coherenceCheck))).toBeLessThan(1);
+  });
+
   it('inclut bien le compte 411 (créance client ordinaire) dans FD', async () => {
     const h = buildHarness({
       balancesAtToDate: [

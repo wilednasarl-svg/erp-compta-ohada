@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -59,6 +59,16 @@ export const BFR_EXCLUDED_PREFIXES: ReadonlyArray<string> = [
   '472', // Dividendes à payer (financement)
   '465', // Associés - dividendes à payer
 ];
+
+/** Préfixes des comptes "actif circulant HAO" (poste BA du bilan).
+ *
+ * Le poste BA SYSCOHADA agrège 485 et 488. Le compte 485 (créances sur
+ * cessions d'immobilisations) est EXCLU du BFR (Article 9) car il relève
+ * des flux d'investissement (capturé en FI). Le poste FB du TFT porte donc
+ * en pratique sur 488 et assimilés, après application de la liste
+ * `BFR_EXCLUDED_PREFIXES`.
+ */
+export const ACTIF_CIRCULANT_HAO_PREFIXES: ReadonlyArray<string> = ['485', '488'];
 
 /** Préfixes des comptes "trésorerie active" (classe 5 actif).  */
 export const TRESORERIE_ACTIF_PREFIXES: ReadonlyArray<string> = [
@@ -220,12 +230,7 @@ export interface PeriodMovement {
 export class CashFlowService {
   constructor(
     private readonly repo: ReportsRepository,
-    // `forwardRef` casse un cycle d'import ES (reports.service →
-    // from-balance-multi-period → cash-flow.service → reports.service) qui
-    // laissait `ReportsService` undefined dans les paramtypes au boot →
-    // « Nest can't resolve dependencies of CashFlowService ». La résolution
-    // différée par NestJS contourne le paramtype undefined.
-    @Inject(forwardRef(() => ReportsService)) private readonly reports: ReportsService,
+    private readonly reports: ReportsService,
   ) {}
 
   /**
@@ -310,9 +315,17 @@ export class CashFlowService {
     const fa = xd + c654 - c754 + xf + to + rp + rq + rs;
 
     // ── FB-FE — variations BFR (avec exclusions strictes) ──────────
-    // FB = - Δ actif circulant HAO (compte 485 exclu BFR, géré ici à 0
-    //      car déjà capturé dans la section investissement).
-    const fb = 0;
+    // FB = - Δ actif circulant HAO (poste BA du bilan = préfixes 485/488).
+    //      Le compte 485 (créances sur cessions d'immobilisations) est
+    //      EXCLU du BFR (Article 9) : il relève des flux d'investissement
+    //      et est déjà capturé dans FI. Reste donc 488 et assimilés HAO.
+    //      Même mécanique que FC/FD : −Δ(net signé), exclusions BFR.
+    const fb = -CashFlowService.deltaSignedByFilter(
+      signedN1,
+      signedN,
+      (code) =>
+        CashFlowService.isActifCirculantHao(code) && !CashFlowService.isExcludedFromBfr(code),
+    );
 
     // FC = - Δ stocks (classe 3 hors 39 dépréciations)
     const fc = -CashFlowService.deltaSignedByFilter(
@@ -321,24 +334,29 @@ export class CashFlowService {
       (code) => code.startsWith('3') && !code.startsWith('39'),
     );
 
-    // FD = - Δ créances ordinaires (classe 4 actif hors exclusions)
+    // FD = - Δ créances ordinaires (classe 4 actif hors exclusions).
+    //      L'actif circulant HAO (488) est traité par FB → exclu ici pour
+    //      éviter tout double comptage.
     const fd = -CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
       (code) =>
         code.startsWith('4') &&
         !CashFlowService.isExcludedFromBfr(code) &&
+        !CashFlowService.isActifCirculantHao(code) &&
         CashFlowService.netForCode(signedN, code) >= 0 &&
         CashFlowService.netForCode(signedN1, code) >= 0,
     );
 
-    // FE = + Δ dettes ordinaires (classe 4 passif hors exclusions)
+    // FE = + Δ dettes ordinaires (classe 4 passif hors exclusions).
+    //      L'actif circulant HAO (488) est traité par FB → exclu ici.
     const fe = -CashFlowService.deltaSignedByFilter(
       signedN1,
       signedN,
       (code) =>
         code.startsWith('4') &&
         !CashFlowService.isExcludedFromBfr(code) &&
+        !CashFlowService.isActifCirculantHao(code) &&
         (CashFlowService.netForCode(signedN, code) < 0 ||
           CashFlowService.netForCode(signedN1, code) < 0),
     );
@@ -455,7 +473,7 @@ export class CashFlowService {
             code: 'FB',
             label: getTftLabel('FB'),
             amount: fb.toFixed(2),
-            source: 'actif circulant HAO (compte 485 — traité en section invest.)',
+            source: 'actif circulant HAO 485/488 (485 exclu BFR → section invest.)',
           },
           {
             code: 'FC',
@@ -594,6 +612,15 @@ export class CashFlowService {
    */
   static isExcludedFromBfr(code: string): boolean {
     return BFR_EXCLUDED_PREFIXES.some((p) => code.startsWith(p));
+  }
+
+  /**
+   * Test d'appartenance à l'actif circulant HAO (poste BA = 485/488).
+   * Utilisé pour router ces comptes vers FB et les retirer de FD/FE
+   * (évite le double comptage de la variation BFR).
+   */
+  static isActifCirculantHao(code: string): boolean {
+    return ACTIF_CIRCULANT_HAO_PREFIXES.some((p) => code.startsWith(p));
   }
 
   /** Net signé d'un compte spécifique (ou 0 s'il n'existe pas). */

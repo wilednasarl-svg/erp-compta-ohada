@@ -2061,6 +2061,45 @@ export class ReportsService {
    * statut. Les notes calculables automatiquement (immobilisations, stocks,
    * créances, dettes, capitaux) sont marquées COMPUTED avec lien vers le
    * rapport source. Les notes purement narratives sont marquées MANUAL.
+   *
+   * ⚠️ NON CONFORME — NUMÉROTATION LEGACY À REMAPPER (suivi à ouvrir).
+   * ─────────────────────────────────────────────────────────────────────
+   * La numérotation/les intitulés produits ci-dessous sont historiques et
+   * NE correspondent PAS au référentiel doctrinal SYSCOHADA Tome 3. La
+   * source de vérité officielle est le registre canonique
+   * `notes-annexes/note-registry.ts` (NoteId N1…N36), consommé par la
+   * liasse DSF déposable via `NotesAnnexesService.getAllNotes`.
+   *
+   * Cet endpoint legacy `/annexe` (+ `/annexe.xlsx`) reste un APERÇU
+   * exploratoire ; il n'alimente pas la liasse DSF officielle.
+   *
+   * Écarts manifestes legacy → doctrine (cf. tableau de remapping du
+   * registre) :
+   *   - « Note 3B = Amortissements »        → doctrine N3B = location-acquisition
+   *                                            (les amortissements = N3C)
+   *   - « Note 4  = Stocks et en-cours »    → doctrine N6   (Stocks et en-cours)
+   *   - « Note 5  = Créances »              → doctrine N5   = Actif/dettes circ. HAO
+   *                                            (les créances clients = N7)
+   *   - « Note 7  = Charges constatées d'av. » → doctrine N12 (écarts conv. + transferts)
+   *   - « Note 8  = Trésorerie actif »      → doctrine N11  (Disponibilités)
+   *   - « Note 10 = Capital social »        → doctrine N13  (Capital)
+   *   - « Note 11 = Primes/réserves »       → doctrine N14  (Primes et réserves)
+   *   - « Note 3F » ET « Note 12 » portent TOUTES DEUX « Subventions
+   *      d'investissement » (DOUBLON interne) → doctrine = N15A unique.
+   *   - « Note 14 = Emprunts »              → doctrine N16A (Dettes financières)
+   *   - « Note 20 = CA »                    → doctrine N21  ; « Note 28 = Impôt » → N31 …
+   *
+   * REFONTE REQUISE (refusée ici car structurelle) : faire produire à
+   * `getAnnexe` les `NoteId`/labels du registre canonique. Cela impose de
+   *   (a) changer le type de sortie `AnnexeNote.code` (string libre) pour
+   *       des identifiants alignés sur `NoteId` ;
+   *   (b) réécrire la table COMPUTED/MANUAL en s'appuyant sur `NOTE_REGISTRY`
+   *       (labels) plutôt que sur des chaînes en dur ;
+   *   (c) migrer en conséquence l'export `annexeXlsx`, le front
+   *       `annexe-result.tsx` et les snapshots/tests (`reports.service.spec`,
+   *       `reports.controller.spec`).
+   * Non réalisé dans ce correctif : touche un type public + des fichiers
+   * chauds + casse des tests d'assertion sur la numérotation legacy.
    */
   // eslint-disable-next-line @typescript-eslint/require-await -- public async contract; assembles the annexe from already-resolved inputs.
   async getAnnexe(

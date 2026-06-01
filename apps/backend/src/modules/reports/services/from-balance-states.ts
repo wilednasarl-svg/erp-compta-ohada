@@ -470,6 +470,17 @@ function noteTotal(trialRows: readonly TrialBalanceRow[], spec: ComputableNoteSp
 /**
  * Construit une Annexe PARTIELLE depuis une balance de soldes.
  *
+ * ⚠️ NUMÉROTATION LEGACY — NON CONFORME doctrine (suivi à ouvrir).
+ * Les codes « Note 4/7/8/10/11/12/14… » utilisés ci-dessous suivent la
+ * numérotation libre historique (cf. `getAnnexe` dans reports.service.ts),
+ * et NON le référentiel canonique `notes-annexes/note-registry.ts`
+ * (NoteId N1…N36) qui alimente la liasse DSF officielle. Exemples d'écarts :
+ * Note 4 (stocks) → doctrine N6 ; Note 10 (capital) → N13 ;
+ * Note 14 (emprunts) → N16A ; Note 7 (CCA) → N12. La refonte (aligner les
+ * codes sur `NOTE_REGISTRY`) est volontairement reportée : elle change le
+ * type public `AnnexeNote` et casse les tests d'assertion legacy
+ * (`reports.service.spec`). Cet aperçu reste un raccourci « from-balance ».
+ *
  * INCLUS (status COMPUTED) — postes dont le solde agrégé est directement
  * lisible dans la balance : Notes 3A, 4, 7, 8, 10, 11, 12, 13, 14, 16, 18.
  * Chaque note porte un `summary` avec le montant agrégé, sans inventer de
