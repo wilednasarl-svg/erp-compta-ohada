@@ -34,7 +34,7 @@ import {
   type ProposedEntry,
 } from './journal-entry-proposal';
 import { extractInvoiceMetadata } from './metadata-extractor';
-import { OCR_PROVIDER, type OcrProvider } from './ocr-provider';
+import { OCR_PROVIDER, type OcrDiagnostics, type OcrProvider } from './ocr-provider';
 
 /**
  * Plain-shape upload descriptor. The controller adapts the multer
@@ -693,6 +693,28 @@ export class DocumentsService {
     );
 
     return { ocrStatus: 'processing' };
+  }
+
+  /**
+   * Self-test du moteur OCR actif : état des dépendances optionnelles et,
+   * pour le provider PaddleOCR, un test de rasterisation PDF. Permet de
+   * diagnostiquer en prod pourquoi un PDF tombe en « OCR ignoré » sans
+   * accès aux logs. Délègue au provider s'il expose `diagnose()`.
+   */
+  async diagnoseOcr(): Promise<OcrDiagnostics> {
+    if (typeof this.ocrProvider.diagnose === 'function') {
+      return this.ocrProvider.diagnose();
+    }
+    return {
+      engine: process.env.OCR_ENGINE?.trim() || '(défaut/legacy)',
+      checks: [
+        {
+          name: 'provider',
+          ok: true,
+          detail: 'moteur sans self-test (Tesseract/Null) — pas de rasterisation PDF',
+        },
+      ],
+    };
   }
 
   /**

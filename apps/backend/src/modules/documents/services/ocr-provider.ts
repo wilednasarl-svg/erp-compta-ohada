@@ -33,6 +33,25 @@ export interface OcrExtractionResult {
   readonly confidence: number;
 }
 
+/**
+ * Self-test report for an OCR provider. Surfaces, at runtime and in
+ * production, WHY a document might be skipped (optional dependency
+ * absent, native binding broken, remote Space unreachable) without
+ * needing access to the host's logs.
+ */
+export interface OcrDiagnostics {
+  /** Active engine selector (`OCR_ENGINE` / legacy `OCR_ENABLED`). */
+  readonly engine: string;
+  readonly checks: ReadonlyArray<{
+    /** Short identifier, e.g. `pdf-to-img`, `rasterisation PDF (test)`. */
+    readonly name: string;
+    /** `true` if the dependency/step is healthy. */
+    readonly ok: boolean;
+    /** Human-readable context (resolved path, error message, byte count). */
+    readonly detail?: string;
+  }>;
+}
+
 export interface OcrProvider {
   /**
    * Extract text from a local file. Returns `null` if the file cannot
@@ -40,6 +59,14 @@ export interface OcrProvider {
    * throw — wrap engine failures in a try/catch and return null.
    */
   extract(filePath: string, mimeType: string): Promise<OcrExtractionResult | null>;
+
+  /**
+   * Optional self-test exercising the provider's optional dependencies
+   * and (for PDF-capable providers) a synthetic rasterisation. MUST NOT
+   * throw. Implemented by `PaddleOcrVlProvider`; absent on the trivial
+   * providers (Tesseract/Null).
+   */
+  diagnose?(): Promise<OcrDiagnostics>;
 }
 
 /**

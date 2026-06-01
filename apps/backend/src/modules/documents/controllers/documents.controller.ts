@@ -40,6 +40,7 @@ import {
   type DocumentView,
   type ListDocumentsResult,
 } from '../services/documents.service';
+import type { OcrDiagnostics } from '../services/ocr-provider';
 import type { OcrStatus } from '../types/ocr-status';
 
 /**
@@ -150,6 +151,24 @@ export class DocumentsController {
         pageSize: query.pageSize ?? 20,
       },
     );
+  }
+
+  /**
+   * Self-test du moteur OCR : état des dépendances optionnelles (pdf-to-img,
+   * @gradio/client), résolution des polices pdfjs, et test de rasterisation
+   * d'un PDF synthétique. Déclaré AVANT `:id` pour que le routeur ne traite
+   * pas `ocr/diagnostics` comme un identifiant. Diagnostique en prod la
+   * cause d'un « OCR ignoré » sur les PDF sans accès aux logs.
+   */
+  @Get('ocr/diagnostics')
+  @RequirePermission('documents.read')
+  @HttpCode(HttpStatus.OK)
+  async ocrDiagnostics(
+    @CurrentOrg() org: CurrentOrgContext | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+  ): Promise<OcrDiagnostics> {
+    this.assertActorScope(org, actorUserId);
+    return this.documents.diagnoseOcr();
   }
 
   @Get(':id')

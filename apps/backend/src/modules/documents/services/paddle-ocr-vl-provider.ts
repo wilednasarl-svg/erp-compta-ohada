@@ -1,8 +1,10 @@
 import { promises as fs } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import type { OcrExtractionResult, OcrProvider } from './ocr-provider';
+import type { OcrDiagnostics, OcrExtractionResult, OcrProvider } from './ocr-provider';
 
 /**
  * `PaddleOcrVlProvider` — `OcrProvider` backed by the open-source
@@ -145,6 +147,8 @@ export class PaddleOcrVlProvider implements OcrProvider {
   // tenté ; `null` = résolution impossible (on rasterise alors sans les
   // polices standard). Voir `resolveStandardFontDataUrl`.
   private standardFontDataUrl: string | null | undefined = undefined;
+  /** Séquence pour des noms de fichiers temporaires de diagnostic uniques. */
+  private diagCounter = 0;
 
   async extract(filePath: string, mimeType: string): Promise<OcrExtractionResult | null> {
     if (!SUPPORTED_IMAGE_MIMES.has(mimeType) && mimeType !== PDF_MIME) {
@@ -301,6 +305,71 @@ export class PaddleOcrVlProvider implements OcrProvider {
   }
 
   /**
+   * Self-test (jamais throw) : vérifie les dépendances optionnelles et
+   * tente une rasterisation d'un PDF synthétique. Permet de savoir, en
+   * prod, POURQUOI un PDF est passé en « OCR ignoré » sans accès aux logs.
+   */
+  async diagnose(): Promise<OcrDiagnostics> {
+    const checks: Array<{ name: string; ok: boolean; detail?: string }> = [];
+
+    const gradio = await this.loadGradioClient();
+    checks.push({
+      name: '@gradio/client',
+      ok: gradio !== false,
+      detail: gradio === false ? 'module absent (optionalDependency non installée)' : 'chargé',
+    });
+
+    const pdfMod = await this.loadPdfToImg();
+    checks.push({
+      name: 'pdf-to-img',
+      ok: pdfMod !== false,
+      detail: pdfMod === false ? 'module absent (rasterisation PDF impossible)' : 'chargé',
+    });
+
+    const fontUrl = this.resolveStandardFontDataUrl();
+    checks.push({
+      name: 'pdfjs standard_fonts',
+      ok: fontUrl !== null,
+      detail: fontUrl ?? 'non résolu (texte vectoriel non rendu)',
+    });
+
+    if (pdfMod !== false) {
+      let tmpPath: string | null = null;
+      try {
+        tmpPath = join(tmpdir(), `ocr-diag-${process.pid}-${this.diagSeq()}.pdf`);
+        await fs.writeFile(tmpPath, buildDiagnosticPdf());
+        const raster = await this.rasterisePdfFirstPage(tmpPath);
+        checks.push({
+          name: 'rasterisation PDF (test)',
+          ok: raster !== null,
+          detail:
+            raster !== null
+              ? `OK — ${raster.bytes.length} octets PNG`
+              : 'rasterisePdfFirstPage a renvoyé null (voir logs PDF rasterisation failed)',
+        });
+      } catch (error: unknown) {
+        checks.push({
+          name: 'rasterisation PDF (test)',
+          ok: false,
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        if (tmpPath !== null) {
+          await fs.unlink(tmpPath).catch(() => undefined);
+        }
+      }
+    }
+
+    return { engine: process.env.OCR_ENGINE?.trim() || '(défaut/legacy)', checks };
+  }
+
+  /** Compteur monotone pour des noms de fichiers temporaires uniques sans Date.now(). */
+  private diagSeq(): number {
+    this.diagCounter += 1;
+    return this.diagCounter;
+  }
+
+  /**
    * Upload the image bytes to the Space and return the Gradio `FileData`
    * pointing at the stored file. The filename carries the real extension
    * so the Space's `file_types=['image']` check passes.
@@ -429,4 +498,32 @@ export class PaddleOcrVlProvider implements OcrProvider {
 function deriveSpaceHost(space: string): string {
   const slug = space.replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-+|-+$/g, '');
   return `https://${slug}.hf.space`;
+}
+
+/**
+ * Construit un PDF 1.4 minimal valide (une page, un peu de texte vectoriel)
+ * pour le self-test de rasterisation. Sans dépendance : bytes bruts + table
+ * xref correcte, ce que pdfjs/pdf-to-img sait rendre.
+ */
+function buildDiagnosticPdf(): Buffer {
+  const objs = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    '<< /Length 58 >>\nstream\nBT /F1 18 Tf 30 120 Td (OCR DIAGNOSTIC) Tj ET\nendstream',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  objs.forEach((body, i) => {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xrefPos = pdf.length;
+  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+  offsets.forEach((o) => {
+    pdf += String(o).padStart(10, '0') + ' 00000 n \n';
+  });
+  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
+  return Buffer.from(pdf, 'latin1');
 }
