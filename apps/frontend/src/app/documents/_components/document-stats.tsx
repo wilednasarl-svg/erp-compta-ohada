@@ -49,13 +49,13 @@ export function DocumentStats({ orgId }: DocumentStatsProps) {
   const enabled = orgId !== '';
 
   const totalAll = useQuery<ListResponse>({
-    queryKey: ['documents-stats', orgId, 'all'],
+    queryKey: ['documents', 'stats', orgId, 'all'],
     queryFn: () => api.get<ListResponse>('/documents?pageSize=1'),
     enabled,
   });
 
   const thisMonth = useQuery<ListResponse>({
-    queryKey: ['documents-stats', orgId, 'month'],
+    queryKey: ['documents', 'stats', orgId, 'month'],
     queryFn: () =>
       api.get<ListResponse>(
         `/documents?pageSize=1&uploadedFrom=${encodeURIComponent(firstOfMonthIso())}`,
@@ -64,13 +64,13 @@ export function DocumentStats({ orgId }: DocumentStatsProps) {
   });
 
   const pendingOcr = useQuery<ListResponse>({
-    queryKey: ['documents-stats', orgId, 'pending'],
+    queryKey: ['documents', 'stats', orgId, 'pending'],
     queryFn: () => api.get<ListResponse>('/documents?pageSize=1&ocrStatus=pending'),
     enabled,
   });
 
   const processedOcr = useQuery<ListResponse>({
-    queryKey: ['documents-stats', orgId, 'processed'],
+    queryKey: ['documents', 'stats', orgId, 'processed'],
     queryFn: () => api.get<ListResponse>('/documents?pageSize=1&ocrStatus=processed'),
     enabled,
   });
