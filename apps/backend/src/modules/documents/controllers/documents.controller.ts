@@ -322,6 +322,11 @@ export class DocumentsController {
         chargeAccount: body.chargeAccount,
         vatAccount: body.vatAccount,
         supplierAccount: body.supplierAccount,
+        entryDate: body.entryDate,
+        amounts:
+          body.totalHt !== undefined || body.totalVat !== undefined || body.totalTtc !== undefined
+            ? { totalHt: body.totalHt, totalVat: body.totalVat, totalTtc: body.totalTtc }
+            : undefined,
       },
       scope.actorUserId,
       buildAuditRequestContext(req),

@@ -914,10 +914,13 @@ function DocumentRow({
   }, [ocrDoc]);
 
   const createEntry = useApiMutation(
-    async () =>
+    async (overrides: EntryOverrides) =>
       api.post<{ entry?: { entryNumber?: number; journalCode?: string } }>(
         `/documents/${doc.id}/create-entry`,
-        chargeAccount.trim() !== '' ? { chargeAccount: chargeAccount.trim() } : {},
+        {
+          ...(chargeAccount.trim() !== '' ? { chargeAccount: chargeAccount.trim() } : {}),
+          ...overrides,
+        },
       ),
     {
       onSuccess: (res) => {
@@ -1238,7 +1241,7 @@ function DocumentRow({
               docPreview={ocrDoc}
               chargeAccount={chargeAccount}
               setChargeAccount={setChargeAccount}
-              onCreate={() => createEntry.mutate(undefined)}
+              onCreate={(overrides) => createEntry.mutate(overrides)}
               creating={createEntry.isPending}
             />
           ) : null}
@@ -1325,6 +1328,13 @@ function OcrDocumentPreview({
   );
 }
 
+interface EntryOverrides {
+  entryDate?: string;
+  totalHt?: number;
+  totalVat?: number;
+  totalTtc?: number;
+}
+
 function OcrPanel({
   ocr,
   filename,
@@ -1339,7 +1349,7 @@ function OcrPanel({
   docPreview: { url: string; mime: string } | null;
   chargeAccount: string;
   setChargeAccount: (v: string) => void;
-  onCreate: () => void;
+  onCreate: (overrides: EntryOverrides) => void;
   creating: boolean;
 }) {
   const invoice = ocr.extractedMetadata?.invoice;
@@ -1348,12 +1358,26 @@ function OcrPanel({
 
   const skip = ocr.extractedMetadata?.ocrSkip;
 
-  // Garde-fou date : une lecture OCR douteuse (scan/manuscrit) peut produire
-  // une année aberrante (ex. 2093). On bloque alors la création — le backend
-  // refuse aussi en défense en profondeur.
-  const entryYear = proposed?.entryDate ? Number(proposed.entryDate.slice(0, 4)) : NaN;
+  // Montants & date ÉDITABLES : l'OCR est souvent partiel sur un scan/manuscrit.
+  // L'utilisateur corrige sur la base de l'image → l'écriture se rééquilibre et
+  // devient créable. Les garde-fous (date plausible + équilibre) restent actifs
+  // ici ET côté backend (défense en profondeur).
+  const round2 = (n: number): number => Math.round(n * 100) / 100;
+  const initialDate =
+    proposed?.entryDate && /^\d{4}-\d{2}-\d{2}/.test(proposed.entryDate)
+      ? proposed.entryDate.slice(0, 10)
+      : '';
+  const [editDate, setEditDate] = useState(initialDate);
+  const [editHt, setEditHt] = useState(totals?.totalHt != null ? String(totals.totalHt) : '');
+  const [editVat, setEditVat] = useState(totals?.totalVat != null ? String(totals.totalVat) : '');
+
+  const htNum = Number(editHt.replace(',', '.')) || 0;
+  const vatNum = Number(editVat.replace(',', '.')) || 0;
+  const ttcNum = round2(htNum + vatNum);
+  const editYear = editDate ? Number(editDate.slice(0, 4)) : NaN;
   const isDatePlausible =
-    Number.isInteger(entryYear) && entryYear >= 2000 && entryYear <= new Date().getFullYear() + 1;
+    Number.isInteger(editYear) && editYear >= 2000 && editYear <= new Date().getFullYear() + 1;
+  const canCreate = htNum > 0 && ttcNum > 0 && isDatePlausible;
 
   if (!invoice && !proposed) {
     return (
@@ -1486,15 +1510,8 @@ function OcrPanel({
             </table>
           </div>
 
-          {(proposed.warnings.length > 0 || !isDatePlausible) && (
+          {proposed.warnings.length > 0 && (
             <ul className="mt-2 space-y-0.5">
-              {!isDatePlausible && (
-                <li className="flex items-start gap-1.5 text-[11px] text-critical-ink">
-                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} /> Date «{' '}
-                  {proposed.entryDate ?? '—'} » implausible (lecture OCR douteuse) — corrigez-la
-                  avant de créer l&apos;écriture.
-                </li>
-              )}
               {proposed.warnings.map((w, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-[11px] text-ink-mute">
                   <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} /> {w}
@@ -1503,29 +1520,90 @@ function OcrPanel({
             </ul>
           )}
 
-          <div className="mt-3 flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label>Compte de charge</Label>
-              <Input
-                value={chargeAccount}
-                onChange={(e) => setChargeAccount(e.target.value)}
-                placeholder="601000"
-                className="w-32 font-mono"
-              />
+          {/* Correction manuelle : date + montants. L'OCR pré-remplit ; sur un
+              scan/manuscrit l'utilisateur ajuste, l'écriture se rééquilibre. */}
+          <div className="mt-4 rounded-xs border border-line bg-canvas p-3">
+            <p className="eyebrow mb-2">Vérifier / corriger avant de créer</p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Total HT</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editHt}
+                  onChange={(e) => setEditHt(e.target.value)}
+                  placeholder="0"
+                  className="w-32 text-right font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>TVA</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editVat}
+                  onChange={(e) => setEditVat(e.target.value)}
+                  placeholder="0"
+                  className="w-32 text-right font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Total TTC</Label>
+                <div className="flex h-9 w-32 items-center justify-end rounded-xs border border-line bg-sunk px-2 font-mono tabular-nums text-ink">
+                  {formatAmount(ttcNum)}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Compte de charge</Label>
+                <Input
+                  value={chargeAccount}
+                  onChange={(e) => setChargeAccount(e.target.value)}
+                  placeholder="601000"
+                  className="w-32 font-mono"
+                />
+              </div>
             </div>
-            <Button
-              type="button"
-              onClick={onCreate}
-              disabled={creating || !proposed.balanced || !isDatePlausible}
-              className="press"
-            >
-              {creating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FilePlus2 className="mr-2 h-4 w-4" />
-              )}
-              Créer l&apos;écriture
-            </Button>
+
+            {!canCreate && (
+              <p className="mt-2 flex items-start gap-1.5 text-[11px] text-critical-ink">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />
+                {!isDatePlausible
+                  ? 'Renseignez une date valide (année 2000–' +
+                    String(new Date().getFullYear() + 1) +
+                    ').'
+                  : 'Renseignez un Total HT (> 0) — TTC = HT + TVA doit être positif.'}
+              </p>
+            )}
+
+            <div className="mt-3">
+              <Button
+                type="button"
+                onClick={() =>
+                  onCreate({
+                    entryDate: editDate || undefined,
+                    totalHt: htNum,
+                    totalVat: vatNum,
+                    totalTtc: ttcNum,
+                  })
+                }
+                disabled={creating || !canCreate}
+                className="press"
+              >
+                {creating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FilePlus2 className="mr-2 h-4 w-4" />
+                )}
+                Créer l&apos;écriture
+              </Button>
+            </div>
           </div>
         </div>
       )}

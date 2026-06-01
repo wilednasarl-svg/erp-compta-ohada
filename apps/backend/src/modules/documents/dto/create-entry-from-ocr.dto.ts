@@ -1,5 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import {
+  IsISO8601,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 /**
  * Optional overrides for `POST /documents/:id/create-entry`. With no body
@@ -30,4 +39,32 @@ export class CreateEntryFromOcrDto {
   @IsString()
   @MaxLength(20)
   supplierAccount?: string;
+
+  @ApiPropertyOptional({
+    description: "Date d'écriture corrigée (ISO YYYY-MM-DD) — prime sur la date OCR",
+  })
+  @IsOptional()
+  @IsISO8601()
+  entryDate?: string;
+
+  @ApiPropertyOptional({ description: 'Total HT corrigé (prime sur OCR)' })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(1_000_000_000_000)
+  totalHt?: number;
+
+  @ApiPropertyOptional({ description: 'Total TVA corrigé (prime sur OCR)' })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(1_000_000_000_000)
+  totalVat?: number;
+
+  @ApiPropertyOptional({ description: 'Total TTC corrigé (prime sur OCR)' })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(1_000_000_000_000)
+  totalTtc?: number;
 }

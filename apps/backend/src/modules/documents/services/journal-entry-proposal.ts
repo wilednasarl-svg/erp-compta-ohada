@@ -41,6 +41,20 @@ export interface ProposalOptions {
   vatAccount?: string;
   /** Supplier account. Default "401000". */
   supplierAccount?: string;
+  /**
+   * Date d'écriture (ISO `YYYY-MM-DD`) saisie/corrigée par l'utilisateur —
+   * prioritaire sur la date OCR (souvent mal lue sur un scan/manuscrit).
+   */
+  entryDate?: string;
+  /**
+   * Montants saisis/corrigés par l'utilisateur — prioritaires sur l'OCR.
+   * Permet une écriture équilibrée même quand l'image est illisible.
+   */
+  amounts?: {
+    totalHt?: number;
+    totalVat?: number;
+    totalTtc?: number;
+  };
 }
 
 const DEFAULTS = {
@@ -62,9 +76,18 @@ export function buildPurchaseEntryProposal(
   const warnings: string[] = [];
   const t = invoice.totals;
 
+  // Les montants saisis par l'utilisateur (options.amounts) priment sur l'OCR
+  // — `??` ne bascule que sur undefined, donc un 0 explicite (ex. TVA nulle
+  // sur un loyer) est respecté.
+  const ov = options.amounts;
   // Resolve the three amounts, filling a single missing one from the
   // accounting identity TTC = HT + TVA when exactly one is absent.
-  let { totalHt, totalVat, totalTtc } = resolveAmounts(t.totalHt, t.totalVat, t.totalTtc, warnings);
+  let { totalHt, totalVat, totalTtc } = resolveAmounts(
+    ov?.totalHt ?? t.totalHt,
+    ov?.totalVat ?? t.totalVat,
+    ov?.totalTtc ?? t.totalTtc,
+    warnings,
+  );
 
   const reference = invoice.invoiceNumber ?? invoice.erpInvoiceNumber ?? null;
   const supplierName = invoice.supplier.name ?? 'Fournisseur';
@@ -102,7 +125,7 @@ export function buildPurchaseEntryProposal(
 
   return {
     journalCode: opts.journalCode,
-    entryDate: invoice.invoiceDate ?? null,
+    entryDate: options.entryDate ?? invoice.invoiceDate ?? null,
     description,
     reference,
     lines,
