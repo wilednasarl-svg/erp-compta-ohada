@@ -466,8 +466,13 @@ export class PaddleOcrVlProvider implements OcrProvider {
     checks.push({
       name: 'pdf-to-img',
       ok: pdfMod !== false,
-      detail: pdfMod === false ? 'module absent (rasterisation PDF impossible)' : 'chargé',
+      detail: pdfMod !== false ? 'chargé' : `import échoué: ${await this.probeImportError('pdf-to-img')}`,
     });
+
+    // Chaîne native sous-jacente : distingue « module JS absent » d'un binding
+    // natif KO (ex: prebuild manquant ou libfontconfig.so introuvable).
+    checks.push(await this.probeNativeDep('pdfjs-dist'));
+    checks.push(await this.probeNativeDep('@napi-rs/canvas'));
 
     const fontUrl = this.resolveStandardFontDataUrl();
     checks.push({
@@ -510,6 +515,60 @@ export class PaddleOcrVlProvider implements OcrProvider {
   private diagSeq(): number {
     this.diagCounter += 1;
     return this.diagCounter;
+  }
+
+  /** Tente `import(spec)` (specifier nu) et renvoie le message d'erreur, ou 'ok'. */
+  private async probeImportError(spec: string): Promise<string> {
+    try {
+      const importDynamic = new Function('specifier', 'return import(specifier)') as (
+        specifier: string,
+      ) => Promise<unknown>;
+      await importDynamic(spec);
+      return 'ok';
+    } catch (error: unknown) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  /**
+   * Sonde une dépendance (éventuellement transitive) : la résout via ses
+   * ancres directes (`pdf-parse`/`pdf-to-img`) puis tente de la CHARGER, ce
+   * qui révèle un binding natif KO ou une lib système manquante. Le message
+   * d'erreur exact (ex: `libfontconfig.so.1: cannot open`) oriente le correctif.
+   */
+  private async probeNativeDep(
+    spec: string,
+  ): Promise<{ name: string; ok: boolean; detail?: string }> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path') as typeof import('path');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { pathToFileURL } = require('url') as typeof import('url');
+      let resolved: string | null = null;
+      try {
+        resolved = require.resolve(spec);
+      } catch {
+        for (const anchor of ['pdf-parse', 'pdf-to-img']) {
+          try {
+            const anchorDir = path.dirname(require.resolve(anchor));
+            resolved = require.resolve(spec, { paths: [anchorDir] });
+            break;
+          } catch {
+            // ancre absente — suivante.
+          }
+        }
+      }
+      if (resolved === null) {
+        return { name: spec, ok: false, detail: 'introuvable (require.resolve)' };
+      }
+      const importDynamic = new Function('specifier', 'return import(specifier)') as (
+        specifier: string,
+      ) => Promise<unknown>;
+      await importDynamic(pathToFileURL(resolved).href);
+      return { name: spec, ok: true, detail: 'chargé' };
+    } catch (error: unknown) {
+      return { name: spec, ok: false, detail: error instanceof Error ? error.message : String(error) };
+    }
   }
 
   /**
