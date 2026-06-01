@@ -12,6 +12,10 @@ import {
   Min,
 } from 'class-validator';
 
+import {
+  DOCUMENT_CATEGORY_VALUES,
+  type DocumentCategory,
+} from '../types/document-category';
 import { OCR_STATUS_VALUES, type OcrStatus } from '../types/ocr-status';
 
 /**
@@ -30,6 +34,15 @@ export class ListDocumentsQueryDto {
   @IsString()
   @MaxLength(120)
   mimeType?: string;
+
+  /**
+   * Coarse "type of file" facet. Independent from `mimeType` (an exact
+   * match) — both may be supplied and combine with AND semantics. The
+   * MIME -> category mapping lives in the repository.
+   */
+  @IsOptional()
+  @IsIn(DOCUMENT_CATEGORY_VALUES as ReadonlyArray<string>)
+  category?: DocumentCategory;
 
   @IsOptional()
   @IsUUID('4')
