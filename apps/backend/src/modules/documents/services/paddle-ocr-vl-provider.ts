@@ -105,26 +105,31 @@ interface GradioClientModule {
   };
 }
 
-interface PdfToImgModule {
-  /** Render a PDF to an async-iterable of per-page PNG buffers. */
-  pdf(
-    src: string | Buffer,
-    options?: { scale?: number; docInitParams?: { standardFontDataUrl?: string } },
-  ): Promise<AsyncIterable<Buffer>>;
-}
-
-/** Surface minimale de pdfjs-dist nécessaire à l'extraction du calque texte. */
+/** Surface minimale de pdfjs-dist (extraction texte + rendu via canvasFactory). */
 interface PdfjsTextItem {
   readonly str?: string;
 }
 interface PdfjsTextContent {
   readonly items: ReadonlyArray<PdfjsTextItem>;
 }
+interface PdfjsViewport {
+  readonly width: number;
+  readonly height: number;
+}
+interface PdfjsCanvasHandle {
+  readonly canvas: { toBuffer(mime: string): Buffer };
+}
 interface PdfjsPage {
   getTextContent(): Promise<PdfjsTextContent>;
+  getViewport(params: { scale: number }): PdfjsViewport;
+  render(params: { canvas: unknown; viewport: PdfjsViewport }): { promise: Promise<void> };
 }
 interface PdfjsDocument {
   readonly numPages: number;
+  /** Fabrique de canvas fournie par pdfjs (backed @napi-rs/canvas en Node). */
+  readonly canvasFactory: {
+    create(width: number, height: number, enableHWA?: boolean): PdfjsCanvasHandle;
+  };
   getPage(pageNumber: number): Promise<PdfjsPage>;
   destroy(): Promise<void>;
 }
@@ -133,6 +138,8 @@ interface PdfjsModule {
     data: Uint8Array;
     isEvalSupported?: boolean;
     standardFontDataUrl?: string;
+    cMapUrl?: string;
+    cMapPacked?: boolean;
   }): { promise: Promise<PdfjsDocument> };
 }
 
@@ -181,11 +188,9 @@ export class PaddleOcrVlProvider implements OcrProvider {
   // `false` once a load attempt failed (dep absent) so we don't retry
   // the import on every call.
   private gradioModule: GradioClientModule | false | null = null;
-  private pdfModule: PdfToImgModule | false | null = null;
   private pdfjsModule: PdfjsModule | false | null = null;
-  // Résolu paresseusement au premier rendu PDF. `undefined` = pas encore
-  // tenté ; `null` = résolution impossible (on rasterise alors sans les
-  // polices standard). Voir `resolveStandardFontDataUrl`.
+  // Caches de résolution paresseuse (`undefined` = pas tenté ; `null` = échec).
+  private pdfjsDir: string | null | undefined = undefined;
   private standardFontDataUrl: string | null | undefined = undefined;
   /** Séquence pour des noms de fichiers temporaires de diagnostic uniques. */
   private diagCounter = 0;
@@ -278,37 +283,41 @@ export class PaddleOcrVlProvider implements OcrProvider {
   }
 
   /**
-   * Rasterise the first page of a PDF to a PNG buffer via the lazily
-   * loaded, optional `pdf-to-img` package. `scale: 2` ≈ 144 DPI, a good
-   * trade-off for OCR legibility vs upload size. Returns null on any
-   * failure (dep missing, unreadable PDF) so the upload path is never
-   * bricked.
+   * Rasterise la 1re page d'un PDF en PNG via `pdfjs-dist` + son canvasFactory
+   * Node (backed `@napi-rs/canvas`). On N'UTILISE PLUS `pdf-to-img` (paquet
+   * `optionalDependency` que pnpm écarte en prod) : `pdfjs-dist` et
+   * `@napi-rs/canvas` sont, eux, bien présents (via `pdf-parse`/`pdf-to-img`)
+   * — on reproduit donc inline ce que faisait `pdf-to-img`. `scale: 2`
+   * ≈ 144 DPI. Renvoie null sur tout échec (pdfjs absent, PDF illisible) pour
+   * ne jamais bloquer le pipeline. Les `standard_fonts`/`cmaps` sont passés
+   * pour un rendu fidèle du texte vectoriel.
    */
   private async rasterisePdfFirstPage(
     filePath: string,
   ): Promise<{ bytes: Buffer; mime: string; ext: string } | null> {
-    const pdfMod = await this.loadPdfToImg();
-    if (pdfMod === false) {
-      this.logger.warn('PaddleOcrVlProvider: pdf-to-img not installed — PDF skipped');
+    const pdfjs = await this.loadPdfjs();
+    if (pdfjs === false) {
+      this.logger.warn('PaddleOcrVlProvider: pdfjs-dist indisponible — rasterisation PDF impossible');
       return null;
     }
+    let doc: PdfjsDocument | null = null;
     try {
-      // `standardFontDataUrl` indispensable : sans lui, pdfjs ne charge pas
-      // les polices standard (Helvetica/Arial → LiberationSans) et le texte
-      // vectoriel des factures PDF n'est PAS rasterisé → page quasi vide →
-      // OCR sans contenu. Si la résolution échoue, on rasterise quand même
-      // (dégradation gracieuse, utile pour les PDF-scans purement bitmap).
-      const fontUrl = this.resolveStandardFontDataUrl();
-      const options =
-        fontUrl !== null
-          ? { scale: 2, docInitParams: { standardFontDataUrl: fontUrl } }
-          : { scale: 2 };
-      const document = await pdfMod.pdf(filePath, options);
-      for await (const page of document) {
-        return { bytes: page, mime: 'image/png', ext: 'png' };
+      const data = new Uint8Array(await fs.readFile(filePath));
+      doc = await pdfjs.getDocument({
+        data,
+        isEvalSupported: false,
+        cMapPacked: true,
+        ...this.resolvePdfjsAssetParams(),
+      }).promise;
+      if (doc.numPages < 1) {
+        this.logger.warn('PaddleOcrVlProvider: PDF has no pages');
+        return null;
       }
-      this.logger.warn('PaddleOcrVlProvider: PDF has no pages');
-      return null;
+      const page = await doc.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
+      const { canvas } = doc.canvasFactory.create(viewport.width, viewport.height, true);
+      await page.render({ canvas, viewport }).promise;
+      return { bytes: canvas.toBuffer('image/png'), mime: 'image/png', ext: 'png' };
     } catch (error: unknown) {
       this.logger.warn(
         `PaddleOcrVlProvider: PDF rasterisation failed (${
@@ -316,43 +325,72 @@ export class PaddleOcrVlProvider implements OcrProvider {
         })`,
       );
       return null;
+    } finally {
+      if (doc !== null) {
+        await doc.destroy().catch(() => undefined);
+      }
     }
   }
 
   /**
-   * Résout le dossier `standard_fonts/` livré par `pdfjs-dist` (la dépendance
-   * de `pdf-to-img`) sous forme d'un chemin filesystem en slashes avant + un
-   * slash final — le format exact attendu par pdfjs côté Node.
-   *
-   * Pourquoi pas un `file://` URL : pdfjs charge les polices via `fetch()`,
-   * qui sous Node ne supporte pas le protocole `file://` ; un chemin système
-   * en revanche est lu via `fs`. La résolution passe par les `paths` de
-   * `pdf-to-img` pour viser la version de `pdfjs-dist` réellement utilisée
-   * (et non celle de `pdf-parse`, qui peut différer). Mis en cache : la
-   * valeur ne change pas sur la durée de vie du process.
+   * Résout le répertoire d'install de `pdfjs-dist`. Comme c'est une dépendance
+   * transitive (de `pdf-parse` — direct — et de `pdf-to-img` — optionnel), on
+   * tente la résolution via les `paths` de ces ancres. Mis en cache.
+   */
+  private resolvePdfjsDir(): string | null {
+    if (this.pdfjsDir !== undefined) {
+      return this.pdfjsDir;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path') as typeof import('path');
+      let pjsPkg: string | null = null;
+      for (const anchor of ['pdf-parse', 'pdf-to-img']) {
+        try {
+          const anchorDir = path.dirname(require.resolve(anchor));
+          pjsPkg = require.resolve('pdfjs-dist/package.json', { paths: [anchorDir] });
+          break;
+        } catch {
+          // ancre absente — suivante.
+        }
+      }
+      this.pdfjsDir = pjsPkg !== null ? path.dirname(pjsPkg) : null;
+    } catch {
+      this.pdfjsDir = null;
+    }
+    return this.pdfjsDir;
+  }
+
+  /** Chemin filesystem (slashes avant + slash final) d'un sous-dossier de pdfjs-dist. */
+  private pdfjsAssetPath(subdir: string): string | null {
+    const dir = this.resolvePdfjsDir();
+    if (dir === null) return null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require('path') as typeof import('path');
+    return path.join(dir, subdir).split(path.sep).join('/') + '/';
+  }
+
+  /**
+   * `standard_fonts/` de pdfjs (chemin système, PAS `file://` : pdfjs lit via
+   * `fs`, et `fetch()` Node ne gère pas `file://`). Sans lui, le texte
+   * vectoriel n'est pas rendu. Mis en cache.
    */
   private resolveStandardFontDataUrl(): string | null {
     if (this.standardFontDataUrl !== undefined) {
       return this.standardFontDataUrl;
     }
-    try {
-      // `require` est disponible (build CommonJS NestJS) et `require.resolve`
-      // localise sans charger — sûr pour le package ESM `pdf-to-img`.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const path = require('path') as typeof import('path');
-      const ptiDir = path.dirname(require.resolve('pdf-to-img'));
-      const pjsPkg = require.resolve('pdfjs-dist/package.json', { paths: [ptiDir] });
-      const dir = path.join(path.dirname(pjsPkg), 'standard_fonts');
-      this.standardFontDataUrl = dir.split(path.sep).join('/') + '/';
-    } catch (error: unknown) {
-      this.logger.debug(
-        `PaddleOcrVlProvider.resolveStandardFontDataUrl: not available (${
-          error instanceof Error ? error.message : String(error)
-        })`,
-      );
-      this.standardFontDataUrl = null;
-    }
+    this.standardFontDataUrl = this.pdfjsAssetPath('standard_fonts');
     return this.standardFontDataUrl;
+  }
+
+  /** Paramètres d'assets pdfjs (polices + cMaps) pour un rendu fidèle. */
+  private resolvePdfjsAssetParams(): { standardFontDataUrl?: string; cMapUrl?: string } {
+    const params: { standardFontDataUrl?: string; cMapUrl?: string } = {};
+    const fonts = this.resolveStandardFontDataUrl();
+    if (fonts !== null) params.standardFontDataUrl = fonts;
+    const cmaps = this.pdfjsAssetPath('cmaps');
+    if (cmaps !== null) params.cMapUrl = cmaps;
+    return params;
   }
 
   /**
@@ -462,16 +500,15 @@ export class PaddleOcrVlProvider implements OcrProvider {
       detail: gradio === false ? 'module absent (optionalDependency non installée)' : 'chargé',
     });
 
-    const pdfMod = await this.loadPdfToImg();
+    // Chaîne de rendu PDF (remplace pdf-to-img) : pdfjs-dist fournit le
+    // canvasFactory, @napi-rs/canvas le binding natif. Messages d'erreur
+    // exacts pour distinguer module absent / prebuild manquant / lib système.
+    const pdfjs = await this.loadPdfjs();
     checks.push({
-      name: 'pdf-to-img',
-      ok: pdfMod !== false,
-      detail: pdfMod !== false ? 'chargé' : `import échoué: ${await this.probeImportError('pdf-to-img')}`,
+      name: 'pdfjs-dist (rendu)',
+      ok: pdfjs !== false,
+      detail: pdfjs !== false ? 'chargé' : 'indisponible',
     });
-
-    // Chaîne native sous-jacente : distingue « module JS absent » d'un binding
-    // natif KO (ex: prebuild manquant ou libfontconfig.so introuvable).
-    checks.push(await this.probeNativeDep('pdfjs-dist'));
     checks.push(await this.probeNativeDep('@napi-rs/canvas'));
 
     const fontUrl = this.resolveStandardFontDataUrl();
@@ -481,7 +518,7 @@ export class PaddleOcrVlProvider implements OcrProvider {
       detail: fontUrl ?? 'non résolu (texte vectoriel non rendu)',
     });
 
-    if (pdfMod !== false) {
+    if (pdfjs !== false) {
       let tmpPath: string | null = null;
       try {
         tmpPath = join(tmpdir(), `ocr-diag-${process.pid}-${this.diagSeq()}.pdf`);
@@ -493,7 +530,7 @@ export class PaddleOcrVlProvider implements OcrProvider {
           detail:
             raster !== null
               ? `OK — ${raster.bytes.length} octets PNG`
-              : 'rasterisePdfFirstPage a renvoyé null (voir logs PDF rasterisation failed)',
+              : 'rasterisePdfFirstPage a renvoyé null (voir logs)',
         });
       } catch (error: unknown) {
         checks.push({
@@ -515,19 +552,6 @@ export class PaddleOcrVlProvider implements OcrProvider {
   private diagSeq(): number {
     this.diagCounter += 1;
     return this.diagCounter;
-  }
-
-  /** Tente `import(spec)` (specifier nu) et renvoie le message d'erreur, ou 'ok'. */
-  private async probeImportError(spec: string): Promise<string> {
-    try {
-      const importDynamic = new Function('specifier', 'return import(specifier)') as (
-        specifier: string,
-      ) => Promise<unknown>;
-      await importDynamic(spec);
-      return 'ok';
-    } catch (error: unknown) {
-      return error instanceof Error ? error.message : String(error);
-    }
   }
 
   /**
@@ -648,29 +672,6 @@ export class PaddleOcrVlProvider implements OcrProvider {
         })`,
       );
       this.gradioModule = false;
-      return false;
-    }
-  }
-
-  /** Lazy dynamic-import of the optional ESM `pdf-to-img` package. */
-  protected async loadPdfToImg(): Promise<PdfToImgModule | false> {
-    if (this.pdfModule !== null) {
-      return this.pdfModule;
-    }
-    try {
-      const importDynamic = new Function('specifier', 'return import(specifier)') as (
-        specifier: string,
-      ) => Promise<unknown>;
-      const mod = (await importDynamic('pdf-to-img')) as PdfToImgModule;
-      this.pdfModule = mod;
-      return mod;
-    } catch (error: unknown) {
-      this.logger.debug(
-        `PaddleOcrVlProvider.loadPdfToImg: not available (${
-          error instanceof Error ? error.message : String(error)
-        })`,
-      );
-      this.pdfModule = false;
       return false;
     }
   }
