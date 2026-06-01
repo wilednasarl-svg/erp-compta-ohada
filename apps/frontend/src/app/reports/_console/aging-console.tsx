@@ -98,9 +98,9 @@ export function AgingConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ side, asAtDate: period.asAtDate });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/aging-balance.${ext}?${buildParams(submitted).toString()}`,
       `balance-agee.${ext}`,
     );

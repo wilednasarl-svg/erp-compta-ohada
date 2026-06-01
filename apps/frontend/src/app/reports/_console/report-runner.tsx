@@ -15,9 +15,10 @@
  * pages produit (TVA, inventaire, immobilisations).
  */
 
-import { Download, FileSpreadsheet, FileText, History, Play, Star, Trash2 } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, History, Loader2, Play, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 import { DataValidityStrip } from './data-validity-strip';
@@ -41,7 +42,9 @@ interface ReportRunnerProps {
   readonly status: RunStatus;
   readonly progress?: { readonly value: number; readonly stage: string; readonly etaMs?: number };
   readonly onGenerate: () => void;
-  readonly onExport?: (format: 'pdf' | 'xlsx') => void;
+  readonly onExport?: (format: 'pdf' | 'xlsx') => void | Promise<void> | undefined;
+  /** Formats d'export réellement servis par le backend pour cet état. Défaut : PDF + Excel. */
+  readonly exportFormats?: ReadonlyArray<'pdf' | 'xlsx'>;
 
   /** Slot « ② Périmètre » : comparaison N-1, filtre classe, axe analytique… */
   readonly scopeControls?: React.ReactNode;
@@ -59,11 +62,33 @@ export function ReportRunner(props: ReportRunnerProps) {
   const {
     orgId, mode, periodLabel, period, onPeriodChange,
     validity, validityLoading, status, progress, onGenerate, onExport,
+    exportFormats = ['pdf', 'xlsx'],
     scopeControls, scope, onApplyScope, children, emptyHint,
   } = props;
 
   const blocked = validity?.imbalance ? validity.imbalance > 0 : false;
   const hasScope = scopeControls !== undefined;
+
+  const [exporting, setExporting] = useState<'pdf' | 'xlsx' | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = async (format: 'pdf' | 'xlsx'): Promise<void> => {
+    if (!onExport) return;
+    setExportError(null);
+    setExporting(format);
+    try {
+      await onExport(format);
+    } catch (err: unknown) {
+      const label = format.toUpperCase();
+      setExportError(
+        err instanceof ApiError && err.status === 404
+          ? `Le format ${label} n’est pas disponible pour cet état.`
+          : `L’export ${label} a échoué. Vérifiez votre connexion puis réessayez.`,
+      );
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
     <section className="space-y-4">
@@ -126,16 +151,38 @@ export function ReportRunner(props: ReportRunnerProps) {
             <GenerationProgress progress={progress.value} stage={progress.stage} etaMs={progress.etaMs} />
           )}
 
-          {status === 'ready' && onExport && (
+          {status === 'ready' && onExport && exportFormats.length > 0 && (
             <div className="flex items-center justify-between gap-3 rounded-sm border border-accent/25 bg-accent-soft/50 px-3 py-2">
               <span className="text-xs text-accent-ink">
                 État prêt · {summarizePeriod(period)}
               </span>
               <div className="flex items-center gap-1.5">
-                <ExportButton icon={FileText} label="PDF" onClick={() => onExport('pdf')} />
-                <ExportButton icon={FileSpreadsheet} label="Excel" onClick={() => onExport('xlsx')} />
+                {exportFormats.includes('pdf') && (
+                  <ExportButton
+                    icon={FileText}
+                    label="PDF"
+                    busy={exporting === 'pdf'}
+                    disabled={exporting !== null}
+                    onClick={() => void handleExport('pdf')}
+                  />
+                )}
+                {exportFormats.includes('xlsx') && (
+                  <ExportButton
+                    icon={FileSpreadsheet}
+                    label="Excel"
+                    busy={exporting === 'xlsx'}
+                    disabled={exporting !== null}
+                    onClick={() => void handleExport('xlsx')}
+                  />
+                )}
               </div>
             </div>
+          )}
+
+          {exportError && (
+            <p role="alert" className="text-xs text-critical-ink">
+              {exportError}
+            </p>
           )}
 
           {blocked && status !== 'running' && (
@@ -207,14 +254,28 @@ function Field({ index, label, children }: { readonly index: number; readonly la
   );
 }
 
-function ExportButton({ icon: Icon, label, onClick }: { readonly icon: typeof FileText; readonly label: string; readonly onClick: () => void }) {
+function ExportButton({
+  icon: Icon, label, onClick, busy = false, disabled = false,
+}: {
+  readonly icon: typeof FileText;
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly busy?: boolean;
+  readonly disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-7 items-center gap-1.5 rounded-sm border border-line-strong bg-paper px-2.5 text-xs font-medium text-ink-soft transition-colors duration-fast hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      disabled={disabled}
+      aria-busy={busy}
+      className="inline-flex h-7 items-center gap-1.5 rounded-sm border border-line-strong bg-paper px-2.5 text-xs font-medium text-ink-soft transition-colors duration-fast hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      <Icon className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+      {busy ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
+      ) : (
+        <Icon className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+      )}
       {label}
     </button>
   );

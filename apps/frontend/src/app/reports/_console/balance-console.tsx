@@ -106,9 +106,9 @@ export function BalanceConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ fromDate: period.fromDate, toDate: period.toDate, accountClass, hideEmpty });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/trial-balance.${ext}?${buildParams(submitted).toString()}`,
       `balance.${ext}`,
     );

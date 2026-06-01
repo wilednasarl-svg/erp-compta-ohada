@@ -109,9 +109,9 @@ export function MultiYearConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ fromDate: period.fromDate, toDate: period.toDate });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/multi-year-balance.${ext}?${buildParams(submitted).toString()}`,
       `balance-pluriannuelle.${ext}`,
     );
@@ -140,6 +140,7 @@ export function MultiYearConsole({ orgId }: { readonly orgId: string }) {
         progress={progress}
         onGenerate={runGeneration}
         onExport={download}
+        exportFormats={['xlsx']}
         emptyHint={
           <div className="space-y-1">
             <p className="text-sm font-medium text-ink">Aucune balance pluriannuelle générée</p>

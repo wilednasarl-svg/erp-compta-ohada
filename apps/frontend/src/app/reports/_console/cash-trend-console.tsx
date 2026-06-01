@@ -96,9 +96,9 @@ export function CashTrendConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ fromMonth: period.fromDate.slice(0, 7), toMonth: period.toDate.slice(0, 7) });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/cash-trend.${ext}?${buildParams(submitted).toString()}`,
       `tendance-tresorerie.${ext}`,
     );

@@ -112,9 +112,9 @@ export function TftConsole({ orgId }: { readonly orgId: string }) {
     });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/tft.${ext}?${buildParams(submitted).toString()}`,
       `tft.${ext}`,
     );

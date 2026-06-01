@@ -17,6 +17,7 @@ import { useCurrentOrg } from '@/stores/auth-store';
 
 import { AgingConsole } from '../_console/aging-console';
 import { AnnexeConsole } from '../_console/annexe-console';
+import { AnnualPackageButton } from '../_console/annual-package-button';
 import { BalanceConsole } from '../_console/balance-console';
 import { BilanConsole } from '../_console/bilan-console';
 import { BilanDiagnosticConsole } from '../_console/bilan-diagnostic-console';
@@ -24,6 +25,7 @@ import { CashTrendConsole } from '../_console/cash-trend-console';
 import { ComparativeConsole } from '../_console/comparative-console';
 import { CrConsole } from '../_console/cr-console';
 import { GlConsole } from '../_console/gl-console';
+import { ImportDiagnosticConsole } from '../_console/import-diagnostic-console';
 import { MarginConsole } from '../_console/margin-console';
 import { MultiYearConsole } from '../_console/multi-year-console';
 import { RatiosConsole } from '../_console/ratios-console';
@@ -44,7 +46,8 @@ type ConsoleReport =
   | 'general-ledger'
   | 'aging-balance'
   | 'cash-trend'
-  | 'bilan-diagnostic';
+  | 'bilan-diagnostic'
+  | 'import-diagnostic';
 
 interface ConsoleReportDef {
   readonly key: ConsoleReport;
@@ -59,7 +62,7 @@ interface ConsoleGroup {
 }
 
 /**
- * États groupés par famille — une nav à plat de 14 onglets s'enroulait sans
+ * États groupés par famille — une nav à plat de 16 onglets s'enroulait sans
  * hiérarchie. Le regroupement donne du rythme et un repère (comme la liasse).
  */
 const CONSOLE_GROUPS: ReadonlyArray<ConsoleGroup> = [
@@ -95,6 +98,7 @@ const CONSOLE_GROUPS: ReadonlyArray<ConsoleGroup> = [
     items: [
       { key: 'general-ledger', label: 'Grand livre', tagline: 'Détail d’un compte' },
       { key: 'bilan-diagnostic', label: 'Bilan diagnostic', tagline: 'Contrôle pré-clôture' },
+      { key: 'import-diagnostic', label: 'Diagnostic d’import', tagline: 'Contrôle avant commit' },
     ],
   },
 ];
@@ -110,15 +114,18 @@ export default function ReportConsolePage() {
   return (
     <AppShell>
       <div className="space-y-6">
-        <header className="border-b border-line pb-5">
-          <p className="text-2xs uppercase tracking-wider text-ink-mute">États · Reporting OHADA</p>
-          <h1 className="mt-1 font-display text-3xl font-medium tracking-tight text-ink">
-            Console des états
-          </h1>
-          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-ink-soft">
-            Un parcours unique pour générer chaque état : sélectionnez la période, ajustez le
-            périmètre, puis générez. La conformité est contrôlée sur le rapport produit.
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
+          <div>
+            <p className="text-2xs uppercase tracking-wider text-ink-mute">États · Reporting OHADA</p>
+            <h1 className="mt-1 font-display text-3xl font-medium tracking-tight text-ink">
+              Console des états
+            </h1>
+            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-ink-soft">
+              Un parcours unique pour générer chaque état : sélectionnez la période, ajustez le
+              périmètre, puis générez. La conformité est contrôlée sur le rapport produit.
+            </p>
+          </div>
+          <AnnualPackageButton orgId={orgId} />
         </header>
 
         <nav className="space-y-3" aria-label="État à générer">
@@ -185,6 +192,8 @@ export default function ReportConsolePage() {
           <CashTrendConsole orgId={orgId} />
         ) : active === 'bilan-diagnostic' ? (
           <BilanDiagnosticConsole orgId={orgId} />
+        ) : active === 'import-diagnostic' ? (
+          <ImportDiagnosticConsole orgId={orgId} />
         ) : (
           <BalanceConsole orgId={orgId} />
         )}

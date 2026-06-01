@@ -119,9 +119,9 @@ export function MarginConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ fromDate: period.fromDate, toDate: period.toDate, axisType });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/margin-by-axis.${ext}?${buildParams(submitted).toString()}`,
       `marge-analytique.${ext}`,
     );

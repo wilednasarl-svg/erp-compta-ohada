@@ -119,10 +119,10 @@ export function GlConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ accountId, fromDate: period.fromDate, toDate: period.toDate });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
     const params = new URLSearchParams({ fromDate: submitted.fromDate, toDate: submitted.toDate });
-    void api.download(
+    return api.download(
       `/organizations/${orgId}/reports/general-ledger/${submitted.accountId}.${ext}?${params.toString()}`,
       `grand-livre.${ext}`,
     );

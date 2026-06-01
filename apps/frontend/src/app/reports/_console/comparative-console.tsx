@@ -114,9 +114,9 @@ export function ComparativeConsole({ orgId }: { readonly orgId: string }) {
     });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/comparative-balance.${ext}?${buildParams(submitted).toString()}`,
       `balance-comparative.${ext}`,
     );
@@ -145,6 +145,7 @@ export function ComparativeConsole({ orgId }: { readonly orgId: string }) {
         progress={progress}
         onGenerate={runGeneration}
         onExport={download}
+        exportFormats={['xlsx']}
         scope={{ accountClass }}
         onApplyScope={(s) => {
           if (typeof s.accountClass === 'string') setAccountClass(s.accountClass);

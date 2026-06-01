@@ -97,9 +97,9 @@ export function CrConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ fromDate: period.fromDate, toDate: period.toDate });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/profit-loss.${ext}?${buildParams(submitted).toString()}`,
       `compte-resultat.${ext}`,
     );

@@ -96,9 +96,9 @@ export function RatiosConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ asAtDate: period.asAtDate, fiscalYearStartDate: period.fiscalYearStartDate });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/financial-ratios.${ext}?${buildParams(submitted).toString()}`,
       `ratios.${ext}`,
     );

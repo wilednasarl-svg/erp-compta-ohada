@@ -96,9 +96,9 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
     setSubmitted({ asAtDate: period.asAtDate, fiscalYearStartDate: period.fiscalYearStartDate });
   };
 
-  const download = (ext: 'xlsx' | 'pdf'): void => {
-    if (submitted === null) return;
-    void api.download(
+  const download = (ext: 'xlsx' | 'pdf'): Promise<void> | undefined => {
+    if (submitted === null) return undefined;
+    return api.download(
       `/organizations/${orgId}/reports/annexe.${ext}?${buildParams(submitted).toString()}`,
       `annexe.${ext}`,
     );
@@ -127,6 +127,7 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
         progress={progress}
         onGenerate={runGeneration}
         onExport={download}
+        exportFormats={['xlsx']}
         emptyHint={
           <div className="space-y-1">
             <p className="text-sm font-medium text-ink">Aucune annexe générée pour le moment</p>
