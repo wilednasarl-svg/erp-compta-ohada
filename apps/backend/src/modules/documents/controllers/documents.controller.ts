@@ -40,6 +40,7 @@ import {
   type DocumentView,
   type ListDocumentsResult,
 } from '../services/documents.service';
+import type { OcrStatus } from '../types/ocr-status';
 
 /**
  * Multer file shape. We avoid pulling `@types/multer` into the
@@ -188,6 +189,24 @@ export class DocumentsController {
    * but the URL contract advertised to clients (`/documents/:id/content`)
    * stays stable so the frontend doesn't have to change.
    */
+  /**
+   * Relance le pipeline OCR sur une pièce existante. Cas d'usage : un PDF
+   * passé en « OCR ignoré » (rasterisation indisponible à l'upload) ou un
+   * échec transitoire du moteur, que l'on veut retraiter sans ré-uploader.
+   * Repasse le statut à `processing`; le client suit via `GET /:id/ocr`.
+   */
+  @Post(':id/retry-ocr')
+  @RequirePermission('documents.write')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async retryOcr(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentOrg() org: CurrentOrgContext | undefined,
+    @CurrentUser('id') actorUserId: CurrentUserContext['id'] | undefined,
+  ): Promise<{ ocrStatus: OcrStatus }> {
+    const scope = this.assertActorScope(org, actorUserId);
+    return this.documents.retryOcr(scope.organizationId, id);
+  }
+
   @Get(':id/content')
   @RequirePermission('documents.read')
   @HttpCode(HttpStatus.OK)

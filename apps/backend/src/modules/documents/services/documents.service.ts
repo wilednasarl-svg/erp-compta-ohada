@@ -650,6 +650,52 @@ export class DocumentsService {
   }
 
   /**
+   * Relance manuelle du pipeline OCR sur une pièce déjà stockée.
+   *
+   * Cas d'usage : un PDF passé en `skipped` (la rasterisation n'était pas
+   * disponible au moment de l'upload — dépendance `pdf-to-img` absente ou
+   * Space PaddleOCR injoignable) ou un `failed` (timeout transitoire du
+   * moteur). On retraite la pièce sans la ré-uploader.
+   *
+   * Le statut repasse à `processing` immédiatement, puis le pipeline est
+   * relancé en fire-and-forget : PaddleOCR-VL peut prendre jusqu'à ~120 s
+   * sur un cold-start ZeroGPU, on ne bloque donc pas la requête HTTP. Le
+   * client suit l'avancée via `GET /documents/:id/ocr`.
+   *
+   * Idempotent : si un retraitement est déjà en cours (`processing`), on
+   * ne lance pas un second pipeline concurrent sur la même pièce.
+   */
+  async retryOcr(
+    organizationId: TenantId,
+    id: string,
+  ): Promise<{ readonly ocrStatus: OcrStatus }> {
+    const row = await this.documents.findById(organizationId, id);
+    if (row === null) {
+      throw new AppException(ERROR_CODES.DOC_NOT_FOUND, { message: 'Document not found' });
+    }
+    if (row.ocrStatus === 'processing') {
+      return { ocrStatus: 'processing' };
+    }
+
+    await this.documents.updateOcrResult(organizationId, id, {
+      ocrStatus: 'processing',
+      ocrProcessedAt: null,
+    });
+
+    this.runOcrPipeline(id, organizationId, row.storageKey, row.mimeType).catch(
+      (error: unknown) => {
+        this.logger.warn(
+          `retryOcr: OCR pipeline failed for document ${id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      },
+    );
+
+    return { ocrStatus: 'processing' };
+  }
+
+  /**
    * Returns the binary stream alongside the metadata the controller
    * needs to write the response headers (filename, content type).
    * Translates a storage-level miss into `DOC_NOT_FOUND` so a row

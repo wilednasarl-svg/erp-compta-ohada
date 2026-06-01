@@ -511,6 +511,53 @@ describe('DocumentsService (BE-DOC-04)', () => {
     });
   });
 
+  describe('retryOcr', () => {
+    async function waitForCall(mock: jest.Mock, deadlineMs = 2000): Promise<void> {
+      const start = Date.now();
+      while (mock.mock.calls.length === 0 && Date.now() - start < deadlineMs) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+
+    it('repasse une pièce « skipped » en processing et relance le pipeline', async () => {
+      docs.findById.mockResolvedValue(buildDocumentRow({ ocrStatus: 'skipped' }));
+      storage.getStream.mockResolvedValue(Readable.from([Buffer.from('image-bytes')]));
+      ocrProvider.extract.mockResolvedValue({ text: 'Facture N° FAC-2026-009', confidence: 0.9 });
+
+      const result = await service.retryOcr(ORG_A, 'doc_1');
+
+      expect(result).toEqual({ ocrStatus: 'processing' });
+      // Statut immédiatement repassé à processing.
+      expect(
+        (docs as unknown as { updateOcrResult: jest.Mock }).updateOcrResult,
+      ).toHaveBeenCalledWith('org_a', 'doc_1', { ocrStatus: 'processing', ocrProcessedAt: null });
+      // Pipeline relancé en arrière-plan.
+      await waitForCall(ocrProvider.extract as unknown as jest.Mock);
+      expect(ocrProvider.extract).toHaveBeenCalled();
+    });
+
+    it("ne relance pas un second pipeline si l'OCR est déjà en cours", async () => {
+      docs.findById.mockResolvedValue(buildDocumentRow({ ocrStatus: 'processing' }));
+
+      const result = await service.retryOcr(ORG_A, 'doc_1');
+
+      expect(result).toEqual({ ocrStatus: 'processing' });
+      expect(
+        (docs as unknown as { updateOcrResult: jest.Mock }).updateOcrResult,
+      ).not.toHaveBeenCalled();
+      expect(ocrProvider.extract).not.toHaveBeenCalled();
+    });
+
+    it('renvoie DOC_NOT_FOUND pour une pièce absente du tenant', async () => {
+      docs.findById.mockResolvedValue(null);
+
+      await expect(service.retryOcr(ORG_B, 'doc_1')).rejects.toMatchObject({
+        code: ERROR_CODES.DOC_NOT_FOUND,
+      });
+      expect(docs.findById).toHaveBeenCalledWith('org_b', 'doc_1');
+    });
+  });
+
   describe('attachEntry (Module 10 wave 2)', () => {
     it('links a document to a journal entry in the same tenant', async () => {
       docs.findById.mockResolvedValue(buildDocumentRow());
