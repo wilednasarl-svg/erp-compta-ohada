@@ -19,6 +19,7 @@ import { AgingConsole } from '../_console/aging-console';
 import { AnnexeConsole } from '../_console/annexe-console';
 import { AnnualPackageButton } from '../_console/annual-package-button';
 import { BalanceConsole } from '../_console/balance-console';
+import { BalanceUploadConsole } from '../_console/balance-upload-console';
 import { BilanConsole } from '../_console/bilan-console';
 import { BilanDiagnosticConsole } from '../_console/bilan-diagnostic-console';
 import { CashTrendConsole } from '../_console/cash-trend-console';
@@ -47,7 +48,8 @@ type ConsoleReport =
   | 'aging-balance'
   | 'cash-trend'
   | 'bilan-diagnostic'
-  | 'import-diagnostic';
+  | 'import-diagnostic'
+  | 'balance-upload';
 
 interface ConsoleReportDef {
   readonly key: ConsoleReport;
@@ -91,6 +93,7 @@ const CONSOLE_GROUPS: ReadonlyArray<ConsoleGroup> = [
       { key: 'comparative-balance', label: 'Comparative', tagline: 'N vs N-1' },
       { key: 'multi-year-balance', label: 'Pluriannuelle', tagline: 'N / N-1 / N-2' },
       { key: 'aging-balance', label: 'Balance âgée', tagline: 'Ancienneté clients/fourn.' },
+      { key: 'balance-upload', label: 'Balance importée', tagline: 'Bilan/CR depuis un fichier' },
     ],
   },
   {
@@ -194,6 +197,8 @@ export default function ReportConsolePage() {
           <BilanDiagnosticConsole orgId={orgId} />
         ) : active === 'import-diagnostic' ? (
           <ImportDiagnosticConsole orgId={orgId} />
+        ) : active === 'balance-upload' ? (
+          <BalanceUploadConsole orgId={orgId} />
         ) : (
           <BalanceConsole orgId={orgId} />
         )}
