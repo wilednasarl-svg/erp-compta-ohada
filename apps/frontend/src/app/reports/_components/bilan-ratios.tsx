@@ -76,9 +76,13 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
 
   // Note 34 S3 — Indépendance financière = Capitaux propres / Total bilan.
   const independance = div(cp, totalPassif);
-  // Note 34 E1 — Endettement net = Dettes financières / Capitaux propres
-  // (masse stable DD, et non l'ensemble des dettes).
-  const endettement = div(dettesFinancieres, cp);
+  // Note 34 — Levier financier = Dettes financières / Capitaux propres
+  // (masse stable DD, et non l'ensemble des dettes). Ce n'est PAS
+  // l'endettement net : c'est un ratio de structure (gearing).
+  const levier = div(dettesFinancieres, cp);
+  // Guide SYSCOHADA révisé (Note 34) — Endettement financier net (MONTANT) :
+  //   Dettes financières (DD) + Trésorerie passif (DT) − Trésorerie actif (BT).
+  const endettementNet = dettesFinancieres + tresoP - tresoA;
   const couverture = div(stables, immobilise);
   const fr = stables - immobilise;
   const bfr = circulant - passifCirc;
@@ -102,16 +106,26 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
             : `Structure très dépendante des dettes (seulement ${pct(independance)} de fonds propres). Vérifiez si des comptes courants d'associés peuvent être assimilés à des quasi-fonds propres avant de conclure à une fragilité.`,
     },
     {
-      label: 'Endettement net',
+      label: 'Levier financier',
       formula: 'Dettes financières / Capitaux propres',
-      value: mult(endettement),
-      tone: endettement <= 1 ? 'ok' : endettement <= 2 ? 'warn' : 'bad',
+      value: mult(levier),
+      tone: levier <= 1 ? 'ok' : levier <= 2 ? 'warn' : 'bad',
       interpretation:
-        endettement <= 1
-          ? `Endettement financier maîtrisé : les dettes financières restent au niveau des fonds propres ou en deçà.`
-          : endettement <= 2
-            ? `Endettement financier élevé : les dettes financières valent ${mult(endettement)} fois les fonds propres — à surveiller.`
-            : `Très endettée : les dettes financières pèsent ${mult(endettement)} fois les fonds propres ; capacité d'emprunt quasi saturée.`,
+        levier <= 1
+          ? `Levier maîtrisé : les dettes financières restent au niveau des fonds propres ou en deçà.`
+          : levier <= 2
+            ? `Levier élevé : les dettes financières valent ${mult(levier)} fois les fonds propres — à surveiller.`
+            : `Très endettée : les dettes financières pèsent ${mult(levier)} fois les fonds propres ; capacité d'emprunt quasi saturée.`,
+    },
+    {
+      label: 'Endettement financier net',
+      formula: 'Dettes financières + Trésorerie passif − Trésorerie actif',
+      value: fcfa(endettementNet),
+      tone: endettementNet <= 0 ? 'ok' : 'neutral',
+      interpretation:
+        endettementNet <= 0
+          ? `Position nette créditrice (${fcfa(endettementNet)} FCFA) : la trésorerie disponible couvre l'ensemble des dettes financières et concours bancaires.`
+          : `Endettement net positif (${fcfa(endettementNet)} FCFA) : montant des dettes financières et concours bancaires restant après déduction de la trésorerie disponible.`,
     },
     {
       label: 'Couverture des emplois stables',

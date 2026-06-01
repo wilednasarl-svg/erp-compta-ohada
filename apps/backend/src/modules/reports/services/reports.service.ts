@@ -1785,6 +1785,15 @@ export class ReportsService {
     const fondsRoulement = ressourcesStables - actifImmobilise;
     const bfr = actifCirculant - passifCirculant;
 
+    // Guide SYSCOHADA révisé (Note 34, p. 69) : la rentabilité économique se
+    // calcule sur le résultat d'exploitation APRÈS impôt théorique sur le
+    // bénéfice. « Le taux d'impôt théorique retenu par la société est de 35 % ».
+    const TAUX_IMPOT_THEORIQUE = 0.35;
+    const raoApresImpot = resultatExploit * (1 - TAUX_IMPOT_THEORIQUE);
+    // Endettement financier net (MONTANT, pas un ratio) :
+    //   Dettes financières* + Trésorerie-passif − Trésorerie-actif.
+    const endettementFinancierNet = dettesFinancieres + tresoPassif - tresoActif;
+
     const ratios: FinancialRatio[] = [
       ReportsService.makeRatio({
         code: 'AF',
@@ -1798,8 +1807,8 @@ export class ReportsService {
           v === null ? undefined : v >= 30 ? 'bon (≥ 30 %)' : v >= 20 ? 'à surveiller' : 'faible',
       }),
       ReportsService.makeRatio({
-        code: 'EF',
-        label: 'Endettement financier',
+        code: 'LF',
+        label: 'Levier financier (Dettes financières / Capitaux propres)',
         category: 'STRUCTURE',
         formula: 'Dettes financières / Capitaux propres',
         numerator: dettesFinancieres,
@@ -1807,6 +1816,21 @@ export class ReportsService {
         unit: 'RATIO',
         interpret: (v) =>
           v === null ? undefined : v <= 1 ? 'bon (≤ 1)' : v <= 2 ? 'à surveiller' : 'élevé',
+      }),
+      ReportsService.makeRatio({
+        code: 'EFN',
+        label: 'Endettement financier net',
+        category: 'STRUCTURE',
+        // Guide SYSCOHADA révisé (Note 34) : MONTANT, pas un ratio. On le
+        // porte via denominator=1 (même convention que le FRNG ci-dessous).
+        formula: 'Dettes financières + Trésorerie passif − Trésorerie actif',
+        numerator: endettementFinancierNet,
+        denominator: 1,
+        unit: 'RATIO',
+        interpret: () =>
+          endettementFinancierNet <= 0
+            ? 'position nette créditrice (trésorerie excédentaire)'
+            : 'endettement net positif',
       }),
       ReportsService.makeRatio({
         code: 'FR',
@@ -1887,12 +1911,26 @@ export class ReportsService {
       }),
       ReportsService.makeRatio({
         code: 'RA',
-        label: "Rentabilité économique de l'actif",
+        label: "Rentabilité de l'actif (ROA)",
         category: 'RENTABILITE',
         formula: 'EBE / Total actif',
         numerator: ebe,
         denominator: totalActif,
         unit: 'PERCENT',
+      }),
+      ReportsService.makeRatio({
+        code: 'REC',
+        label: 'Rentabilité économique',
+        category: 'RENTABILITE',
+        // Guide SYSCOHADA révisé (Note 34, p. 69) : résultat d'exploitation
+        // APRÈS impôt théorique (35 %) / (Capitaux propres + Dettes financières).
+        formula:
+          "Résultat d'exploitation × (1 − 35 %) / (Capitaux propres + Dettes financières)",
+        numerator: raoApresImpot,
+        denominator: ressourcesStables,
+        unit: 'PERCENT',
+        interpret: (v) =>
+          v === null ? undefined : v >= 8 ? 'bonne (≥ 8 %)' : v >= 4 ? 'modérée' : 'faible',
       }),
       ReportsService.makeRatio({
         code: 'VA',

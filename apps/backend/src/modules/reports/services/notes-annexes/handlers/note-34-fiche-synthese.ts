@@ -7,9 +7,9 @@
  *
  *   1. ACTIVITE      — CA, valeur ajoutée, EBE/CA, marge brute
  *   2. STRUCTURE     — capitaux propres, total bilan, indépendance fin.
- *   3. RENTABILITE   — RAO/CA, ROE, ROA
+ *   3. RENTABILITE   — rentabilité économique (RAO après impôt), ROE, ROA
  *   4. LIQUIDITE     — ratios général et immédiat
- *   5. ENDETTEMENT   — dettes financières / capitaux propres
+ *   5. ENDETTEMENT   — levier financier + endettement financier net
  *
  * Chaque ligne porte un code lettré (A1, S1…), un libellé, la formule
  * et la valeur calculée (ratio sans unité, pourcentage ou montant brut
@@ -55,6 +55,13 @@ interface SyntheseLine {
   readonly unit: 'PERCENT' | 'RATIO' | 'AMOUNT';
 }
 
+/**
+ * Guide SYSCOHADA révisé (Note 34, p. 69) : la rentabilité économique se
+ * calcule sur le résultat d'exploitation APRÈS impôt théorique sur le
+ * bénéfice. « Le taux d'impôt théorique retenu par la société est de 35 % ».
+ */
+const TAUX_IMPOT_THEORIQUE = 0.35;
+
 function computeLines(snap: NoteSynthesisSnapshot): ReadonlyArray<SyntheseLine> {
   const ca = num(snap.chiffreAffaires);
   const va = num(snap.valeurAjoutee);
@@ -69,6 +76,13 @@ function computeLines(snap: NoteSynthesisSnapshot): ReadonlyArray<SyntheseLine> 
   const pc = num(snap.passifCirculant);
   const tp = num(snap.tresoreriePassif);
   const passifCourtTerme = pc + tp;
+  // Note 34 : rentabilité économique = RAO après impôt théorique (35 %)
+  // rapporté aux capitaux investis (capitaux propres + dettes financières).
+  const raoApresImpot = rao * (1 - TAUX_IMPOT_THEORIQUE);
+  const capitauxInvestis = cp + df;
+  // Endettement financier net (MONTANT) = dettes financières + trésorerie
+  // passif − trésorerie actif.
+  const endettementFinancierNet = df + tp - ta;
 
   const lines: SyntheseLine[] = [
     // Bloc 1 — ACTIVITE
@@ -135,9 +149,10 @@ function computeLines(snap: NoteSynthesisSnapshot): ReadonlyArray<SyntheseLine> 
     {
       key: 'R1',
       bloc: 'RENTABILITE',
-      label: 'Rentabilité économique (RAO / CA)',
-      formula: "Résultat d'exploitation / CA",
-      value: fmtRatio(ratio(rao, ca), 'PERCENT'),
+      label: 'Rentabilité économique',
+      formula:
+        "Résultat d'exploitation × (1 − 35 %) / (Capitaux propres + Dettes financières)",
+      value: fmtRatio(ratio(raoApresImpot, capitauxInvestis), 'PERCENT'),
       unit: 'PERCENT',
     },
     {
@@ -179,13 +194,21 @@ function computeLines(snap: NoteSynthesisSnapshot): ReadonlyArray<SyntheseLine> 
     {
       key: 'E1',
       bloc: 'ENDETTEMENT',
-      label: 'Endettement net',
+      label: 'Levier financier',
       formula: 'Dettes financières / Capitaux propres',
       value: fmtRatio(ratio(df, cp), 'RATIO'),
       unit: 'RATIO',
     },
     {
       key: 'E2',
+      bloc: 'ENDETTEMENT',
+      label: 'Endettement financier net',
+      formula: 'Dettes financières + Trésorerie passif − Trésorerie actif',
+      value: endettementFinancierNet.toFixed(2),
+      unit: 'AMOUNT',
+    },
+    {
+      key: 'E3',
       bloc: 'ENDETTEMENT',
       label: 'Variation nette de trésorerie',
       formula: 'TFT — variation période',

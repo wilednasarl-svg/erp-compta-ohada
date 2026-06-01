@@ -1519,8 +1519,13 @@ describe('ReportsService.getFinancialRatios', () => {
     expect(byCode('AF')?.value).toBe('44.44');
     expect(byCode('AF')?.unit).toBe('PERCENT');
     expect(byCode('AF')?.interpretation).toContain('bon');
-    // Endettement = DF / CP = 200 / 480 ≈ 0.4167
-    expect(byCode('EF')?.value).toBe('0.4167');
+    // Levier financier = DF / CP = 200 / 480 ≈ 0.4167 (renommé depuis 'EF').
+    expect(byCode('LF')?.value).toBe('0.4167');
+    expect(byCode('LF')?.label).toContain('Levier financier');
+    // Endettement financier net = DF + tréso passif − tréso actif
+    //   = 200 + 50 − 100 = 150 (MONTANT, porté via denominator=1).
+    expect(byCode('EFN')?.value).toBe('150.0000');
+    expect(byCode('EFN')?.formula).toContain('Trésorerie passif');
     // Liquidité générale = (circulant + tréso) / passif CT = 400 / 400 = 1
     expect(byCode('LG')?.value).toBe('1.0000');
     // Liquidité immédiate = 100 / 400 = 0.25
@@ -1528,6 +1533,14 @@ describe('ReportsService.getFinancialRatios', () => {
     // SIG : CA = 800, VA = 800-600 = 200, EBE = 200-100 = 100, RE = 100-20 = 80, RN = 80
     expect(byCode('RE')?.value).toBe('10.00'); // 80 / 800
     expect(byCode('RC')?.value).toBe('10.00');
+    // Rentabilité de l'actif (ROA, ex « rentabilité économique de l'actif »)
+    //   = EBE / Total actif = 100 / 1080 ≈ 9.26 %.
+    expect(byCode('RA')?.label).toContain('ROA');
+    expect(byCode('RA')?.value).toBe('9.26');
+    // Rentabilité économique conforme Note 34 = RAO × (1 − 0.35) / (CP + DF)
+    //   = 80 × 0.65 / (480 + 200) = 52 / 680 ≈ 7.65 %.
+    expect(byCode('REC')?.value).toBe('7.65');
+    expect(byCode('REC')?.formula).toContain('35 %');
   });
 
   it('returns value=null when denominator is zero', async () => {
