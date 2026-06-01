@@ -44,6 +44,7 @@ import { CollectionsModule } from './modules/collections/collections.module';
 import { ProvisionsModule } from './modules/provisions/provisions.module';
 import { ImpairmentsModule } from './modules/impairments/impairments.module';
 import { SubsidiesModule } from './modules/subsidies/subsidies.module';
+import { BillsOfExchangeModule } from './modules/bills-of-exchange/bills-of-exchange.module';
 import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { SyscohadaComplianceModule } from './modules/syscohada-compliance/syscohada-compliance.module';
 import { SyscohadaGuidanceModule } from './modules/syscohada-knowledge/syscohada-guidance.module';
@@ -202,6 +203,8 @@ import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohad
     ImpairmentsModule,
     // Module Subventions d'investissement (W4.4) - activation REST wave-2
     SubsidiesModule,
+    // Module Effets de commerce (W4.6) - activation REST wave-2
+    BillsOfExchangeModule,
     // Module Fiscal & Social - paramètres de taux + déclarations/échéancier (CI)
     FiscalModule,
   ],

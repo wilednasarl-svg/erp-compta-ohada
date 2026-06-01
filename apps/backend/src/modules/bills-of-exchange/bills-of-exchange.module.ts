@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuthModule } from '../auth/auth.module';
 import { JournalsModule } from '../journals/journals.module';
+import { RbacModule } from '../rbac/rbac.module';
+import { BillsOfExchangeController } from './controllers/bills-of-exchange.controller';
 import { BillEventEntity } from './entities/bill-event.entity';
 import { BillOfExchangeEntity } from './entities/bill-of-exchange.entity';
 import { BillEventsRepository } from './repositories/bill-events.repository';
@@ -26,7 +29,13 @@ import { BillsOfExchangeService } from './services/bills-of-exchange.service';
  * (ex. workflows banque) puisse s'y brancher.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([BillOfExchangeEntity, BillEventEntity]), JournalsModule],
+  imports: [
+    TypeOrmModule.forFeature([BillOfExchangeEntity, BillEventEntity]),
+    JournalsModule,
+    AuthModule,
+    RbacModule,
+  ],
+  controllers: [BillsOfExchangeController],
   providers: [BillsOfExchangeRepository, BillEventsRepository, BillsOfExchangeService],
   exports: [BillsOfExchangeService],
 })
