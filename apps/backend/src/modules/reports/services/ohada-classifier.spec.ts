@@ -16,9 +16,20 @@ describe('classifyToPoste — routage par signe des comptes de tiers', () => {
     expect(classifyToPoste('40100000', false, 'C')?.side).toBe('PASSIF'); // fournisseurs
   });
 
-  it('retourne null pour un compte sans poste lettré (hors référentiel)', () => {
-    // 4661 n'est mappé à aucun poste → exclu du bilan officiel.
-    expect(classifyToPoste('46610000', false, 'C')).toBeNull();
+  it('route le compte courant associé 466 par le signe (Guide T3, comme 462/463)', () => {
+    // 466 « Associés/Groupe, comptes courants » : créditeur = dette → poste
+    // passif DM « Autres dettes » (Note 19) ; débiteur = créance → actif BJ.
+    // (Auparavant 466 n'était dans aucun poste → solde exclu du total et
+    // bilan déséquilibré sur une balance pourtant juste.)
+    const crediteur = classifyToPoste('46610000', false, 'C');
+    expect(crediteur?.side).toBe('PASSIF');
+    expect(crediteur?.posteCode).toBe('DM');
+    expect(classifyToPoste('46610000', false, 'D')?.side).toBe('ACTIF');
+  });
+
+  it('retourne null pour un compte hors bilan (classe 6 = compte de résultat)', () => {
+    // Une charge (classe 6) n'appartient pas au bilan → aucun poste lettré.
+    expect(classifyToPoste('60110000', false, 'D')).toBeNull();
   });
 
   it('conserve la déduction pour les amortissements (préfixe le plus long)', () => {

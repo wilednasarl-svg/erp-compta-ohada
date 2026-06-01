@@ -394,6 +394,12 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
       '4582',
       '462',
       '463',
+      // 466 « Associés/Groupe, comptes courants » — même nature que 462/463 :
+      // débiteur = créance (ici BJ actif), créditeur = dette (DM passif).
+      // Déclaré dans les DEUX postes pour arbitrage par signe (Guide T3,
+      // Note 19 « Autres dettes » : compte courant associé créditeur → DM).
+      // Les sous-comptes 4664/4665/4667 restent pinés à l'actif (préfixe + long).
+      '466',
       '4664',
       '4665',
       '4667',
@@ -800,12 +806,12 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
     note: '19',
     side: 'PASSIF',
     section: 'Passif circulant',
-    sourceAccountPrefixes: ['462', '463', '471', '472', '474', '477'],
+    sourceAccountPrefixes: ['462', '463', '466', '471', '472', '474', '477'],
     deductionPrefixes: [],
     sign: 1,
     parentGroup: 'DP',
     doctrinePage: 32,
-    notes: 'Solde créditeur. Note 19.',
+    notes: 'Solde créditeur. Note 19 (inclut comptes courants associés 462/463/466).',
   },
   {
     code: 'DN',
