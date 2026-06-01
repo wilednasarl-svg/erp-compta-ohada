@@ -4,7 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AssetsModule } from '../assets/assets.module';
 import { DepreciationScheduleEntity } from '../assets/entities/depreciation-schedule.entity';
 import { DepreciationSchedulesRepository } from '../assets/repositories/depreciation-schedules.repository';
+import { AuthModule } from '../auth/auth.module';
 import { JournalsModule } from '../journals/journals.module';
+import { RbacModule } from '../rbac/rbac.module';
+import { SubsidiesController } from './controllers/subsidies.controller';
 import { SubsidyEntity } from './entities/subsidy.entity';
 import { SubsidyReleaseEntity } from './entities/subsidy-release.entity';
 import { SubsidiesRepository } from './repositories/subsidies.repository';
@@ -39,7 +42,10 @@ import { SubsidiesService } from './services/subsidies.service';
     ]),
     AssetsModule,
     JournalsModule,
+    AuthModule,
+    RbacModule,
   ],
+  controllers: [SubsidiesController],
   providers: [
     SubsidiesRepository,
     SubsidyReleasesRepository,

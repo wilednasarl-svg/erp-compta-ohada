@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuthModule } from '../auth/auth.module';
 import { JournalsModule } from '../journals/journals.module';
+import { RbacModule } from '../rbac/rbac.module';
+import { ProvisionsController } from './controllers/provisions.controller';
 import { ProvisionEntity } from './entities/provision.entity';
 import { ProvisionMovementEntity } from './entities/provision-movement.entity';
 import { ProvisionMovementsRepository } from './repositories/provision-movements.repository';
@@ -27,7 +30,13 @@ import { ProvisionsService } from './services/provisions.service';
  * module (ex. Module 21 Collaboration) de s y brancher.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([ProvisionEntity, ProvisionMovementEntity]), JournalsModule],
+  imports: [
+    TypeOrmModule.forFeature([ProvisionEntity, ProvisionMovementEntity]),
+    JournalsModule,
+    AuthModule,
+    RbacModule,
+  ],
+  controllers: [ProvisionsController],
   providers: [ProvisionsRepository, ProvisionMovementsRepository, ProvisionsService],
   exports: [ProvisionsService],
 })

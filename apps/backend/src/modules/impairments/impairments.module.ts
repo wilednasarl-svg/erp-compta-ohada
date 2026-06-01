@@ -4,8 +4,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
 import { AssetsModule } from '../assets/assets.module';
 import { AuditModule } from '../audit/audit.module';
+import { AuthModule } from '../auth/auth.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { JournalsModule } from '../journals/journals.module';
+import { RbacModule } from '../rbac/rbac.module';
+import { ImpairmentsController } from './controllers/impairments.controller';
 import { AssetsRepository } from '../assets/repositories/assets.repository';
 import { DepreciationSchedulesRepository } from '../assets/repositories/depreciation-schedules.repository';
 import { InventoryItemRepository } from '../inventory/repositories/inventory-item.repository';
@@ -48,7 +51,10 @@ import { ImpairmentsService } from './services/impairments.service';
     InventoryModule,
     AuditModule,
     JournalsModule,
+    AuthModule,
+    RbacModule,
   ],
+  controllers: [ImpairmentsController],
   providers: [
     AssetImpairmentsRepository,
     InventoryImpairmentsRepository,
