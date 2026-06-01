@@ -47,9 +47,19 @@ import { type BalanceParsed, parseBalanceCsv, parseBalanceXlsx } from './balance
 import { todayIso, yearStartIso } from './presets';
 import { ProfitLossResult } from './profit-loss-result';
 
+interface UnusualBalanceRow {
+  code: string;
+  label: string;
+  amount: string;
+  sign: 'D' | 'C';
+  severity: 'warning' | 'info';
+  reason: string;
+}
+
 interface FromBalanceResult {
   bilan: BalanceSheetReport;
   cr: ProfitLossReport;
+  unusualBalances: UnusualBalanceRow[];
 }
 
 type BalanceInventoryType = 'avant-inventaire' | 'apres-inventaire';
@@ -656,6 +666,52 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
                 </Button>
               </div>
             </div>
+            {mutation.data.unusualBalances.length > 0 && (
+              <div className="rounded-sm border border-warn/40 bg-warn-soft/40 p-4">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-warn-ink" strokeWidth={1.5} />
+                  <p className="text-sm font-medium text-ink">
+                    Contrôle qualité —{' '}
+                    <span className="font-mono tabular-nums">
+                      {mutation.data.unusualBalances.length}
+                    </span>{' '}
+                    solde{mutation.data.unusualBalances.length > 1 ? 's' : ''} inhabituel
+                    {mutation.data.unusualBalances.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <p className="mb-3 max-w-[80ch] text-xs text-ink-mute">
+                  Comptes au signe inhabituel ou sensibles aux erreurs d&apos;imputation. Souvent
+                  légitimes (avances, comptes courants), mais vérifiez qu&apos;il ne s&apos;agit pas
+                  d&apos;un <strong>mauvais compte choisi</strong> dans le logiciel source — cela
+                  fausserait le Bilan et le Compte de résultat.
+                </p>
+                <ul className="space-y-2">
+                  {mutation.data.unusualBalances.map((u) => (
+                    <li
+                      key={u.code}
+                      className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs"
+                    >
+                      <span
+                        className={cn(
+                          'inline-flex shrink-0 items-center rounded-xs px-1.5 py-0.5 font-medium',
+                          u.severity === 'warning'
+                            ? 'bg-warn-soft text-warn-ink'
+                            : 'bg-info-soft text-info-ink',
+                        )}
+                      >
+                        {u.severity === 'warning' ? 'À vérifier' : 'Info'}
+                      </span>
+                      <span className="font-mono text-ink">{u.code}</span>
+                      <span className="text-ink-soft">{u.label}</span>
+                      <span className="font-mono tabular-nums text-ink">
+                        {fmt(u.amount)} ({u.sign === 'D' ? 'débiteur' : 'créditeur'})
+                      </span>
+                      <span className="basis-full text-ink-mute">{u.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {activeTab === 'bilan' ? (
               <BalanceSheetResult report={mutation.data.bilan} />
             ) : (

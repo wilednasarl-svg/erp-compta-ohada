@@ -5,7 +5,7 @@ import type {
   ReportsRepository,
   TrialBalanceRow,
 } from '../repositories/reports.repository';
-import { ReportsService } from '../services/reports.service';
+import { ReportsService, detectUnusualBalances } from '../services/reports.service';
 
 const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
 const ACC_ID = '00000000-0000-4000-8000-000000000010';
@@ -2425,5 +2425,49 @@ describe('getReportsFromBalance — invariant d’équilibre (Actif = Passif)', 
     expect(Number(bilan.totals.actif)).toBeCloseTo(1000, 2);
     expect(Number(bilan.totals.passif)).toBeCloseTo(1000, 2);
     expect(bilan.unclassified.map((u) => u.code)).toContain('46610000');
+  });
+});
+
+describe('detectUnusualBalances — contrôle qualité des soldes (erreurs de saisie)', () => {
+  const mk = (code: string, debit: string, credit: string) => ({ code, label: code, debit, credit });
+
+  it('signale fournisseur débiteur et client créditeur (warning), hors comptes d’avance 409/419', () => {
+    const u = detectUnusualBalances([
+      mk('40110000', '1000', '0'), // fournisseur débiteur → warning
+      mk('41110000', '0', '2000'), // client créditeur → warning
+      mk('40910000', '500', '0'), // 409 avance versée → NORMAL, pas signalé
+      mk('41910000', '0', '300'), // 419 avance reçue → NORMAL, pas signalé
+      mk('40120000', '0', '900'), // fournisseur créditeur → NORMAL
+      mk('41120000', '800', '0'), // client débiteur → NORMAL
+    ]);
+    const codes = u.map((x) => x.code);
+    expect(codes).toContain('40110000');
+    expect(codes).toContain('41110000');
+    expect(codes).not.toContain('40910000');
+    expect(codes).not.toContain('41910000');
+    expect(codes).not.toContain('40120000');
+    expect(codes).not.toContain('41120000');
+    expect(u.find((x) => x.code === '40110000')?.severity).toBe('warning');
+  });
+
+  it('signale les comptes courants associés/groupe 462/463/466 (info) et banque créditrice', () => {
+    const u = detectUnusualBalances([
+      mk('46610000', '0', '5000'), // compte courant groupe → info
+      mk('52110000', '0', '1500'), // banque créditrice → info (découvert/erreur)
+      mk('52120000', '4000', '0'), // banque débitrice → NORMAL
+    ]);
+    expect(u.find((x) => x.code === '46610000')?.severity).toBe('info');
+    expect(u.find((x) => x.code === '52110000')?.severity).toBe('info');
+    expect(u.map((x) => x.code)).not.toContain('52120000');
+  });
+
+  it('trie les warnings avant les info, puis par montant décroissant', () => {
+    const u = detectUnusualBalances([
+      mk('46610000', '0', '100'), // info, petit
+      mk('40110000', '50', '0'), // warning, petit
+      mk('41110000', '0', '9000'), // warning, gros
+    ]);
+    expect(u[0]?.code).toBe('41110000'); // warning + plus gros
+    expect(u[u.length - 1]?.code).toBe('46610000'); // info en dernier
   });
 });
