@@ -436,6 +436,28 @@ export class DocumentsService {
       });
     }
 
+    // Garde-fous « écriture correcte quelle que soit la qualité de l'image » :
+    // l'OCR peut mal lire une pièce (scan/manuscrit) → on REFUSE de créer une
+    // écriture fausse. Défense en profondeur côté serveur (l'UI bloque déjà le
+    // déséquilibre, mais l'endpoint est appelable directement). L'utilisateur
+    // corrige alors les données (saisie manuelle) avant de poster.
+    const problems: string[] = [];
+    const entryYear = Number(proposal.entryDate.slice(0, 4));
+    const currentYear = new Date().getFullYear();
+    if (!Number.isInteger(entryYear) || entryYear < 2000 || entryYear > currentYear + 1) {
+      problems.push(`la date « ${proposal.entryDate} » est implausible (lecture OCR douteuse)`);
+    }
+    if (!proposal.balanced) {
+      problems.push(
+        "les montants sont absents ou l'écriture est déséquilibrée (débit ≠ crédit)",
+      );
+    }
+    if (problems.length > 0) {
+      throw new AppException(ERROR_CODES.JOURNAL_ENTRY_UNBALANCED, {
+        message: `Écriture non créée car ${problems.join(' et ')}. Vérifiez/corrigez les données extraites avant de créer l'écriture.`,
+      });
+    }
+
     const input: CreateEntryInput = {
       journalCode: proposal.journalCode,
       entryDate: proposal.entryDate,

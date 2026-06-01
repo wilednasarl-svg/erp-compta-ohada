@@ -1348,6 +1348,13 @@ function OcrPanel({
 
   const skip = ocr.extractedMetadata?.ocrSkip;
 
+  // Garde-fou date : une lecture OCR douteuse (scan/manuscrit) peut produire
+  // une année aberrante (ex. 2093). On bloque alors la création — le backend
+  // refuse aussi en défense en profondeur.
+  const entryYear = proposed?.entryDate ? Number(proposed.entryDate.slice(0, 4)) : NaN;
+  const isDatePlausible =
+    Number.isInteger(entryYear) && entryYear >= 2000 && entryYear <= new Date().getFullYear() + 1;
+
   if (!invoice && !proposed) {
     return (
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -1479,8 +1486,15 @@ function OcrPanel({
             </table>
           </div>
 
-          {proposed.warnings.length > 0 && (
+          {(proposed.warnings.length > 0 || !isDatePlausible) && (
             <ul className="mt-2 space-y-0.5">
+              {!isDatePlausible && (
+                <li className="flex items-start gap-1.5 text-[11px] text-critical-ink">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} /> Date «{' '}
+                  {proposed.entryDate ?? '—'} » implausible (lecture OCR douteuse) — corrigez-la
+                  avant de créer l&apos;écriture.
+                </li>
+              )}
               {proposed.warnings.map((w, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-[11px] text-ink-mute">
                   <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} /> {w}
@@ -1499,7 +1513,12 @@ function OcrPanel({
                 className="w-32 font-mono"
               />
             </div>
-            <Button type="button" onClick={onCreate} disabled={creating || !proposed.balanced} className="press">
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={creating || !proposed.balanced || !isDatePlausible}
+              className="press"
+            >
               {creating ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
