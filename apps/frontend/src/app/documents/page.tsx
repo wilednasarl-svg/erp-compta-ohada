@@ -461,7 +461,9 @@ export default function DocumentsPage() {
         setTagsInput('');
         setFileInputKey((k) => k + 1);
         toast.success('Document téléversé avec succès.');
-        void qc.invalidateQueries({ queryKey: ['documents', orgId] });
+        // Préfixe partagé : invalide la liste ET le bandeau de stats
+        // (clés ['documents', 'stats', …]) pour des compteurs exacts.
+        void qc.invalidateQueries({ queryKey: ['documents'] });
       },
       onError: (err) => toast.error(err.message),
     },
