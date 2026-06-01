@@ -113,6 +113,45 @@ interface PdfToImgModule {
   ): Promise<AsyncIterable<Buffer>>;
 }
 
+/** Surface minimale de pdfjs-dist nécessaire à l'extraction du calque texte. */
+interface PdfjsTextItem {
+  readonly str?: string;
+}
+interface PdfjsTextContent {
+  readonly items: ReadonlyArray<PdfjsTextItem>;
+}
+interface PdfjsPage {
+  getTextContent(): Promise<PdfjsTextContent>;
+}
+interface PdfjsDocument {
+  readonly numPages: number;
+  getPage(pageNumber: number): Promise<PdfjsPage>;
+  destroy(): Promise<void>;
+}
+interface PdfjsModule {
+  getDocument(params: {
+    data: Uint8Array;
+    isEvalSupported?: boolean;
+    standardFontDataUrl?: string;
+  }): { promise: Promise<PdfjsDocument> };
+}
+
+/**
+ * Longueur minimale (caractères hors espaces) du calque texte natif d'un
+ * PDF pour le considérer exploitable. En-dessous, on suppose un PDF-scan
+ * (image sans texte sélectionnable) et on passe à l'OCR visuel via le Space.
+ */
+const MIN_PDF_TEXT_LAYER_CHARS = 64;
+
+/** Plafond de pages lues pour le calque texte (les factures tiennent en peu de pages). */
+const MAX_TEXT_LAYER_PAGES = 5;
+
+/**
+ * Confiance attribuée au texte issu du calque natif : élevée car c'est le
+ * texte exact du PDF (aucune erreur de reconnaissance), supérieure à l'OCR.
+ */
+const PDF_TEXT_LAYER_CONFIDENCE = 0.95;
+
 /**
  * Coerce the `parse_doc` output array `[md_preview, vis_html, md_raw]`
  * into the raw Markdown string. Prefer the raw Markdown (index 2); fall
@@ -143,6 +182,7 @@ export class PaddleOcrVlProvider implements OcrProvider {
   // the import on every call.
   private gradioModule: GradioClientModule | false | null = null;
   private pdfModule: PdfToImgModule | false | null = null;
+  private pdfjsModule: PdfjsModule | false | null = null;
   // Résolu paresseusement au premier rendu PDF. `undefined` = pas encore
   // tenté ; `null` = résolution impossible (on rasterise alors sans les
   // polices standard). Voir `resolveStandardFontDataUrl`.
@@ -154,6 +194,17 @@ export class PaddleOcrVlProvider implements OcrProvider {
     if (!SUPPORTED_IMAGE_MIMES.has(mimeType) && mimeType !== PDF_MIME) {
       this.logger.debug(`PaddleOcrVlProvider.extract: skipped (unsupported MIME: ${mimeType})`);
       return null;
+    }
+
+    // PDF : privilégier le calque texte natif (rapide, local, sans canvas ni
+    // appel au Space). Couvre les factures PDF générées électroniquement et
+    // contourne tout souci de rasterisation/binding natif. Les PDF-scans (pas
+    // de calque texte exploitable) retombent sur l'OCR visuel ci-dessous.
+    if (mimeType === PDF_MIME) {
+      const layer = await this.extractPdfTextLayer(filePath);
+      if (layer !== null && layer.replace(/\s/g, '').length >= MIN_PDF_TEXT_LAYER_CHARS) {
+        return { text: layer, confidence: PDF_TEXT_LAYER_CONFIDENCE };
+      }
     }
 
     const timeoutMs = this.resolveTimeoutMs();
@@ -302,6 +353,98 @@ export class PaddleOcrVlProvider implements OcrProvider {
       this.standardFontDataUrl = null;
     }
     return this.standardFontDataUrl;
+  }
+
+  /**
+   * Extrait le calque texte natif d'un PDF via `pdfjs-dist` (`getTextContent`).
+   * N'effectue AUCUN rendu — donc pas de dépendance à `@napi-rs/canvas` :
+   * fonctionne même si le binding natif de rasterisation est cassé. Retourne
+   * le texte concaténé (≤ `MAX_TEXT_LAYER_PAGES` pages) ou `null` si le PDF
+   * n'a pas de calque texte (scan) ou si pdfjs est indisponible. Jamais throw.
+   */
+  private async extractPdfTextLayer(filePath: string): Promise<string | null> {
+    const pdfjs = await this.loadPdfjs();
+    if (pdfjs === false) {
+      return null;
+    }
+    let doc: PdfjsDocument | null = null;
+    try {
+      const data = new Uint8Array(await fs.readFile(filePath));
+      const fontUrl = this.resolveStandardFontDataUrl();
+      doc = await pdfjs.getDocument({
+        data,
+        isEvalSupported: false,
+        ...(fontUrl !== null ? { standardFontDataUrl: fontUrl } : {}),
+      }).promise;
+      const pageCount = Math.min(doc.numPages, MAX_TEXT_LAYER_PAGES);
+      const parts: string[] = [];
+      for (let n = 1; n <= pageCount; n += 1) {
+        const page = await doc.getPage(n);
+        const content = await page.getTextContent();
+        parts.push(
+          content.items.map((item) => (typeof item.str === 'string' ? item.str : '')).join(' '),
+        );
+      }
+      return parts.join('\n').replace(/[ \t]+/g, ' ').trim();
+    } catch (error: unknown) {
+      this.logger.warn(
+        `PaddleOcrVlProvider.extractPdfTextLayer: failed (${
+          error instanceof Error ? error.message : String(error)
+        })`,
+      );
+      return null;
+    } finally {
+      if (doc !== null) {
+        await doc.destroy().catch(() => undefined);
+      }
+    }
+  }
+
+  /**
+   * Charge paresseusement le build ESM Node de `pdfjs-dist`. `pdfjs-dist` est
+   * une dépendance transitive (de `pdf-parse` et `pdf-to-img`) : on résout son
+   * `legacy/build/pdf.mjs` via les `paths` d'une de ces ancres puis on
+   * l'importe par chemin `file://` (un specifier nu échouerait, le paquet
+   * n'étant pas une dépendance directe). `false` (caché) si introuvable.
+   */
+  private async loadPdfjs(): Promise<PdfjsModule | false> {
+    if (this.pdfjsModule !== null) {
+      return this.pdfjsModule;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path') as typeof import('path');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { pathToFileURL } = require('url') as typeof import('url');
+      let pjsPkg: string | null = null;
+      for (const anchor of ['pdf-parse', 'pdf-to-img']) {
+        try {
+          const anchorDir = path.dirname(require.resolve(anchor));
+          pjsPkg = require.resolve('pdfjs-dist/package.json', { paths: [anchorDir] });
+          break;
+        } catch {
+          // ancre absente — on tente la suivante.
+        }
+      }
+      if (pjsPkg === null) {
+        this.pdfjsModule = false;
+        return false;
+      }
+      const entry = path.join(path.dirname(pjsPkg), 'legacy', 'build', 'pdf.mjs');
+      const importDynamic = new Function('specifier', 'return import(specifier)') as (
+        specifier: string,
+      ) => Promise<unknown>;
+      this.pdfjsModule = (await importDynamic(pathToFileURL(entry).href)) as PdfjsModule;
+      return this.pdfjsModule;
+    } catch (error: unknown) {
+      this.logger.debug(
+        `PaddleOcrVlProvider.loadPdfjs: not available (${
+          error instanceof Error ? error.message : String(error)
+        })`,
+      );
+      this.pdfjsModule = false;
+      return false;
+    }
   }
 
   /**
