@@ -12,6 +12,7 @@ import {
   Link2,
   Loader2,
   Paperclip,
+  RefreshCw,
   ScanText,
   Square,
   Trash2,
@@ -848,6 +849,19 @@ function DocumentRow({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [chargeAccount, setChargeAccount] = useState('');
+  // Aperçu du document chargé en ligne (à côté des données OCR).
+  const [ocrDoc, setOcrDoc] = useState<{ url: string; mime: string } | null>(null);
+
+  /** Télécharge le contenu binaire du document et renvoie une URL blob + son type MIME. */
+  const fetchContent = async (): Promise<{ url: string; mime: string }> => {
+    const token = getAuthToken();
+    const res = await fetch(`${API_BASE}/documents/${doc.id}/content`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    const blob = await res.blob();
+    return { url: URL.createObjectURL(blob), mime: blob.type || doc.mimeType };
+  };
 
   const toggleOcr = async () => {
     if (showOcr) {
@@ -864,12 +878,27 @@ function DocumentRow({
       const proposed = data.extractedMetadata?.proposedEntry;
       const firstCharge = proposed?.lines.find((l) => l.debit > 0)?.accountCode;
       if (firstCharge && chargeAccount === '') setChargeAccount(firstCharge);
+      // Charge l'aperçu de la pièce pour l'afficher à côté de l'extraction.
+      if (ocrDoc === null) {
+        try {
+          setOcrDoc(await fetchContent());
+        } catch {
+          // L'aperçu reste optionnel : l'extraction s'affiche même si le binaire est introuvable.
+        }
+      }
     } catch (err) {
       setOcrError(err instanceof Error ? err.message : 'Impossible de charger les données OCR.');
     } finally {
       setOcrLoading(false);
     }
   };
+
+  // Libère l'URL blob de l'aperçu en ligne au démontage.
+  useEffect(() => {
+    return () => {
+      if (ocrDoc) URL.revokeObjectURL(ocrDoc.url);
+    };
+  }, [ocrDoc]);
 
   const createEntry = useApiMutation(
     async () =>
@@ -887,19 +916,30 @@ function DocumentRow({
     },
   );
 
+  // Relance l'OCR sur une pièce « ignorée » ou en échec (PDF dont la
+  // rasterisation a échoué à l'upload, ou timeout transitoire du moteur).
+  const retryOcr = useApiMutation(
+    async () => api.post<{ ocrStatus: OcrStatus }>(`/documents/${doc.id}/retry-ocr`, {}),
+    {
+      onSuccess: () => {
+        toast.success('OCR relancé — le traitement peut prendre jusqu’à 2 min.');
+        void qc.invalidateQueries({ queryKey: ['documents'] });
+        // Le moteur (PaddleOCR-VL via ZeroGPU) termine en arrière-plan ; on
+        // resynchronise la liste à intervalles pour refléter le statut final
+        // sans action de l'utilisateur.
+        [5, 15, 30, 60, 120].forEach((s) =>
+          setTimeout(() => void qc.invalidateQueries({ queryKey: ['documents'] }), s * 1000),
+        );
+      },
+      onError: (err) => toast.error(err.message),
+    },
+  );
+
   const openPreview = async () => {
     setLoadingPreview(true);
     setPreviewError(null);
     try {
-      const token = getAuthToken();
-      const res = await fetch(`${API_BASE}/documents/${doc.id}/content`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
-      const blob = await res.blob();
-      const mime = blob.type || doc.mimeType;
-      const url = URL.createObjectURL(blob);
-      setPreview({ url, mime });
+      setPreview(await fetchContent());
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Impossible de charger le document';
       const friendly = msg.includes('404')
@@ -1100,6 +1140,24 @@ function DocumentRow({
               )}
             </button>
           )}
+          {(doc.ocrStatus === 'skipped' ||
+            doc.ocrStatus === 'failed' ||
+            doc.ocrStatus === 'processing') && (
+            <button
+              type="button"
+              disabled={retryOcr.isPending || doc.ocrStatus === 'processing'}
+              onClick={() => retryOcr.mutate(undefined)}
+              aria-label={`Relancer l'OCR pour ${doc.filename}`}
+              className="press inline-flex h-7 w-7 items-center justify-center rounded-xs border border-line text-ink-soft transition-colors duration-fast hover:border-accent hover:text-accent-ink disabled:opacity-40"
+              title={doc.ocrStatus === 'processing' ? 'OCR en cours…' : "Relancer l'OCR"}
+            >
+              {retryOcr.isPending || doc.ocrStatus === 'processing' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
+              )}
+            </button>
+          )}
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <button
@@ -1153,6 +1211,8 @@ function DocumentRow({
           ) : ocr ? (
             <OcrPanel
               ocr={ocr}
+              filename={doc.filename}
+              docPreview={ocrDoc}
               chargeAccount={chargeAccount}
               setChargeAccount={setChargeAccount}
               onCreate={() => createEntry.mutate(undefined)}
@@ -1200,14 +1260,60 @@ function OcrField({ label, value }: { label: string; value: string }) {
   );
 }
 
+function OcrDocumentPreview({
+  filename,
+  preview,
+}: {
+  filename: string;
+  preview: { url: string; mime: string };
+}) {
+  const isImage = preview.mime.startsWith('image/');
+  const isPdf = preview.mime === 'application/pdf';
+
+  return (
+    <div className="lg:sticky lg:top-4">
+      <p className="eyebrow mb-2">Pièce justificative</p>
+      <div className="overflow-hidden rounded-xs border border-line bg-canvas">
+        {isImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={preview.url}
+            alt={filename}
+            className="max-h-[70vh] w-full object-contain"
+          />
+        ) : isPdf ? (
+          <iframe src={preview.url} title={filename} className="h-[70vh] w-full border-0" />
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
+            <FileIcon filename={filename} />
+            <p className="text-xs text-ink-mute">Aperçu indisponible pour ce format.</p>
+          </div>
+        )}
+      </div>
+      <a
+        href={preview.url}
+        download={filename}
+        className="press mt-2 inline-flex h-7 items-center gap-1.5 rounded-xs border border-line px-2 text-xs text-ink-soft transition-colors duration-fast hover:border-accent hover:text-accent-ink"
+      >
+        <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
+        Télécharger
+      </a>
+    </div>
+  );
+}
+
 function OcrPanel({
   ocr,
+  filename,
+  docPreview,
   chargeAccount,
   setChargeAccount,
   onCreate,
   creating,
 }: {
   ocr: OcrResult;
+  filename: string;
+  docPreview: { url: string; mime: string } | null;
   chargeAccount: string;
   setChargeAccount: (v: string) => void;
   onCreate: () => void;
@@ -1219,14 +1325,19 @@ function OcrPanel({
 
   if (!invoice && !proposed) {
     return (
-      <p className="text-xs text-ink-mute">
-        Aucune donnée structurée n&apos;a été extraite de ce document.
-      </p>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        {docPreview && <OcrDocumentPreview filename={filename} preview={docPreview} />}
+        <p className="text-xs text-ink-mute">
+          Aucune donnée structurée n&apos;a été extraite de ce document.
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-5">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      {docPreview && <OcrDocumentPreview filename={filename} preview={docPreview} />}
+      <div className="space-y-5">
       <div>
         <p className="eyebrow mb-2">Données extraites</p>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -1349,6 +1460,7 @@ function OcrPanel({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
