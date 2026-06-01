@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
   CheckCircle2,
@@ -540,11 +540,21 @@ export default function BankReconciliationPage(){
                   description="Cliquez sur une ligne du relevé pour voir les écritures candidates."
                 />
               ) : focusedProposal.proposals.length === 0 ? (
-                <EmptyState
-                  icon={Sparkles}
-                  title="Aucun candidat"
-                  description="Aucune écriture journal ne correspond à cette ligne. Créez-la manuellement si nécessaire."
-                />
+                <div className="space-y-3 p-4">
+                  <EmptyState
+                    icon={Sparkles}
+                    title="Aucun candidat"
+                    description="Aucune écriture ne correspond. S'il s'agit d'agios, de frais bancaires ou d'un virement non saisi, comptabilisez-la directement ci-dessous : l'écriture est générée et rapprochée automatiquement."
+                  />
+                  <GenerateEntryForm
+                    orgId={orgId}
+                    statementLineId={focusedProposal.statementLineId}
+                    defaultLabel={focusedProposal.description}
+                    onDone={() => {
+                      void qc.invalidateQueries({ queryKey: ['bank-proposals'] });
+                    }}
+                  />
+                </div>
               ) : (
                 <div className="space-y-3 p-4">
                   <FocusedLineHeader proposal={focusedProposal} />
@@ -1004,4 +1014,105 @@ function ImportStatementForm({
 }
 
 // Suppress unused export warning for type kept for downstream consumers
+interface GeneratedEntry {
+  readonly entryId: string;
+  readonly entryNumber: number;
+  readonly direction: 'outflow' | 'inflow';
+  readonly absAmount: number;
+}
+
+/**
+ * Formulaire de comptabilisation d'une ligne de relevé sans écriture
+ * correspondante (agios, frais, virement non saisi). Génère l'écriture
+ * équilibrée (D/C banque ↔ contrepartie) puis la rapproche automatiquement.
+ */
+function GenerateEntryForm({
+  orgId,
+  statementLineId,
+  defaultLabel,
+  onDone,
+}: {
+  orgId: string;
+  statementLineId: string;
+  defaultLabel: string;
+  onDone: () => void;
+}) {
+  const [counterpartAccountCode, setCounterpart] = useState('');
+  const [journalCode, setJournalCode] = useState('BQ');
+  const [label, setLabel] = useState(defaultLabel);
+
+  const mutation = useMutation<GeneratedEntry, ApiError, void>({
+    mutationFn: async () =>
+      api.post(
+        `/organizations/${orgId}/bank-reconciliation/statement-lines/${statementLineId}/generate-entry`,
+        {
+          counterpartAccountCode: counterpartAccountCode.trim(),
+          journalCode: journalCode.trim(),
+          label: label.trim() === '' ? undefined : label.trim(),
+        },
+      ),
+    onSuccess: () => onDone(),
+  });
+
+  const canSubmit =
+    counterpartAccountCode.trim() !== '' && journalCode.trim() !== '' && !mutation.isPending;
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmit) mutation.mutate();
+      }}
+      className="space-y-2 rounded-sm border border-line bg-paper p-3"
+    >
+      <p className="text-xs font-medium text-ink">Comptabiliser cette ligne</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <label className="space-y-1">
+          <span className="text-[11px] text-ink-soft">Compte de contrepartie</span>
+          <input
+            value={counterpartAccountCode}
+            onChange={(e) => setCounterpart(e.target.value)}
+            placeholder="ex. 6315"
+            className="h-8 w-full rounded-sm border border-line bg-sunk px-2 font-mono text-xs text-ink outline-none focus:border-accent"
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-ink-soft">Journal</span>
+          <input
+            value={journalCode}
+            onChange={(e) => setJournalCode(e.target.value)}
+            placeholder="BQ"
+            className="h-8 w-full rounded-sm border border-line bg-sunk px-2 font-mono text-xs text-ink outline-none focus:border-accent"
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-ink-soft">Libellé</span>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className="h-8 w-full rounded-sm border border-line bg-sunk px-2 text-xs text-ink outline-none focus:border-accent"
+          />
+        </label>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="inline-flex h-8 items-center justify-center rounded-sm border border-accent bg-accent-soft px-3 text-xs font-medium text-ink outline-none transition-colors hover:bg-accent-soft/70 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {mutation.isPending ? 'Comptabilisation…' : 'Comptabiliser & rapprocher'}
+        </button>
+        {mutation.isError && (
+          <span className="text-xs text-destructive">{mutation.error.message}</span>
+        )}
+        {mutation.isSuccess && (
+          <span className="text-xs text-ink-soft">
+            Écriture n° {mutation.data.entryNumber} générée et rapprochée.
+          </span>
+        )}
+      </div>
+    </form>
+  );
+}
+
 export type { StatementLine };
