@@ -10,6 +10,7 @@ import { RbacModule } from '../rbac/rbac.module';
 import { BankAccountsController } from './controllers/bank-accounts.controller';
 import { BankReconciliationController } from './controllers/bank-reconciliation.controller';
 import { BankStatementsController } from './controllers/bank-statements.controller';
+import { BankEntryGenerationController } from './controllers/bank-entry-generation.controller';
 import { BankAccountEntity } from './entities/bank-account.entity';
 import { BankReconciliationMatchEntity } from './entities/bank-reconciliation-match.entity';
 import { BankStatementEntity } from './entities/bank-statement.entity';
@@ -21,6 +22,7 @@ import { BankStatementsRepository } from './repositories/bank-statements.reposit
 import { BankAccountsService } from './services/bank-accounts.service';
 import { BankReconciliationService } from './services/bank-reconciliation.service';
 import { BankStatementsService } from './services/bank-statements.service';
+import { BankEntryGenerationService } from './services/bank-entry-generation.service';
 
 /**
  * BankReconciliationModule — Module 15 wave 1 (Rapprochement bancaire).
@@ -55,7 +57,12 @@ import { BankStatementsService } from './services/bank-statements.service';
     JournalsModule,
     MultiCurrencyModule,
   ],
-  controllers: [BankAccountsController, BankStatementsController, BankReconciliationController],
+  controllers: [
+    BankAccountsController,
+    BankStatementsController,
+    BankReconciliationController,
+    BankEntryGenerationController,
+  ],
   providers: [
     BankAccountsRepository,
     BankStatementsRepository,
@@ -64,6 +71,7 @@ import { BankStatementsService } from './services/bank-statements.service';
     BankAccountsService,
     BankStatementsService,
     BankReconciliationService,
+    BankEntryGenerationService,
   ],
   exports: [BankAccountsService, BankStatementsService, BankReconciliationService],
 })
