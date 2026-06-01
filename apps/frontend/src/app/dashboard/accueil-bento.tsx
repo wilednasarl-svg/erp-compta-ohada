@@ -310,7 +310,7 @@ export function AccueilBento({
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <ActionTile href="/journals" icon={PenLine} label="Saisir" hint="Nouvelle écriture" />
-              <ActionTile href="/reports" icon={BarChart3} label="Voir les états" hint="Bilan, résultat, DSF" />
+              <ActionTile href="/reports/console" icon={BarChart3} label="Voir les états" hint="Bilan, résultat, DSF" />
               <ActionTile href="/lettering" icon={Link2} label="Lettrer" hint="Tiers 40x / 41x" />
               <ActionTile href="/imports" icon={FileUp} label="Importer" hint="Sage, CSV, PDF" />
             </div>

@@ -98,7 +98,7 @@ export default function ImportDashboardPage() {
             </p>
           </div>
           <Link
-            href="/reports"
+            href="/reports/console"
             className="press inline-flex items-center gap-2 rounded-sm border border-accent bg-accent px-3 py-1.5 text-sm font-medium text-paper transition-colors hover:bg-accent-ink"
             title="Générer le dossier annuel SYSCOHADA à partir des écritures validées"
           >

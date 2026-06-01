@@ -107,7 +107,7 @@ const STEPS: ReadonlyArray<GuideStep> = [
     summary: 'Générez Bilan, Compte de résultat, TFT et déclarations TVA conformes Tome 3.',
     description:
       "Une fois les écritures saisies et les comptes lettrés, vos états financiers OHADA se génèrent depuis la balance. Bilan actif/passif, Compte de résultat par destination, TFT (ex-TAFIRE), Balance générale et déclaration TVA UEMOA — tout est exportable PDF/XLSX.",
-    href: '/reports',
+    href: '/reports/console',
     hrefLabel: 'Générer les états',
     icon: FileBarChart,
     bullets: [

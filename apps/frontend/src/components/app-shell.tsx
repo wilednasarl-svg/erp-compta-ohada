@@ -457,12 +457,11 @@ function TopNavGroup({
 /* ─── Helpers ─────────────────────────────────────────────────── */
 /**
  * Routes exigeant une correspondance exacte : celles qui sont préfixes d'une
- * autre entrée de navigation (sinon `/reports` resterait actif sur
- * `/reports/console`). `startsWith` reste la règle pour les routes à sous-pages.
+ * autre entrée de navigation. `startsWith` reste la règle pour les routes à
+ * sous-pages.
  */
 const EXACT_MATCH_ROUTES: ReadonlySet<string> = new Set([
   '/dashboard',
-  '/reports',
   '/chart-of-accounts',
 ]);
 

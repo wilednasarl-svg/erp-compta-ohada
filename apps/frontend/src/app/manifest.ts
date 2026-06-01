@@ -27,7 +27,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: 'Rapports financiers',
         short_name: 'Rapports',
-        url: '/reports',
+        url: '/reports/console',
         icons: [{ src: '/icon-192.png', sizes: '192x192' }],
       },
     ],
