@@ -83,4 +83,36 @@ export class DocumentEntryRepository {
     assertTenantId(organizationId);
     return this.repo.count({ where: { organizationId, documentId } });
   }
+
+  /**
+   * Batched variant of `countForDocument`: returns a Map of
+   * `documentId -> number of linked journal entries` for the supplied
+   * ids, computed in a single `GROUP BY` query. Documents with zero
+   * links are absent from the map (callers default to 0). The id set is
+   * bounded by the caller's page size, so the list path stays free of
+   * N+1. Backed by `ix_document_entries_org_document`.
+   */
+  async countForDocuments(
+    organizationId: TenantId | string,
+    documentIds: ReadonlyArray<string>,
+  ): Promise<Map<string, number>> {
+    assertTenantId(organizationId);
+    if (documentIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.repo
+      .createQueryBuilder('link')
+      .select('link.documentId', 'documentId')
+      .addSelect('COUNT(*)', 'count')
+      .where('link.organizationId = :organizationId', { organizationId })
+      .andWhere('link.documentId IN (:...documentIds)', { documentIds: [...documentIds] })
+      .groupBy('link.documentId')
+      .getRawMany<{ documentId: string; count: string }>();
+
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      counts.set(row.documentId, Number(row.count));
+    }
+    return counts;
+  }
 }
