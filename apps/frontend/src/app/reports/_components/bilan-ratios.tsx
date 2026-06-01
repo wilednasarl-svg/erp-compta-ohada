@@ -61,7 +61,10 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
   const totalActif = Number(report.totals.actif);
 
   const cp = masseTotal(P, 'CP');
+  // DF = TOTAL RESSOURCES STABLES (= CP + dettes financières) ; DD = TOTAL
+  // DETTES FINANCIÈRES ET RESSOURCES ASSIMILÉES (masse stable isolée).
   const stables = masseTotal(P, 'DF');
+  const dettesFinancieres = masseTotal(P, 'DD');
   const passifCirc = masseTotal(P, 'DP');
   const tresoP = masseTotal(P, 'DT');
   const totalPassif = Number(report.totals.passif);
@@ -71,8 +74,11 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
   const equilibre = Math.abs(Number(report.totals.difference)) < 1;
   const div = (a: number, b: number): number => (b !== 0 ? a / b : NaN);
 
-  const autonomie = div(cp, totalPassif);
-  const endettement = div(totalDettes, cp);
+  // Note 34 S3 — Indépendance financière = Capitaux propres / Total bilan.
+  const independance = div(cp, totalPassif);
+  // Note 34 E1 — Endettement net = Dettes financières / Capitaux propres
+  // (masse stable DD, et non l'ensemble des dettes).
+  const endettement = div(dettesFinancieres, cp);
   const couverture = div(stables, immobilise);
   const fr = stables - immobilise;
   const bfr = circulant - passifCirc;
@@ -84,28 +90,28 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
 
   const rows: ReadonlyArray<RatioRow> = [
     {
-      label: 'Autonomie financière',
-      formula: 'Capitaux propres / Total passif',
-      value: pct(autonomie),
-      tone: autonomie >= 0.3 ? 'ok' : autonomie >= 0.2 ? 'warn' : 'bad',
+      label: 'Indépendance financière',
+      formula: 'Capitaux propres / Total bilan',
+      value: pct(independance),
+      tone: independance >= 0.3 ? 'ok' : independance >= 0.2 ? 'warn' : 'bad',
       interpretation:
-        autonomie >= 0.3
-          ? `Bonne capitalisation : ${pct(autonomie)} du bilan est financé par les fonds propres — structure solide face aux aléas.`
-          : autonomie >= 0.2
-            ? `Capitalisation correcte mais à renforcer (${pct(autonomie)}) : la marge de sécurité reste limitée.`
-            : `Structure très dépendante des dettes (seulement ${pct(autonomie)} de fonds propres). Vérifiez si des comptes courants d'associés peuvent être assimilés à des quasi-fonds propres avant de conclure à une fragilité.`,
+        independance >= 0.3
+          ? `Bonne capitalisation : ${pct(independance)} du bilan est financé par les fonds propres — structure solide face aux aléas.`
+          : independance >= 0.2
+            ? `Capitalisation correcte mais à renforcer (${pct(independance)}) : la marge de sécurité reste limitée.`
+            : `Structure très dépendante des dettes (seulement ${pct(independance)} de fonds propres). Vérifiez si des comptes courants d'associés peuvent être assimilés à des quasi-fonds propres avant de conclure à une fragilité.`,
     },
     {
-      label: 'Endettement',
-      formula: 'Total dettes / Capitaux propres',
+      label: 'Endettement net',
+      formula: 'Dettes financières / Capitaux propres',
       value: mult(endettement),
       tone: endettement <= 1 ? 'ok' : endettement <= 2 ? 'warn' : 'bad',
       interpretation:
         endettement <= 1
-          ? `Endettement maîtrisé : les dettes restent au niveau des fonds propres ou en deçà.`
+          ? `Endettement financier maîtrisé : les dettes financières restent au niveau des fonds propres ou en deçà.`
           : endettement <= 2
-            ? `Endettement élevé : les dettes valent ${mult(endettement)} fois les fonds propres — à surveiller.`
-            : `Très endettée : les dettes pèsent ${mult(endettement)} fois les fonds propres ; capacité d'emprunt quasi saturée.`,
+            ? `Endettement financier élevé : les dettes financières valent ${mult(endettement)} fois les fonds propres — à surveiller.`
+            : `Très endettée : les dettes financières pèsent ${mult(endettement)} fois les fonds propres ; capacité d'emprunt quasi saturée.`,
     },
     {
       label: 'Couverture des emplois stables',
@@ -212,7 +218,7 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     const cpRetraite = totalPassif > 0 ? (cp + autresDettes) / totalPassif : NaN;
     obs.push({
       tone: 'warn',
-      text: `Les « Autres dettes » pèsent ${pct(partAutresDettes)} du passif (${fcfa(autresDettes)} FCFA). Si ce sont des comptes courants d’associés, retraitez-les en quasi-fonds propres : l’autonomie financière passerait alors à ≈ ${pct(cpRetraite)}.`,
+      text: `Les « Autres dettes » pèsent ${pct(partAutresDettes)} du passif (${fcfa(autresDettes)} FCFA). Si ce sont des comptes courants d’associés, retraitez-les en quasi-fonds propres : l’indépendance financière passerait alors à ≈ ${pct(cpRetraite)}.`,
     });
   }
 
@@ -224,10 +230,10 @@ export function BilanRatios({ report }: { readonly report: BalanceSheetReport })
     });
   }
 
-  if (Number.isFinite(autonomie) && autonomie < 0.2 && partAutresDettes < 0.15) {
+  if (Number.isFinite(independance) && independance < 0.2 && partAutresDettes < 0.15) {
     obs.push({
       tone: 'warn',
-      text: `Structure peu capitalisée (autonomie ${pct(autonomie)}) : l’activité repose largement sur les dettes.`,
+      text: `Structure peu capitalisée (indépendance financière ${pct(independance)}) : l’activité repose largement sur les dettes.`,
     });
   }
 

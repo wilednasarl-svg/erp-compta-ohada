@@ -98,7 +98,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
             : `${pct(partTravailEtat)} de la VA part en charges de personnel et impôts : l'EBE est sous forte pression.`,
     },
     {
-      label: 'Taux de marge brute d’exploitation (EBE)',
+      label: 'Taux de marge brute (EBE)',
       formula: 'EBE / Chiffre d’affaires',
       value: pct(tauxEBE),
       tone: tauxEBE >= 0.15 ? 'ok' : tauxEBE >= 0.05 ? 'warn' : 'bad',
@@ -110,7 +110,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
             : `Rentabilité opérationnelle faible (${pct(tauxEBE)}) : l'exploitation dégage peu d'excédent — vigilance sur la structure de coûts.`,
     },
     {
-      label: 'Rentabilité d’exploitation',
+      label: 'Rentabilité économique (RAO)',
       formula: 'Résultat d’exploitation / Chiffre d’affaires',
       value: pct(tauxRE),
       tone: tauxRE >= 0.1 ? 'ok' : tauxRE >= 0.03 ? 'warn' : 'bad',
@@ -122,7 +122,7 @@ export function CompteResultatRatios({ report }: { readonly report: ProfitLossRe
             : `Très faible (${pct(tauxRE)}) : les amortissements absorbent quasiment tout l'excédent brut.`,
     },
     {
-      label: 'Marge nette',
+      label: 'Rentabilité commerciale (marge nette)',
       formula: 'Résultat net / Chiffre d’affaires',
       value: pct(tauxNet),
       tone: rn < 0 ? 'bad' : tauxNet >= 0.05 ? 'ok' : tauxNet >= 0.02 ? 'warn' : 'bad',
