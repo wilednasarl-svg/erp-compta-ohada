@@ -105,7 +105,10 @@ interface GradioClientModule {
 
 interface PdfToImgModule {
   /** Render a PDF to an async-iterable of per-page PNG buffers. */
-  pdf(src: string | Buffer, options?: { scale?: number }): Promise<AsyncIterable<Buffer>>;
+  pdf(
+    src: string | Buffer,
+    options?: { scale?: number; docInitParams?: { standardFontDataUrl?: string } },
+  ): Promise<AsyncIterable<Buffer>>;
 }
 
 /**
@@ -138,6 +141,10 @@ export class PaddleOcrVlProvider implements OcrProvider {
   // the import on every call.
   private gradioModule: GradioClientModule | false | null = null;
   private pdfModule: PdfToImgModule | false | null = null;
+  // Résolu paresseusement au premier rendu PDF. `undefined` = pas encore
+  // tenté ; `null` = résolution impossible (on rasterise alors sans les
+  // polices standard). Voir `resolveStandardFontDataUrl`.
+  private standardFontDataUrl: string | null | undefined = undefined;
 
   async extract(filePath: string, mimeType: string): Promise<OcrExtractionResult | null> {
     if (!SUPPORTED_IMAGE_MIMES.has(mimeType) && mimeType !== PDF_MIME) {
@@ -231,7 +238,17 @@ export class PaddleOcrVlProvider implements OcrProvider {
       return null;
     }
     try {
-      const document = await pdfMod.pdf(filePath, { scale: 2 });
+      // `standardFontDataUrl` indispensable : sans lui, pdfjs ne charge pas
+      // les polices standard (Helvetica/Arial → LiberationSans) et le texte
+      // vectoriel des factures PDF n'est PAS rasterisé → page quasi vide →
+      // OCR sans contenu. Si la résolution échoue, on rasterise quand même
+      // (dégradation gracieuse, utile pour les PDF-scans purement bitmap).
+      const fontUrl = this.resolveStandardFontDataUrl();
+      const options =
+        fontUrl !== null
+          ? { scale: 2, docInitParams: { standardFontDataUrl: fontUrl } }
+          : { scale: 2 };
+      const document = await pdfMod.pdf(filePath, options);
       for await (const page of document) {
         return { bytes: page, mime: 'image/png', ext: 'png' };
       }
@@ -245,6 +262,42 @@ export class PaddleOcrVlProvider implements OcrProvider {
       );
       return null;
     }
+  }
+
+  /**
+   * Résout le dossier `standard_fonts/` livré par `pdfjs-dist` (la dépendance
+   * de `pdf-to-img`) sous forme d'un chemin filesystem en slashes avant + un
+   * slash final — le format exact attendu par pdfjs côté Node.
+   *
+   * Pourquoi pas un `file://` URL : pdfjs charge les polices via `fetch()`,
+   * qui sous Node ne supporte pas le protocole `file://` ; un chemin système
+   * en revanche est lu via `fs`. La résolution passe par les `paths` de
+   * `pdf-to-img` pour viser la version de `pdfjs-dist` réellement utilisée
+   * (et non celle de `pdf-parse`, qui peut différer). Mis en cache : la
+   * valeur ne change pas sur la durée de vie du process.
+   */
+  private resolveStandardFontDataUrl(): string | null {
+    if (this.standardFontDataUrl !== undefined) {
+      return this.standardFontDataUrl;
+    }
+    try {
+      // `require` est disponible (build CommonJS NestJS) et `require.resolve`
+      // localise sans charger — sûr pour le package ESM `pdf-to-img`.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path') as typeof import('path');
+      const ptiDir = path.dirname(require.resolve('pdf-to-img'));
+      const pjsPkg = require.resolve('pdfjs-dist/package.json', { paths: [ptiDir] });
+      const dir = path.join(path.dirname(pjsPkg), 'standard_fonts');
+      this.standardFontDataUrl = dir.split(path.sep).join('/') + '/';
+    } catch (error: unknown) {
+      this.logger.debug(
+        `PaddleOcrVlProvider.resolveStandardFontDataUrl: not available (${
+          error instanceof Error ? error.message : String(error)
+        })`,
+      );
+      this.standardFontDataUrl = null;
+    }
+    return this.standardFontDataUrl;
   }
 
   /**
