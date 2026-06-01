@@ -4,6 +4,11 @@ import { IsNull, Repository } from 'typeorm';
 
 import { assertTenantId, type TenantId } from '../../../common/persistence/tenant-scope';
 import { DocumentEntity } from '../entities/document.entity';
+import {
+  DOCUMENT_MIME_TYPES,
+  SPREADSHEET_MIME_TYPES,
+  type DocumentCategory,
+} from '../types/document-category';
 import type { OcrStatus } from '../types/ocr-status';
 
 /**
@@ -15,6 +20,12 @@ import type { OcrStatus } from '../types/ocr-status';
 export interface DocumentListFilters {
   readonly tag?: string;
   readonly mimeType?: string;
+  /**
+   * Coarse "type of file" facet. Independent from `mimeType` — both may
+   * be set and compose with AND semantics. See `listForOrg` for the
+   * MIME -> category SQL mapping.
+   */
+  readonly category?: DocumentCategory;
   readonly uploadedBy?: string;
   readonly ocrStatus?: OcrStatus;
   readonly uploadedFrom?: Date;
@@ -186,6 +197,43 @@ export class DocumentRepository {
 
     if (filters.mimeType !== undefined) {
       qb.andWhere('doc.mime_type = :mimeType', { mimeType: filters.mimeType });
+    }
+    // Coarse `category` facet — distinct named params (cat*) so it
+    // composes with the exact `mimeType` filter and every other AND
+    // clause. The `spreadsheet` / `document` MIME sets are shared with
+    // the `other` negation so the buckets stay mutually exclusive.
+    if (filters.category !== undefined) {
+      switch (filters.category) {
+        case 'pdf':
+          qb.andWhere('doc.mime_type = :catPdf', { catPdf: 'application/pdf' });
+          break;
+        case 'image':
+          qb.andWhere("doc.mime_type LIKE 'image/%'");
+          break;
+        case 'spreadsheet':
+          qb.andWhere('doc.mime_type IN (:...catSpreadsheet)', {
+            catSpreadsheet: [...SPREADSHEET_MIME_TYPES],
+          });
+          break;
+        case 'document':
+          qb.andWhere('doc.mime_type IN (:...catDocument)', {
+            catDocument: [...DOCUMENT_MIME_TYPES],
+          });
+          break;
+        case 'other':
+          qb.andWhere(
+            `doc.mime_type NOT LIKE 'image/%'
+             AND doc.mime_type <> :catOtherPdf
+             AND doc.mime_type NOT IN (:...catOtherSpreadsheet)
+             AND doc.mime_type NOT IN (:...catOtherDocument)`,
+            {
+              catOtherPdf: 'application/pdf',
+              catOtherSpreadsheet: [...SPREADSHEET_MIME_TYPES],
+              catOtherDocument: [...DOCUMENT_MIME_TYPES],
+            },
+          );
+          break;
+      }
     }
     if (filters.uploadedBy !== undefined) {
       qb.andWhere('doc.uploaded_by = :uploadedBy', { uploadedBy: filters.uploadedBy });

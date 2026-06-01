@@ -137,6 +137,7 @@ export class DocumentsController {
       {
         tag: query.tag,
         mimeType: query.mimeType,
+        category: query.category,
         uploadedBy: query.uploadedBy,
         ocrStatus: query.ocrStatus,
         uploadedFrom: query.uploadedFrom !== undefined ? new Date(query.uploadedFrom) : undefined,

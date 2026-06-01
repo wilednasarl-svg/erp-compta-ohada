@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  CheckSquare,
   Download,
   Eye,
   FilePlus2,
@@ -11,6 +12,7 @@ import {
   Loader2,
   Paperclip,
   ScanText,
+  Square,
   Trash2,
   Upload,
   X,
@@ -28,6 +30,14 @@ import { useApiMutation } from '@/hooks/use-api-mutation';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ApiError, api, getAuthToken } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
+
+import { DocumentStats } from './_components/document-stats';
+import {
+  DocumentFilters,
+  type DocumentCategory,
+  type OcrStatusFilter,
+} from './_components/document-filters';
+import { DropzoneUploader } from './_components/dropzone-uploader';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
@@ -349,14 +359,48 @@ export default function DocumentsPage() {
 
   const [filterTag, setFilterTag] = useState('');
   const debouncedTag = useDebounce(filterTag.trim(), 350);
+  const [category, setCategory] = useState<DocumentCategory>('all');
+  const [ocrStatus, setOcrStatus] = useState<OcrStatusFilter>('all');
+  const [uploadedFrom, setUploadedFrom] = useState('');
+  const [uploadedTo, setUploadedTo] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
+  // Selected document ids for bulk actions (cleared when the result set changes).
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+
+  const advancedFilterCount =
+    (category !== 'all' ? 1 : 0) +
+    (ocrStatus !== 'all' ? 1 : 0) +
+    (uploadedFrom !== '' ? 1 : 0) +
+    (uploadedTo !== '' ? 1 : 0);
+
+  /** Any filter change must return to page 1 and drop the current selection. */
+  const onFilterChange = () => {
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const resetAdvancedFilters = () => {
+    setCategory('all');
+    setOcrStatus('all');
+    setUploadedFrom('');
+    setUploadedTo('');
+    onFilterChange();
+  };
+
   const docsQuery = useQuery<ListResponse, ApiError>({
-    queryKey: ['documents', orgId, debouncedTag, page],
+    queryKey: ['documents', orgId, debouncedTag, category, ocrStatus, uploadedFrom, uploadedTo, page],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (debouncedTag !== '') params.set('tag', debouncedTag);
+      if (category !== 'all') params.set('category', category);
+      if (ocrStatus !== 'all') params.set('ocrStatus', ocrStatus);
+      // <input type="date"> yields 'YYYY-MM-DD'; widen to full-day bounds so the
+      // server-side `uploaded_at` BETWEEN comparison covers the whole day.
+      if (uploadedFrom !== '') params.set('uploadedFrom', `${uploadedFrom}T00:00:00.000Z`);
+      if (uploadedTo !== '') params.set('uploadedTo', `${uploadedTo}T23:59:59.999Z`);
       params.set('page', String(page));
       params.set('pageSize', String(pageSize));
       return api.get<ListResponse>(`/documents?${params.toString()}`);
@@ -372,7 +416,7 @@ export default function DocumentsPage() {
 
   const selectTag = (tag: string) => {
     setFilterTag(tag);
-    setPage(1);
+    onFilterChange();
   };
 
   const upload = useApiMutation(
@@ -423,9 +467,59 @@ export default function DocumentsPage() {
     },
   );
 
+  const bulkDelete = useApiMutation(
+    async () => {
+      const ids = [...selectedIds];
+      const results = await Promise.allSettled(
+        ids.map((id) => api.delete(`/documents/${id}`)),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      return { count: ids.length, failed };
+    },
+    {
+      onSuccess: ({ count, failed }) => {
+        setBulkConfirm(false);
+        setSelectedIds(new Set());
+        if (failed === 0) {
+          toast.success(`${count} document${count > 1 ? 's' : ''} supprimé${count > 1 ? 's' : ''}.`);
+        } else {
+          toast.error(`${failed} suppression${failed > 1 ? 's' : ''} sur ${count} en échec.`);
+        }
+        void qc.invalidateQueries({ queryKey: ['documents'] });
+      },
+      onError: (err) => {
+        setBulkConfirm(false);
+        toast.error(err.message);
+      },
+    },
+  );
+
   const rows = docsQuery.data?.rows ?? [];
   const total = docsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allOnPageSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+
+  const toggleSelectAllOnPage = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (rows.length > 0 && rows.every((r) => prev.has(r.id))) {
+        for (const r of rows) next.delete(r.id);
+      } else {
+        for (const r of rows) next.add(r.id);
+      }
+      return next;
+    });
+  };
 
   return (
     <AppShell>
@@ -438,6 +532,8 @@ export default function DocumentsPage() {
             justificatifs, organisez-les par tags et retrouvez-les en un clic.
           </p>
         </header>
+
+        <DocumentStats orgId={orgId} />
 
         <section className="space-y-4">
           <div className="border-b border-line pb-3">
@@ -459,34 +555,25 @@ export default function DocumentsPage() {
                 upload.mutate(undefined);
               }}
             >
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="file">Fichier</Label>
-                  <Input
-                    key={fileInputKey}
-                    id="file"
-                    type="file"
-                    accept={ACCEPT_ATTR}
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    className="cursor-pointer file:mr-3 file:rounded-sm file:border file:border-line-strong file:bg-paper file:px-3 file:py-1 file:text-sm"
-                    required
-                  />
-                  {file && (
-                    <p className="text-xs text-ink-mute">
-                      {file.name} ·{' '}
-                      <span className="font-mono tabular-nums">{formatSize(file.size)}</span>
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="doc-tags">Tags</Label>
-                  <Input
-                    id="doc-tags"
-                    value={tagsInput}
-                    onChange={(e) => setTagsInput(e.target.value)}
-                    placeholder="facture, fournisseur"
-                  />
-                </div>
+              <div className="space-y-1">
+                <Label htmlFor="file">Fichier</Label>
+                <DropzoneUploader
+                  key={fileInputKey}
+                  file={file}
+                  onFileChange={setFile}
+                  accept={ACCEPT_ATTR}
+                  maxSizeMb={MAX_FILE_SIZE_MB}
+                  disabled={upload.isPending}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="doc-tags">Tags</Label>
+                <Input
+                  id="doc-tags"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                  placeholder="facture, fournisseur"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="doc-desc">Description</Label>
@@ -531,7 +618,7 @@ export default function DocumentsPage() {
                   value={filterTag}
                   onChange={(e) => {
                     setFilterTag(e.target.value);
-                    setPage(1);
+                    onFilterChange();
                   }}
                   placeholder="Filtrer par tag…"
                   className="max-w-xs pr-8"
@@ -550,15 +637,104 @@ export default function DocumentsPage() {
             </div>
           </div>
 
+          <DocumentFilters
+            category={category}
+            onCategoryChange={(c) => {
+              setCategory(c);
+              onFilterChange();
+            }}
+            ocrStatus={ocrStatus}
+            onOcrStatusChange={(s) => {
+              setOcrStatus(s);
+              onFilterChange();
+            }}
+            uploadedFrom={uploadedFrom}
+            onUploadedFromChange={(v) => {
+              setUploadedFrom(v);
+              onFilterChange();
+            }}
+            uploadedTo={uploadedTo}
+            onUploadedToChange={(v) => {
+              setUploadedTo(v);
+              onFilterChange();
+            }}
+            onReset={resetAdvancedFilters}
+            activeCount={advancedFilterCount}
+          />
+
+          {/* Bulk-action toolbar: select-all on page + actions on the current selection. */}
+          {rows.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-sm border border-line bg-canvas px-4 py-2">
+              <button
+                type="button"
+                onClick={toggleSelectAllOnPage}
+                aria-pressed={allOnPageSelected}
+                className="press inline-flex items-center gap-2 text-xs text-ink-soft transition-colors duration-fast hover:text-ink"
+              >
+                {allOnPageSelected ? (
+                  <CheckSquare className="h-4 w-4 text-accent-ink" strokeWidth={1.5} />
+                ) : (
+                  <Square className="h-4 w-4 text-ink-mute" strokeWidth={1.5} />
+                )}
+                Tout sélectionner (page)
+              </button>
+
+              {selectedIds.size > 0 && (
+                <>
+                  <span className="text-xs text-ink-mute" aria-live="polite">
+                    <span className="font-mono tabular-nums text-ink">{selectedIds.size}</span>{' '}
+                    sélectionné{selectedIds.size > 1 ? 's' : ''}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    {bulkConfirm ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={bulkDelete.isPending}
+                          onClick={() => bulkDelete.mutate(undefined)}
+                          className="press inline-flex h-7 items-center gap-1 rounded-xs bg-critical px-2 text-[11px] font-medium text-paper transition-colors duration-fast hover:bg-critical-ink disabled:opacity-40"
+                        >
+                          {bulkDelete.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          )}
+                          Supprimer {selectedIds.size}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={bulkDelete.isPending}
+                          onClick={() => setBulkConfirm(false)}
+                          className="press inline-flex h-7 items-center rounded-xs border border-line px-2 text-[11px] text-ink-soft transition-colors duration-fast hover:border-line-strong hover:text-ink disabled:opacity-40"
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setBulkConfirm(true)}
+                        className="press inline-flex h-7 items-center gap-1.5 rounded-xs border border-line px-2 text-[11px] text-ink-soft transition-colors duration-fast hover:border-critical hover:text-critical-ink"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        Supprimer la sélection
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="rounded-sm border border-line bg-paper">
             {docsQuery.isLoading ? (
               <SkeletonRows n={5} />
             ) : rows.length === 0 ? (
-              debouncedTag !== '' ? (
+              debouncedTag !== '' || advancedFilterCount > 0 ? (
                 <EmptyState
                   icon={Paperclip}
-                  title={`Aucun document pour « ${debouncedTag} »`}
-                  description="Aucune pièce ne porte ce tag. Effacez le filtre pour voir toute la bibliothèque."
+                  title="Aucun document ne correspond aux filtres"
+                  description="Aucune pièce ne correspond aux critères actuels. Élargissez ou réinitialisez les filtres pour voir davantage de documents."
                 />
               ) : (
                 <EmptyState
@@ -570,7 +746,14 @@ export default function DocumentsPage() {
             ) : (
               <ul className="divide-y divide-line">
                 {rows.map((d) => (
-                  <DocumentRow key={d.id} doc={d} activeTag={debouncedTag} onTagClick={selectTag} />
+                  <DocumentRow
+                    key={d.id}
+                    doc={d}
+                    activeTag={debouncedTag}
+                    onTagClick={selectTag}
+                    selected={selectedIds.has(d.id)}
+                    onToggleSelect={toggleSelect}
+                  />
                 ))}
               </ul>
             )}
@@ -612,10 +795,14 @@ function DocumentRow({
   doc,
   activeTag,
   onTagClick,
+  selected,
+  onToggleSelect,
 }: {
   doc: DocumentView;
   activeTag: string;
   onTagClick: (tag: string) => void;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
   const qc = useQueryClient();
   const [downloading, setDownloading] = useState(false);
@@ -736,7 +923,24 @@ function DocumentRow({
 
   return (
     <>
-      <li className="group flex items-center gap-3 px-4 py-3 transition-colors duration-fast hover:bg-sunk/30">
+      <li
+        className={`group flex items-center gap-3 px-4 py-3 transition-colors duration-fast ${
+          selected ? 'bg-accent-soft/40' : 'hover:bg-sunk/30'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => onToggleSelect(doc.id)}
+          aria-pressed={selected}
+          aria-label={selected ? `Désélectionner ${doc.filename}` : `Sélectionner ${doc.filename}`}
+          className="press inline-flex h-5 w-5 shrink-0 items-center justify-center text-ink-mute transition-colors duration-fast hover:text-ink"
+        >
+          {selected ? (
+            <CheckSquare className="h-4 w-4 text-accent-ink" strokeWidth={1.5} />
+          ) : (
+            <Square className="h-4 w-4" strokeWidth={1.5} />
+          )}
+        </button>
         <button
           type="button"
           onClick={openPreview}
