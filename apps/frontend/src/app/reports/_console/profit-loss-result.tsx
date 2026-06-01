@@ -13,6 +13,8 @@ import type { ProfitLossReport } from '@/types/reports';
 
 import { cn } from '@/lib/utils';
 
+import { CompteResultatRatios } from '../_components/compte-resultat-ratios';
+import { ReportHelp } from '../_components/report-help';
 import { formatHuman } from './presets';
 
 const fmt = (raw: string | undefined): string => {
@@ -104,6 +106,9 @@ export function ProfitLossResult({ report }: { readonly report: ProfitLossReport
           </tfoot>
         </table>
       </div>
+
+      <CompteResultatRatios report={report} />
+      <ReportHelp topic="compte-resultat" />
     </div>
   );
 }

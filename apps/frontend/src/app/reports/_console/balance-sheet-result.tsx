@@ -14,6 +14,8 @@ import type { BalanceSheetReport, BilanMasse } from '@/types/reports';
 
 import { cn } from '@/lib/utils';
 
+import { BilanRatios } from '../_components/bilan-ratios';
+import { ReportHelp } from '../_components/report-help';
 import { formatHuman } from './presets';
 
 const fmt = (raw: string | undefined): string => {
@@ -74,6 +76,9 @@ export function BalanceSheetResult({ report }: BalanceSheetResultProps) {
           compare={compare}
         />
       </div>
+
+      <BilanRatios report={report} />
+      <ReportHelp topic="bilan" />
     </div>
   );
 }
