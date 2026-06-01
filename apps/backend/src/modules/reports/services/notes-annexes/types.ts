@@ -254,11 +254,77 @@ export interface NoteDsfProfileDeps {
  * (ex. ratios à dénominateur nul) sont `null`.
  */
 export interface NoteSynthesisSnapshot {
-  readonly chiffreAffaires: string;
-  readonly valeurAjoutee: string;
-  readonly excedentBrutExploitation: string;
-  readonly resultatExploitation: string;
-  readonly resultatNet: string;
+  // ── Section 1 — Analyse de l'activité (cascade SIG XA → XI) ─────────
+  readonly chiffreAffaires: string; // SIG XB
+  /** Marge commerciale — SIG XA. */
+  readonly margeCommerciale: string;
+  readonly valeurAjoutee: string; // SIG XC
+  readonly excedentBrutExploitation: string; // SIG XD
+  readonly resultatExploitation: string; // SIG XE
+  /** Résultat financier — SIG XF. */
+  readonly resultatFinancier: string;
+  /** Résultat des activités ordinaires (RAO) — SIG XG. */
+  readonly resultatAO: string;
+  /** Résultat hors activités ordinaires (RHAO) — SIG XH. */
+  readonly resultatHAO: string;
+  readonly resultatNet: string; // SIG XI
+
+  // ── Section 2 — Détermination de la CAFG (additive) ────────────────
+  /** = EBE (SIG XD). Point de départ « CAFG d'exploitation ». */
+  readonly cafgExploitation: string;
+  /** + Revenus financiers encaissables — SIG TK + TL + TM. */
+  readonly revenusFinanciers: string;
+  /** + Produits HAO encaissables — SIG TO. */
+  readonly produitsHAO: string;
+  /** − Frais financiers — SIG RM. */
+  readonly fraisFinanciers: string;
+  /** − Impôts sur les résultats — SIG RS. */
+  readonly impotsResultat: string;
+  /**
+   * = Capacité d'autofinancement globale.
+   * = EBE + revenus fin. + produits HAO − frais fin. − impôts.
+   */
+  readonly cafg: string;
+  /**
+   * − Distributions de dividendes opérées dans l'exercice.
+   * NON DISPONIBLE proprement (pas de source dédiée sur les dividendes
+   * versés) ⇒ documenté à 0.00. Voir mapping getSnapshot.
+   */
+  readonly dividendes: string;
+  /** = Autofinancement = CAFG − dividendes. */
+  readonly autofinancement: string;
+
+  // ── Section 4 — Analyse de la structure financière ─────────────────
+  /** Actif immobilisé — masse bilan AZ. */
+  readonly actifImmobilise: string;
+  /** Actif circulant d'exploitation — masse BK − poste BA (circ. HAO). */
+  readonly actifCircExploitation: string;
+  /** Passif circulant d'exploitation — masse DP − poste DH (circ. HAO). */
+  readonly passifCircExploitation: string;
+  /** Actif circulant HAO — poste bilan BA (485/488). */
+  readonly actifCircHAO: string;
+  /** Passif circulant HAO — poste bilan DH (481/482/484). */
+  readonly passifCircHAO: string;
+  /** (1) Fonds de roulement = ressources stables − actif immobilisé. */
+  readonly fondsRoulement: string;
+  /** (2) Besoin de financement d'exploitation = ACE − PCE. */
+  readonly besoinFinExploitation: string;
+  /** (3) Besoin de financement HAO = ACHAO − PCHAO. */
+  readonly besoinFinHAO: string;
+  /** (4) Besoin de financement global = (2) + (3). */
+  readonly besoinFinGlobal: string;
+  /** (5) Trésorerie nette = (1) − (4). */
+  readonly tresorerieNette: string;
+
+  // ── Section 5 — Variation de la trésorerie (TFT) ───────────────────
+  /** Flux des activités opérationnelles — TFT ZB. */
+  readonly fluxOperationnels: string;
+  /** Flux d'investissement — TFT ZC. */
+  readonly fluxInvestissement: string;
+  /** Flux de financement — TFT ZF. */
+  readonly fluxFinancement: string;
+
+  // ── Données de bilan partagées (sections 3, 4 et 6) ────────────────
   readonly totalActif: string;
   readonly totalCapitauxPropres: string;
   readonly dettesFinancieres: string;

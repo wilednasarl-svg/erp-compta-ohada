@@ -1,26 +1,42 @@
 /**
  * Note 34 — Fiche de synthèse des principaux indicateurs financiers
- * (Tome 3 p. 69).
+ * (Guide d'application SYSCOHADA Révisé, Tome 3 p. 69).
  *
- * Doctrine : synthèse normalisée en 5 blocs lus par les analystes /
- * CAC pour caractériser la situation financière de l'entité :
+ * STRUCTURE OFFICIELLE EXACTE reproduite ici (colonnes N | N-1 | Variation %
+ * côté UI ; le handler renvoie la colonne N — le comparatif N-1 sera
+ * branché ultérieurement) :
  *
- *   1. ACTIVITE      — CA, valeur ajoutée, EBE/CA, marge brute
- *   2. STRUCTURE     — capitaux propres, total bilan, indépendance fin.
- *   3. RENTABILITE   — rentabilité économique (RAO après impôt), ROE, ROA
- *   4. LIQUIDITE     — ratios général et immédiat
- *   5. ENDETTEMENT   — levier financier + endettement financier net
+ *   1. ANALYSE DE L'ACTIVITÉ — Soldes Intermédiaires de Gestion
+ *        Chiffre d'affaires, Marge commerciale, Valeur ajoutée, EBE,
+ *        Résultat d'exploitation, Résultat financier, RAO, RHAO,
+ *        Résultat net. (montants, cascade SIG XA→XI)
+ *   2. DÉTERMINATION DE LA CAPACITÉ D'AUTOFINANCEMENT (additive)
+ *        EBE (= CAFG d'exploitation) + Revenus financiers
+ *        + Produits HAO − Frais financiers − Impôts = CAFG
+ *        − Dividendes = AUTOFINANCEMENT.
+ *   3. ANALYSE DE LA RENTABILITÉ
+ *        Rentabilité économique = RAO après impôt théorique (35 %)
+ *          / (Capitaux propres + Dettes financières) ;
+ *        Rentabilité financière = Résultat net / Capitaux propres.
+ *   4. ANALYSE DE LA STRUCTURE FINANCIÈRE
+ *        Ressources stables − Actif immobilisé = FONDS DE ROULEMENT (1) ;
+ *        ACE − PCE = BESOIN DE FINANCEMENT D'EXPLOITATION (2) ;
+ *        ACHAO − PCHAO = BESOIN DE FINANCEMENT HAO (3) ;
+ *        BESOIN DE FINANCEMENT GLOBAL (4) = (2)+(3) ;
+ *        TRÉSORERIE NETTE (5) = (1)−(4) ;
+ *        CONTRÔLE : TN = Trésorerie actif − Trésorerie passif.
+ *   5. ANALYSE DE LA VARIATION DE LA TRÉSORERIE
+ *        Flux opérationnels − Investissement + Financement
+ *          = VARIATION DE LA TRÉSORERIE NETTE DE LA PÉRIODE.
+ *   6. ANALYSE DE LA VARIATION DE L'ENDETTEMENT FINANCIER NET
+ *        Endettement financier brut = Dettes financières + Trésorerie
+ *          passif ; − Trésorerie actif = ENDETTEMENT FINANCIER NET.
  *
- * Chaque ligne porte un code lettré (A1, S1…), un libellé, la formule
- * et la valeur calculée (ratio sans unité, pourcentage ou montant brut
- * — la convention est documentée dans le champ `unit`). Les ratios à
- * dénominateur nul renvoient `'N/A'` plutôt qu'un Infinity (l'UI
- * affiche un tiret).
- *
- * Source unique : `deps.synthesisIndicators.getSnapshot` qui agrège
- * en parallèle bilan + SIG + flux. Si la dépendance n'est pas câblée
- * (ex. tests registry mock), on renvoie une ligne « source
- * indisponible » mais la note reste applicable.
+ * Chaque ligne porte un code (A1, C1, R1…), un libellé officiel, une
+ * formule et la valeur calculée. Les ratios à dénominateur nul renvoient
+ * `'N/A'`. La source unique est `deps.synthesisIndicators.getSnapshot`
+ * (bilan + SIG + flux agrégés). Si la dépendance n'est pas câblée, on
+ * renvoie une ligne « source indisponible ».
  */
 import type { NoteHandler, NoteRow, NoteSynthesisSnapshot } from '../types';
 
@@ -35,24 +51,35 @@ function ratio(numerator: number, denominator: number): number | null {
   return numerator / denominator;
 }
 
-function fmtRatio(v: number | null, unit: 'PERCENT' | 'RATIO' | 'AMOUNT'): string {
+function fmtPercent(v: number | null): string {
   if (v === null) return 'N/A';
-  if (unit === 'PERCENT') return `${(v * 100).toFixed(2)} %`;
-  if (unit === 'RATIO') return v.toFixed(2);
-  return v.toFixed(2);
+  return `${(v * 100).toFixed(2)} %`;
 }
 
-function fmtAmount(s: string): string {
-  return num(s).toFixed(2);
+function fmtAmount(value: number | string): string {
+  const n = typeof value === 'number' ? value : num(value);
+  return n.toFixed(2);
 }
 
-interface SyntheseLine {
+/**
+ * Sections officielles de la Note 34 (remplacent les 5 blocs inventés
+ * Activité/Structure/Rentabilité/Liquidité/Endettement).
+ */
+export type SyntheseBloc =
+  | 'ACTIVITE'
+  | 'CAFG'
+  | 'RENTABILITE'
+  | 'STRUCTURE'
+  | 'VARIATION_TRESORERIE'
+  | 'ENDETTEMENT';
+
+export interface SyntheseLine {
   readonly key: string;
-  readonly bloc: 'ACTIVITE' | 'STRUCTURE' | 'RENTABILITE' | 'LIQUIDITE' | 'ENDETTEMENT';
+  readonly bloc: SyntheseBloc;
   readonly label: string;
   readonly formula: string;
   readonly value: string;
-  readonly unit: 'PERCENT' | 'RATIO' | 'AMOUNT';
+  readonly unit: 'PERCENT' | 'AMOUNT';
 }
 
 /**
@@ -62,162 +89,188 @@ interface SyntheseLine {
  */
 const TAUX_IMPOT_THEORIQUE = 0.35;
 
-function computeLines(snap: NoteSynthesisSnapshot): ReadonlyArray<SyntheseLine> {
-  const ca = num(snap.chiffreAffaires);
-  const va = num(snap.valeurAjoutee);
-  const ebe = num(snap.excedentBrutExploitation);
-  const rao = num(snap.resultatExploitation);
+function amount(
+  key: string,
+  bloc: SyntheseBloc,
+  label: string,
+  formula: string,
+  value: number | string,
+): SyntheseLine {
+  return { key, bloc, label, formula, value: fmtAmount(value), unit: 'AMOUNT' };
+}
+
+function percent(
+  key: string,
+  bloc: SyntheseBloc,
+  label: string,
+  formula: string,
+  v: number | null,
+): SyntheseLine {
+  return { key, bloc, label, formula, value: fmtPercent(v), unit: 'PERCENT' };
+}
+
+export function computeLines(snap: NoteSynthesisSnapshot): ReadonlyArray<SyntheseLine> {
+  // Section 3 — rentabilité.
+  const rao = num(snap.resultatExploitation); // XE — résultat d'exploitation
   const rn = num(snap.resultatNet);
-  const totalActif = num(snap.totalActif);
   const cp = num(snap.totalCapitauxPropres);
   const df = num(snap.dettesFinancieres);
-  const ac = num(snap.actifCirculant);
-  const ta = num(snap.tresorerieActif);
-  const pc = num(snap.passifCirculant);
-  const tp = num(snap.tresoreriePassif);
-  const passifCourtTerme = pc + tp;
-  // Note 34 : rentabilité économique = RAO après impôt théorique (35 %)
-  // rapporté aux capitaux investis (capitaux propres + dettes financières).
   const raoApresImpot = rao * (1 - TAUX_IMPOT_THEORIQUE);
   const capitauxInvestis = cp + df;
-  // Endettement financier net (MONTANT) = dettes financières + trésorerie
-  // passif − trésorerie actif.
-  const endettementFinancierNet = df + tp - ta;
 
-  const lines: SyntheseLine[] = [
-    // Bloc 1 — ACTIVITE
-    {
-      key: 'A1',
-      bloc: 'ACTIVITE',
-      label: "Chiffre d'affaires",
-      formula: 'Σ comptes 70',
-      value: fmtAmount(snap.chiffreAffaires),
-      unit: 'AMOUNT',
-    },
-    {
-      key: 'A2',
-      bloc: 'ACTIVITE',
-      label: 'Valeur ajoutée',
-      formula: 'SIG XC',
-      value: fmtAmount(snap.valeurAjoutee),
-      unit: 'AMOUNT',
-    },
-    {
-      key: 'A3',
-      bloc: 'ACTIVITE',
-      label: 'Taux de valeur ajoutée',
-      formula: 'VA / CA',
-      value: fmtRatio(ratio(va, ca), 'PERCENT'),
-      unit: 'PERCENT',
-    },
-    {
-      key: 'A4',
-      bloc: 'ACTIVITE',
-      label: 'Taux de marge brute (EBE / CA)',
-      formula: 'EBE / CA',
-      value: fmtRatio(ratio(ebe, ca), 'PERCENT'),
-      unit: 'PERCENT',
-    },
+  // Section 6 — endettement financier net.
+  const tp = num(snap.tresoreriePassif);
+  const ta = num(snap.tresorerieActif);
+  const endettementBrut = df + tp;
+  const endettementNet = endettementBrut - ta;
 
-    // Bloc 2 — STRUCTURE
-    {
-      key: 'S1',
-      bloc: 'STRUCTURE',
-      label: 'Capitaux propres',
-      formula: 'Bilan passif — capitaux propres',
-      value: fmtAmount(snap.totalCapitauxPropres),
-      unit: 'AMOUNT',
-    },
-    {
-      key: 'S2',
-      bloc: 'STRUCTURE',
-      label: 'Total bilan',
-      formula: 'Σ actif',
-      value: fmtAmount(snap.totalActif),
-      unit: 'AMOUNT',
-    },
-    {
-      key: 'S3',
-      bloc: 'STRUCTURE',
-      label: 'Indépendance financière',
-      formula: 'Capitaux propres / Total bilan',
-      value: fmtRatio(ratio(cp, totalActif), 'PERCENT'),
-      unit: 'PERCENT',
-    },
+  // Section 5 — variation de la trésorerie.
+  const fluxOp = num(snap.fluxOperationnels);
+  const fluxInv = num(snap.fluxInvestissement);
+  const fluxFin = num(snap.fluxFinancement);
+  const variationTresorerie = fluxOp + fluxInv + fluxFin;
 
-    // Bloc 3 — RENTABILITE
-    {
-      key: 'R1',
-      bloc: 'RENTABILITE',
-      label: 'Rentabilité économique',
-      formula:
-        "Résultat d'exploitation × (1 − 35 %) / (Capitaux propres + Dettes financières)",
-      value: fmtRatio(ratio(raoApresImpot, capitauxInvestis), 'PERCENT'),
-      unit: 'PERCENT',
-    },
-    {
-      key: 'R2',
-      bloc: 'RENTABILITE',
-      label: 'Rentabilité financière (ROE)',
-      formula: 'Résultat net / Capitaux propres',
-      value: fmtRatio(ratio(rn, cp), 'PERCENT'),
-      unit: 'PERCENT',
-    },
-    {
-      key: 'R3',
-      bloc: 'RENTABILITE',
-      label: "Rentabilité économique de l'actif (ROA)",
-      formula: 'EBE / Total actif',
-      value: fmtRatio(ratio(ebe, totalActif), 'PERCENT'),
-      unit: 'PERCENT',
-    },
+  return [
+    // ── Section 1 — ANALYSE DE L'ACTIVITÉ (SIG) ───────────────────────
+    amount('A1', 'ACTIVITE', "Chiffre d'affaires", 'SIG XB', snap.chiffreAffaires),
+    amount('A2', 'ACTIVITE', 'Marge commerciale', 'SIG XA', snap.margeCommerciale),
+    amount('A3', 'ACTIVITE', 'Valeur ajoutée', 'SIG XC', snap.valeurAjoutee),
+    amount(
+      'A4',
+      'ACTIVITE',
+      "Excédent brut d'exploitation (EBE)",
+      'SIG XD',
+      snap.excedentBrutExploitation,
+    ),
+    amount('A5', 'ACTIVITE', "Résultat d'exploitation", 'SIG XE', snap.resultatExploitation),
+    amount('A6', 'ACTIVITE', 'Résultat financier', 'SIG XF', snap.resultatFinancier),
+    amount('A7', 'ACTIVITE', 'Résultat des activités ordinaires', 'SIG XG', snap.resultatAO),
+    amount('A8', 'ACTIVITE', 'Résultat hors activités ordinaires', 'SIG XH', snap.resultatHAO),
+    amount('A9', 'ACTIVITE', 'Résultat net', 'SIG XI', snap.resultatNet),
 
-    // Bloc 4 — LIQUIDITE
-    {
-      key: 'L1',
-      bloc: 'LIQUIDITE',
-      label: 'Liquidité générale',
-      formula: '(Actif circulant + Trésorerie actif) / Passif court terme',
-      value: fmtRatio(ratio(ac + ta, passifCourtTerme), 'RATIO'),
-      unit: 'RATIO',
-    },
-    {
-      key: 'L2',
-      bloc: 'LIQUIDITE',
-      label: 'Liquidité immédiate',
-      formula: 'Trésorerie actif / Passif court terme',
-      value: fmtRatio(ratio(ta, passifCourtTerme), 'RATIO'),
-      unit: 'RATIO',
-    },
+    // ── Section 2 — DÉTERMINATION DE LA CAFG (additive) ───────────────
+    amount(
+      'C1',
+      'CAFG',
+      "Excédent brut d'exploitation (= CAFG d'exploitation)",
+      'EBE (SIG XD)',
+      snap.cafgExploitation,
+    ),
+    amount('C2', 'CAFG', '(+) Revenus financiers', 'SIG TK + TL + TM', snap.revenusFinanciers),
+    amount('C3', 'CAFG', '(+) Produits HAO (encaissables)', 'SIG TO', snap.produitsHAO),
+    amount('C4', 'CAFG', '(−) Frais financiers', 'SIG RM', snap.fraisFinanciers),
+    amount('C5', 'CAFG', '(−) Impôts sur les résultats', 'SIG RS', snap.impotsResultat),
+    amount(
+      'C6',
+      'CAFG',
+      "CAPACITÉ D'AUTOFINANCEMENT GLOBALE (CAFG)",
+      'EBE + rev. fin. + prod. HAO − frais fin. − impôts',
+      snap.cafg,
+    ),
+    amount('C7', 'CAFG', '(−) Distributions de dividendes opérées', 'Dividendes versés', snap.dividendes),
+    amount('C8', 'CAFG', 'AUTOFINANCEMENT', 'CAFG − dividendes', snap.autofinancement),
 
-    // Bloc 5 — ENDETTEMENT
-    {
-      key: 'E1',
-      bloc: 'ENDETTEMENT',
-      label: 'Levier financier',
-      formula: 'Dettes financières / Capitaux propres',
-      value: fmtRatio(ratio(df, cp), 'RATIO'),
-      unit: 'RATIO',
-    },
-    {
-      key: 'E2',
-      bloc: 'ENDETTEMENT',
-      label: 'Endettement financier net',
-      formula: 'Dettes financières + Trésorerie passif − Trésorerie actif',
-      value: endettementFinancierNet.toFixed(2),
-      unit: 'AMOUNT',
-    },
-    {
-      key: 'E3',
-      bloc: 'ENDETTEMENT',
-      label: 'Variation nette de trésorerie',
-      formula: 'TFT — variation période',
-      value: fmtAmount(snap.variationTresorerie),
-      unit: 'AMOUNT',
-    },
+    // ── Section 3 — ANALYSE DE LA RENTABILITÉ ─────────────────────────
+    percent(
+      'R1',
+      'RENTABILITE',
+      'Rentabilité économique',
+      "Résultat d'exploitation × (1 − 35 %) / (Capitaux propres + Dettes financières)",
+      ratio(raoApresImpot, capitauxInvestis),
+    ),
+    percent(
+      'R2',
+      'RENTABILITE',
+      'Rentabilité financière',
+      'Résultat net / Capitaux propres',
+      ratio(rn, cp),
+    ),
+
+    // ── Section 4 — ANALYSE DE LA STRUCTURE FINANCIÈRE ────────────────
+    amount(
+      'S1',
+      'STRUCTURE',
+      'Capitaux propres + Dettes financières (Ressources stables)',
+      'CP + Dettes financières',
+      capitauxInvestis,
+    ),
+    amount('S2', 'STRUCTURE', '(−) Actif immobilisé', 'Bilan AZ', snap.actifImmobilise),
+    amount('S3', 'STRUCTURE', 'FONDS DE ROULEMENT (1)', '(CP + DF) − Actif immobilisé', snap.fondsRoulement),
+    amount(
+      'S4',
+      'STRUCTURE',
+      "(+) Actif circulant d'exploitation",
+      'Bilan BK − BA',
+      snap.actifCircExploitation,
+    ),
+    amount(
+      'S5',
+      'STRUCTURE',
+      "(−) Passif circulant d'exploitation",
+      'Bilan DP − DH',
+      snap.passifCircExploitation,
+    ),
+    amount(
+      'S6',
+      'STRUCTURE',
+      "BESOIN DE FINANCEMENT D'EXPLOITATION (2)",
+      'ACE − PCE',
+      snap.besoinFinExploitation,
+    ),
+    amount('S7', 'STRUCTURE', '(+) Actif circulant HAO', 'Bilan BA (485/488)', snap.actifCircHAO),
+    amount('S8', 'STRUCTURE', '(−) Passif circulant HAO', 'Bilan DH (481/482/484)', snap.passifCircHAO),
+    amount('S9', 'STRUCTURE', 'BESOIN DE FINANCEMENT HAO (3)', 'ACHAO − PCHAO', snap.besoinFinHAO),
+    amount('S10', 'STRUCTURE', 'BESOIN DE FINANCEMENT GLOBAL (4)', '(2) + (3)', snap.besoinFinGlobal),
+    amount('S11', 'STRUCTURE', 'TRÉSORERIE NETTE (5)', '(1) − (4)', snap.tresorerieNette),
+    amount(
+      'S12',
+      'STRUCTURE',
+      'CONTRÔLE : Trésorerie actif − Trésorerie passif',
+      'Trésorerie actif (BT) − Trésorerie passif (DT)',
+      ta - tp,
+    ),
+
+    // ── Section 5 — ANALYSE DE LA VARIATION DE LA TRÉSORERIE ──────────
+    amount(
+      'V1',
+      'VARIATION_TRESORERIE',
+      'Flux de trésorerie des activités opérationnelles',
+      'TFT ZB',
+      snap.fluxOperationnels,
+    ),
+    amount(
+      'V2',
+      'VARIATION_TRESORERIE',
+      "(−) Flux d'investissement",
+      'TFT ZC',
+      snap.fluxInvestissement,
+    ),
+    amount('V3', 'VARIATION_TRESORERIE', '(+) Flux de financement', 'TFT ZF', snap.fluxFinancement),
+    amount(
+      'V4',
+      'VARIATION_TRESORERIE',
+      'VARIATION DE LA TRÉSORERIE NETTE DE LA PÉRIODE',
+      'ZB + ZC + ZF',
+      variationTresorerie,
+    ),
+
+    // ── Section 6 — VARIATION DE L'ENDETTEMENT FINANCIER NET ──────────
+    amount(
+      'E1',
+      'ENDETTEMENT',
+      'Endettement financier brut',
+      'Dettes financières + Trésorerie passif',
+      endettementBrut,
+    ),
+    amount('E2', 'ENDETTEMENT', '(−) Trésorerie actif', 'Trésorerie actif', ta),
+    amount(
+      'E3',
+      'ENDETTEMENT',
+      'ENDETTEMENT FINANCIER NET',
+      'Dettes financières + Trésorerie passif − Trésorerie actif',
+      endettementNet,
+    ),
   ];
-
-  return lines;
 }
 
 export const handleN34FicheSynthese: NoteHandler = async (ctx, deps) => {
@@ -227,7 +280,7 @@ export const handleN34FicheSynthese: NoteHandler = async (ctx, deps) => {
         {
           key: 'SOURCE_UNAVAILABLE',
           label: 'Source de données indisponible — wiring backend requis',
-          values: { bloc: 'SYSTEME', formula: '', value: 'N/A', unit: 'RATIO' },
+          values: { bloc: 'SYSTEME', formula: '', value: 'N/A', unit: 'AMOUNT' },
         },
       ],
       applicable: true,

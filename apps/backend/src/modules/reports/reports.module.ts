@@ -251,45 +251,128 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
               cashFlowService.getCashFlow(tenant, { fromDate: periodStart, toDate: periodEnd }),
             ]);
 
-            const sectionTotal = (
-              sections: { key: string; total: string }[],
-              key: string,
-            ): string => sections.find((s) => s.key === key)?.total ?? '0.00';
+            const num = (s: string | null | undefined): number => {
+              const n = Number(s);
+              return Number.isFinite(n) ? n : 0;
+            };
+            const dec = (n: number): string => n.toFixed(2);
 
+            // ── SIG (cascade XA→XI + postes produits/charges) ──────────
             const soldeByCode = (code: string): string =>
               sig.soldes.find((s) => s.code === code)?.amount ?? '0.00';
+            const produitByCode = (code: string): number =>
+              num(sig.produits.find((p) => p.code === code)?.amount);
+            const chargeByCode = (code: string): number =>
+              num(sig.charges.find((c) => c.code === code)?.amount);
+
+            // ── Bilan : totaux de masse (AZ, BK, BT, DP, DT) + postes
+            //    HAO (BA actif circulant HAO ; DH passif circulant HAO).
+            //    Source de vérité : `actifMasses`/`passifMasses` (35
+            //    postes lettrés), pas les buckets legacy `sections`.
+            const masseTotal = (
+              masses: ReadonlyArray<{ code: string; total: string }>,
+              code: string,
+            ): number => num(masses.find((m) => m.code === code)?.total);
+            const posteNet = (
+              masses: ReadonlyArray<{
+                rubriques: ReadonlyArray<{ postes: ReadonlyArray<{ code: string; net: string }> }>;
+              }>,
+              code: string,
+            ): number => {
+              for (const m of masses) {
+                for (const r of m.rubriques) {
+                  const p = r.postes.find((x) => x.code === code);
+                  if (p) return num(p.net);
+                }
+              }
+              return 0;
+            };
+
+            // ── Section 2 — CAFG additive (composantes SIG) ────────────
+            const ebe = num(soldeByCode('XD'));
+            const revenusFinanciers =
+              produitByCode('TK') + produitByCode('TL') + produitByCode('TM');
+            const produitsHAO = produitByCode('TO');
+            const fraisFinanciers = chargeByCode('RM');
+            const impotsResultat = chargeByCode('RS');
+            const cafg = ebe + revenusFinanciers + produitsHAO - fraisFinanciers - impotsResultat;
+            // Dividendes versés : pas de source comptable propre exposée
+            // ici (le compte 465/472 « dividendes à payer » n'est pas un
+            // flux de distribution fiable). Documenté à 0.
+            const dividendes = 0;
+            const autofinancement = cafg - dividendes;
+
+            // ── Section 4 — Structure financière ───────────────────────
+            const actifImmobilise = masseTotal(bilan.actifMasses, 'AZ');
+            const actifCirculantTotal = masseTotal(bilan.actifMasses, 'BK');
+            const passifCirculantTotal = masseTotal(bilan.passifMasses, 'DP');
+            const actifCircHAO = posteNet(bilan.actifMasses, 'BA');
+            const passifCircHAO = posteNet(bilan.passifMasses, 'DH');
+            const actifCircExploitation = actifCirculantTotal - actifCircHAO;
+            const passifCircExploitation = passifCirculantTotal - passifCircHAO;
+            const capitauxPropres = masseTotal(bilan.passifMasses, 'CP');
+            const dettesFinancieres = masseTotal(bilan.passifMasses, 'DD');
+            const ressourcesStables = capitauxPropres + dettesFinancieres;
+            const fondsRoulement = ressourcesStables - actifImmobilise;
+            const besoinFinExploitation = actifCircExploitation - passifCircExploitation;
+            const besoinFinHAO = actifCircHAO - passifCircHAO;
+            const besoinFinGlobal = besoinFinExploitation + besoinFinHAO;
+            const tresorerieNette = fondsRoulement - besoinFinGlobal;
+            // Trésorerie actif/passif depuis les MÊMES masses (BT/DT) que
+            // ci-dessus : garantit l'identité de contrôle
+            //   trésorerie nette (5) = trésorerie actif − trésorerie passif
+            // et la cohérence avec l'endettement financier net (section 6).
+            const tresorerieActif = masseTotal(bilan.actifMasses, 'BT');
+            const tresoreriePassif = masseTotal(bilan.passifMasses, 'DT');
 
             return {
+              // Section 1 — Activité (cascade SIG)
               chiffreAffaires: soldeByCode('XB'),
+              margeCommerciale: soldeByCode('XA'),
               valeurAjoutee: soldeByCode('XC'),
               excedentBrutExploitation: soldeByCode('XD'),
               resultatExploitation: soldeByCode('XE'),
+              resultatFinancier: soldeByCode('XF'),
+              resultatAO: soldeByCode('XG'),
+              resultatHAO: soldeByCode('XH'),
               resultatNet: soldeByCode('XI'),
+
+              // Section 2 — CAFG additive
+              cafgExploitation: dec(ebe),
+              revenusFinanciers: dec(revenusFinanciers),
+              produitsHAO: dec(produitsHAO),
+              fraisFinanciers: dec(fraisFinanciers),
+              impotsResultat: dec(impotsResultat),
+              cafg: dec(cafg),
+              dividendes: dec(dividendes),
+              autofinancement: dec(autofinancement),
+
+              // Section 4 — Structure financière
+              actifImmobilise: dec(actifImmobilise),
+              actifCircExploitation: dec(actifCircExploitation),
+              passifCircExploitation: dec(passifCircExploitation),
+              actifCircHAO: dec(actifCircHAO),
+              passifCircHAO: dec(passifCircHAO),
+              fondsRoulement: dec(fondsRoulement),
+              besoinFinExploitation: dec(besoinFinExploitation),
+              besoinFinHAO: dec(besoinFinHAO),
+              besoinFinGlobal: dec(besoinFinGlobal),
+              tresorerieNette: dec(tresorerieNette),
+
+              // Section 5 — Variation de la trésorerie (TFT)
+              fluxOperationnels: flux.operatingFlows.subtotal,
+              fluxInvestissement: flux.investingFlows.subtotal,
+              fluxFinancement: flux.financingFlowsTotal,
+
+              // Données de bilan partagées (masses lettrées — source de
+              // vérité DSF). Cohérentes avec la section structure ci-dessus.
               totalActif: bilan.actif.total,
-              totalCapitauxPropres: sectionTotal(
-                bilan.passif.sections as unknown as { key: string; total: string }[],
-                'CAPITAUX_PROPRES',
-              ),
-              dettesFinancieres: sectionTotal(
-                bilan.passif.sections as unknown as { key: string; total: string }[],
-                'DETTES_FINANCIERES',
-              ),
-              actifCirculant: sectionTotal(
-                bilan.actif.sections as unknown as { key: string; total: string }[],
-                'CIRCULANT',
-              ),
-              tresorerieActif: sectionTotal(
-                bilan.actif.sections as unknown as { key: string; total: string }[],
-                'TRESORERIE_ACTIF',
-              ),
-              passifCirculant: sectionTotal(
-                bilan.passif.sections as unknown as { key: string; total: string }[],
-                'PASSIF_CIRCULANT',
-              ),
-              tresoreriePassif: sectionTotal(
-                bilan.passif.sections as unknown as { key: string; total: string }[],
-                'TRESORERIE_PASSIF',
-              ),
+              totalCapitauxPropres: dec(capitauxPropres),
+              dettesFinancieres: dec(dettesFinancieres),
+              actifCirculant: dec(actifCirculantTotal),
+              tresorerieActif: dec(tresorerieActif),
+              passifCirculant: dec(passifCirculantTotal),
+              tresoreriePassif: dec(tresoreriePassif),
               variationTresorerie: flux.netCashVariation,
             };
           },
