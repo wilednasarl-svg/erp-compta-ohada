@@ -127,11 +127,24 @@ interface OcrInvoice {
     readonly amountHt?: number;
   }>;
 }
+interface OcrDiagnostics {
+  readonly engine: string;
+  readonly checks: ReadonlyArray<{
+    readonly name: string;
+    readonly ok: boolean;
+    readonly detail?: string;
+  }>;
+}
 interface OcrResult {
   readonly ocrStatus: OcrStatus;
   readonly ocrText: string | null;
   readonly extractedMetadata:
-    | { readonly invoice?: OcrInvoice; readonly proposedEntry?: OcrProposedEntry }
+    | {
+        readonly invoice?: OcrInvoice;
+        readonly proposedEntry?: OcrProposedEntry;
+        /** Présent quand l'OCR a été ignoré : diagnostic du moteur. */
+        readonly ocrSkip?: OcrDiagnostics;
+      }
     | null;
 }
 
@@ -1120,18 +1133,28 @@ function DocumentRow({
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" strokeWidth={1.5} />}
           </button>
-          {doc.ocrStatus === 'processed' && (
+          {(doc.ocrStatus === 'processed' ||
+            doc.ocrStatus === 'skipped' ||
+            doc.ocrStatus === 'failed') && (
             <button
               type="button"
               onClick={toggleOcr}
               aria-expanded={showOcr}
-              aria-label={`Données OCR et écriture pour ${doc.filename}`}
+              aria-label={
+                doc.ocrStatus === 'processed'
+                  ? `Données OCR et écriture pour ${doc.filename}`
+                  : `Diagnostic OCR pour ${doc.filename}`
+              }
               className={`press inline-flex h-7 w-7 items-center justify-center rounded-xs border transition-colors duration-fast ${
                 showOcr
                   ? 'border-accent bg-accent-soft text-accent-ink'
                   : 'border-line text-ink-soft hover:border-accent hover:text-accent-ink'
               }`}
-              title="OCR & proposition d'écriture"
+              title={
+                doc.ocrStatus === 'processed'
+                  ? "OCR & proposition d'écriture"
+                  : 'Pourquoi l’OCR a été ignoré'
+              }
             >
               {ocrLoading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1323,13 +1346,40 @@ function OcrPanel({
   const proposed = ocr.extractedMetadata?.proposedEntry;
   const totals = invoice?.totals;
 
+  const skip = ocr.extractedMetadata?.ocrSkip;
+
   if (!invoice && !proposed) {
     return (
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         {docPreview && <OcrDocumentPreview filename={filename} preview={docPreview} />}
-        <p className="text-xs text-ink-mute">
-          Aucune donnée structurée n&apos;a été extraite de ce document.
-        </p>
+        <div className="space-y-3">
+          <p className="text-xs text-ink-mute">
+            Aucune donnée structurée n&apos;a été extraite de ce document.
+          </p>
+          {skip && (
+            <div className="space-y-2">
+              <p className="eyebrow">Diagnostic OCR · moteur {skip.engine}</p>
+              <ul className="space-y-1">
+                {skip.checks.map((c) => (
+                  <li key={c.name} className="flex items-start gap-2 text-xs">
+                    <span
+                      className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                        c.ok ? 'bg-accent-soft text-accent-ink' : 'bg-critical-soft text-critical-ink'
+                      }`}
+                      aria-hidden
+                    >
+                      {c.ok ? '✓' : '✗'}
+                    </span>
+                    <span className="text-ink-soft">
+                      <span className="font-medium text-ink">{c.name}</span>
+                      {c.detail ? <span className="text-ink-mute"> — {c.detail}</span> : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

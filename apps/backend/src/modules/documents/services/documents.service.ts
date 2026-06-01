@@ -512,12 +512,24 @@ export class DocumentsService {
       tmpPath = await this.stageStorageBytesToTempFile(storageKey, mimeType);
       const result = await this.ocrProvider.extract(tmpPath, mimeType);
       if (result === null) {
-        // Provider declined to process — mark as skipped so the UI
-        // can distinguish "not yet processed" from "intentionally
-        // not OCR-ed".
+        // Provider declined to process — mark as skipped. On persiste en
+        // prime un diagnostic du moteur OCR pour que l'UI explique POURQUOI
+        // (dépendance absente, rasterisation KO, Space injoignable) sans
+        // accès aux logs. Best-effort : un diagnostic en échec ne doit pas
+        // empêcher le marquage `skipped`.
+        let skipMetadata: Record<string, unknown> | null = null;
+        try {
+          const diagnostics = (await this.ocrProvider.diagnose?.()) ?? null;
+          if (diagnostics !== null) {
+            skipMetadata = { ocrSkip: diagnostics };
+          }
+        } catch {
+          skipMetadata = null;
+        }
         await this.documents.updateOcrResult(organizationId, documentId, {
           ocrStatus: 'skipped',
           ocrProcessedAt: new Date(),
+          extractedMetadata: skipMetadata,
         });
         return;
       }
