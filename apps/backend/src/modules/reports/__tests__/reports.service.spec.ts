@@ -5,7 +5,7 @@ import type {
   ReportsRepository,
   TrialBalanceRow,
 } from '../repositories/reports.repository';
-import { ReportsService, detectUnusualBalances } from '../services/reports.service';
+import { ReportsService, detectUnusualBalances, computeStockBreakdown } from '../services/reports.service';
 
 const ORG_ID = asTenantId('00000000-0000-4000-8000-000000000001');
 const ACC_ID = '00000000-0000-4000-8000-000000000010';
@@ -2469,5 +2469,35 @@ describe('detectUnusualBalances — contrôle qualité des soldes (erreurs de sa
     ]);
     expect(u[0]?.code).toBe('41110000'); // warning + plus gros
     expect(u[u.length - 1]?.code).toBe('46610000'); // info en dernier
+  });
+});
+
+describe('computeStockBreakdown — Note 6 reconstituée depuis la balance', () => {
+  const mk = (code: string, debit: string, credit: string) => ({ code, label: code, debit, credit });
+
+  it('ventile par famille SYSCOHADA et calcule brut − dépréciation 39 = net', () => {
+    const s = computeStockBreakdown([
+      mk('31100000', '5000', '0'), // marchandises
+      mk('32110000', '3000', '0'), // matières premières
+      mk('33110000', '1000', '0'), // autres approvisionnements
+      mk('36110000', '8000', '0'), // produits finis
+      mk('39310000', '0', '2000'), // dépréciation stocks → en déduction
+      mk('41100000', '9999', '0'), // hors stocks → ignoré
+    ]);
+    expect(s.lines.map((l) => l.label)).toEqual([
+      'Marchandises',
+      'Matières premières et fournitures liées',
+      'Autres approvisionnements',
+      'Produits finis',
+    ]);
+    expect(Number(s.totalBrut)).toBeCloseTo(17000, 2);
+    expect(Number(s.depreciation)).toBeCloseTo(2000, 2);
+    expect(Number(s.totalNet)).toBeCloseTo(15000, 2);
+  });
+
+  it('retourne des lignes vides s’il n’y a pas de stock', () => {
+    const s = computeStockBreakdown([{ code: '41100000', label: 'C', debit: '100', credit: '0' }]);
+    expect(s.lines).toHaveLength(0);
+    expect(Number(s.totalNet)).toBe(0);
   });
 });

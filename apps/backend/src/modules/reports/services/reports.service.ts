@@ -800,6 +800,74 @@ export function detectUnusualBalances(
   });
 }
 
+/**
+ * Ventilation des stocks par famille SYSCOHADA — équivalent « balance
+ * importée » de la Note 6 (la Note 6 officielle lit le module d'inventaire
+ * physique, vide pour un import). Au bilan, les stocks restent UNE ligne
+ * « BB Stocks et en-cours » (Tome 3 p. 32) ; ce détail est le contenu de
+ * l'annexe, reconstitué depuis les soldes 31-38 (brut) − dépréciation 39.
+ */
+export interface StockBreakdownLine {
+  readonly label: string;
+  readonly prefixes: string;
+  /** Valeur brute (solde débiteur) de la famille. */
+  readonly amount: string;
+}
+export interface StockBreakdown {
+  readonly lines: ReadonlyArray<StockBreakdownLine>;
+  readonly totalBrut: string;
+  /** Dépréciations 39 (positif), en déduction. */
+  readonly depreciation: string;
+  /** Net = brut − dépréciation = poste BB du bilan. */
+  readonly totalNet: string;
+}
+
+const STOCK_FAMILIES: ReadonlyArray<{ label: string; prefixes: readonly string[] }> = [
+  { label: 'Marchandises', prefixes: ['31'] },
+  { label: 'Matières premières et fournitures liées', prefixes: ['32'] },
+  { label: 'Autres approvisionnements', prefixes: ['33'] },
+  { label: 'Produits et services en cours', prefixes: ['34', '35'] },
+  { label: 'Produits finis', prefixes: ['36'] },
+  { label: 'Stocks en cours de route, en consignation', prefixes: ['37', '38'] },
+];
+
+/**
+ * Reconstitue la Note 6 (stocks par famille) à partir des lignes d'une
+ * balance importée. Pure (testable isolément).
+ */
+export function computeStockBreakdown(
+  rows: ReadonlyArray<{ code: string; label: string; debit: string; credit: string }>,
+): StockBreakdown {
+  const totals = new Map<string, number>();
+  let depreciation = 0;
+  for (const r of rows) {
+    const net = Number(r.debit || '0') - Number(r.credit || '0');
+    if (!Number.isFinite(net) || Math.abs(net) < 0.005) continue;
+    const p2 = r.code.slice(0, 2);
+    if (p2 === '39') {
+      // 39 dépréciation des stocks : créditeur → montant positif en déduction.
+      depreciation += -net;
+      continue;
+    }
+    const fam = STOCK_FAMILIES.find((f) => f.prefixes.includes(p2));
+    if (fam) totals.set(fam.label, (totals.get(fam.label) ?? 0) + net);
+  }
+  const lines: StockBreakdownLine[] = STOCK_FAMILIES.filter(
+    (f) => Math.abs(totals.get(f.label) ?? 0) >= 0.005,
+  ).map((f) => ({
+    label: f.label,
+    prefixes: f.prefixes.join('/'),
+    amount: (totals.get(f.label) ?? 0).toFixed(2),
+  }));
+  const totalBrut = [...totals.values()].reduce((s, v) => s + v, 0);
+  return {
+    lines,
+    totalBrut: totalBrut.toFixed(2),
+    depreciation: depreciation.toFixed(2),
+    totalNet: (totalBrut - depreciation).toFixed(2),
+  };
+}
+
 // ─── Annexes (états OHADA composés) ─────────────────────────────────
 //
 // NOTE: `TftReport` legacy supprimé (B4). Le TFT est désormais exposé
@@ -3227,6 +3295,7 @@ export class ReportsService {
     bilan: BalanceSheetReport;
     cr: ProfitLossReport;
     unusualBalances: ReadonlyArray<UnusualBalanceRow>;
+    stockBreakdown: StockBreakdown;
   }> {
     const { rows, asAtDate, fiscalYearStartDate } = input;
 
@@ -3376,6 +3445,8 @@ export class ReportsService {
 
     // Contrôle qualité : soldes inhabituels (erreurs d'imputation probables).
     const unusualBalances = detectUnusualBalances(rows);
+    // Détail des stocks par famille (Note 6 reconstituée depuis la balance).
+    const stockBreakdown = computeStockBreakdown(rows);
 
     const hierarchy = this.buildBilanHierarchy(accountRows, netResultIncorporated);
 
@@ -3395,7 +3466,7 @@ export class ReportsService {
       difference: (totalActif - totalPassif).toFixed(2),
     };
 
-    return { bilan, cr, unusualBalances };
+    return { bilan, cr, unusualBalances, stockBreakdown };
   }
 
   private async computeBalanceSheetBare(
