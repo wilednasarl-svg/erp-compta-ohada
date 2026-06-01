@@ -40,6 +40,10 @@ import { EmailModule } from './modules/email/email.module';
 import { ActuarialCommitmentsModule } from './modules/actuarial-commitments/actuarial-commitments.module';
 import { CashFlowModule } from './modules/cash-flow/cash-flow.module';
 import { BudgetModule } from './modules/budget/budget.module';
+import { CollectionsModule } from './modules/collections/collections.module';
+import { ProvisionsModule } from './modules/provisions/provisions.module';
+import { ImpairmentsModule } from './modules/impairments/impairments.module';
+import { SubsidiesModule } from './modules/subsidies/subsidies.module';
 import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { SyscohadaComplianceModule } from './modules/syscohada-compliance/syscohada-compliance.module';
 import { SyscohadaGuidanceModule } from './modules/syscohada-knowledge/syscohada-guidance.module';
@@ -190,6 +194,14 @@ import { SyscohadaKnowledgeModule } from './modules/syscohada-knowledge/syscohad
     CashFlowModule,
     // Module Budget - Budget & contrôle budgétaire (axes, lignes, écarts/KPI)
     BudgetModule,
+    // Module Recouvrement - relances clients (dunning) + export créances (net-new, lecture seule)
+    CollectionsModule,
+    // Module Provisions pour risques et charges (W3.1) - activation REST wave-2
+    ProvisionsModule,
+    // Module Dépréciations d'actifs/stocks (W3.2) - activation REST wave-2
+    ImpairmentsModule,
+    // Module Subventions d'investissement (W4.4) - activation REST wave-2
+    SubsidiesModule,
     // Module Fiscal & Social - paramètres de taux + déclarations/échéancier (CI)
     FiscalModule,
   ],

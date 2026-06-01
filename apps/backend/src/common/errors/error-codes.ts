@@ -260,6 +260,12 @@ export const ERROR_CODES = {
   PLEDGED_ASSET_NOT_FOUND: 'PLEDGED_ASSET_NOT_FOUND',
   PLEDGED_ASSET_NOT_ACTIVE: 'PLEDGED_ASSET_NOT_ACTIVE',
   PLEDGED_ASSET_INVALID_DATE_RANGE: 'PLEDGED_ASSET_INVALID_DATE_RANGE',
+
+  // Recouvrement / relances clients (collections).
+  COLLECTIONS_NO_OVERDUE: 'COLLECTIONS_NO_OVERDUE',
+
+  // Bank reconciliation — génération d'écriture depuis une ligne de relevé.
+  BANK_GENERATED_ENTRY_INVALID: 'BANK_GENERATED_ENTRY_INVALID',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

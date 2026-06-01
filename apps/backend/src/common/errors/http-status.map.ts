@@ -260,6 +260,12 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   [ERROR_CODES.FISCAL_DECLARATION_INVALID_TRANSITION]: 409,
   [ERROR_CODES.FISCAL_NO_RATE_FOR_PERIOD]: 422,
   [ERROR_CODES.FISCAL_BRACKET_INVALID]: 422,
+
+  // Recouvrement / relances clients.
+  [ERROR_CODES.COLLECTIONS_NO_OVERDUE]: 422,
+
+  // Bank reconciliation — génération d'écriture invalide.
+  [ERROR_CODES.BANK_GENERATED_ENTRY_INVALID]: 422,
 };
 
 /**
