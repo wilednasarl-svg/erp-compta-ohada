@@ -73,6 +73,14 @@ export interface DocumentView {
   readonly uploadedAt: string;
   readonly createdAt: string;
   readonly downloadUrl: string;
+  /**
+   * Number of journal entries this document is attached to. Populated
+   * only on the list path (where it is computed in a single batched
+   * query); absent on single-document reads where the client does not
+   * need it. Lets the UI warn before deleting a justificatif that
+   * supports one or more écritures.
+   */
+  readonly linkedEntryCount?: number;
 }
 
 export interface ListDocumentsResult {
@@ -678,8 +686,14 @@ export class DocumentsService {
     pagination: PaginationOptions,
   ): Promise<ListDocumentsResult> {
     const { rows, total } = await this.documents.listForOrg(organizationId, filters, pagination);
+    // Batched link count for the page (≤ pageSize ids) — one GROUP BY
+    // query, no N+1. Unlinked documents default to 0.
+    const linkCounts = await this.entries.countForDocuments(
+      organizationId,
+      rows.map((row) => row.id),
+    );
     return {
-      rows: rows.map((row) => this.toView(row)),
+      rows: rows.map((row) => this.toView(row, linkCounts.get(row.id) ?? 0)),
       total,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -723,7 +737,7 @@ export class DocumentsService {
 
   // ─── Helpers ────────────────────────────────────────────────────────
 
-  private toView(row: DocumentEntity): DocumentView {
+  private toView(row: DocumentEntity, linkedEntryCount?: number): DocumentView {
     return {
       id: row.id,
       organizationId: row.organizationId,
@@ -738,6 +752,9 @@ export class DocumentsService {
       uploadedAt: row.uploadedAt.toISOString(),
       createdAt: row.createdAt.toISOString(),
       downloadUrl: `/documents/${row.id}/content`,
+      // `undefined` on single-document reads (omitted from JSON); a
+      // concrete number (0..n) on the list path.
+      linkedEntryCount,
     };
   }
 

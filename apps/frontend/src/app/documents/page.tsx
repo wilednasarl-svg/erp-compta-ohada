@@ -9,6 +9,7 @@ import {
   FilePlus2,
   FileSpreadsheet,
   FileText,
+  Link2,
   Loader2,
   Paperclip,
   ScanText,
@@ -59,6 +60,8 @@ interface DocumentView {
   readonly description: string | null;
   readonly ocrStatus: OcrStatus;
   readonly uploadedAt: string;
+  /** Nombre d'écritures auxquelles ce justificatif est rattaché (liste). */
+  readonly linkedEntryCount?: number;
 }
 interface ListResponse {
   readonly rows: ReadonlyArray<DocumentView>;
@@ -511,6 +514,20 @@ export default function DocumentsPage() {
 
   const allOnPageSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
 
+  // Justificatifs sélectionnés qui sont rattachés à au moins une écriture —
+  // la sélection est bornée à la page visible (purgée au changement de page),
+  // donc ce compte est exact pour la suppression en lot.
+  const linkedSelectedCount = rows.filter(
+    (r) => selectedIds.has(r.id) && (r.linkedEntryCount ?? 0) > 0,
+  ).length;
+
+  /** Change de page et purge la sélection (bornée à la page visible). */
+  const changePage = (next: number) => {
+    setPage(Math.min(totalPages, Math.max(1, next)));
+    setSelectedIds(new Set());
+    setBulkConfirm(false);
+  };
+
   const toggleSelectAllOnPage = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -687,6 +704,20 @@ export default function DocumentsPage() {
                     <span className="font-mono tabular-nums text-ink">{selectedIds.size}</span>{' '}
                     sélectionné{selectedIds.size > 1 ? 's' : ''}
                   </span>
+                  {bulkConfirm && linkedSelectedCount > 0 && (
+                    <span
+                      className="flex basis-full items-center gap-1.5 text-[11px] text-critical-ink"
+                      role="alert"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                      <span>
+                        <span className="font-mono tabular-nums">{linkedSelectedCount}</span>{' '}
+                        justificatif{linkedSelectedCount > 1 ? 's' : ''} rattaché
+                        {linkedSelectedCount > 1 ? 's' : ''} à des écritures —{' '}
+                        l&apos;écriture n&apos;est pas supprimée, mais perdra sa pièce jointe.
+                      </span>
+                    </span>
+                  )}
                   <div className="ml-auto flex items-center gap-1">
                     {bulkConfirm ? (
                       <>
@@ -768,7 +799,7 @@ export default function DocumentsPage() {
                 type="button"
                 variant="outline"
                 disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => changePage(page - 1)}
                 className="press"
               >
                 Précédent
@@ -780,7 +811,7 @@ export default function DocumentsPage() {
                 type="button"
                 variant="outline"
                 disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => changePage(page + 1)}
                 className="press"
               >
                 Suivant
@@ -1010,6 +1041,15 @@ function DocumentRow({
             </div>
           )}
         </div>
+        {doc.linkedEntryCount !== undefined && doc.linkedEntryCount > 0 && (
+          <span
+            className="hidden shrink-0 items-center gap-1 rounded-xs border border-line px-1.5 py-0.5 text-[11px] font-medium text-ink-mute sm:inline-flex"
+            title={`Rattaché à ${doc.linkedEntryCount} écriture${doc.linkedEntryCount > 1 ? 's' : ''} — la suppression détache la pièce sans supprimer l'écriture`}
+          >
+            <Link2 className="h-3 w-3" strokeWidth={1.5} />
+            <span className="font-mono tabular-nums">{doc.linkedEntryCount}</span>
+          </span>
+        )}
         <span
           className={`hidden shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium md:inline-flex ${OCR_TONE[doc.ocrStatus]}`}
         >

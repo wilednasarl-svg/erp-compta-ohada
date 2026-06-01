@@ -61,6 +61,7 @@ function buildEntriesRepoStub(): jest.Mocked<DocumentEntryRepository> {
     listForDocument: jest.fn(),
     listForEntry: jest.fn(),
     countForDocument: jest.fn(),
+    countForDocuments: jest.fn().mockResolvedValue(new Map<string, number>()),
   } as unknown as jest.Mocked<DocumentEntryRepository>;
 }
 
@@ -418,6 +419,22 @@ describe('DocumentsService (BE-DOC-04)', () => {
       expect(result.rows.map((r) => r.id)).toEqual(['d1', 'd2']);
       expect(result.page).toBe(2);
       expect(result.pageSize).toBe(10);
+    });
+
+    it('enriches each view with its linked-entry count (0 when absent from the map)', async () => {
+      docs.listForOrg.mockResolvedValue({
+        rows: [buildDocumentRow({ id: 'd1' }), buildDocumentRow({ id: 'd2' })],
+        total: 2,
+      });
+      // d1 is attached to 3 écritures; d2 is unlinked (absent from the map).
+      entries.countForDocuments.mockResolvedValue(new Map<string, number>([['d1', 3]]));
+
+      const result = await service.listForOrg(ORG_A, {}, { page: 1, pageSize: 10 });
+
+      expect(entries.countForDocuments).toHaveBeenCalledWith('org_a', ['d1', 'd2']);
+      const byId = new Map(result.rows.map((r) => [r.id, r.linkedEntryCount]));
+      expect(byId.get('d1')).toBe(3);
+      expect(byId.get('d2')).toBe(0);
     });
   });
 
