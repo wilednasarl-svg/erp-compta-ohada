@@ -462,13 +462,14 @@ export class ReportsController {
   @HttpCode(HttpStatus.OK)
   @RequirePermission('journals.reports')
   @ApiOperation({
-    summary: 'Génère Bilan + CR depuis une balance uploadée (sans écritures validées)',
+    summary:
+      'Génère depuis une balance uploadée (sans écritures validées) : Bilan, Compte de résultat, Balance générale, SIG, Ratios (fiche de synthèse), détail des stocks et Annexe partielle',
   })
   async reportsFromBalance(
     @Param('id', new ParseUUIDPipe({ version: '4' })) _id: string,
     @Body() body: FromBalanceBodyDto,
     @CurrentOrg() org: CurrentOrgContext,
-  ): Promise<{ bilan: BalanceSheetReport; cr: ProfitLossReport }> {
+  ): Promise<Awaited<ReturnType<ReportsService['getReportsFromBalance']>>> {
     return this.reports.getReportsFromBalance(asTenantId(org.id), {
       rows: body.rows,
       asAtDate: body.asAtDate,

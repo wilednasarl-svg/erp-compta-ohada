@@ -2501,3 +2501,84 @@ describe('computeStockBreakdown — Note 6 reconstituée depuis la balance', () 
     expect(Number(s.totalNet)).toBe(0);
   });
 });
+
+describe('getReportsFromBalance — états dérivés (balance, SIG, ratios, annexe)', () => {
+  // Balance de soldes minimale mais cohérente :
+  //   Ventes 70 = 10 000 (crédit), Achats 60 = 6 000 (débit) → résultat +4 000
+  //   Actif : immobilisation 2 (5 000 D) + banque 52 (5 000 D) = 10 000
+  //   Passif : capital 10 (6 000 C) + emprunt 16 (4 000 C) = 10 000 (avant résultat)
+  const rows = [
+    { code: '21100000', label: 'MATERIEL', debit: '5000', credit: '0' },
+    { code: '52110000', label: 'BANQUE', debit: '5000', credit: '0' },
+    { code: '10100000', label: 'CAPITAL', debit: '0', credit: '6000' },
+    { code: '16100000', label: 'EMPRUNT', debit: '0', credit: '4000' },
+    { code: '70100000', label: 'VENTES MARCHANDISES', debit: '0', credit: '10000' },
+    { code: '60100000', label: 'ACHATS MARCHANDISES', debit: '6000', credit: '0' },
+  ];
+
+  it('retourne une balance générale équilibrée (Σ débits = Σ crédits)', async () => {
+    const h = buildHarness();
+    const { trialBalance } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    expect(Number(trialBalance.totals.periodDebit)).toBeCloseTo(16000, 2);
+    expect(Number(trialBalance.totals.periodCredit)).toBeCloseTo(20000, 2);
+    expect(trialBalance.rows).toHaveLength(rows.length);
+    // colonnes ending = mouvements de la balance de soldes
+    expect(Number(trialBalance.totals.endingDebit)).toBeCloseTo(16000, 2);
+    expect(Number(trialBalance.totals.endingCredit)).toBeCloseTo(20000, 2);
+  });
+
+  it('SIG : résultat net (XI) == résultat du compte de résultat', async () => {
+    const h = buildHarness();
+    const { sig, cr } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    const xi = sig.soldes.find((s) => s.code === 'XI');
+    expect(xi).toBeDefined();
+    expect(Number(xi?.amount)).toBeCloseTo(Number(cr.resultat), 2);
+    // CA (XB) reflète les ventes de classe 70
+    expect(Number(sig.soldes.find((s) => s.code === 'XB')?.amount)).toBeCloseTo(10000, 2);
+  });
+
+  it('ratios : familles Note 34 présentes et autonomie financière calculée', async () => {
+    const h = buildHarness();
+    const { ratios } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    const cats = new Set(ratios.ratios.map((r) => r.category));
+    expect(cats).toEqual(
+      new Set(['STRUCTURE', 'LIQUIDITE', 'SOLVABILITE', 'RENTABILITE', 'ACTIVITE']),
+    );
+    const af = ratios.ratios.find((r) => r.code === 'AF');
+    expect(af?.unit).toBe('PERCENT');
+    // capitaux propres incluent le résultat incorporé (6000 + 4000 = 10000)
+    // sur un total passif > 0 → autonomie financière définie (non null).
+    expect(af?.value).not.toBeNull();
+  });
+
+  it("annexe partielle : notes COMPUTED depuis les soldes, notes détail en MANUAL", async () => {
+    const h = buildHarness();
+    const { annexe } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    expect(annexe).not.toBeNull();
+    const byCode = new Map(annexe?.notes.map((n) => [n.code, n]) ?? []);
+    // Capital social (10), immobilisations (3A), emprunts (14), trésorerie (8)
+    expect(byCode.get('Note 10')?.status).toBe('COMPUTED');
+    expect(byCode.get('Note 3A')?.status).toBe('COMPUTED');
+    expect(byCode.get('Note 14')?.status).toBe('COMPUTED');
+    // Notes exigeant du détail → MANUAL, jamais fabriquées
+    expect(byCode.get('Note 5')?.status).toBe('MANUAL');
+    expect(byCode.get('Note 15')?.status).toBe('MANUAL');
+  });
+});
+

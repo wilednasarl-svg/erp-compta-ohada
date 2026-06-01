@@ -17,14 +17,18 @@
 import { useMutation } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  BarChart3,
+  BookText,
   CheckCircle2,
   Download,
   FileSpreadsheet,
   Info,
   Loader2,
+  Percent,
   PieChart,
   Printer,
   Scale,
+  Table2,
   Upload,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -40,12 +44,23 @@ import {
 import { Input } from '@/components/ui/input';
 import { ApiError, api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import type { BalanceSheetReport, ProfitLossReport } from '@/types/reports';
+import type {
+  AnnexeReport,
+  BalanceSheetReport,
+  FinancialRatiosReport,
+  ProfitLossReport,
+  SigReport,
+  TrialBalanceReport,
+} from '@/types/reports';
 
+import { AnnexeResult } from './annexe-result';
 import { BalanceSheetResult } from './balance-sheet-result';
 import { type BalanceParsed, parseBalanceCsv, parseBalanceXlsx } from './balance-parse';
 import { todayIso, yearStartIso } from './presets';
 import { ProfitLossResult } from './profit-loss-result';
+import { RatiosResult } from './ratios-result';
+import { SigResult } from './sig-result';
+import { TrialBalanceResult } from './trial-balance-result';
 
 interface UnusualBalanceRow {
   code: string;
@@ -73,7 +88,22 @@ interface FromBalanceResult {
   cr: ProfitLossReport;
   unusualBalances: UnusualBalanceRow[];
   stockBreakdown: StockBreakdown;
+  trialBalance: TrialBalanceReport;
+  sig: SigReport;
+  ratios: FinancialRatiosReport;
+  annexe: AnnexeReport | null;
 }
+
+type ResultTab = 'bilan' | 'cr' | 'sig' | 'ratios' | 'balance' | 'annexe';
+
+const RESULT_TABS: ReadonlyArray<{ key: ResultTab; label: string; Icon: typeof Scale }> = [
+  { key: 'bilan', label: 'Bilan', Icon: Scale },
+  { key: 'cr', label: 'Compte de résultat', Icon: PieChart },
+  { key: 'sig', label: 'SIG', Icon: BarChart3 },
+  { key: 'ratios', label: 'Ratios', Icon: Percent },
+  { key: 'balance', label: 'Balance générale', Icon: Table2 },
+  { key: 'annexe', label: 'Annexe', Icon: BookText },
+];
 
 type BalanceInventoryType = 'avant-inventaire' | 'apres-inventaire';
 
@@ -119,7 +149,7 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
   const [fyStart, setFyStart] = useState(yearStartIso());
   const [incorporateResult, setIncorporateResult] = useState(true);
   const [balanceType, setBalanceType] = useState<BalanceInventoryType>('apres-inventaire');
-  const [activeTab, setActiveTab] = useState<'bilan' | 'cr'>('bilan');
+  const [activeTab, setActiveTab] = useState<ResultTab>('bilan');
   const [showAllRows, setShowAllRows] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -237,9 +267,11 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
           Balance personnalisée
         </CardTitle>
         <CardDescription className="text-ink-soft">
-          Uploadez une balance CSV ou Excel (Sage Saari, CIEL, export tableur…) pour générer Bilan
-          et Compte de résultat sans passer par les écritures validées. Utile pour des simulations
-          ou des reprises d&apos;antériorité.
+          Uploadez une balance CSV ou Excel (Sage Saari, CIEL, export tableur…) pour générer, sans
+          passer par les écritures validées, l&apos;ensemble des états dérivables des soldes : Bilan,
+          Compte de résultat, Balance générale, SIG, Ratios (fiche de synthèse) et Annexe partielle.
+          Utile pour des simulations ou des reprises d&apos;antériorité. Le TFT, la balance âgée et le
+          grand livre exigent le détail des écritures et ne sont pas disponibles ici.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
@@ -610,24 +642,22 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
               <div className="flex gap-1">
-                {(['bilan', 'cr'] as const).map((tab) => (
+                {RESULT_TABS.filter(
+                  (t) => t.key !== 'annexe' || mutation.data.annexe !== null,
+                ).map(({ key, label, Icon }) => (
                   <button
-                    key={tab}
+                    key={key}
                     type="button"
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => setActiveTab(key)}
                     className={cn(
                       'inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-sm font-medium transition-colors duration-fast',
-                      activeTab === tab
+                      activeTab === key
                         ? 'border-accent bg-accent-soft text-accent-ink'
                         : 'border-line-strong bg-paper text-ink-soft hover:bg-sunk hover:text-ink',
                     )}
                   >
-                    {tab === 'bilan' ? (
-                      <Scale className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    ) : (
-                      <PieChart className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    )}
-                    {tab === 'bilan' ? 'Bilan' : 'Compte de résultat'}
+                    <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    {label}
                   </button>
                 ))}
               </div>
@@ -784,9 +814,17 @@ export function BalanceUploadConsole({ orgId }: { readonly orgId: string }) {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : activeTab === 'cr' ? (
               <ProfitLossResult report={mutation.data.cr} />
-            )}
+            ) : activeTab === 'sig' ? (
+              <SigResult report={mutation.data.sig} />
+            ) : activeTab === 'ratios' ? (
+              <RatiosResult report={mutation.data.ratios} />
+            ) : activeTab === 'balance' ? (
+              <TrialBalanceResult report={mutation.data.trialBalance} />
+            ) : activeTab === 'annexe' && mutation.data.annexe !== null ? (
+              <AnnexeResult report={mutation.data.annexe} />
+            ) : null}
           </div>
         )}
 

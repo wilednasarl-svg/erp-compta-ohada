@@ -37,7 +37,28 @@ const CR: ProfitLossReport = {
   resultat: '0.00',
 };
 
-const FROM_BALANCE = { bilan: BILAN, cr: CR };
+const FROM_BALANCE = {
+  bilan: BILAN,
+  cr: CR,
+  unusualBalances: [],
+  stockBreakdown: { lines: [], totalBrut: '0.00', depreciation: '0.00', totalNet: '0.00' },
+  trialBalance: {
+    fromDate: '2026-01-01',
+    toDate: '2026-12-31',
+    rows: [],
+    totals: {
+      openingDebit: '0.00',
+      openingCredit: '0.00',
+      periodDebit: '0.00',
+      periodCredit: '0.00',
+      endingDebit: '0.00',
+      endingCredit: '0.00',
+    },
+  },
+  sig: { fromDate: '2026-01-01', toDate: '2026-12-31', charges: [], produits: [], soldes: [] },
+  ratios: { asAtDate: '2026-12-31', fiscalYearStartDate: '2026-01-01', ratios: [] },
+  annexe: { asAtDate: '2026-12-31', fiscalYearStartDate: '2026-01-01', notes: [] },
+};
 
 // Balance CSV simple : 2 comptes équilibrés (∑Débit = ∑Crédit = 1000).
 const CSV_CONTENT = ['Compte;Libellé;Solde Débiteur;Solde Créditeur', '601000;Achats;1000;0', '401000;Fournisseurs;0;1000'].join(
@@ -106,5 +127,20 @@ describe('BalanceUploadConsole', () => {
         expect.objectContaining({ code: '401000' }),
       ]),
     });
+  });
+
+  it('expose les onglets des états dérivés et affiche la Balance générale', async () => {
+    vi.spyOn(api, 'post').mockResolvedValue(FROM_BALANCE as unknown as never);
+
+    renderWithClient(<BalanceUploadConsole orgId="org-1" />);
+    await userEvent.upload(screen.getByLabelText('Fichier de balance'), uploadCsv());
+    await waitFor(() => expect(screen.getByText('601000')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Générer les états/ }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /^SIG$/ })).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /^Ratios$/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Balance générale/ }));
+    await waitFor(() => expect(screen.getByText(/Balance équilibrée/)).toBeInTheDocument());
   });
 });

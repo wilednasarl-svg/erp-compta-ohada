@@ -21,6 +21,12 @@ import {
 } from './ohada-classifier';
 import { BILAN_POSTES, type BilanPosteRef } from './postes/bilan-postes';
 import {
+  buildPartialAnnexeFromRows,
+  buildRatiosFromReports,
+  buildSigFromRows,
+  buildTrialBalanceFromRows,
+} from './from-balance-states';
+import {
   PL_POSTES,
   getPlNoteRef,
   getPlSignSymbol,
@@ -3296,6 +3302,10 @@ export class ReportsService {
     cr: ProfitLossReport;
     unusualBalances: ReadonlyArray<UnusualBalanceRow>;
     stockBreakdown: StockBreakdown;
+    trialBalance: TrialBalanceReport;
+    sig: SigReport;
+    ratios: FinancialRatiosReport;
+    annexe: AnnexeReport | null;
   }> {
     const { rows, asAtDate, fiscalYearStartDate } = input;
 
@@ -3466,7 +3476,13 @@ export class ReportsService {
       difference: (totalActif - totalPassif).toFixed(2),
     };
 
-    return { bilan, cr, unusualBalances, stockBreakdown };
+    // États additionnels dérivables de la balance (helper pur, hors fichier chaud).
+    const trialBalance = buildTrialBalanceFromRows(trialRows, fromDate, asAtDate);
+    const sig = buildSigFromRows(trialRows, fromDate, asAtDate);
+    const ratios = buildRatiosFromReports(bilan, sig, asAtDate, fromDate);
+    const annexe = buildPartialAnnexeFromRows(trialRows, asAtDate, fromDate);
+
+    return { bilan, cr, unusualBalances, stockBreakdown, trialBalance, sig, ratios, annexe };
   }
 
   private async computeBalanceSheetBare(
