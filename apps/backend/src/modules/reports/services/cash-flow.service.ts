@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
@@ -220,7 +220,12 @@ export interface PeriodMovement {
 export class CashFlowService {
   constructor(
     private readonly repo: ReportsRepository,
-    private readonly reports: ReportsService,
+    // `forwardRef` casse un cycle d'import ES (reports.service →
+    // from-balance-multi-period → cash-flow.service → reports.service) qui
+    // laissait `ReportsService` undefined dans les paramtypes au boot →
+    // « Nest can't resolve dependencies of CashFlowService ». La résolution
+    // différée par NestJS contourne le paramtype undefined.
+    @Inject(forwardRef(() => ReportsService)) private readonly reports: ReportsService,
   ) {}
 
   /**
