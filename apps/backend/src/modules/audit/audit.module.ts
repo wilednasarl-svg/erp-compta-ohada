@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { forwardRef, Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
@@ -47,7 +47,15 @@ import { AuthEventsService } from './services/auth-events.service';
  *   - `TypeOrmModule` — re-exported so downstream modules that wire
  *     their own `Repository<AuditLogEntity>` injection (rare) can
  *     pick it up without re-registering the entity.
+ *
+ * `@Global()` : `AuthEventsService` est consommé par `TenantGuard` (RBAC),
+ * lui-même appliqué via `@UseGuards` dans ~51 contrôleurs répartis sur des
+ * modules qui n'importent pas tous `AuditModule`. Sans le rendre global,
+ * Nest échoue au boot (« can't resolve dependencies of TenantGuard …
+ * AuthEventsService … in the CollectionsModule context ») → 502. Le rendre
+ * global expose ses `exports` dans tous les contextes de module.
  */
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([AuthEventEntity, AuditLogEntity]),
