@@ -2408,3 +2408,22 @@ describe('ReportsService.getPeriodValidity', () => {
     expect(h.repo.periodValidity).not.toHaveBeenCalled();
   });
 });
+
+describe('getReportsFromBalance — invariant d’équilibre (Actif = Passif)', () => {
+  it('inclut les comptes classe 1-5 sans poste lettré dans les totaux (bilan équilibré)', async () => {
+    const h = buildHarness();
+    const rows = [
+      { code: '21100000', label: 'IMMOBILISATION', debit: '1000', credit: '0' },
+      { code: '46610000', label: 'ASSOCIE — COMPTE COURANT', debit: '0', credit: '1000' },
+    ];
+    const { bilan } = await h.service.getReportsFromBalance(ORG_ID, {
+      rows,
+      asAtDate: '2026-12-31',
+      fiscalYearStartDate: '2026-01-01',
+    });
+    expect(Math.abs(Number(bilan.totals.difference))).toBeLessThan(1);
+    expect(Number(bilan.totals.actif)).toBeCloseTo(1000, 2);
+    expect(Number(bilan.totals.passif)).toBeCloseTo(1000, 2);
+    expect(bilan.unclassified.map((u) => u.code)).toContain('46610000');
+  });
+});

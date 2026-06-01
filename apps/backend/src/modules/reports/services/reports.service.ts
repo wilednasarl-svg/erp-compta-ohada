@@ -3509,6 +3509,15 @@ export class ReportsService {
     type PosteAcc = { brut: number; deduction: number };
     const posteAccs = new Map<string, PosteAcc>(); // posteCode → acc
     const unclassifiedRows: BilanPoste[] = [];
+    // Comptes classe 1-5 sans poste lettré matché : placés tout de même sur
+    // leur côté comptable réel (via `classifyForBilan`, jamais null en 1-5)
+    // ET inclus dans les totaux de masse — sinon leur montant disparaît du
+    // total et rompt l'égalité Actif = Passif sur une balance équilibrée.
+    // Ils restent listés dans `unclassified` + une rubrique « non ventilés ».
+    const unclassifiedActif: BilanPoste[] = [];
+    const unclassifiedPassif: BilanPoste[] = [];
+    let unclassifiedActifTotal = 0;
+    let unclassifiedPassifTotal = 0;
 
     const addToPoste = (posteCode: string, asDeduction: boolean, amount: number): void => {
       const acc = posteAccs.get(posteCode) ?? { brut: 0, deduction: 0 };
@@ -3527,16 +3536,32 @@ export class ReportsService {
       // (462/463/471… présents en poste actif ET passif).
       const classification = classifyToPoste(row.accountCode, row.isOpposing, net >= 0 ? 'D' : 'C');
       if (classification === null) {
-        // Bilan-relevant class (1-5) mais aucun préfixe matché → bucket
-        // dédié pour visibilité. Les classes 6-9 retournent aussi null
-        // mais on les ignore (elles vont au P&L).
+        // Classe 1-5 sans poste lettré matché. Les classes 6-9 retournent
+        // aussi null mais on les ignore (elles vont au P&L). Pour une classe
+        // 1-5, on retombe sur `classifyForBilan` (jamais null ici) afin de
+        // placer le montant sur son VRAI côté (débiteur → actif, créditeur →
+        // passif ; déduction si opposant) et de l'INCLURE dans le total de
+        // masse — sinon le bilan se déséquilibre.
         if (row.accountClass >= 1 && row.accountClass <= 5) {
-          unclassifiedRows.push({
+          const netSign = net >= 0 ? 'D' : 'C';
+          const fb = classifyForBilan(row.accountCode, row.accountClass, netSign, row.isOpposing);
+          const side = fb?.side ?? (row.accountClass === 1 ? 'PASSIF' : 'ACTIF');
+          const contraSign = fb?.contraSign ?? 1;
+          const signed = contraSign * Math.abs(net);
+          const poste: BilanPoste = {
             code: row.accountCode,
             label: row.accountLabel,
-            side: row.accountClass === 1 ? 'PASSIF' : 'ACTIF',
-            net: net.toFixed(2),
-          });
+            side,
+            net: signed.toFixed(2),
+          };
+          unclassifiedRows.push(poste);
+          if (side === 'ACTIF') {
+            unclassifiedActif.push(poste);
+            unclassifiedActifTotal += signed;
+          } else {
+            unclassifiedPassif.push(poste);
+            unclassifiedPassifTotal += signed;
+          }
         }
         continue;
       }
@@ -3638,6 +3663,9 @@ export class ReportsService {
     // Construction finale des masses, dans l'ordre du référentiel.
     const buildMasses = (side: 'ACTIF' | 'PASSIF'): BilanMasse[] => {
       const masseRefs = BILAN_POSTES.filter((p) => p.section === '_TOTAL_' && p.side === side);
+      const rootCode = side === 'ACTIF' ? 'BZ' : 'DZ';
+      const unclassifiedPostes = side === 'ACTIF' ? unclassifiedActif : unclassifiedPassif;
+      const unclassifiedTotal = side === 'ACTIF' ? unclassifiedActifTotal : unclassifiedPassifTotal;
       return masseRefs.map((ref) => {
         const rubs: BilanRubrique[] = [];
         for (const [key, rub] of rubriquesByKey) {
@@ -3649,7 +3677,20 @@ export class ReportsService {
           // Suppression du marquer 'key' inutilisé (lint).
           void key;
         }
-        const total = masseTotals.get(ref.code) ?? 0;
+        let total = masseTotals.get(ref.code) ?? 0;
+        // Comptes « non ventilés » (classe 1-5 sans poste lettré) rattachés à
+        // la masse racine BZ/DZ de leur côté — visibles ET inclus au grand
+        // total, pour que le bilan reste équilibré tout en signalant les
+        // comptes à corriger côté plan comptable.
+        if (ref.code === rootCode && unclassifiedPostes.length > 0) {
+          const sorted = [...unclassifiedPostes].sort((a, b) => a.code.localeCompare(b.code));
+          rubs.push({
+            label: 'Comptes non ventilés (à rattacher à un poste)',
+            postes: sorted,
+            subtotal: unclassifiedTotal.toFixed(2),
+          });
+          total += unclassifiedTotal;
+        }
         return {
           code: ref.code,
           label: ref.label,
@@ -3665,8 +3706,10 @@ export class ReportsService {
     const actifMasses = buildMasses('ACTIF');
     const passifMasses = buildMasses('PASSIF');
 
-    const totalActif = masseTotals.get('BZ') ?? 0;
-    const totalPassif = masseTotals.get('DZ') ?? 0;
+    // Totaux racine = masse BZ/DZ + comptes non ventilés du côté correspondant
+    // (cohérent avec le grand total affiché par buildMasses ci-dessus).
+    const totalActif = (masseTotals.get('BZ') ?? 0) + unclassifiedActifTotal;
+    const totalPassif = (masseTotals.get('DZ') ?? 0) + unclassifiedPassifTotal;
 
     return {
       actifMasses,
