@@ -8,6 +8,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { FormError } from '@/components/ui/form-error';
 import { ApiError, api } from '@/lib/api-client';
 import type { AnnexeReport } from '@/types/reports';
@@ -140,6 +141,15 @@ export function AnnexeConsole({ orgId }: { readonly orgId: string }) {
       >
         {query.data && <AnnexeResult report={query.data} />}
       </ReportRunner>
+
+      <SyscohadaGuidancePanel
+        module="pledged-assets"
+        title="Conformité SYSCOHADA — Engagements hors bilan & sûretés"
+      />
+      <SyscohadaGuidancePanel
+        module="actuarial-commitments"
+        title="Conformité SYSCOHADA — Engagements de retraite & avantages du personnel"
+      />
     </div>
   );
 }
