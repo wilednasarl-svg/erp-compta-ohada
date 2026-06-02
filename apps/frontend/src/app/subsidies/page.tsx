@@ -5,6 +5,7 @@ import { Plus, HandCoins } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { FormError } from '@/components/ui/form-error';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -155,11 +156,12 @@ export default function SubsidiesPage() {
             )}
           </section>
 
-          <section className="lg:col-span-2">
+          <section className="space-y-6 lg:col-span-2">
             <CreateSubsidyForm
               orgId={orgId}
               onCreated={() => void qc.invalidateQueries({ queryKey: ['subsidies', orgId] })}
             />
+            <SyscohadaGuidancePanel module="subsidies" />
           </section>
         </div>
       </div>

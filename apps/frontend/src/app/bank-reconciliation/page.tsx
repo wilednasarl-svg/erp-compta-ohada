@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
@@ -696,6 +697,8 @@ export default function BankReconciliationPage(){
             </div>
           </section>
         </div>
+
+        <SyscohadaGuidancePanel module="bank-reconciliation" />
       </div>
     </AppShell>
   );
