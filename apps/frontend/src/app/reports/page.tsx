@@ -33,6 +33,7 @@ import {
 import { Fragment, useRef, useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -4436,6 +4437,10 @@ function TftPanel({ orgId }: { readonly orgId: string }) {
             </p>
           </div>
         ) : null}
+        <SyscohadaGuidancePanel
+          module="cash-flow"
+          title="Conformité SYSCOHADA — Tableau des flux de trésorerie"
+        />
       </CardContent>
     </Card>
   );
