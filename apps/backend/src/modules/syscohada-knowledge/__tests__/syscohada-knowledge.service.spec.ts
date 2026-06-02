@@ -111,7 +111,8 @@ describe('SyscohadaKnowledgeService', () => {
     });
 
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0].tome).toBeGreaterThanOrEqual(1);
+    // Source du corpus embarqué : Acte uniforme (tome 0) ou Guide (tomes 1-3).
+    expect([0, 1, 2, 3]).toContain(results[0].tome);
     expect(results[0].excerpt.length).toBeGreaterThan(0);
   });
 
