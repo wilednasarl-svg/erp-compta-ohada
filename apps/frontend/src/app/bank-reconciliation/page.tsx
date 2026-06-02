@@ -210,7 +210,7 @@ export default function BankReconciliationPage(){
   }
 
   const activeAccount = accountsQuery.data?.find((a) => a.id === activeAccountId) ?? null;
-  const proposals = proposalsQuery.data ?? [];
+  const proposals = useMemo(() => proposalsQuery.data ?? [], [proposalsQuery.data]);
   const focusedProposal = useMemo(
     () => proposals.find((p) => p.statementLineId === focusedLineId) ?? proposals[0] ?? null,
     [proposals, focusedLineId],

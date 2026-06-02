@@ -5,19 +5,18 @@
  *
  * Vérifie :
  *   - les NoteId canoniques de la doctrine sont présents (N1, N2, N3A..F,
- *     N4..N14, N15A/B, N16A/B/Bbis/C, N17..N19, N21..N26, N27A/B,
+ *     N4..N14, N15A/B, N16A/B/Bbis/C, N17..N20, N21..N26, N27A/B,
  *     N28..N36)
  *   - chaque entrée a une métadonnée bien formée et un handler appelable
  *   - les handlers branchés retournent { rows, applicable } sans planter
  *     sur un dataset vide
- *   - la coverage doctrine ne régresse pas (≥ 45 entrées)
+ *   - la coverage doctrine ne régresse pas (≥ 46 entrées)
  */
 import { ALL_NOTE_IDS, NOTE_REGISTRY } from './note-registry';
 import type { NoteHandlerDependencies, NoteId } from './types';
 
 /**
- * Liste figée des NoteIds doctrine. NOTE : N20 est volontairement omis
- * (la grille R4 du Tome 3 ne le réserve pas).
+ * Liste figée des NoteIds doctrine, N20 incluse.
  */
 const EXPECTED_NOTE_IDS: ReadonlyArray<NoteId> = [
   'N1',
@@ -48,6 +47,7 @@ const EXPECTED_NOTE_IDS: ReadonlyArray<NoteId> = [
   'N17',
   'N18',
   'N19',
+  'N20',
   'N21',
   'N22',
   'N23',
@@ -68,8 +68,8 @@ const EXPECTED_NOTE_IDS: ReadonlyArray<NoteId> = [
 ] as ReadonlyArray<NoteId>;
 
 /**
- * W2.4.c — toutes les notes sont implémentées (N31 inclus, branché sur
- * `CashFlowService`). Plus aucun handler en stub : la liste reste
+ * W2.4.c - toutes les notes sont implementees (N31 inclus, branche sur
+ * la repartition du resultat). Plus aucun handler en stub : la liste reste
  * vide volontairement comme garde-fou anti-régression.
  */
 const STILL_STUB: ReadonlyArray<NoteId> = [] as ReadonlyArray<NoteId>;
@@ -102,7 +102,7 @@ function emptyDeps(): NoteHandlerDependencies {
 }
 
 describe('notes-annexes registry — structure', () => {
-  it('contient toutes les NoteIds doctrine SYSCOHADA Tome 3 (45 entrées, N20 omis)', () => {
+  it('contient toutes les NoteIds doctrine SYSCOHADA Tome 3 (46 entrées, N20 inclus)', () => {
     const present = new Set(ALL_NOTE_IDS);
     for (const expected of EXPECTED_NOTE_IDS) {
       expect(present.has(expected)).toBe(true);
@@ -124,13 +124,38 @@ describe('notes-annexes registry — structure', () => {
       expect(typeof entry.handler).toBe('function');
     }
   });
+
+  it('N31 is the result allocation note, not the TFT detail note', async () => {
+    const entry = NOTE_REGISTRY.get('N31');
+    if (!entry) throw new Error('missing N31');
+
+    const getCashFlow = jest.fn(async () => {
+      throw new Error('N31 must not call CashFlowService');
+    });
+
+    await expect(
+      entry.handler(
+        {
+          organizationId: '00000000-0000-4000-8000-000000000001',
+          exerciseId: 'exo-1',
+          periodStart: '2026-01-01',
+          periodEnd: '2026-12-31',
+          fiscalYear: 2026,
+        },
+        { ...emptyDeps(), cashFlow: { getCashFlow } },
+      ),
+    ).resolves.toMatchObject({ applicable: true });
+    expect(entry.metadata.section).toBe('GENERAL');
+    expect(entry.metadata.label).toContain('Repartition du resultat');
+    expect(getCashFlow).not.toHaveBeenCalled();
+  });
 });
 
 describe('notes-annexes registry — handlers implémentés', () => {
   const implementedIds = ALL_NOTE_IDS.filter((id) => !STILL_STUB.includes(id));
 
-  it('a au moins 45 entrées doctrine branchées (handler ou freeComment)', () => {
-    expect(implementedIds.length).toBeGreaterThanOrEqual(45);
+  it('a au moins 46 entrées doctrine branchées (handler ou freeComment)', () => {
+    expect(implementedIds.length).toBeGreaterThanOrEqual(46);
   });
 
   it.each(implementedIds)(

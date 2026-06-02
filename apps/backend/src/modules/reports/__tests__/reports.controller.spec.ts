@@ -183,7 +183,7 @@ describe('ReportsController.annexeNoteDetail', () => {
   it('delegates to the service with the noteCode and dates', async () => {
     const h = buildHarness();
     const fake: AnnexeNoteDetailReport = {
-      noteCode: 'Note 3A',
+      noteCode: 'N3A',
       title: 'Immobilisations',
       asAtDate: '2026-12-31',
       fiscalYearStartDate: '2026-01-01',
@@ -193,14 +193,14 @@ describe('ReportsController.annexeNoteDetail', () => {
     };
     h.reports.getAnnexeNoteDetail.mockResolvedValue(fake);
     const q = new AnnexeNoteDetailQueryDto();
-    q.noteCode = 'Note 3A';
+    q.noteCode = 'N3A';
     q.asAtDate = '2026-12-31';
     q.fiscalYearStartDate = '2026-01-01';
 
     const result = await h.controller.annexeNoteDetail(ORG_ID, q, ORG);
 
     expect(h.reports.getAnnexeNoteDetail).toHaveBeenCalledWith(ORG_ID, {
-      noteCode: 'Note 3A',
+      noteCode: 'N3A',
       asAtDate: '2026-12-31',
       fiscalYearStartDate: '2026-01-01',
     });

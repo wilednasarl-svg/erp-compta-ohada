@@ -264,7 +264,7 @@ export default function TreasuryDashboardPage() {
   });
 
   const summary = summaryQuery.data?.summary;
-  const banks = banksQuery.data?.accounts ?? [];
+  const banks = useMemo(() => banksQuery.data?.accounts ?? [], [banksQuery.data?.accounts]);
   const trend = trendQuery.data?.report;
   const projection = projectionQuery.data;
 

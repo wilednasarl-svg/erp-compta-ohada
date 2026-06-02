@@ -12,6 +12,7 @@ import {
   Layers,
   PieChart,
   Scale,
+  ShieldCheck,
   Stethoscope,
   TrendingUp,
   Upload,
@@ -38,6 +39,7 @@ import { cn } from '@/lib/utils';
  */
 
 export type ReportMode =
+  | 'compliance-cockpit'
   | 'balance-sheet'
   | 'profit-loss'
   | 'trial-balance'
@@ -106,6 +108,12 @@ const REPORT_GROUPS: ReadonlyArray<ReportGroup> = [
     title: 'États OHADA',
     subtitle: 'Livrables réglementaires SYSCOHADA-AUDCIF',
     items: [
+      {
+        mode: 'compliance-cockpit',
+        label: 'Cockpit conformité',
+        icon: ShieldCheck,
+        hint: 'Synthèse des contrôles SYSCOHADA, verdict du dossier et impacts chiffrés à traiter avant édition.',
+      },
       {
         mode: 'balance-sheet',
         label: 'Bilan',

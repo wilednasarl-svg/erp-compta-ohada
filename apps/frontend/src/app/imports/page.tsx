@@ -243,7 +243,7 @@ export default function ImportsPage() {
     },
   );
 
-  const sessions = sessionsQuery.data ?? [];
+  const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
 
   // Stats summary by status family. We collapse the technical states
   // (parsing/parsed/validated/ready_for_import) into "in progress" so

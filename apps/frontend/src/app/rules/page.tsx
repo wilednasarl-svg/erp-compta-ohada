@@ -216,7 +216,7 @@ export default function RulesPage(){
     },
   );
 
-  const rules = rulesQuery.data ?? [];
+  const rules = useMemo(() => rulesQuery.data ?? [], [rulesQuery.data]);
   const stats = useMemo(() => {
     const active = rules.filter((r) => r.isActive).length;
     return {

@@ -402,7 +402,7 @@ export class CashFlowService {
       (code) => code.startsWith('485') || code.startsWith('414'),
     );
     const fi =
-      CashFlowService.sumPeriodForPrefix(movements, '82', 'credit-debit') + deltaCreancesCession;
+      CashFlowService.sumPeriodForPrefix(movements, '82', 'credit-debit') - deltaCreancesCession;
 
     // FJ = + encaissements sur cessions d'immobilisations FINANCIÈRES
     //      (crédit 26/27)

@@ -261,21 +261,21 @@ export const REPORT_INPUT_CATALOG: readonly ReportInputSpec[] = [
     endpoint: 'GET /reports/annexe',
     requiredImports: [IMPORT_ENTRIES],
     sourceData:
-      'Squelette référentiel des 35/36 notes + balances de comptes / SIG pour les notes calculées (3A, 3B, 5, 14, 15, 20, 28…).',
+      'Référentiel canonique des notes N1..N36 + balances de comptes / SIG pour les notes calculées (N3A, N3C, N7, N16A, N17, N21, N31...).',
     formulas: [
       {
-        output: 'Note 3A — Immobilisations brutes',
-        expression: 'soldes débiteurs 21–27 (hors 28/29) ventilés par catégorie',
+        output: 'N3A — Immobilisations brutes',
+        expression: 'soldes débiteurs 20-25 (hors 28/29) ventilés par catégorie ; 26-27 relèvent de N4',
         basis: 'getAnnexeNoteDetail() — accountBalancesAsAt.',
       },
       {
-        output: 'Note 20 — Ventilation du chiffre d’affaires',
-        expression: 'TA(701) + TB(702) + TC(704–706) + TD(707) sur [fyStart, asAtDate]',
+        output: "N21 — Chiffre d'affaires et autres produits",
+        expression: 'TA(701) + TB(702-704) + TC(705-706) + TD(707) sur [fyStart, asAtDate]',
         basis: 'getAnnexeNoteDetail().',
       },
       {
-        output: 'Note 28 — Impôt sur le résultat',
-        expression: 'poste RS (89) avec cascade XG → XI',
+        output: 'N31 — Répartition du résultat et autres éléments caractéristiques',
+        expression: 'XG, RQ, RS (89) et XI avec cascade XG -> XI',
         basis: 'getAnnexeNoteDetail() via getSig.',
       },
     ],

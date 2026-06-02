@@ -17,6 +17,7 @@
 
 import { BILAN_POSTES, type BilanPosteRef } from './bilan-postes';
 import { PL_POSTES, type PlPosteRef } from './pl-postes';
+import { matchPoste } from '../syscohada-postes';
 
 const SIG_SECTION_LABEL = 'Soldes intermédiaires' as const;
 
@@ -80,15 +81,21 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
       expect(byCode.get('BI')).toBe('7');
       expect(byCode.get('BJ')).toBe('8');
       // Trésorerie + écarts
+      expect(byCode.get('BQ')).toBe('9');
+      expect(byCode.get('BR')).toBe('10');
       expect(byCode.get('BS')).toBe('11');
       expect(byCode.get('BU')).toBe('12');
       expect(byCode.get('DV')).toBe('12');
       // Capitaux propres + dettes
       expect(byCode.get('CA')).toBe('13');
       expect(byCode.get('CB')).toBe('13');
+      expect(byCode.get('CL')).toBe('15A');
+      expect(byCode.get('CM')).toBe('15A');
       expect(byCode.get('DA')).toBe('16');
       expect(byCode.get('DJ')).toBe('17');
       expect(byCode.get('DK')).toBe('18');
+      expect(byCode.get('DQ')).toBe('20');
+      expect(byCode.get('DR')).toBe('20');
     });
   });
 
@@ -153,6 +160,23 @@ describe('Référentiel des postes SYSCOHADA — intégrité structurelle', () =
       }).map((p) => `${p.code} (kind=${p.kind}, sign=${p.sign})`);
 
       expect(wrongSign).toEqual([]);
+    });
+
+    it('route chaque prefixe CR vers le meme poste doctrinal que PL_POSTES', () => {
+      const offenders: string[] = [];
+
+      for (const poste of PL_POSTES) {
+        if (poste.kind === 'SIG') continue;
+
+        for (const prefix of poste.sourceAccountPrefixes) {
+          const matched = matchPoste(`${prefix}000`);
+          if (matched?.code !== poste.code) {
+            offenders.push(`${prefix} -> ${matched?.code ?? 'null'} (expected ${poste.code})`);
+          }
+        }
+      }
+
+      expect(offenders).toEqual([]);
     });
   });
 

@@ -436,7 +436,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'BQ',
     label: 'Titres de placement',
-    note: '10',
+    note: '9',
     side: 'ACTIF',
     section: 'Trésorerie-Actif',
     sourceAccountPrefixes: ['50'],
@@ -444,12 +444,12 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     sign: 1,
     parentGroup: 'BT',
     doctrinePage: 32,
-    notes: 'Note 10. Doctrine implicite Tome 3 §1.2.b — non explicité dans modèle exemple.',
+    notes: 'Note 9. Doctrine implicite Tome 3 §1.2.b — non explicité dans modèle exemple.',
   },
   {
     code: 'BR',
     label: 'Valeurs à encaisser',
-    note: '9',
+    note: '10',
     side: 'ACTIF',
     section: 'Trésorerie-Actif',
     sourceAccountPrefixes: ['51'],
@@ -457,7 +457,7 @@ const ACTIF_POSTES: readonly BilanPosteRef[] = [
     sign: 1,
     parentGroup: 'BT',
     doctrinePage: 32,
-    notes: "Note 9. Comptes 514 valeurs à l'encaissement.",
+    notes: "Note 10. Comptes 514 valeurs à l'encaissement.",
   },
   {
     code: 'BS',
@@ -623,7 +623,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CL',
     label: "Subventions d'investissement",
-    note: '15',
+    note: '15A',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['141', '142', '148'],
@@ -636,7 +636,7 @@ const PASSIF_POSTES: readonly BilanPosteRef[] = [
   {
     code: 'CM',
     label: 'Provisions réglementées',
-    note: '15',
+    note: '15A',
     side: 'PASSIF',
     section: 'Capitaux propres',
     sourceAccountPrefixes: ['151', '152', '153', '154', '155'],

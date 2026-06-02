@@ -635,6 +635,41 @@ export interface ProfitLossReport {
   readonly previous?: ProfitLossPreviousSummary;
 }
 
+// --- SYSCOHADA Compliance Cockpit -----------------------------------------
+
+export type ComplianceStatus = 'pass' | 'fail' | 'not_evaluable';
+export type ComplianceVerdict = 'compliant' | 'non_compliant' | 'partial';
+
+export interface SyscohadaComplianceControlEvidence {
+  readonly id: string;
+  readonly title?: string;
+  readonly description?: string;
+  readonly rationale?: string;
+}
+
+export interface SyscohadaComplianceResult {
+  readonly controlId: string;
+  readonly domain: string;
+  readonly status: ComplianceStatus;
+  readonly detail: string;
+  readonly data?: Readonly<Record<string, unknown>>;
+  readonly control: SyscohadaComplianceControlEvidence | null;
+}
+
+export interface SyscohadaComplianceReport {
+  readonly organizationId: string;
+  readonly fiscalYearStartDate: string;
+  readonly asAtDate: string;
+  readonly evaluatedAt: string;
+  readonly verdict: ComplianceVerdict;
+  readonly counts: {
+    readonly pass: number;
+    readonly fail: number;
+    readonly notEvaluable: number;
+  };
+  readonly results: ReadonlyArray<SyscohadaComplianceResult>;
+}
+
 // ─── Bilan Diagnostic ────────────────────────────────────────────────────────
 
 export type BilanDiagnosticClassRole =

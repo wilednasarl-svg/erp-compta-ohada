@@ -1,11 +1,11 @@
 /**
  * Smoke tests pour les handlers ajoutés en C3 — N3E, N3F, N15B, N16B,
- * N16Bbis, N27B, N34. Vérifie le shape de retour avec datasets minimaux
+ * N16C, N27B, N34. Vérifie le shape de retour avec datasets minimaux
  * réalistes (au-delà du test générique « dataset vide » du registry spec).
  */
 import { handleN15bAutresFondsPropres } from './note-15b-autres-fonds-propres';
 import { handleN16bEngagementsRetraite } from './note-16b-engagements-retraite';
-import { handleN16bbisSuretesDonnees } from './note-16bbis-suretes-donnees';
+import { handleN16cActifsPassifsEventuels } from './note-16c-actifs-passifs-eventuels';
 import { handleN27bEffectifs } from './note-27b-effectifs';
 import { handleN34FicheSynthese } from './note-34-fiche-synthese';
 import { handleN3eReevaluations } from './note-3e-reevaluations';
@@ -182,9 +182,9 @@ describe('Note 16B — Engagements retraite', () => {
   });
 });
 
-describe('Note 16B bis — Sûretés données', () => {
+describe('Note 16C — Actifs et passifs éventuels', () => {
   it('rend une note applicable vide (commentaire libre)', async () => {
-    const r = await handleN16bbisSuretesDonnees(CTX, depsWithBalances([]));
+    const r = await handleN16cActifsPassifsEventuels(CTX, depsWithBalances([]));
     expect(r.applicable).toBe(true);
     expect(r.rows.length).toBe(0);
   });

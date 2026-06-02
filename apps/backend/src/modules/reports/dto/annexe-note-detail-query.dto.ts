@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class AnnexeNoteDetailQueryDto {
-  @ApiProperty({ example: 'Note 3A', description: 'Code de la note (avec espace)' })
+  @ApiProperty({ example: 'N3A', description: 'Code canonique de la note (ex: N3A, N7, N16A, N20)' })
   @IsString()
   @MinLength(1)
   @MaxLength(20)

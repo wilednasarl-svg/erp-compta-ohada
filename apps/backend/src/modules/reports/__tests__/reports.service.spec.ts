@@ -1396,8 +1396,8 @@ describe('ReportsService.getSig (Soldes Intermédiaires de Gestion)', () => {
       fromDate: '2026-01-01',
       toDate: '2026-12-31',
     });
-    // 17 postes de charges + 15 postes de produits + 9 soldes
-    expect(report.charges).toHaveLength(17);
+    // 18 postes de charges + 15 postes de produits + 9 soldes
+    expect(report.charges).toHaveLength(18);
     expect(report.produits).toHaveLength(15);
     expect(report.soldes).toHaveLength(9);
     expect(report.soldes.every((s) => s.amount === '0.00')).toBe(true);
@@ -1534,9 +1534,9 @@ describe('ReportsService.getFinancialRatios', () => {
     expect(byCode('RE')?.value).toBe('10.00'); // 80 / 800
     expect(byCode('RC')?.value).toBe('10.00');
     // Rentabilité de l'actif (ROA, ex « rentabilité économique de l'actif »)
-    //   = EBE / Total actif = 100 / 1080 ≈ 9.26 %.
+    //   = EBE / Total actif = 100 / 1000 = 10 %.
     expect(byCode('RA')?.label).toContain('ROA');
-    expect(byCode('RA')?.value).toBe('9.26');
+    expect(byCode('RA')?.value).toBe('10.00');
     // Rentabilité économique conforme Note 34 = RAO × (1 − 0.35) / (CP + DF)
     //   = 80 × 0.65 / (480 + 200) = 52 / 680 ≈ 7.65 %.
     expect(byCode('REC')?.value).toBe('7.65');
@@ -2536,7 +2536,7 @@ describe('getReportsFromBalance — invariant d’équilibre (Actif = Passif)', 
     expect(Math.abs(Number(bilan.totals.difference))).toBeLessThan(1);
     expect(Number(bilan.totals.actif)).toBeCloseTo(1000, 2);
     expect(Number(bilan.totals.passif)).toBeCloseTo(1000, 2);
-    expect(bilan.unclassified.map((u) => u.code)).toContain('46610000');
+    expect(bilan.unclassified.map((u) => u.code)).not.toContain('46610000');
   });
 });
 
@@ -2812,4 +2812,3 @@ describe('getReportsFromBalance — multi-période (comparative, TFT, pluriannue
     expect(res.multiYear).toBeNull();
   });
 });
-

@@ -175,7 +175,7 @@ export default function EntryWorkflowPage() {
     enabled: orgId !== '',
   });
 
-  const entries = entriesQuery.data ?? [];
+  const entries = useMemo(() => entriesQuery.data ?? [], [entriesQuery.data]);
 
   // Stats summary derived from current draft entries. Workflow data lives
   // per-entry in the detail panel; here we surface raw counts the user

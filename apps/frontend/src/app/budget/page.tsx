@@ -161,7 +161,7 @@ export default function BudgetVsRealisePage() {
   });
 
   const report = reportQuery.data;
-  const rows = report?.rows ?? [];
+  const rows = useMemo(() => report?.rows ?? [], [report?.rows]);
 
   const totalBudget = Number(report?.totalBudget ?? '0');
   const totalActual = Number(report?.totalActual ?? '0');

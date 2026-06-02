@@ -22,6 +22,7 @@ import {
   PieChart,
   Printer,
   Scale,
+  ShieldCheck,
   Stethoscope,
   TrendingUp,
   Upload,
@@ -80,6 +81,8 @@ import type {
   ProfitLossDoctrinalLine,
   ProfitLossReport,
   SigReport,
+  SyscohadaComplianceReport,
+  SyscohadaComplianceResult,
   TrialBalanceReport,
 } from '@/types/reports';
 
@@ -136,6 +139,9 @@ interface ProfitLossEnvelope {
 }
 interface BilanDiagnosticEnvelope {
   readonly report: BilanDiagnosticReport;
+}
+interface SyscohadaComplianceEnvelope {
+  readonly report: SyscohadaComplianceReport;
 }
 
 const previousYearStartIso = (): string => `${new Date().getFullYear() - 1}-01-01`;
@@ -207,7 +213,9 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {mode === 'balance-sheet' ? (
+        {mode === 'compliance-cockpit' ? (
+          <ComplianceCockpitPanel orgId={orgId} />
+        ) : mode === 'balance-sheet' ? (
           <BalanceSheetPanel orgId={orgId} />
         ) : mode === 'profit-loss' ? (
           <ProfitLossPanel orgId={orgId} />
@@ -4858,13 +4866,14 @@ function AnnexeTable({
     {} as Record<string, number>,
   );
   const supportedNotes = new Set([
-    'Note 3A',
-    'Note 3B',
-    'Note 5',
-    'Note 14',
-    'Note 15',
-    'Note 20',
-    'Note 28',
+    'N3A',
+    'N3C',
+    'N7',
+    'N16A',
+    'N17',
+    'N20',
+    'N21',
+    'N31',
   ]);
   return (
     <div className="space-y-4">
@@ -6147,6 +6156,340 @@ function BalanceUploadPanel({ orgId }: { readonly orgId: string }) {
 }
 
 // ─── Bilan Diagnostic Panel ──────────────────────────────────────────────────
+
+// --- SYSCOHADA Compliance Cockpit -----------------------------------------
+
+function ComplianceCockpitPanel({ orgId }: { readonly orgId: string }) {
+  const [asAt, setAsAt] = usePersistedAsAt();
+  const { asAtDate, fiscalYearStartDate } = asAt;
+  const [submitted, setSubmitted] = useState<{
+    readonly asAtDate: string;
+    readonly fiscalYearStartDate: string;
+  } | null>(null);
+
+  const query = useQuery<SyscohadaComplianceReport, ApiError>({
+    queryKey: ['syscohada-compliance', orgId, submitted],
+    queryFn: async () => {
+      if (submitted === null) throw new Error('not submitted');
+      const params = new URLSearchParams({
+        asAtDate: submitted.asAtDate,
+        fiscalYearStartDate: submitted.fiscalYearStartDate,
+      });
+      const data = await api.get<SyscohadaComplianceEnvelope>(
+        `/organizations/${orgId}/syscohada-compliance?${params.toString()}`,
+      );
+      return data.report;
+    },
+    enabled: orgId !== '' && submitted !== null,
+  });
+
+  const report = query.data;
+  const impactRows = report ? buildComplianceImpactRows(report.results) : [];
+
+  return (
+    <Card className="border-line bg-paper shadow-none">
+      <CardHeader className="border-b border-line">
+        <CardTitle className="flex items-center gap-2 font-display text-2xl font-medium tracking-tight">
+          <ShieldCheck className="h-5 w-5 text-accent" strokeWidth={1.5} />
+          Cockpit conformité SYSCOHADA
+        </CardTitle>
+        <CardDescription className="text-ink-soft">
+          Synthèse des contrôles bloquants avant édition des états : équilibre bilan, partie
+          double et cohérence du tableau des flux de trésorerie.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6 pt-6">
+        <form
+          className="no-print grid gap-5 lg:grid-cols-[1fr_auto]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSubmitted({ asAtDate, fiscalYearStartDate });
+          }}
+        >
+          <FilterGroup title="Période contrôlée" subtitle="Exercice et date d'arrêté">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="compliance-fy" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Début exercice
+                </Label>
+                <Input
+                  id="compliance-fy"
+                  type="date"
+                  value={fiscalYearStartDate}
+                  onChange={(e) => setAsAt({ asAtDate, fiscalYearStartDate: e.target.value })}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="compliance-at" className="text-2xs uppercase tracking-wider text-ink-soft">
+                  Arrêté au
+                </Label>
+                <Input
+                  id="compliance-at"
+                  type="date"
+                  value={asAtDate}
+                  onChange={(e) => setAsAt({ asAtDate: e.target.value, fiscalYearStartDate })}
+                  required
+                  className="h-9 w-40 font-mono tabular-nums"
+                />
+              </div>
+            </div>
+          </FilterGroup>
+
+          <div className="flex items-end">
+            <Button type="submit" disabled={query.isFetching || orgId === ''} className="h-9">
+              {query.isFetching ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="mr-2 h-4 w-4" strokeWidth={1.5} />
+              )}
+              Évaluer
+            </Button>
+          </div>
+        </form>
+
+        {query.isError ? <FormError error={query.error} /> : null}
+
+        {report ? (
+          <div className="space-y-6">
+            <div className="grid gap-px overflow-hidden rounded-md border border-line bg-line md:grid-cols-4">
+              <ComplianceMetric
+                label="Verdict dossier"
+                value={complianceVerdictLabel(report.verdict)}
+                tone={report.verdict === 'compliant' ? 'ok' : report.verdict === 'partial' ? 'warn' : 'critical'}
+              />
+              <ComplianceMetric label="Contrôles OK" value={String(report.counts.pass)} tone="ok" />
+              <ComplianceMetric label="Bloquants" value={String(report.counts.fail)} tone={report.counts.fail > 0 ? 'critical' : 'ok'} />
+              <ComplianceMetric label="Non évaluables" value={String(report.counts.notEvaluable)} tone={report.counts.notEvaluable > 0 ? 'warn' : 'ok'} />
+            </div>
+
+            <div className="rounded-md border border-line bg-paper">
+              <div className="flex flex-col gap-1 border-b border-line px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="font-display text-sm font-medium tracking-tight text-ink">
+                    Impact chiffré à traiter
+                  </p>
+                  <p className="text-xs text-ink-soft">
+                    Montants ou volumes issus des contrôles, à régulariser avant production finale.
+                  </p>
+                </div>
+                <p className="font-mono text-2xs uppercase tracking-wider text-ink-mute">
+                  {formatShortDate(report.fiscalYearStartDate)} - {formatShortDate(report.asAtDate)}
+                </p>
+              </div>
+              {impactRows.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-line text-2xs uppercase tracking-wider text-ink-mute">
+                        <th className="py-2 pl-4 text-left font-medium">Contrôle</th>
+                        <th className="py-2 text-left font-medium">Constat</th>
+                        <th className="py-2 text-right font-medium">Impact</th>
+                        <th className="py-2 pr-4 text-left font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {impactRows.map((row) => (
+                        <tr key={row.key} className="hover:bg-sunk">
+                          <td className="py-2 pl-4">
+                            <p className="font-medium text-ink">{row.label}</p>
+                            <p className="text-2xs uppercase tracking-wider text-ink-mute">{row.domain}</p>
+                          </td>
+                          <td className="max-w-[36rem] py-2 text-xs leading-relaxed text-ink-soft">
+                            {row.detail}
+                          </td>
+                          <td className={cn('py-2 text-right font-mono text-sm tabular-nums', row.tone === 'critical' ? 'font-semibold text-critical-ink' : 'text-ink')}>
+                            {row.impact}
+                          </td>
+                          <td className="py-2 pr-4 text-xs text-ink-soft">{row.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="px-4 py-6 text-sm text-ink-soft">
+                  Aucun impact chiffré bloquant détecté sur les contrôles exécutés.
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-md border border-line bg-paper">
+              <div className="border-b border-line px-4 py-3">
+                <p className="font-display text-sm font-medium tracking-tight text-ink">
+                  Détail des contrôles
+                </p>
+                <p className="text-xs text-ink-soft">
+                  Chaque ligne rattache un verdict opérationnel à un contrôle SYSCOHADA.
+                </p>
+              </div>
+              <ul className="divide-y divide-line">
+                {report.results.map((result) => (
+                  <li key={result.controlId} className="grid gap-3 px-4 py-3 md:grid-cols-[180px_1fr]">
+                    <div className="flex items-start gap-2">
+                      {result.status === 'pass' ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-accent" strokeWidth={2} />
+                      ) : result.status === 'fail' ? (
+                        <XCircle className="mt-0.5 h-4 w-4 text-critical-ink" strokeWidth={2} />
+                      ) : (
+                        <AlertTriangle className="mt-0.5 h-4 w-4 text-[oklch(0.42_0.14_55)]" strokeWidth={2} />
+                      )}
+                      <div>
+                        <p className="text-xs font-medium text-ink">{complianceStatusLabel(result.status)}</p>
+                        <p className="text-2xs uppercase tracking-wider text-ink-mute">{result.domain}</p>
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink">
+                        {result.control?.title ?? result.controlId}
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-ink-soft">{result.detail}</p>
+                      {result.control?.description && (
+                        <p className="mt-1 text-xs leading-relaxed text-ink-mute">
+                          {result.control.description}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : submitted === null ? (
+          <div className="rounded-md border border-line bg-sunk/40 px-4 py-6 text-center">
+            <p className="text-sm text-ink-soft">
+              Choisir la période puis cliquer sur <span className="font-medium text-ink">Évaluer</span>.
+            </p>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ComplianceMetric({
+  label,
+  value,
+  tone,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly tone: 'ok' | 'warn' | 'critical';
+}) {
+  return (
+    <div
+      className={cn(
+        'bg-paper px-4 py-3',
+        tone === 'ok' && 'text-accent-ink',
+        tone === 'warn' && 'text-[oklch(0.42_0.14_55)]',
+        tone === 'critical' && 'text-critical-ink',
+      )}
+    >
+      <p className="text-2xs uppercase tracking-wider opacity-80">{label}</p>
+      <p className="mt-0.5 font-display text-2xl font-medium tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+interface ComplianceImpactRow {
+  readonly key: string;
+  readonly label: string;
+  readonly domain: string;
+  readonly detail: string;
+  readonly impact: string;
+  readonly action: string;
+  readonly tone: 'normal' | 'critical';
+}
+
+function buildComplianceImpactRows(
+  results: ReadonlyArray<SyscohadaComplianceResult>,
+): ReadonlyArray<ComplianceImpactRow> {
+  return results
+    .map((result): ComplianceImpactRow | null => {
+      const data = result.data ?? {};
+      if (result.controlId === 'bilan-actif-egal-passif') {
+        const difference = numberFromRecord(data, 'difference');
+        return {
+          key: result.controlId,
+          label: 'Équilibre bilan',
+          domain: result.domain,
+          detail: result.detail,
+          impact: fmt(difference.toFixed(2)),
+          action:
+            Math.abs(difference) > 0.01
+              ? 'Réviser les comptes non classés, le résultat incorporé et les soldes actif/passif.'
+              : 'Aucune action chiffrée bloquante.',
+          tone: Math.abs(difference) > 0.01 ? 'critical' : 'normal',
+        };
+      }
+      if (result.controlId === 'cashflow-variation-coherente') {
+        const coherenceCheck = numberFromRecord(data, 'coherenceCheck');
+        return {
+          key: result.controlId,
+          label: 'Réconciliation TFT',
+          domain: result.domain,
+          detail: result.detail,
+          impact: fmt(coherenceCheck.toFixed(2)),
+          action:
+            Math.abs(coherenceCheck) > 1
+              ? 'Contrôler les comptes de trésorerie classe 5 et les variations TFT.'
+              : 'Aucune correction de trésorerie détectée.',
+          tone: Math.abs(coherenceCheck) > 1 ? 'critical' : 'normal',
+        };
+      }
+      if (result.controlId === 'journal-equilibre-partie-double') {
+        const unbalancedCount = numberFromRecord(data, 'unbalancedCount');
+        return {
+          key: result.controlId,
+          label: 'Écritures déséquilibrées',
+          domain: result.domain,
+          detail: result.detail,
+          impact: `${unbalancedCount.toFixed(0)} écriture(s)`,
+          action:
+            unbalancedCount > 0
+              ? 'Corriger les pièces dont débit et crédit ne se compensent pas.'
+              : 'Aucune écriture déséquilibrée détectée.',
+          tone: unbalancedCount > 0 ? 'critical' : 'normal',
+        };
+      }
+      if (result.status !== 'pass') {
+        return {
+          key: result.controlId,
+          label: result.control?.title ?? result.controlId,
+          domain: result.domain,
+          detail: result.detail,
+          impact: result.status === 'not_evaluable' ? 'Non évaluable' : 'À vérifier',
+          action: 'Analyser le contrôle et compléter les données manquantes.',
+          tone: result.status === 'fail' ? 'critical' : 'normal',
+        };
+      }
+      return null;
+    })
+    .filter((row): row is ComplianceImpactRow => row !== null);
+}
+
+function numberFromRecord(data: Readonly<Record<string, unknown>>, key: string): number {
+  const value = data[key];
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function complianceVerdictLabel(verdict: SyscohadaComplianceReport['verdict']): string {
+  if (verdict === 'compliant') return 'Conforme';
+  if (verdict === 'partial') return 'Partiel';
+  return 'Non conforme';
+}
+
+function complianceStatusLabel(status: SyscohadaComplianceResult['status']): string {
+  if (status === 'pass') return 'Contrôle OK';
+  if (status === 'fail') return 'Bloquant';
+  return 'Non évaluable';
+}
 
 function BilanDiagnosticPanel({ orgId }: { readonly orgId: string }) {
   const [asAt, setAsAt] = usePersistedAsAt();

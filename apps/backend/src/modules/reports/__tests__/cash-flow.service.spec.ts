@@ -195,9 +195,9 @@ describe('CashFlowService — exclusions BFR', () => {
     // poste BA) augmente de 600 → 1000 (Δ +400). FB = -Δ = -400.
     // Le compte 485 augmente aussi (Δ +200) mais est EXCLU du BFR
     // (créances sur cessions d'immo, capturé en FI) → ne contribue PAS à FB.
-    // Trésorerie : pour préserver la cohérence ZH, la sortie de cash de 400
-    // (acquisition de l'actif HAO 488) et l'encaissement de 200 (Δ485, FI)
-    // se reflètent dans la trésorerie réelle.
+    // La créance 485 est liée à une cession comptabilisée en 82 mais non
+    // encaissée : FI = produit 82 - Δ485 = 0. La trésorerie réelle baisse
+    // donc seulement de 400.
     const h = buildHarness({
       sig: buildSig({}),
       balancesAtN1: [
@@ -206,11 +206,12 @@ describe('CashFlowService — exclusions BFR', () => {
         row({ accountCode: '485000', totalDebit: '0.00', totalCredit: '0.00' }),
       ],
       balancesAtToDate: [
-        // Trésorerie clôture = 5000 - 400 (acquisition 488) + 200 (encaiss. cession 485) = 4800
-        row({ accountCode: '521000', totalDebit: '4800.00', totalCredit: '0.00' }),
+        // Trésorerie clôture = 5000 - 400 (acquisition 488) = 4600
+        row({ accountCode: '521000', totalDebit: '4600.00', totalCredit: '0.00' }),
         row({ accountCode: '488000', totalDebit: '1000.00', totalCredit: '0.00' }),
         row({ accountCode: '485000', totalDebit: '200.00', totalCredit: '0.00' }),
       ],
+      movements: [trialRow({ accountCode: '820000', periodCredit: '200.00' })],
     });
 
     const result = await h.service.getCashFlow(ORG_ID, {

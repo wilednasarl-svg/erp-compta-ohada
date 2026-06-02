@@ -10,7 +10,7 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { FormError } from '@/components/ui/form-error';
@@ -21,7 +21,8 @@ import type { DashboardConsolidatedSummary } from '@/types/dashboards';
 export default function ConsolidatedDashboardPage() {
   const currentOrg = useCurrentOrg();
   const orgId = currentOrg?.id ?? '';
-  const organizations = useOrganizations() ?? [];
+  const rawOrganizations = useOrganizations();
+  const organizations = useMemo(() => rawOrganizations ?? [], [rawOrganizations]);
 
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);

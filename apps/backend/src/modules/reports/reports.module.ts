@@ -114,7 +114,7 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
     // Le service consomme 5 sous-dépendances (reports/assets/inventory/
     // accounts/cashFlow). Chacune mappe sur un repository réel exposé
     // par son module métier (AssetsModule, InventoryModule,
-    // AccountingPlanModule) ou sur `CashFlowService` (TFT ventilé N31).
+    // AccountingPlanModule) ou sur `CashFlowService` (TFT et indicateurs).
     //
     // Pas de cycle DI : aucun de ces modules n'importe `ReportsModule`
     // (vérifié W2.4.c) — on consomme leurs repositories directement.
@@ -419,6 +419,7 @@ import { SubsequentEventsService } from './services/subsequent-events.service';
   ],
   exports: [
     ReportsService,
+    CashFlowService,
     DsfValidatorService,
     DsfIdentificationService,
     FiscalYearSnapshotsService,

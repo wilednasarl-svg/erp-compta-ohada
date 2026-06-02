@@ -32,12 +32,12 @@
  *   N15B Autres fonds propres
  *   N16A Dettes financières et ressources assimilées
  *   N16B Engagements de retraite et avantages assimilés (méthode actuarielle)
- *   N16Bbis Actifs et passifs éventuels
- *   N16C Banques, crédit d'escompte et de trésorerie
+ *   N16Bbis Engagements de retraite et avantages assimilés (méthode simplifiée)
+ *   N16C Actifs et passifs éventuels
  *   N17  Fournisseurs d'exploitation
  *   N18  Dettes fiscales et sociales
  *   N19  Autres dettes et provisions pour risques à court terme
- *   N20  (note réservée — non utilisée dans la grille R4 de référence)
+ *   N20  Banques, crédit d'escompte et de trésorerie
  *   N21  Chiffre d'affaires et autres produits
  *   N22  Achats
  *   N23  Transports
@@ -75,7 +75,7 @@
  *   N16 (Emprunts et dettes financières)      → N16A (dettes financières)
  *   N17, N18                                  → inchangé
  *   N19 (Autres dettes d'exploitation)        → N19  (autres dettes + provisions CT)
- *   N20 (Concours bancaires courants)         → N16C (banques crédit d'escompte trés.)
+ *   N20 (Concours bancaires courants)         → N20  (banques crédit d'escompte trés.)
  *   N21 (Écarts conversion-passif)            → _legacy (couvert par N12 doctrine)
  *   N22 (Chiffre d'affaires)                  → N21  (CA et autres produits)
  *   N23 (Achats)                              → N22  (achats)
@@ -86,11 +86,10 @@
  *   N28 (Provisions risques et charges)       → N28  (provisions et dépréciations)
  *   N29 (Charges et produits HAO)             → N30  (autres charges et produits HAO)
  *   N30 (Impôt sur le résultat)               → N31  (répartition du résultat — inclut impôt)
- *   N31 (TFT détail)                          → N31  (TODO A2 : remplacer par doctrine
- *                                                   « répartition du résultat » ;
- *                                                   le handler TFT reste branché temporairement)
+ *   N31 (TFT détail)                          → _legacy (remplacé par la doctrine
+ *                                                   « répartition du résultat »)
  *   N32 (Effectif et dirigeants)              → N27B (effectifs et masse salariale)
- *   N33 (Engagements hors bilan)              → N16Bbis (actifs et passifs éventuels)
+ *   N33 (Engagements hors bilan)              → N16C (actifs et passifs éventuels)
  *   N34 (Parties liées)                       → _legacy (à créer en suivi)
  *   N35 (Événements postérieurs à la clôture) → _legacy (à créer en suivi)
  *   N36 (Informations sectorielles)           → _legacy (à créer en suivi)
@@ -107,10 +106,8 @@
  *
  * ─────────────────────────────────────────────────────────────────────
  * Wiring service / dépendances :
- *   Le handler N31 (TFT) consomme la dépendance `cashFlow`. Tant que
- *   A2 n'a pas livré la refonte « répartition du résultat », le label
- *   doctrine est appliqué mais le calcul reste celui du TFT ventilé.
- *   À traiter en follow-up (cf. TODO N31 ci-dessus).
+ *   N31 est branchée sur la répartition du résultat. Le détail TFT reste
+ *   disponible côté handler legacy mais n'est plus exposé sous l'id N31.
  */
 
 import { freeCommentNote } from './handlers/_free-comment-note';
@@ -133,11 +130,9 @@ import { handleN25ChargesPersonnel } from './handlers/note-25-charges-personnel'
 import { handleN27Financiers } from './handlers/note-27-financiers';
 import { handleN28Provisions } from './handlers/note-28-provisions';
 import { handleN29Hao } from './handlers/note-29-hao';
-// Note: handleN30Impot reste disponible côté handlers/ pour le follow-up
-// A2 (refonte N31 « répartition du résultat ») mais n'est pas branché
-// dans ce registry — l'impôt est aujourd'hui couvert via le freeComment
-// de N31 et restera ainsi jusqu'à la refonte du handler.
-import { handleN31FluxTresorerie } from './handlers/note-31-flux-tresorerie';
+// Note: handleN30Impot reste disponible cote handlers/ si une note fiscale
+// detaillee doit etre exposee separement de la repartition du resultat N31.
+import { handleN31RepartitionResultat } from './handlers/note-31-repartition-resultat';
 import { handleN34FicheSynthese } from './handlers/note-34-fiche-synthese';
 import { handleN3aImmoCorp } from './handlers/note-3a-immo-corp';
 import { handleN3cCessions } from './handlers/note-3c-cessions';
@@ -146,7 +141,7 @@ import { handleN3eReevaluations } from './handlers/note-3e-reevaluations';
 import { handleN3fChargesImmobilisees } from './handlers/note-3f-charges-immobilisees';
 import { handleN15bAutresFondsPropres } from './handlers/note-15b-autres-fonds-propres';
 import { handleN16bEngagementsRetraite } from './handlers/note-16b-engagements-retraite';
-import { handleN16bbisSuretesDonnees } from './handlers/note-16bbis-suretes-donnees';
+import { handleN16cActifsPassifsEventuels } from './handlers/note-16c-actifs-passifs-eventuels';
 import { handleN27bEffectifs } from './handlers/note-27b-effectifs';
 import { handleN4ImmoFinancieres } from './handlers/note-4-immo-financieres';
 import { handleN5ActifHao } from './handlers/note-5-actif-hao';
@@ -165,11 +160,10 @@ interface NoteRegistryEntry {
  * Mapping ordonné NoteId → { metadata, handler }. L'ordre d'itération
  * suit la numérotation de la liasse SYSCOHADA Tome 3 :
  *   N1, N2, N3A, N3B, N3C, N3D, N3E, N3F, N4..N14, N15A, N15B,
- *   N16A, N16B, N16Bbis, N16C, N17..N19, N21..N26, N27A, N27B,
+ *   N16A, N16B, N16Bbis, N16C, N17..N20, N21..N26, N27A, N27B,
  *   N28..N36.
  *
- * NOTE : N20 n'est pas réservé dans la grille R4 du Tome 3 ; on l'omet
- * volontairement pour respecter l'ordonnancement officiel.
+ * NOTE : N20 est bien présent dans la grille R4 officielle du Tome 3.
  */
 export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
   NoteId,
@@ -387,20 +381,20 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
   [
     'N16Bbis' as NoteId,
     {
-      metadata: meta('N16Bbis', 'Note 16B bis — Actifs et passifs éventuels', 'BILAN', false),
-      handler: handleN16bbisSuretesDonnees,
+      metadata: meta(
+        'N16Bbis',
+        'Note 16B bis — Engagements de retraite et avantages assimilés (méthode simplifiée)',
+        'BILAN',
+        false,
+      ),
+      handler: freeCommentNote,
     },
   ],
   [
     'N16C' as NoteId,
     {
-      metadata: meta(
-        'N16C',
-        "Note 16C — Banques, crédit d'escompte et de trésorerie",
-        'BILAN',
-        false,
-      ),
-      handler: handleN20ConcoursBancaires,
+      metadata: meta('N16C', 'Note 16C — Actifs et passifs éventuels', 'BILAN', false),
+      handler: handleN16cActifsPassifsEventuels,
     },
   ],
   [
@@ -427,6 +421,18 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
         true,
       ),
       handler: handleN19AutresDettes,
+    },
+  ],
+  [
+    'N20' as NoteId,
+    {
+      metadata: meta(
+        'N20',
+        "Note 20 — Banques, crédit d'escompte et de trésorerie",
+        'BILAN',
+        true,
+      ),
+      handler: handleN20ConcoursBancaires,
     },
   ],
 
@@ -521,26 +527,20 @@ export const NOTE_REGISTRY: ReadonlyMap<NoteId, NoteRegistryEntry> = new Map<
 
   // ───────────────────────────── Section GÉNÉRAL / TFT ────────────────────────
   /**
-   * N31 — Doctrine : « Répartition du résultat et autres éléments
-   * caractéristiques ». Le handler actuel calcule le détail du TFT
-   * (legacy W2.4.c, branché sur `CashFlowService`).
-   *
-   * TODO (A2) : refondre `handleN31FluxTresorerie` pour produire la
-   * ventilation doctrine — ou bien créer une note hors-grille pour le
-   * TFT détaillé et brancher `handleN30Impot` (legacy N30 = impôt) sur
-   * N31. Pour l'instant on garde le handler TFT pour ne pas bloquer
-   * `CashFlowService` ; l'incohérence est documentée dans le mapping.
+   * N31 - Doctrine : repartition du resultat et autres elements
+   * caracteristiques. Le detail TFT reste porte par CashFlowService,
+   * mais il ne doit pas etre branche sous l'id doctrinal N31.
    */
   [
     'N31' as NoteId,
     {
       metadata: meta(
         'N31',
-        'Note 31 — Répartition du résultat et autres éléments caractéristiques',
-        'TFT',
+        'Note 31 - Repartition du resultat et autres elements caracteristiques',
+        'GENERAL',
         true,
       ),
-      handler: handleN31FluxTresorerie,
+      handler: handleN31RepartitionResultat,
     },
   ],
   [

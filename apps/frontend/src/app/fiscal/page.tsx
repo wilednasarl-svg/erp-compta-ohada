@@ -190,8 +190,14 @@ export default function FiscalPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const declarations = declarationsQuery.data?.declarations ?? [];
-  const parameters = parametersQuery.data?.parameters ?? [];
+  const declarations = useMemo(
+    () => declarationsQuery.data?.declarations ?? [],
+    [declarationsQuery.data?.declarations],
+  );
+  const parameters = useMemo(
+    () => parametersQuery.data?.parameters ?? [],
+    [parametersQuery.data?.parameters],
+  );
 
   // Codes d'impôt disponibles pour le filtre : union des paramètres actifs et
   // des codes déjà présents dans les déclarations chargées.

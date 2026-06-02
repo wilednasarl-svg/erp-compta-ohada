@@ -3,16 +3,16 @@ import type { NoteId } from '../../services/notes-annexes';
 import { buildHarness } from './test-helpers';
 
 describe('NotesAnnexesService — smoke', () => {
-  it('expose la liste doctrine SYSCOHADA Tome 3 via listNoteIds (45 entrées)', () => {
+  it('expose la liste doctrine SYSCOHADA Tome 3 via listNoteIds (46 entrées)', () => {
     const { service } = buildHarness();
     const ids = service.listNoteIds();
-    // Doctrine Tome 3 = 45 entrées (sub-notes 3A..F, 15A/B, 16A/B/Bbis/C,
-    // 27A/B). N20 est volontairement omis.
-    expect(ids.length).toBe(45);
+    // Doctrine Tome 3 = 46 entrées (sub-notes 3A..F, 15A/B, 16A/B/Bbis/C,
+    // 27A/B), N20 incluse.
+    expect(ids.length).toBe(46);
     expect(ids).toContain('N1');
     expect(ids).toContain('N16Bbis');
     expect(ids).toContain('N36');
-    expect(ids).not.toContain('N20');
+    expect(ids).toContain('N20');
     expect(ALL_NOTE_IDS).toBe(ids);
   });
 
@@ -30,7 +30,7 @@ describe('NotesAnnexesService — smoke', () => {
       commentText: '',
       noteId,
     }));
-    // N31 dépend de CashFlowService — minimal stub pour qu'il ne crash pas.
+    // Ancien stub conservé pour les autres handlers éventuels ; N31 ne doit plus dépendre du TFT.
     cashFlowMock.getCashFlow.mockResolvedValue({
       fromDate: '2026-01-01',
       toDate: '2026-12-31',

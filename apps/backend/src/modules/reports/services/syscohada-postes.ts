@@ -49,11 +49,9 @@ export interface SyscohadaPoste {
 /**
  * Charges (classe 6 + classes 8 partielles pour les HAO).
  *
- * NB : Les postes RN (pertes de change) et RP (autres charges HAO)
- * sont laissés volontairement avec des préfixes spécifiques car ils
- * recouvrent partiellement les classes 67 et 83/85. Les comptes mal
- * classés tomberont dans le poste générique de la classe (RM pour 67,
- * RP pour 83-85) — comportement acceptable pour un SIG indicatif.
+ * NB : Les postes RN (dotations financières) et RP (autres charges HAO)
+ * sont laissés avec des préfixes spécifiques car ils recouvrent
+ * partiellement les classes 67 et 83/85.
  */
 export const CHARGE_POSTES: ReadonlyArray<SyscohadaPoste> = [
   {
@@ -128,7 +126,7 @@ export const CHARGE_POSTES: ReadonlyArray<SyscohadaPoste> = [
     side: 'CHARGE',
     // Dotations d'EXPLOITATION uniquement : 681 (amort./prov. d'expl.) et
     // 691 (dépréciations d'expl.). 687 → dotations HAO (poste RP) ; 697 →
-    // dotations financières (poste RM). Les y inclure minorait à tort le
+    // dotations financières (poste RN). Les y inclure minorait à tort le
     // résultat d'exploitation (XE = XD + TJ − RL).
     accountPrefixes: ['681', '691'],
   },
@@ -136,8 +134,14 @@ export const CHARGE_POSTES: ReadonlyArray<SyscohadaPoste> = [
     code: 'RM',
     label: 'Frais financiers et charges assimilés',
     side: 'CHARGE',
-    // 67 (charges financières) + 697 (dotations aux amort./prov. financières).
-    accountPrefixes: ['67', '697'],
+    // 67 (charges financières) hors dotations financières 697, classées en RN.
+    accountPrefixes: ['67'],
+  },
+  {
+    code: 'RN',
+    label: 'Dotations aux provisions et dépréciations financières',
+    side: 'CHARGE',
+    accountPrefixes: ['697'],
   },
   {
     code: 'RO',
@@ -180,13 +184,13 @@ export const PRODUIT_POSTES: ReadonlyArray<SyscohadaPoste> = [
     code: 'TB',
     label: 'Ventes de produits fabriqués',
     side: 'PRODUIT',
-    accountPrefixes: ['702'],
+    accountPrefixes: ['702', '703', '704'],
   },
   {
     code: 'TC',
     label: 'Travaux, services vendus',
     side: 'PRODUIT',
-    accountPrefixes: ['704', '705', '706'],
+    accountPrefixes: ['705', '706'],
   },
   {
     code: 'TD',
@@ -196,9 +200,9 @@ export const PRODUIT_POSTES: ReadonlyArray<SyscohadaPoste> = [
   },
   {
     code: 'TE',
-    label: "Subventions d'exploitation",
+    label: 'Production stockée (ou destockage)',
     side: 'PRODUIT',
-    accountPrefixes: ['71'],
+    accountPrefixes: ['73'],
   },
   {
     code: 'TF',
@@ -208,9 +212,9 @@ export const PRODUIT_POSTES: ReadonlyArray<SyscohadaPoste> = [
   },
   {
     code: 'TG',
-    label: 'Production stockée (ou destockage)',
+    label: "Subventions d'exploitation",
     side: 'PRODUIT',
-    accountPrefixes: ['73'],
+    accountPrefixes: ['71'],
   },
   {
     code: 'TH',
@@ -261,7 +265,7 @@ export const PRODUIT_POSTES: ReadonlyArray<SyscohadaPoste> = [
     code: 'TO',
     label: 'Autres produits hors activités ordinaires',
     side: 'PRODUIT',
-    accountPrefixes: ['84', '88'],
+    accountPrefixes: ['84', '86', '88'],
   },
 ] as const;
 
@@ -336,7 +340,7 @@ export const SOLDES_INTERMEDIAIRES: ReadonlyArray<SoldeIntermediaireRef> = [
   {
     code: 'XF',
     label: 'Résultat financier',
-    formula: '(TK + TL + TM) − RM',
+    formula: '(TK + TL + TM) − RM − RN',
   },
   {
     code: 'XG',

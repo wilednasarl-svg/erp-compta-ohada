@@ -215,11 +215,8 @@ export interface NoteAccountsDeps {
 }
 
 /**
- * Sous-dépendance dédiée à N31 (TFT ventilé). Le handler N31 consomme
- * uniquement le rendu du Tableau des Flux de Trésorerie produit par
- * `CashFlowService.getCashFlow`. On expose une fonction au signature
- * réduite (sans `CashFlowQuery`) pour découpler les handlers du shape
- * exact du service.
+ * Sous-dependance dediee aux handlers qui consomment le Tableau des Flux
+ * de Tresorerie produit par `CashFlowService.getCashFlow`.
  */
 export interface NoteCashFlowDeps {
   readonly getCashFlow: (

@@ -1673,7 +1673,7 @@ export class ReportsService {
     const XC = XB - get('RA') - get('RB') + sumOtherProduits - sumConsommations;
     const XD = XC - get('RK');
     const XE = XD + get('TJ') - get('RL');
-    const XF = get('TK') + get('TL') + get('TM') - get('RM');
+    const XF = get('TK') + get('TL') + get('TM') - get('RM') - get('RN');
     const XG = XE + XF;
     const XH = get('TN') + get('TO') - get('RO') - get('RP');
     const XI = XG + XH - get('RQ') - get('RS');

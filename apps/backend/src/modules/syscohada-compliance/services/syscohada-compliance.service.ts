@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { type TenantId } from '../../../common/persistence/tenant-scope';
+import { CashFlowService } from '../../reports/services/cash-flow.service';
 import { ReportsService } from '../../reports/services/reports.service';
 import {
   SyscohadaKnowledgeService,
@@ -9,25 +10,14 @@ import {
   type SyscohadaDomain,
 } from '../../syscohada-knowledge/services/syscohada-knowledge.service';
 
-/**
- * Résultat de l'exécution d'un contrôle SYSCOHADA sur les données réelles.
- *   - `pass`          : le contrôle est satisfait pour le périmètre demandé.
- *   - `fail`          : non-conformité avérée (avec détail chiffré).
- *   - `not_evaluable` : contrôle doctrinal connu mais non encore exécutable
- *                       automatiquement (ex. TFT sans calcul disponible) ou
- *                       données insuffisantes.
- */
 export type ComplianceStatus = 'pass' | 'fail' | 'not_evaluable';
 
 export interface ComplianceCheckResult {
   readonly controlId: string;
   readonly domain: SyscohadaDomain;
   readonly status: ComplianceStatus;
-  /** Message métier français expliquant le verdict. */
   readonly detail: string;
-  /** Données chiffrées de support (montants, écarts, échantillons). */
   readonly data?: Readonly<Record<string, unknown>>;
-  /** Contrôle doctrinal du catalogue + citation sourcée du Guide (null si absent). */
   readonly control: SyscohadaControlWithEvidence | null;
 }
 
@@ -48,9 +38,7 @@ export interface SyscohadaComplianceReport {
 }
 
 export interface ComplianceQuery {
-  /** Début de l'exercice (YYYY-MM-DD) — sert de borne basse et d'origine du bilan. */
   readonly fiscalYearStartDate: string;
-  /** Date d'arrêté (YYYY-MM-DD) — borne haute et date du bilan. */
   readonly asAtDate: string;
 }
 
@@ -66,14 +54,8 @@ interface ExecutableCheck {
   ): Promise<{ status: ComplianceStatus; detail: string; data?: Record<string, unknown> }>;
 }
 
-/** Contrôles bloquants doctrinaux connus mais pas encore exécutables automatiquement. */
-interface DeclaredNotEvaluable {
-  readonly controlId: string;
-  readonly domain: SyscohadaDomain;
-  readonly reason: string;
-}
-
 const AMOUNT_EPSILON = 0.01;
+const CASHFLOW_EPSILON = 1;
 
 function num(s: string | null | undefined): number {
   if (!s) return 0;
@@ -85,36 +67,22 @@ function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : 'erreur inattendue';
 }
 
-/**
- * `SyscohadaComplianceService` — exécute les contrôles SYSCOHADA *bloquants*
- * sur les données comptables réelles d'une organisation et les rattache à leur
- * base doctrinale sourcée (catalogue de contrôles + extrait verbatim du Guide).
- *
- * Réutilise `ReportsService` (bilan, balance) plutôt que de recalculer : zéro
- * duplication du moteur de reporting. Read-only et idempotent — sûr à appeler
- * à la demande depuis l'UI. N'effectue AUCune écriture et ne lève pas sur
- * non-conformité : il accumule des constats dans un rapport structuré.
- */
 @Injectable()
 export class SyscohadaComplianceService {
   private readonly logger = new Logger(SyscohadaComplianceService.name);
   private readonly checks: ReadonlyArray<ExecutableCheck>;
 
-  private static readonly NOT_EVALUABLE: ReadonlyArray<DeclaredNotEvaluable> = [
-    {
-      controlId: 'cashflow-variation-coherente',
-      domain: 'cash-flow',
-      reason:
-        'Le Tableau des flux de trésorerie n’est pas encore calculé par le moteur de reporting ; ce contrôle reste doctrinal en attendant le calcul du TFT.',
-    },
-  ];
-
   constructor(
     private readonly reports: ReportsService,
+    private readonly cashFlow: CashFlowService,
     @Inject(DataSource) private readonly dataSource: DataSource,
     private readonly knowledge: SyscohadaKnowledgeService,
   ) {
-    this.checks = [this.balanceSheetEquilibriumCheck(), this.doubleEntryBalanceCheck()];
+    this.checks = [
+      this.balanceSheetEquilibriumCheck(),
+      this.doubleEntryBalanceCheck(),
+      this.cashFlowReconciliationCheck(),
+    ];
   }
 
   async evaluate(
@@ -131,9 +99,10 @@ export class SyscohadaComplianceService {
       } catch (e: unknown) {
         outcome = {
           status: 'not_evaluable',
-          detail: `Évaluation impossible : ${errorMessage(e)}`,
+          detail: `Evaluation impossible : ${errorMessage(e)}`,
         };
       }
+
       results.push({
         controlId: check.controlId,
         domain: check.domain,
@@ -141,16 +110,6 @@ export class SyscohadaComplianceService {
         detail: outcome.detail,
         data: outcome.data,
         control: this.findControl(check.domain, check.controlId),
-      });
-    }
-
-    for (const ne of SyscohadaComplianceService.NOT_EVALUABLE) {
-      results.push({
-        controlId: ne.controlId,
-        domain: ne.domain,
-        status: 'not_evaluable',
-        detail: ne.reason,
-        control: this.findControl(ne.domain, ne.controlId),
       });
     }
 
@@ -185,7 +144,6 @@ export class SyscohadaComplianceService {
     return this.knowledge.getModuleControls(domain).find((c) => c.id === controlId) ?? null;
   }
 
-  /** Contrôle bloquant : Total Actif = Total Passif (AUDCIF art. 8, Guide Tome 3). */
   private balanceSheetEquilibriumCheck(): ExecutableCheck {
     return {
       controlId: 'bilan-actif-egal-passif',
@@ -202,8 +160,8 @@ export class SyscohadaComplianceService {
         return {
           status: ok ? 'pass' : 'fail',
           detail: ok
-            ? `Bilan équilibré au ${ctx.asAtDate} : actif = passif = ${bilan.totals.actif}.`
-            : `Bilan déséquilibré au ${ctx.asAtDate} : actif ${bilan.totals.actif} ≠ passif ${bilan.totals.passif} (écart ${difference}).`,
+            ? `Bilan equilibre au ${ctx.asAtDate} : actif = passif = ${bilan.totals.actif}.`
+            : `Bilan desequilibre au ${ctx.asAtDate} : actif ${bilan.totals.actif} != passif ${bilan.totals.passif} (ecart ${difference}).`,
           data: {
             actif: bilan.totals.actif,
             passif: bilan.totals.passif,
@@ -214,7 +172,6 @@ export class SyscohadaComplianceService {
     };
   }
 
-  /** Contrôle bloquant : chaque écriture validée respecte Σdébit = Σcrédit. */
   private doubleEntryBalanceCheck(): ExecutableCheck {
     return {
       controlId: 'journal-equilibre-partie-double',
@@ -241,11 +198,39 @@ export class SyscohadaComplianceService {
         return {
           status: ok ? 'pass' : 'fail',
           detail: ok
-            ? 'Toutes les écritures validées de la période sont équilibrées (Σdébit = Σcrédit).'
-            : `${rows.length} écriture(s) validée(s) déséquilibrée(s) détectée(s) sur la période.`,
+            ? 'Toutes les ecritures validees de la periode sont equilibrees (debit = credit).'
+            : `${rows.length} ecriture(s) validee(s) desequilibree(s) detectee(s) sur la periode.`,
           data: {
             unbalancedCount: rows.length,
             samples: rows.map((r) => ({ entryNumber: r.entry_number, imbalance: r.imbalance })),
+          },
+        };
+      },
+    };
+  }
+
+  private cashFlowReconciliationCheck(): ExecutableCheck {
+    return {
+      controlId: 'cashflow-variation-coherente',
+      domain: 'cash-flow',
+      run: async (ctx) => {
+        const report = await this.cashFlow.getCashFlow(ctx.organizationId, {
+          fromDate: ctx.fiscalYearStartDate,
+          toDate: ctx.asAtDate,
+        });
+        const coherenceCheck = Math.abs(num(report.coherenceCheck));
+        const ok = coherenceCheck <= CASHFLOW_EPSILON;
+        return {
+          status: ok ? 'pass' : 'fail',
+          detail: ok
+            ? `TFT coherent au ${ctx.asAtDate} : tresorerie de cloture reconciliee aux comptes de classe 5.`
+            : `TFT non reconcilie au ${ctx.asAtDate} : ecart de tresorerie ${coherenceCheck.toFixed(
+                2,
+              )} entre ZH et les comptes de classe 5.`,
+          data: {
+            coherenceCheck,
+            closingCash: report.closingCash,
+            netCashVariation: report.netCashVariation,
           },
         };
       },
