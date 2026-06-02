@@ -227,6 +227,7 @@ export const ERROR_CODE_TO_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
 
   // W5.3 — Bundle ZIP DSF complet.
   [ERROR_CODES.DSF_PACKAGE_PROFILE_INCOMPLETE]: 422,
+  [ERROR_CODES.DSF_PACKAGE_VALIDATION_BLOCKED]: 422,
 
   // E2 — Engagements actuariels retraite & avantages au personnel.
   [ERROR_CODES.ACTUARIAL_COMMITMENT_NOT_FOUND]: 404,

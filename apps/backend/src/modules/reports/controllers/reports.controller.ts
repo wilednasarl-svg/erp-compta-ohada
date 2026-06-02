@@ -14,6 +14,8 @@ import {
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
+import { AppException } from '../../../common/errors/app-exception';
+import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { CurrentOrgContext } from '../../../common/types/request-context';
 import { CurrentOrg } from '../../auth/decorators/current-org.decorator';
@@ -145,7 +147,7 @@ export class ReportsController {
   @RequirePermission('journals.reports')
   @ApiOperation({
     summary:
-      'Liasse DSF SYSCOHADA déposable (W5.3) — page de garde + R1-R4 + Bilan + CR + TFT (PDF & XLSX) + 36 notes annexes (JSON).',
+      'Liasse DSF SYSCOHADA déposable (W5.3) — page de garde + R1-R4 + Bilan + CR + TFT (PDF & XLSX) + 36 notes annexes (JSON). Refusée (422) si la validation pré-dépôt rend un verdict BLOCK, sauf acknowledgeBlocking=true.',
   })
   @ApiProduces('application/zip')
   async dsfPackage(
@@ -154,6 +156,23 @@ export class ReportsController {
     @CurrentOrg() org: CurrentOrgContext,
     @Res() res: Response,
   ): Promise<void> {
+    // Garde-fou anti-dépôt incohérent : on ne produit pas une liasse dont
+    // la validation pré-dépôt (W5.4) signale des anomalies BLOQUANTES
+    // (bilan déséquilibré, comptes non classés…), sauf contournement
+    // explicite du comptable (acknowledgeBlocking=true → brouillon assumé).
+    if (query.acknowledgeBlocking !== true) {
+      const validation = await this.dsfValidator.validate(asTenantId(org.id), query.exerciseId);
+      if (validation.verdict === 'BLOCK') {
+        throw new AppException(ERROR_CODES.DSF_PACKAGE_VALIDATION_BLOCKED, {
+          message:
+            'Génération de la liasse DSF refusée : la validation pré-dépôt a relevé des anomalies bloquantes. Corrigez-les ou passez acknowledgeBlocking=true pour un brouillon.',
+          details: {
+            verdict: validation.verdict,
+            blocking: validation.issues.filter((issue) => issue.severity === 'BLOCK'),
+          },
+        });
+      }
+    }
     const buffer = await this.packageBuilder.buildDsfPackage(asTenantId(org.id), query.exerciseId, {
       fromDate: query.fromDate,
       toDate: query.toDate,

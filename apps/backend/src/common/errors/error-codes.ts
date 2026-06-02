@@ -250,6 +250,10 @@ export const ERROR_CODES = {
 
   // W5.3 — Bundle ZIP DSF complet (page de garde + R1-R4 + 4 états + notes).
   DSF_PACKAGE_PROFILE_INCOMPLETE: 'DSF_PACKAGE_PROFILE_INCOMPLETE',
+  // W5.4 — Refus de générer la liasse quand la validation pré-dépôt rend un
+  // verdict BLOCK (bilan déséquilibré, comptes non classés…). Garde-fou
+  // anti-dépôt d'une liasse incohérente ; contournable explicitement.
+  DSF_PACKAGE_VALIDATION_BLOCKED: 'DSF_PACKAGE_VALIDATION_BLOCKED',
 
   // E2 — Engagements actuariels retraite & avantages au personnel (Note N16B).
   ACTUARIAL_COMMITMENT_NOT_FOUND: 'ACTUARIAL_COMMITMENT_NOT_FOUND',
