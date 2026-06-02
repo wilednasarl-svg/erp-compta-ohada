@@ -13,8 +13,42 @@ La source prioritaire est le Guide d'application SYSCOHADA révisé partagé dan
 - Tome 3 : états financiers annuels
 - Tome 4 : comptes consolidés et combinés
 
-Le module lit les textes extraits `*.pdf.1-end.txt`. En production, le chemin
-peut être fixé avec `SYSCOHADA_KNOWLEDGE_DIR`.
+Le module lit les textes extraits `*.pdf.1-end.txt`, `*.pdf.txt` et `*.txt`.
+En production, le chemin peut être fixé avec `SYSCOHADA_KNOWLEDGE_DIR`.
+
+## Intégration d'un PDF volumineux
+
+Le fichier `ACTE UNIFORME SYSCOHADA REVISE.pdf` est intégré comme source texte
+dans `apps/backend/src/modules/syscohada-knowledge/sources/ACTE UNIFORME
+SYSCOHADA REVISE.pdf.txt`. Cette forme évite de parser un PDF de plus de mille
+pages au démarrage de l'API : l'extraction reste une opération offline, puis le
+service indexe uniquement le texte.
+
+Pour régénérer la source texte depuis le PDF local :
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from pypdf import PdfReader
+
+pdf_path = Path(r"C:\Users\WILFRIED\OneDrive - Gravel Ivoire\Documents\SYSCOAHADA\ACTE UNIFORME SYSCOHADA REVISE.pdf")
+out_path = Path(r"apps\backend\src\modules\syscohada-knowledge\sources\ACTE UNIFORME SYSCOHADA REVISE.pdf.txt")
+
+reader = PdfReader(str(pdf_path))
+lines = []
+for index, page in enumerate(reader.pages, start=1):
+    text = page.extract_text() or ""
+    lines.append(f"--- PAGE {index} ---")
+    lines.extend(line.rstrip() for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+
+out_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+print(f"{len(reader.pages)} pages extraites vers {out_path}")
+PY
+```
+
+Si le PDF n'est pas embarqué dans le dépôt, placer le `.pdf.txt` dans un dossier
+externe et définir `SYSCOHADA_KNOWLEDGE_DIR` vers ce dossier produit le même
+résultat.
 
 ## Usage par les modules
 

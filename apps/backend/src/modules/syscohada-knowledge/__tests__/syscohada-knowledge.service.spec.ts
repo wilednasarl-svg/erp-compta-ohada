@@ -32,6 +32,16 @@ describe('SyscohadaKnowledgeService', () => {
       ].join('\n'),
       'utf8',
     );
+    writeFileSync(
+      join(root, 'ACTE UNIFORME SYSCOHADA REVISE.pdf.txt'),
+      [
+        'ACTE UNIFORME RELATIF AU DROIT COMPTABLE ET A L INFORMATION FINANCIERE',
+        'Article 17',
+        'Toute écriture comptable doit être appuyée par une pièce justificative.',
+        'La tenue du livre-journal respecte la chronologie des opérations.',
+      ].join('\n'),
+      'utf8',
+    );
 
     return new SyscohadaKnowledgeService({ sourcesDir: root });
   }
@@ -50,6 +60,21 @@ describe('SyscohadaKnowledgeService', () => {
     expect(results[0].sourceTitle).toContain('Présentation des états financiers');
     expect(results[0].excerpt).toContain('Tableau des flux de trésorerie');
     expect(results[0].lineStart).toBeGreaterThanOrEqual(1);
+  });
+
+  it('accepts large extracted SYSCOHADA PDFs saved as plain .pdf.txt sources', () => {
+    const service = makeService();
+
+    const results = service.search({
+      query: 'article 17 piece justificative livre journal',
+      domain: 'journals',
+      limit: 1,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].sourceFile).toBe('ACTE UNIFORME SYSCOHADA REVISE.pdf.txt');
+    expect(results[0].sourceTitle).toBe('ACTE UNIFORME SYSCOHADA REVISE');
+    expect(results[0].excerpt).toContain('pièce justificative');
   });
 
   it('exposes doctrine domains for every major accounting module', () => {
