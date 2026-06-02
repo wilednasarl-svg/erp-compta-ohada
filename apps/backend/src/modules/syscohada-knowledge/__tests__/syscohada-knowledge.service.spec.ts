@@ -160,4 +160,30 @@ describe('SyscohadaKnowledgeService', () => {
     // citation est soit un extrait sourcé, soit null si le corpus de test ne couvre pas le sujet
     expect(balance).toHaveProperty('citation');
   });
+
+  it('accepts large extracted SYSCOHADA PDFs saved as plain .pdf.txt sources', () => {
+    const root = mkdtempSync(join(tmpdir(), 'syscohada-kb-act-'));
+    writeFileSync(
+      join(root, 'ACTE UNIFORME SYSCOHADA REVISE.pdf.txt'),
+      [
+        'ACTE UNIFORME RELATIF AU DROIT COMPTABLE ET A L INFORMATION FINANCIERE',
+        'Article 17',
+        "Toute entreprise tient un livre-journal et appuie chaque enregistrement",
+        'comptable sur une pièce justificative datée et conservée.',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const service = new SyscohadaKnowledgeService({ sourcesDir: root });
+    const results = service.search({
+      query: 'piece justificative livre journal enregistrement comptable',
+      limit: 1,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].sourceFile).toBe('ACTE UNIFORME SYSCOHADA REVISE.pdf.txt');
+    expect(results[0].sourceTitle).toBe('ACTE UNIFORME SYSCOHADA REVISE');
+    expect(results[0].tome).toBe(0);
+    expect(results[0].excerpt).toContain('pièce justificative');
+  });
 });

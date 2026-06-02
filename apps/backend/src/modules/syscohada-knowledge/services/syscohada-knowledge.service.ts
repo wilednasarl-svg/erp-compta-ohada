@@ -345,7 +345,7 @@ export class SyscohadaKnowledgeService {
     }
 
     const files = readdirSync(sourcesDir)
-      .filter((file) => /\.pdf\.\d+-end\.txt$/i.test(file))
+      .filter((file) => this.isKnowledgeSourceFile(file))
       .sort();
     this.chunks = files.flatMap((file) =>
       this.chunkFile(join(sourcesDir, file), file, this.tomeFromFile(file)),
@@ -441,6 +441,16 @@ export class SyscohadaKnowledgeService {
     return text.replace(/\s+/g, ' ').trim();
   }
 
+  private isKnowledgeSourceFile(file: string): boolean {
+    // Formats supportés : Guide (.pdf.<n>-end.txt), gros PDF extrait en bloc
+    // (.pdf.txt, ex. l'Acte uniforme) et texte simple (.txt).
+    return (
+      /\.pdf\.\d+-end\.txt$/i.test(file) ||
+      /\.pdf\.txt$/i.test(file) ||
+      /\.txt$/i.test(file)
+    );
+  }
+
   private tomeFromFile(file: string): number {
     const match = file.match(/REVISE\s+(\d)/i);
     return match ? Number(match[1]) : 0;
@@ -449,6 +459,8 @@ export class SyscohadaKnowledgeService {
   private titleFromFile(file: string): string {
     return basename(file)
       .replace(/\.pdf\.\d+-end\.txt$/i, '')
+      .replace(/\.pdf\.txt$/i, '')
+      .replace(/\.txt$/i, '')
       .replace(/_/g, ' ');
   }
 }
