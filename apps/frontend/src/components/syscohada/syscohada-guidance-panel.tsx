@@ -149,7 +149,7 @@ function ControlRow({ control }: { readonly control: SyscohadaControlWithEvidenc
             {control.citation.excerpt.length > 200 ? '…' : ''} »
           </p>
           <p className="mt-1 text-2xs text-ink-mute">
-            Tome {control.citation.tome}, {control.citation.sourceTitle} · lignes{' '}
+            {control.citation.tome > 0 ? `Tome ${control.citation.tome}, ${control.citation.sourceTitle}` : control.citation.sourceTitle} · lignes{' '}
             {control.citation.lineStart}-{control.citation.lineEnd}
           </p>
         </blockquote>

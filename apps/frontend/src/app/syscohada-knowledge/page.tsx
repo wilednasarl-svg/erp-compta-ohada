@@ -350,7 +350,7 @@ function ControlRow({ control }: { readonly control: SyscohadaControlWithEvidenc
             {control.citation.excerpt.length > 200 ? '…' : ''} »
           </p>
           <p className="mt-1 text-2xs text-ink-mute">
-            Tome {control.citation.tome}, {control.citation.sourceTitle} · lignes{' '}
+            {control.citation.tome > 0 ? `Tome ${control.citation.tome}, ${control.citation.sourceTitle}` : control.citation.sourceTitle} · lignes{' '}
             {control.citation.lineStart}-{control.citation.lineEnd}
           </p>
         </blockquote>
@@ -365,7 +365,7 @@ function CitationCard({ result }: { readonly result: SyscohadaSearchResult }) {
   return (
     <article className="rounded-md border border-line bg-paper px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs uppercase tracking-wider text-ink-mute">
-        <span className="font-medium text-ink">Tome {result.tome}</span>
+        <span className="font-medium text-ink">{result.tome > 0 ? `Tome ${result.tome}` : 'Acte uniforme'}</span>
         <span aria-hidden>·</span>
         <span>{result.sourceTitle}</span>
         <span aria-hidden>·</span>
