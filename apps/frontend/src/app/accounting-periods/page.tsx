@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
@@ -307,6 +308,11 @@ export default function AccountingPeriodsPage() {
             <FormError error={periodsQuery.error} className="m-4" />
           </div>
         </section>
+
+        <SyscohadaGuidancePanel
+          module="regularizations"
+          title="Conformité SYSCOHADA — Régularisations & cut-off"
+        />
       </div>
     </AppShell>
   );

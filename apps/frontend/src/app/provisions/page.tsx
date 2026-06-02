@@ -5,6 +5,7 @@ import { Plus, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { FormError } from '@/components/ui/form-error';
 import { ApiError, api } from '@/lib/api-client';
 import { useCurrentOrg } from '@/stores/auth-store';
@@ -175,11 +176,12 @@ export default function ProvisionsPage() {
             )}
           </section>
 
-          <section className="lg:col-span-2">
+          <section className="space-y-6 lg:col-span-2">
             <CreateProvisionForm
               orgId={orgId}
               onCreated={() => void qc.invalidateQueries({ queryKey: ['provisions', orgId] })}
             />
+            <SyscohadaGuidancePanel module="provisions" />
           </section>
         </div>
       </div>

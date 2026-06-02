@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import { Hint } from '@/components/ui/hint';
@@ -711,6 +712,8 @@ export default function CurrenciesPage() {
             )}
           </div>
         </section>
+
+        <SyscohadaGuidancePanel module="multi-currency" />
       </div>
     </AppShell>
   );

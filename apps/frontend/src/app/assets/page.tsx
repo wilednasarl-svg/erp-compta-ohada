@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { SyscohadaGuidancePanel } from '@/components/syscohada/syscohada-guidance-panel';
 import { Button } from '@/components/ui/button';
 import { FormError } from '@/components/ui/form-error';
 import { Hint } from '@/components/ui/hint';
@@ -634,6 +635,11 @@ export default function AssetsPage() {
             }}
           />
         )}
+
+        <SyscohadaGuidancePanel
+          module="leases"
+          title="Conformité SYSCOHADA — Contrats de location"
+        />
       </div>
     </AppShell>
   );
