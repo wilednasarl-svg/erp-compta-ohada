@@ -1,11 +1,14 @@
 import type { Response } from 'express';
 
+import { AppException } from '../../../common/errors/app-exception';
+import { ERROR_CODES } from '../../../common/errors/error-codes';
 import type { CurrentOrgContext } from '../../../common/types/request-context';
 import { ReportsController } from '../controllers/reports.controller';
 import { AgingBalanceQueryDto } from '../dto/aging-balance-query.dto';
 import { AnnexeNoteDetailQueryDto } from '../dto/annexe-note-detail-query.dto';
 import { AnnualPackageQueryDto } from '../dto/annual-package-query.dto';
 import { CashTrendQueryDto } from '../dto/cash-trend-query.dto';
+import { DsfPackageQueryDto } from '../dto/dsf-package-query.dto';
 import { FinancialRatiosQueryDto } from '../dto/financial-ratios-query.dto';
 import { PeriodQueryDto } from '../dto/period-query.dto';
 import { SigQueryDto } from '../dto/sig-query.dto';
@@ -37,7 +40,7 @@ function buildHarness() {
   };
   const pdf = { sigPdf: jest.fn(), agingBalancePdf: jest.fn() };
   const xlsx = { sigXlsx: jest.fn() };
-  const pkg = { buildAnnualPackage: jest.fn() };
+  const pkg = { buildAnnualPackage: jest.fn(), buildDsfPackage: jest.fn() };
   const dsfValidator = { validate: jest.fn() };
   const cashFlow = { getCashFlow: jest.fn() };
   const controller = new ReportsController(
@@ -274,6 +277,68 @@ describe('ReportsController.annualPackage', () => {
       ORG_ID,
       expect.objectContaining({ fiscalYearStartDate: '2026-01-01' }),
     );
+  });
+});
+
+describe('ReportsController.dsfPackage — garde-fou validation pré-dépôt (W5.4)', () => {
+  function buildQuery(): DsfPackageQueryDto {
+    const q = new DsfPackageQueryDto();
+    q.exerciseId = '11111111-2222-4333-8444-555555555555';
+    q.fromDate = '2026-01-01';
+    q.toDate = '2026-12-31';
+    return q;
+  }
+
+  it('refuse la génération (DSF_PACKAGE_VALIDATION_BLOCKED) quand le verdict est BLOCK', async () => {
+    const h = buildHarness();
+    h.dsfValidator.validate.mockResolvedValue({
+      verdict: 'BLOCK',
+      counts: { block: 1, warn: 0, info: 0 },
+      issues: [{ severity: 'BLOCK', code: 'BILAN_UNBALANCED', message: 'Bilan déséquilibré' }],
+    });
+    const res = buildRes();
+
+    await expect(h.controller.dsfPackage(ORG_ID, buildQuery(), ORG, res)).rejects.toMatchObject({
+      code: ERROR_CODES.DSF_PACKAGE_VALIDATION_BLOCKED,
+    });
+    await expect(h.controller.dsfPackage(ORG_ID, buildQuery(), ORG, res)).rejects.toBeInstanceOf(
+      AppException,
+    );
+    // La liasse ne doit JAMAIS être construite quand la validation bloque.
+    expect(h.pkg.buildDsfPackage).not.toHaveBeenCalled();
+  });
+
+  it('génère la liasse quand le verdict est PASS', async () => {
+    const h = buildHarness();
+    h.dsfValidator.validate.mockResolvedValue({
+      verdict: 'PASS',
+      counts: { block: 0, warn: 0, info: 0 },
+      issues: [],
+    });
+    const fakeBuffer = Buffer.from('PK\x03\x04 fake-zip');
+    h.pkg.buildDsfPackage.mockResolvedValue(fakeBuffer);
+    const res = buildRes();
+
+    await h.controller.dsfPackage(ORG_ID, buildQuery(), ORG, res);
+
+    expect(h.pkg.buildDsfPackage).toHaveBeenCalledTimes(1);
+    expect(res.end).toHaveBeenCalledWith(fakeBuffer);
+  });
+
+  it('génère un brouillon malgré un BLOCK quand acknowledgeBlocking=true (sans revalider)', async () => {
+    const h = buildHarness();
+    const fakeBuffer = Buffer.from('PK\x03\x04 draft');
+    h.pkg.buildDsfPackage.mockResolvedValue(fakeBuffer);
+    const res = buildRes();
+    const q = buildQuery();
+    q.acknowledgeBlocking = true;
+
+    await h.controller.dsfPackage(ORG_ID, q, ORG, res);
+
+    // Contournement explicite : on court-circuite la validation.
+    expect(h.dsfValidator.validate).not.toHaveBeenCalled();
+    expect(h.pkg.buildDsfPackage).toHaveBeenCalledTimes(1);
+    expect(res.end).toHaveBeenCalledWith(fakeBuffer);
   });
 });
 

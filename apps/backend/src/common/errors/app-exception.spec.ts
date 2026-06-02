@@ -256,6 +256,7 @@ describe('HTTP status mapping', () => {
       DSF_PROFILE_INVALID: 422,
       // W5.3 — Bundle ZIP DSF complet.
       DSF_PACKAGE_PROFILE_INCOMPLETE: 422,
+      DSF_PACKAGE_VALIDATION_BLOCKED: 422,
       // E1 — Sûretés réelles données (Notes N1 + N16Bbis).
       PLEDGED_ASSET_NOT_FOUND: 404,
       PLEDGED_ASSET_NOT_ACTIVE: 409,
