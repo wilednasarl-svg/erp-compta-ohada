@@ -28,6 +28,12 @@ export interface SyscohadaControl {
   readonly tome: number;
   /** Requête de recherche servant à rapatrier l'extrait sourcé du Guide. */
   readonly evidenceQuery: string;
+  /**
+   * Recommandation de correction, en langage métier, surfacée quand un
+   * contrôle exécutable détecte une non-conformité. Optionnelle tant que
+   * tous les contrôles du catalogue ne sont pas dotés d'un remède rédigé.
+   */
+  readonly remediation?: string;
 }
 
 export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
@@ -42,6 +48,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Plan comptable général'],
     tome: 1,
     evidenceQuery: 'plan comptable classes comptes subdivision codification',
+    remediation:
+      "Reclasser tout compte dont le code ne respecte pas la codification décimale SYSCOHADA (1ʳᵉ position = classe du plan, code numérique). Un code hors plan provient le plus souvent d'un import : le rattacher au compte normalisé correspondant.",
   },
   {
     id: 'plan-sens-normal-comptes',
@@ -53,6 +61,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Fonctionnement des comptes'],
     tome: 1,
     evidenceQuery: 'compte solde debiteur crediteur fonctionnement classe',
+    remediation:
+      "Contrôler les comptes au solde inhabituel : un fournisseur (40) débiteur ou un client (41) créditeur traduit le plus souvent une avance mal imputée ou une erreur de compte. Reclasser sur le compte d'avance dédié (409 fournisseurs débiteurs, 419 clients créditeurs) ou corriger l'imputation de l'écriture fautive.",
   },
 
   // ── Journaux et écritures ────────────────────────────────────────────────
@@ -66,6 +76,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF art. 17 — comptabilité en partie double', 'Guide SYSCOHADA Tome 1'],
     tome: 1,
     evidenceQuery: 'partie double debit credit equilibre ecriture enregistrement',
+    remediation:
+      "Rouvrir chaque écriture déséquilibrée signalée et rétablir l'égalité débit = crédit (ligne manquante, montant ou sens erroné). Une écriture ne peut être validée tant que la partie double n'est pas respectée (AUDCIF art. 17).",
   },
   {
     id: 'journal-piece-justificative',
@@ -88,6 +100,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF art. 17 — enregistrement chronologique', 'Guide SYSCOHADA Tome 1'],
     tome: 1,
     evidenceQuery: 'enregistrement chronologique ordre date operation livre journal',
+    remediation:
+      "Rapprocher chaque écriture dont la date d'opération sort des bornes de sa période comptable : corriger la date ou rattacher l'écriture à la bonne période. L'enregistrement doit rester chronologique et la date cohérente avec la période (AUDCIF art. 17).",
   },
   {
     id: 'journal-lettrage-tiers',
@@ -210,6 +224,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF art. 8 — états financiers annuels', 'Guide SYSCOHADA Tome 3'],
     tome: 3,
     evidenceQuery: 'bilan total actif passif equilibre resultat affectation',
+    remediation:
+      "Un bilan déséquilibré révèle une écriture non équilibrée ou un report à nouveau erroné. Rapprocher le total des soldes débiteurs et créditeurs de la balance générale, corriger l'imputation fautive, puis vérifier l'affectation du résultat (compte 13) avant de regénérer le bilan.",
   },
   {
     id: 'etats-tout-indissociable',
@@ -374,6 +390,19 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     tome: 1,
     evidenceQuery: 'charges payer produits recevoir constates cloture facture exercice',
   },
+  {
+    id: 'comptes-attente-soldes',
+    domain: 'regularizations',
+    label: 'Comptes d’attente et virements de fonds soldés à la clôture',
+    description:
+      'Les comptes d’attente (471) et de virements de fonds (585) sont soldés à la clôture : un solde résiduel traduit une opération en suspens non imputée définitivement sur son compte de destination.',
+    severity: 'warning',
+    legalBasis: ['Guide SYSCOHADA Tome 1 — Comptes transitoires et d’attente'],
+    tome: 1,
+    evidenceQuery: 'compte attente 471 virement fonds 585 transitoire solde regularisation cloture',
+    remediation:
+      'Solder les comptes d’attente (471) et de virements de fonds (585) avant l’arrêté : imputer définitivement chaque opération en suspens sur son compte de destination. Un solde résiduel signale une opération non régularisée à analyser pièce par pièce.',
+  },
 
   // ── Fusions, apports et transformations de sociétés ───────────────────────
   {
@@ -474,6 +503,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 3 — Cohérence du TFT'],
     tome: 3,
     evidenceQuery: 'variation tresorerie nette ouverture cloture flux bilan reconciliation',
+    remediation:
+      "L'écart entre la trésorerie de clôture du TFT (poste ZH) et le solde des comptes de classe 5 révèle un flux mal classé ou un compte de trésorerie oublié. Vérifier les exclusions BFR (485, 414…) et l'exhaustivité des comptes 52-58 retenus dans le périmètre de trésorerie.",
   },
 
   // ── Rapprochement bancaire ────────────────────────────────────────────────

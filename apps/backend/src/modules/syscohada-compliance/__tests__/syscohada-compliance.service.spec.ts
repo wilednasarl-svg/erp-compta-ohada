@@ -10,10 +10,12 @@ import type {
 } from '../../syscohada-knowledge/services/syscohada-knowledge.service';
 import { SyscohadaComplianceService } from '../services/syscohada-compliance.service';
 
-const CONTROL_BY_DOMAIN: Partial<Record<SyscohadaDomain, string>> = {
-  reports: 'bilan-actif-egal-passif',
-  journals: 'journal-equilibre-partie-double',
-  'cash-flow': 'cashflow-variation-coherente',
+const CONTROLS_BY_DOMAIN: Partial<Record<SyscohadaDomain, string[]>> = {
+  reports: ['bilan-actif-egal-passif'],
+  journals: ['journal-equilibre-partie-double', 'journal-chronologie-continuite'],
+  'accounting-plan': ['plan-sens-normal-comptes', 'plan-numerotation-classes'],
+  regularizations: ['comptes-attente-soldes'],
+  'cash-flow': ['cashflow-variation-coherente'],
 };
 
 function makeControl(domain: SyscohadaDomain, id: string): SyscohadaControlWithEvidence {
@@ -26,6 +28,7 @@ function makeControl(domain: SyscohadaDomain, id: string): SyscohadaControlWithE
     legalBasis: ['AUDCIF art. 8'],
     tome: 3,
     evidenceQuery: 'q',
+    remediation: `Corriger ${id}`,
     citation: {
       tome: 3,
       sourceTitle: 'Guide Tome 3',
@@ -38,8 +41,15 @@ function makeControl(domain: SyscohadaDomain, id: string): SyscohadaControlWithE
   };
 }
 
+interface TrialRow {
+  accountCode: string;
+  accountLabel: string;
+  endingDebit: string;
+  endingCredit: string;
+}
+
 interface Mocks {
-  readonly reports: jest.Mocked<Pick<ReportsService, 'getBalanceSheet'>>;
+  readonly reports: jest.Mocked<Pick<ReportsService, 'getBalanceSheet' | 'getTrialBalance'>>;
   readonly cashFlow: jest.Mocked<Pick<CashFlowService, 'getCashFlow'>>;
   readonly dataSource: { query: jest.Mock };
   readonly knowledge: { getModuleControls: jest.Mock };
@@ -49,6 +59,13 @@ interface Mocks {
 function setup(opts?: {
   balanceTotals?: { actif: string; passif: string; difference: string };
   unbalancedRows?: Array<{ id: string; entry_number: string; imbalance: string }>;
+  outOfPeriodRows?: Array<{
+    entry_number: string;
+    entry_date: string;
+    start_date: string;
+    end_date: string;
+  }>;
+  trialBalanceRows?: TrialRow[];
   balanceThrows?: boolean;
   cashFlow?: { coherenceCheck: string };
   cashFlowThrows?: boolean;
@@ -60,7 +77,12 @@ function setup(opts?: {
       if (opts?.balanceThrows) throw new Error('bilan indisponible');
       return { totals } as Awaited<ReturnType<ReportsService['getBalanceSheet']>>;
     }),
-  } as unknown as jest.Mocked<Pick<ReportsService, 'getBalanceSheet'>>;
+    getTrialBalance: jest.fn(async () => {
+      return { rows: opts?.trialBalanceRows ?? [] } as unknown as Awaited<
+        ReturnType<ReportsService['getTrialBalance']>
+      >;
+    }),
+  } as unknown as jest.Mocked<Pick<ReportsService, 'getBalanceSheet' | 'getTrialBalance'>>;
 
   const cashFlow = {
     getCashFlow: jest.fn(async () => {
@@ -74,14 +96,17 @@ function setup(opts?: {
   } as unknown as jest.Mocked<Pick<CashFlowService, 'getCashFlow'>>;
 
   const dataSource = {
-    query: jest.fn(async () => opts?.unbalancedRows ?? []),
+    query: jest.fn(async (sql: string) =>
+      /accounting_periods/i.test(sql)
+        ? (opts?.outOfPeriodRows ?? [])
+        : (opts?.unbalancedRows ?? []),
+    ),
   };
 
   const knowledge = {
-    getModuleControls: jest.fn((domain: SyscohadaDomain) => {
-      const id = CONTROL_BY_DOMAIN[domain];
-      return id ? [makeControl(domain, id)] : [];
-    }),
+    getModuleControls: jest.fn((domain: SyscohadaDomain) =>
+      (CONTROLS_BY_DOMAIN[domain] ?? []).map((id) => makeControl(domain, id)),
+    ),
   };
 
   const service = new SyscohadaComplianceService(
@@ -98,16 +123,18 @@ const ORG = asTenantId('11111111-1111-1111-1111-111111111111');
 const QUERY = { fiscalYearStartDate: '2025-01-01', asAtDate: '2025-12-31' } as const;
 
 describe('SyscohadaComplianceService', () => {
-  it('returns compliant when balance, journal and TFT checks pass', async () => {
+  it('returns compliant when balance, journal, account-sense and TFT checks pass', async () => {
     const { service } = setup();
 
     const report = await service.evaluate(ORG, QUERY);
 
     expect(report.verdict).toBe('compliant');
-    expect(report.counts).toEqual({ pass: 3, fail: 0, notEvaluable: 0 });
+    expect(report.counts).toEqual({ pass: 7, fail: 0, notEvaluable: 0 });
     expect(report.organizationId).toBe(ORG);
     expect(report.asAtDate).toBe('2025-12-31');
-    expect(report.results).toHaveLength(3);
+    expect(report.results).toHaveLength(7);
+    // Aucune recommandation quand tout est conforme.
+    expect(report.results.every((r) => r.recommendation === null)).toBe(true);
   });
 
   it('attaches the sourced catalog control to each result', async () => {
@@ -207,6 +234,152 @@ describe('SyscohadaComplianceService', () => {
 
     expect(tft?.status).toBe('fail');
     expect(tft?.data).toMatchObject({ coherenceCheck: 42 });
+    expect(report.verdict).toBe('non_compliant');
+  });
+
+  it('detects accounts with an abnormal balance sense (probable misposting)', async () => {
+    const { service, reports } = setup({
+      trialBalanceRows: [
+        {
+          accountCode: '401100',
+          accountLabel: 'Fournisseur ABC',
+          endingDebit: '500.00',
+          endingCredit: '0.00',
+        },
+        {
+          accountCode: '521000',
+          accountLabel: 'Banque',
+          endingDebit: '1000.00',
+          endingCredit: '0.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const sense = report.results.find((r) => r.controlId === 'plan-sens-normal-comptes');
+
+    expect(reports.getTrialBalance).toHaveBeenCalledWith(ORG, {
+      fromDate: QUERY.fiscalYearStartDate,
+      toDate: QUERY.asAtDate,
+    });
+    expect(sense?.status).toBe('fail');
+    expect(sense?.domain).toBe('accounting-plan');
+    expect(sense?.data).toMatchObject({ warningCount: 1 });
+    expect((sense?.data as { accounts: Array<{ code: string }> }).accounts[0].code).toBe('401100');
+    expect(report.verdict).toBe('non_compliant');
+  });
+
+  it('surfaces the catalog remediation as a recommendation on a detected anomaly', async () => {
+    const { service } = setup({
+      trialBalanceRows: [
+        {
+          accountCode: '411200',
+          accountLabel: 'Client XYZ',
+          endingDebit: '0.00',
+          endingCredit: '750.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+
+    const sense = report.results.find((r) => r.controlId === 'plan-sens-normal-comptes');
+    expect(sense?.status).toBe('fail');
+    // La recommandation provient du remède du contrôle catalogue.
+    expect(sense?.recommendation).toBe('Corriger plan-sens-normal-comptes');
+
+    // Un contrôle qui passe n'expose aucune recommandation.
+    const bilan = report.results.find((r) => r.controlId === 'bilan-actif-egal-passif');
+    expect(bilan?.status).toBe('pass');
+    expect(bilan?.recommendation).toBeNull();
+  });
+
+  it('detects accounts whose code is outside the SYSCOHADA chart (import garbage)', async () => {
+    const { service } = setup({
+      trialBalanceRows: [
+        {
+          accountCode: '601000',
+          accountLabel: 'Achats',
+          endingDebit: '100.00',
+          endingCredit: '0.00',
+        },
+        {
+          accountCode: '0DIVERS',
+          accountLabel: 'Compte parasite',
+          endingDebit: '50.00',
+          endingCredit: '0.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const numbering = report.results.find((r) => r.controlId === 'plan-numerotation-classes');
+
+    expect(numbering?.status).toBe('fail');
+    expect(numbering?.data).toMatchObject({ invalidCount: 1 });
+    expect((numbering?.data as { accounts: Array<{ code: string }> }).accounts[0].code).toBe(
+      '0DIVERS',
+    );
+    expect(numbering?.recommendation).toBe('Corriger plan-numerotation-classes');
+  });
+
+  it('detects validated entries dated outside their accounting period', async () => {
+    const { service, dataSource } = setup({
+      outOfPeriodRows: [
+        {
+          entry_number: '42',
+          entry_date: '2025-02-15',
+          start_date: '2025-01-01',
+          end_date: '2025-01-31',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const chrono = report.results.find((r) => r.controlId === 'journal-chronologie-continuite');
+
+    // La requête de cohérence de période a bien été routée vers accounting_periods.
+    expect(dataSource.query).toHaveBeenCalledWith(expect.stringMatching(/accounting_periods/), [
+      ORG,
+      QUERY.fiscalYearStartDate,
+      QUERY.asAtDate,
+    ]);
+    expect(chrono?.status).toBe('fail');
+    expect(chrono?.data).toMatchObject({ outOfPeriodCount: 1 });
+    expect(chrono?.domain).toBe('journals');
+    expect(chrono?.recommendation).toBe('Corriger journal-chronologie-continuite');
+    expect(report.verdict).toBe('non_compliant');
+  });
+
+  it('detects unsettled suspense / internal-transfer accounts at the cut-off date', async () => {
+    const { service } = setup({
+      trialBalanceRows: [
+        {
+          accountCode: '471000',
+          accountLabel: "Compte d'attente",
+          endingDebit: '320.00',
+          endingCredit: '0.00',
+        },
+        {
+          accountCode: '476000',
+          accountLabel: 'Écart de conversion-Actif',
+          endingDebit: '90.00',
+          endingCredit: '0.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const suspense = report.results.find((r) => r.controlId === 'comptes-attente-soldes');
+
+    expect(suspense?.status).toBe('fail');
+    expect(suspense?.domain).toBe('regularizations');
+    // 471 signalé, 476 (écart de conversion) ignoré → un seul compte.
+    expect(suspense?.data).toMatchObject({ openCount: 1 });
+    expect((suspense?.data as { accounts: Array<{ code: string }> }).accounts[0].code).toBe(
+      '471000',
+    );
+    expect(suspense?.recommendation).toBe('Corriger comptes-attente-soldes');
     expect(report.verdict).toBe('non_compliant');
   });
 });
