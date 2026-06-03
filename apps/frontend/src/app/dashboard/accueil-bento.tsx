@@ -309,10 +309,10 @@ export function AccueilBento({
               Que voulez-vous faire ?
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <ActionTile href="/journals" icon={PenLine} label="Saisir" hint="Nouvelle écriture" />
+              <ActionTile href="/imports" icon={FileUp} label="Importer" hint="Sage, balance, CSV, PDF" />
               <ActionTile href="/reports/console" icon={BarChart3} label="Voir les états" hint="Bilan, résultat, DSF" />
               <ActionTile href="/lettering" icon={Link2} label="Lettrer" hint="Tiers 40x / 41x" />
-              <ActionTile href="/imports" icon={FileUp} label="Importer" hint="Sage, CSV, PDF" />
+              <ActionTile href="/journals" icon={PenLine} label="Saisir" hint="Écriture manuelle (complément)" />
             </div>
           </section>
 
@@ -1045,11 +1045,12 @@ function SetupGuide({
       cta: 'Ouvrir l’exercice',
     },
     {
-      label: 'Saisir ou importer vos écritures',
-      detail: 'Sage Saari, CSV, ou saisie manuelle pour démarrer le dossier.',
+      label: 'Importer vos écritures',
+      detail:
+        'Export Sage, balance, CSV ou PDF : l’import alimente tous les états. La saisie manuelle reste pour les corrections.',
       done: hasEntries,
       href: '/imports',
-      cta: 'Démarrer la saisie',
+      cta: 'Importer un fichier',
     },
   ];
   const doneCount = steps.filter((s) => s.done).length;
@@ -1071,8 +1072,9 @@ function SetupGuide({
             <p className="eyebrow">Premiers pas</p>
             <h2 className="mt-1 font-display text-2xl text-ink sm:text-3xl">Configurons votre dossier</h2>
             <p className="mt-1.5 max-w-[56ch] text-base leading-relaxed text-ink-soft">
-              Voici par où commencer. L&apos;étape clé : ouvrir l&apos;exercice, qui débloque la saisie, les
-              états financiers et le suivi du dossier.
+              Voici par où commencer. Ouvrez l&apos;exercice, puis importez vos écritures (export Sage,
+              balance) : tout le reste — états financiers, conformité, suivi du dossier — s&apos;alimente
+              automatiquement.
             </p>
           </div>
         </div>
