@@ -92,6 +92,8 @@ export class SyscohadaComplianceService {
       this.accountNumberingCheck(),
       this.entryPeriodConsistencyCheck(),
       this.suspenseAccountsCheck(),
+      this.vatAccountSenseCheck(),
+      this.partnerLetteringCheck(),
       this.cashFlowReconciliationCheck(),
     ];
   }
@@ -131,8 +133,20 @@ export class SyscohadaComplianceService {
       fail: results.filter((r) => r.status === 'fail').length,
       notEvaluable: results.filter((r) => r.status === 'not_evaluable').length,
     };
-    const verdict: ComplianceVerdict =
-      counts.fail > 0 ? 'non_compliant' : counts.notEvaluable > 0 ? 'partial' : 'compliant';
+    // Verdict sensible à la sévérité : seul l'échec d'un contrôle BLOQUANT
+    // (équilibre, partie double…) rend l'exercice « non conforme ». Un échec
+    // d'avertissement/info (sens anormal, lettrage en retard…) ou un contrôle
+    // non évaluable place l'exercice « sous réserves » (partial), sans le
+    // déclarer non conforme. Une sévérité inconnue (contrôle introuvable) est
+    // traitée comme bloquante par prudence.
+    const blockingFail = results.some(
+      (r) => r.status === 'fail' && (r.control?.severity ?? 'blocking') === 'blocking',
+    );
+    const verdict: ComplianceVerdict = blockingFail
+      ? 'non_compliant'
+      : counts.fail > 0 || counts.notEvaluable > 0
+        ? 'partial'
+        : 'compliant';
 
     this.logger.log(
       `SYSCOHADA compliance org=${organizationId} asAt=${query.asAtDate} verdict=${verdict} ` +
@@ -393,6 +407,101 @@ export class SyscohadaComplianceService {
               label: r.accountLabel,
               balance: (num(r.endingDebit) - num(r.endingCredit)).toFixed(2),
             })),
+          },
+        };
+      },
+    };
+  }
+
+  /**
+   * Détecte les comptes de TVA au sens anormal : TVA facturée/collectée (443)
+   * avec solde débiteur, ou TVA récupérable/déductible (445) avec solde
+   * créditeur — incohérence d'imputation (mauvais sens d'écriture) qui fausse
+   * la liquidation de la TVA due. Via le solde de clôture de la balance.
+   */
+  private vatAccountSenseCheck(): ExecutableCheck {
+    return {
+      controlId: 'tva-coherence-comptes',
+      domain: 'tva',
+      run: async (ctx) => {
+        const trialBalance = await this.reports.getTrialBalance(ctx.organizationId, {
+          fromDate: ctx.fiscalYearStartDate,
+          toDate: ctx.asAtDate,
+        });
+        const anomalies = trialBalance.rows.flatMap((r) => {
+          const net = num(r.endingDebit) - num(r.endingCredit);
+          if (Math.abs(net) < AMOUNT_EPSILON) return [];
+          // 443 collectée = sens créditeur attendu ; 445 déductible = débiteur.
+          if (r.accountCode.startsWith('443') && net > 0) {
+            return [
+              {
+                code: r.accountCode,
+                label: r.accountLabel,
+                sens: 'débiteur',
+                attendu: 'créditeur',
+              },
+            ];
+          }
+          if (r.accountCode.startsWith('445') && net < 0) {
+            return [
+              {
+                code: r.accountCode,
+                label: r.accountLabel,
+                sens: 'créditeur',
+                attendu: 'débiteur',
+              },
+            ];
+          }
+          return [];
+        });
+        const ok = anomalies.length === 0;
+        return {
+          status: ok ? 'pass' : 'fail',
+          detail: ok
+            ? 'Comptes de TVA (443 collectée / 445 déductible) au sens normal.'
+            : `${anomalies.length} compte(s) de TVA au sens anormal (imputation à vérifier).`,
+          data: { anomalyCount: anomalies.length, accounts: anomalies.slice(0, 20) },
+        };
+      },
+    };
+  }
+
+  /**
+   * Signale (info) les lignes de comptes de tiers (fournisseurs 40, clients 41)
+   * antérieures à l'exercice et toujours NON lettrées (`line_letter IS NULL`) :
+   * dettes/créances reportées jamais rapprochées de leur règlement. Aide au
+   * suivi du lettrage ; ne déclasse pas l'exercice (sévérité info).
+   */
+  private partnerLetteringCheck(): ExecutableCheck {
+    return {
+      controlId: 'journal-lettrage-tiers',
+      domain: 'journals',
+      run: async (ctx) => {
+        const rows = await this.dataSource.query<Array<{ code: string; cnt: string }>>(
+          `SELECT a.code::text AS code, COUNT(*)::text AS cnt
+             FROM journal_entry_lines l
+             JOIN journal_entries e ON e.id = l.journal_entry_id
+             JOIN organization_chart_accounts a ON a.id = l.account_id
+            WHERE l.organization_id = $1
+              AND e.status = 'validated'
+              AND l.line_letter IS NULL
+              AND (a.code LIKE '40%' OR a.code LIKE '41%')
+              AND e.entry_date < $2::date
+            GROUP BY a.code
+            ORDER BY COUNT(*) DESC
+            LIMIT 50`,
+          [ctx.organizationId, ctx.fiscalYearStartDate],
+        );
+        const total = rows.reduce((sum, r) => sum + Number(r.cnt), 0);
+        const ok = total === 0;
+        return {
+          status: ok ? 'pass' : 'fail',
+          detail: ok
+            ? 'Aucune ligne de tiers antérieure non lettrée en attente.'
+            : `${total} ligne(s) de tiers antérieure(s) à l'exercice toujours non lettrée(s).`,
+          data: {
+            unletteredCount: total,
+            accounts: rows.slice(0, 20).map((r) => ({ code: r.code, lines: Number(r.cnt) })),
           },
         };
       },

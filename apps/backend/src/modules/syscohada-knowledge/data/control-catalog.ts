@@ -113,6 +113,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Comptes de tiers et lettrage'],
     tome: 1,
     evidenceQuery: 'lettrage comptes tiers fournisseur client rapprochement reglement',
+    remediation:
+      'Lettrer les comptes de tiers : rapprocher chaque facture de son règlement par un code de lettrage. Analyser les lignes anciennes non lettrées (avoir non imputé, règlement non rapproché, créance ou dette à solder, à recouvrer ou à provisionner).',
   },
 
   // ── Immobilisations ───────────────────────────────────────────────────────
@@ -200,6 +202,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Opérations fiscales (TVA)'],
     tome: 2,
     evidenceQuery: 'tva collectee deductible 443 445 declaration due regularisation',
+    remediation:
+      "Reprendre l'imputation des comptes de TVA au sens anormal : la TVA facturée (443) est créditrice, la TVA récupérable (445) débitrice. Corriger l'écriture fautive, puis vérifier la liquidation vers le compte de TVA due (4441) ou crédit de TVA (4449).",
   },
   {
     id: 'tva-centralisation-declaration',
