@@ -7,6 +7,7 @@
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -23,6 +24,7 @@ import { RequirePermission } from '../../rbac/decorators/require-permission.deco
 import { PermissionsGuard } from '../../rbac/guards/permissions.guard';
 import { TenantGuard } from '../../rbac/guards/tenant.guard';
 import { CreateFiscalYearDto } from '../dto/create-fiscal-year.dto';
+import { CoverageQueryDto, EnsureCoverageDto } from '../dto/ensure-coverage.dto';
 import { ReopenPeriodDto } from '../dto/reopen-period.dto';
 import { PeriodsService } from '../services/periods.service';
 
@@ -66,6 +68,51 @@ export class PeriodsController {
       { startDate: dto.startDate },
     );
     return { period };
+  }
+
+  @Get('coverage')
+  @RequirePermission('journals.read')
+  @ApiOperation({
+    summary:
+      'Analyser la couverture en périodes d’une plage de dates (exercices manquants, périodes fermées bloquantes) — pour un import. Ne crée rien.',
+  })
+  async coverage(
+    @Param('id', ParseUUIDPipe) _id: string,
+    @CurrentOrg() org: CurrentOrgContext,
+    @Query() query: CoverageQueryDto,
+  ) {
+    const coverage = await this.periods.analyzeCoverage(
+      asTenantId(org.id),
+      query.fromDate,
+      query.toDate,
+    );
+    return { coverage };
+  }
+
+  @Post('ensure-coverage')
+  @HttpCode(HttpStatus.CREATED)
+  @RequirePermission('journals.close_period')
+  @ApiOperation({
+    summary:
+      'Créer les exercices manquants couvrant une plage de dates (idempotent) — débloque l’import d’un export sans pré-configuration des périodes.',
+  })
+  async ensureCoverage(
+    @Param('id', ParseUUIDPipe) _id: string,
+    @CurrentOrg() org: CurrentOrgContext,
+    @CurrentUser() user: CurrentUserContext,
+    @Body() dto: EnsureCoverageDto,
+    @Req() req: Request,
+  ) {
+    const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
+    const result = await this.periods.ensureFiscalYearsForRange(
+      asTenantId(org.id),
+      dto.fromDate,
+      dto.toDate,
+      dto.split ?? 'MONTHLY',
+      user.id,
+      ctx,
+    );
+    return { result };
   }
 
   @Post(':periodId/close')
