@@ -44,6 +44,7 @@ import {
 import type { JournalView } from '@/types/journals';
 
 import { DeleteSessionConfirm } from './_components/delete-confirm';
+import { PeriodCoverageGate } from './_components/period-coverage-gate';
 import { PipelineStepper } from './_components/pipeline-stepper';
 
 const DOCUMENT_TYPE_SUGGESTION_LABEL: Record<DocumentType, string> = {
@@ -1284,6 +1285,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                     : "Vérifier les lignes à l'étape précédente pour débloquer le passage."
             }
           />
+          {preview && <PeriodCoverageGate orgId={orgId} preview={preview} />}
           <div className="rounded-sm border border-line bg-sunk/40 p-4">
             <p className="text-xs leading-relaxed text-ink-soft">
               <span className="font-medium text-ink">Action irréversible.</span> Cette

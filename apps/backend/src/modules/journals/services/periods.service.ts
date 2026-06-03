@@ -9,6 +9,34 @@ import { JournalEntryRepository } from '../repositories/journal-entry.repository
 import type { AccountingPeriodEntity } from '../entities/accounting-period.entity';
 import type { FiscalYearSplit } from '../types/journal.types';
 
+export interface PeriodCoverageYear {
+  readonly year: number;
+  readonly present: boolean;
+}
+
+export interface ClosedPeriodConflict {
+  readonly id: string;
+  readonly label: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly kind: string;
+}
+
+export interface PeriodCoverageGaps {
+  readonly fromDate: string;
+  readonly toDate: string;
+  readonly years: ReadonlyArray<PeriodCoverageYear>;
+  readonly missingYears: ReadonlyArray<number>;
+  readonly closedConflicts: ReadonlyArray<ClosedPeriodConflict>;
+  /** `true` si un import sur cette plage buterait (exercice manquant ou période fermée). */
+  readonly hasGaps: boolean;
+}
+
+export interface EnsureCoverageResult {
+  readonly createdYears: ReadonlyArray<number>;
+  readonly existingYears: ReadonlyArray<number>;
+}
+
 @Injectable()
 export class PeriodsService {
   private static readonly MODULE = 'journals' as const;
@@ -34,6 +62,118 @@ export class PeriodsService {
       });
     }
     return period;
+  }
+
+  // ─── Couverture d'une plage de dates (import-first) ──────────────────
+  //
+  // Une écriture ne peut être créée que si une période OUVERTE contient sa
+  // date (cf. EntriesService.createDraft → ACCOUNTING_PERIOD_NOT_FOUND /
+  // _CLOSED). Pour qu'un export Sage s'importe sans pré-configuration, on
+  // expose de quoi (1) détecter les exercices manquants sur la plage des
+  // écritures importées, (2) les créer en un geste. La création reste un
+  // acte explicite déclenché par l'utilisateur — jamais silencieuse.
+
+  /**
+   * Analyse, sans rien créer, la couverture des dates `[fromDate, toDate]` :
+   * exercices (années) manquants et périodes fermées qui bloqueraient un
+   * import sur cette plage. Orienté année calendaire (cas usuel OHADA-CI).
+   */
+  async analyzeCoverage(
+    organizationId: TenantId,
+    fromDate: string,
+    toDate: string,
+  ): Promise<PeriodCoverageGaps> {
+    assertTenantId(organizationId);
+    this.assertRange(fromDate, toDate);
+
+    const roots = await this.periodsRepo.listAnnualRoots(organizationId);
+    const years = PeriodsService.yearsInRange(fromDate, toDate).map((year) => ({
+      year,
+      present: roots.some((r) => PeriodsService.annualOverlapsYear(r, year)),
+    }));
+    const missingYears = years.filter((y) => !y.present).map((y) => y.year);
+
+    const all = await this.periodsRepo.listByOrganization(organizationId);
+    const closedConflicts = all
+      .filter((p) => p.status === 'closed' && p.startDate <= toDate && p.endDate >= fromDate)
+      .map((p) => ({
+        id: p.id,
+        label: p.label,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        kind: p.kind,
+      }));
+
+    return {
+      fromDate,
+      toDate,
+      years,
+      missingYears,
+      closedConflicts,
+      hasGaps: missingYears.length > 0 || closedConflicts.length > 0,
+    };
+  }
+
+  /**
+   * Crée les exercices (années calendaires) manquants pour couvrir
+   * `[fromDate, toDate]`, chacun avec ses sous-périodes (`split`). Idempotent :
+   * une année déjà couverte par un exercice existant est laissée intacte. Ne
+   * touche JAMAIS aux périodes fermées (rouvrir reste un acte distinct motivé).
+   */
+  async ensureFiscalYearsForRange(
+    organizationId: TenantId,
+    fromDate: string,
+    toDate: string,
+    split: FiscalYearSplit,
+    actorId: string,
+    ctx: AuditContext,
+  ): Promise<EnsureCoverageResult> {
+    assertTenantId(organizationId);
+    this.assertRange(fromDate, toDate);
+
+    const roots = await this.periodsRepo.listAnnualRoots(organizationId);
+    const createdYears: number[] = [];
+    const existingYears: number[] = [];
+
+    for (const year of PeriodsService.yearsInRange(fromDate, toDate)) {
+      if (roots.some((r) => PeriodsService.annualOverlapsYear(r, year))) {
+        existingYears.push(year);
+        continue;
+      }
+      const created = await this.createFiscalYear(organizationId, year, split, actorId, ctx);
+      // Inclure l'exercice fraîchement créé dans la détection suivante pour
+      // ne pas retenter (et heurter le refus de chevauchement) un offset.
+      roots.push(created);
+      createdYears.push(year);
+    }
+
+    return { createdYears, existingYears };
+  }
+
+  private assertRange(fromDate: string, toDate: string): void {
+    if (!PeriodsService.isValidYmd(fromDate) || !PeriodsService.isValidYmd(toDate)) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: `fromDate et toDate doivent être au format YYYY-MM-DD (reçu: ${fromDate}, ${toDate}).`,
+      });
+    }
+    if (fromDate > toDate) {
+      throw new AppException(ERROR_CODES.REPORT_INVALID_DATE_RANGE, {
+        message: `Plage invalide : fromDate ${fromDate} postérieure à toDate ${toDate}.`,
+      });
+    }
+  }
+
+  private static yearsInRange(fromDate: string, toDate: string): number[] {
+    const y0 = Number(fromDate.slice(0, 4));
+    const y1 = Number(toDate.slice(0, 4));
+    const out: number[] = [];
+    for (let y = y0; y <= y1; y += 1) out.push(y);
+    return out;
+  }
+
+  /** Un exercice (root ANNUAL) chevauche l'année calendaire `year`. */
+  private static annualOverlapsYear(root: AccountingPeriodEntity, year: number): boolean {
+    return root.startDate <= `${year}-12-31` && root.endDate >= `${year}-01-01`;
   }
 
   async createFiscalYear(
