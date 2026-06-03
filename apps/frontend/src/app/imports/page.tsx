@@ -65,6 +65,21 @@ const DOCUMENT_TYPE_ORDER: readonly DocumentType[] = [
   'sales_purchases',
 ];
 
+/**
+ * Ce que chaque type d'import débloque une fois committé — rend explicite que
+ * l'app s'alimente des imports. Un import détaillé (écritures / grand livre)
+ * alimente le grand livre et donc TOUTES les fonctions ; une balance ne donne
+ * que les états dérivables des soldes (pas le détail ligne-à-ligne).
+ */
+const DOCUMENT_TYPE_UNLOCKS: Record<DocumentType, readonly string[]> = {
+  entries: ['Tous les états', 'Lettrage', 'Échéancier', 'Conformité', 'Fiscal (TVA/IS)'],
+  general_ledger: ['Tous les états', 'Lettrage', 'Échéancier', 'Conformité', 'Fiscal (TVA/IS)'],
+  trial_balance: ['Bilan', 'Compte de résultat', 'SIG', 'Ratios', 'Annexe (partielle)'],
+  bank_statement: ['Rapprochement bancaire'],
+  auxiliary_ledger: ['Comptes de tiers', 'Lettrage', 'Échéancier'],
+  sales_purchases: ['Journaux ventes/achats', 'TVA'],
+};
+
 const SOURCE_TYPE_LABEL: Record<ImportSourceType, string> = {
   csv: 'CSV',
   excel: 'Excel (.xlsx / .xls)',
@@ -384,6 +399,17 @@ export default function ImportsPage() {
                   <p className="text-xs leading-snug text-ink-mute">
                     {DOCUMENT_TYPE_DESCRIPTIONS[createDocumentType]}
                   </p>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-2xs uppercase tracking-wider text-ink-mute">Débloque</span>
+                    {DOCUMENT_TYPE_UNLOCKS[createDocumentType].map((feature) => (
+                      <span
+                        key={feature}
+                        className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-medium text-accent-ink"
+                      >
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="sourceType" className="eyebrow">
