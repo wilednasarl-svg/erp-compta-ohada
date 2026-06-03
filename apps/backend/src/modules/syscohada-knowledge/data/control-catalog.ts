@@ -48,6 +48,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Plan comptable général'],
     tome: 1,
     evidenceQuery: 'plan comptable classes comptes subdivision codification',
+    remediation:
+      "Reclasser tout compte dont le code ne respecte pas la codification décimale SYSCOHADA (1ʳᵉ position = classe du plan, code numérique). Un code hors plan provient le plus souvent d'un import : le rattacher au compte normalisé correspondant.",
   },
   {
     id: 'plan-sens-normal-comptes',
@@ -98,6 +100,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF art. 17 — enregistrement chronologique', 'Guide SYSCOHADA Tome 1'],
     tome: 1,
     evidenceQuery: 'enregistrement chronologique ordre date operation livre journal',
+    remediation:
+      "Rapprocher chaque écriture dont la date d'opération sort des bornes de sa période comptable : corriger la date ou rattacher l'écriture à la bonne période. L'enregistrement doit rester chronologique et la date cohérente avec la période (AUDCIF art. 17).",
   },
   {
     id: 'journal-lettrage-tiers',

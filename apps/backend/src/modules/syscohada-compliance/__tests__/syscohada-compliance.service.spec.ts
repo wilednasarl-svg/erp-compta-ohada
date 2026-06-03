@@ -10,11 +10,11 @@ import type {
 } from '../../syscohada-knowledge/services/syscohada-knowledge.service';
 import { SyscohadaComplianceService } from '../services/syscohada-compliance.service';
 
-const CONTROL_BY_DOMAIN: Partial<Record<SyscohadaDomain, string>> = {
-  reports: 'bilan-actif-egal-passif',
-  journals: 'journal-equilibre-partie-double',
-  'accounting-plan': 'plan-sens-normal-comptes',
-  'cash-flow': 'cashflow-variation-coherente',
+const CONTROLS_BY_DOMAIN: Partial<Record<SyscohadaDomain, string[]>> = {
+  reports: ['bilan-actif-egal-passif'],
+  journals: ['journal-equilibre-partie-double', 'journal-chronologie-continuite'],
+  'accounting-plan': ['plan-sens-normal-comptes', 'plan-numerotation-classes'],
+  'cash-flow': ['cashflow-variation-coherente'],
 };
 
 function makeControl(domain: SyscohadaDomain, id: string): SyscohadaControlWithEvidence {
@@ -58,6 +58,12 @@ interface Mocks {
 function setup(opts?: {
   balanceTotals?: { actif: string; passif: string; difference: string };
   unbalancedRows?: Array<{ id: string; entry_number: string; imbalance: string }>;
+  outOfPeriodRows?: Array<{
+    entry_number: string;
+    entry_date: string;
+    start_date: string;
+    end_date: string;
+  }>;
   trialBalanceRows?: TrialRow[];
   balanceThrows?: boolean;
   cashFlow?: { coherenceCheck: string };
@@ -89,14 +95,17 @@ function setup(opts?: {
   } as unknown as jest.Mocked<Pick<CashFlowService, 'getCashFlow'>>;
 
   const dataSource = {
-    query: jest.fn(async () => opts?.unbalancedRows ?? []),
+    query: jest.fn(async (sql: string) =>
+      /accounting_periods/i.test(sql)
+        ? (opts?.outOfPeriodRows ?? [])
+        : (opts?.unbalancedRows ?? []),
+    ),
   };
 
   const knowledge = {
-    getModuleControls: jest.fn((domain: SyscohadaDomain) => {
-      const id = CONTROL_BY_DOMAIN[domain];
-      return id ? [makeControl(domain, id)] : [];
-    }),
+    getModuleControls: jest.fn((domain: SyscohadaDomain) =>
+      (CONTROLS_BY_DOMAIN[domain] ?? []).map((id) => makeControl(domain, id)),
+    ),
   };
 
   const service = new SyscohadaComplianceService(
@@ -119,10 +128,10 @@ describe('SyscohadaComplianceService', () => {
     const report = await service.evaluate(ORG, QUERY);
 
     expect(report.verdict).toBe('compliant');
-    expect(report.counts).toEqual({ pass: 4, fail: 0, notEvaluable: 0 });
+    expect(report.counts).toEqual({ pass: 6, fail: 0, notEvaluable: 0 });
     expect(report.organizationId).toBe(ORG);
     expect(report.asAtDate).toBe('2025-12-31');
-    expect(report.results).toHaveLength(4);
+    expect(report.results).toHaveLength(6);
     // Aucune recommandation quand tout est conforme.
     expect(report.results.every((r) => r.recommendation === null)).toBe(true);
   });
@@ -282,5 +291,62 @@ describe('SyscohadaComplianceService', () => {
     const bilan = report.results.find((r) => r.controlId === 'bilan-actif-egal-passif');
     expect(bilan?.status).toBe('pass');
     expect(bilan?.recommendation).toBeNull();
+  });
+
+  it('detects accounts whose code is outside the SYSCOHADA chart (import garbage)', async () => {
+    const { service } = setup({
+      trialBalanceRows: [
+        {
+          accountCode: '601000',
+          accountLabel: 'Achats',
+          endingDebit: '100.00',
+          endingCredit: '0.00',
+        },
+        {
+          accountCode: '0DIVERS',
+          accountLabel: 'Compte parasite',
+          endingDebit: '50.00',
+          endingCredit: '0.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const numbering = report.results.find((r) => r.controlId === 'plan-numerotation-classes');
+
+    expect(numbering?.status).toBe('fail');
+    expect(numbering?.data).toMatchObject({ invalidCount: 1 });
+    expect((numbering?.data as { accounts: Array<{ code: string }> }).accounts[0].code).toBe(
+      '0DIVERS',
+    );
+    expect(numbering?.recommendation).toBe('Corriger plan-numerotation-classes');
+  });
+
+  it('detects validated entries dated outside their accounting period', async () => {
+    const { service, dataSource } = setup({
+      outOfPeriodRows: [
+        {
+          entry_number: '42',
+          entry_date: '2025-02-15',
+          start_date: '2025-01-01',
+          end_date: '2025-01-31',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const chrono = report.results.find((r) => r.controlId === 'journal-chronologie-continuite');
+
+    // La requête de cohérence de période a bien été routée vers accounting_periods.
+    expect(dataSource.query).toHaveBeenCalledWith(expect.stringMatching(/accounting_periods/), [
+      ORG,
+      QUERY.fiscalYearStartDate,
+      QUERY.asAtDate,
+    ]);
+    expect(chrono?.status).toBe('fail');
+    expect(chrono?.data).toMatchObject({ outOfPeriodCount: 1 });
+    expect(chrono?.domain).toBe('journals');
+    expect(chrono?.recommendation).toBe('Corriger journal-chronologie-continuite');
+    expect(report.verdict).toBe('non_compliant');
   });
 });

@@ -89,6 +89,8 @@ export class SyscohadaComplianceService {
       this.balanceSheetEquilibriumCheck(),
       this.doubleEntryBalanceCheck(),
       this.accountSenseCheck(),
+      this.accountNumberingCheck(),
+      this.entryPeriodConsistencyCheck(),
       this.cashFlowReconciliationCheck(),
     ];
   }
@@ -262,6 +264,91 @@ export class SyscohadaComplianceService {
               amount: u.amount,
               severity: u.severity,
               reason: u.reason,
+            })),
+          },
+        };
+      },
+    };
+  }
+
+  /**
+   * Détecte les comptes dont le code ne respecte pas la codification
+   * SYSCOHADA : code non numérique ou première position = 0 (aucune classe
+   * 0 n'existe au plan). Conservateur — la classe 9 (engagements / analytique)
+   * reste valide et n'est pas signalée. Capture surtout les codes parasites
+   * issus d'un import (libellés en guise de code, préfixes erronés).
+   */
+  private accountNumberingCheck(): ExecutableCheck {
+    return {
+      controlId: 'plan-numerotation-classes',
+      domain: 'accounting-plan',
+      run: async (ctx) => {
+        const trialBalance = await this.reports.getTrialBalance(ctx.organizationId, {
+          fromDate: ctx.fiscalYearStartDate,
+          toDate: ctx.asAtDate,
+        });
+        const invalid = trialBalance.rows.filter((r) => !/^[1-9]/.test(r.accountCode));
+        const ok = invalid.length === 0;
+        return {
+          status: ok ? 'pass' : 'fail',
+          detail: ok
+            ? 'Tous les comptes mouvementés respectent la codification décimale du plan SYSCOHADA.'
+            : `${invalid.length} compte(s) au code hors plan (non numérique ou classe 0).`,
+          data: {
+            invalidCount: invalid.length,
+            accounts: invalid
+              .slice(0, 20)
+              .map((r) => ({ code: r.accountCode, label: r.accountLabel })),
+          },
+        };
+      },
+    };
+  }
+
+  /**
+   * Détecte les écritures validées dont la date d'opération sort des bornes
+   * de la période comptable à laquelle elles sont rattachées — incohérence
+   * de chronologie / de rattachement à l'exercice (AUDCIF art. 17).
+   */
+  private entryPeriodConsistencyCheck(): ExecutableCheck {
+    return {
+      controlId: 'journal-chronologie-continuite',
+      domain: 'journals',
+      run: async (ctx) => {
+        const rows = await this.dataSource.query<
+          Array<{
+            entry_number: string;
+            entry_date: string;
+            start_date: string;
+            end_date: string;
+          }>
+        >(
+          `SELECT e.entry_number::text AS entry_number,
+                  e.entry_date::text   AS entry_date,
+                  p.start_date::text   AS start_date,
+                  p.end_date::text     AS end_date
+             FROM journal_entries e
+             JOIN accounting_periods p ON p.id = e.period_id
+            WHERE e.organization_id = $1
+              AND e.status = 'validated'
+              AND e.entry_date BETWEEN $2::date AND $3::date
+              AND (e.entry_date < p.start_date OR e.entry_date > p.end_date)
+            ORDER BY e.entry_date
+            LIMIT 50`,
+          [ctx.organizationId, ctx.fiscalYearStartDate, ctx.asAtDate],
+        );
+        const ok = rows.length === 0;
+        return {
+          status: ok ? 'pass' : 'fail',
+          detail: ok
+            ? 'Toutes les écritures validées sont datées dans les bornes de leur période comptable.'
+            : `${rows.length} écriture(s) datée(s) hors des bornes de leur période comptable.`,
+          data: {
+            outOfPeriodCount: rows.length,
+            samples: rows.slice(0, 20).map((r) => ({
+              entryNumber: r.entry_number,
+              entryDate: r.entry_date,
+              period: `${r.start_date} → ${r.end_date}`,
             })),
           },
         };
