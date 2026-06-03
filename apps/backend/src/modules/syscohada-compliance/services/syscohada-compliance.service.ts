@@ -91,6 +91,7 @@ export class SyscohadaComplianceService {
       this.accountSenseCheck(),
       this.accountNumberingCheck(),
       this.entryPeriodConsistencyCheck(),
+      this.suspenseAccountsCheck(),
       this.cashFlowReconciliationCheck(),
     ];
   }
@@ -349,6 +350,48 @@ export class SyscohadaComplianceService {
               entryNumber: r.entry_number,
               entryDate: r.entry_date,
               period: `${r.start_date} → ${r.end_date}`,
+            })),
+          },
+        };
+      },
+    };
+  }
+
+  /**
+   * Détecte les comptes d'attente (471) et de virements de fonds (585) non
+   * soldés à la date d'arrêté. Ces comptes transitoires doivent être ramenés
+   * à zéro : un solde résiduel signale une opération en suspens non imputée
+   * définitivement. Préfixes précis (471/585) pour éviter les faux positifs
+   * sur 47x (écarts de conversion) et 58x (régies d'avances) légitimement
+   * non nuls.
+   */
+  private suspenseAccountsCheck(): ExecutableCheck {
+    const SUSPENSE_PREFIXES = ['471', '585'];
+    return {
+      controlId: 'comptes-attente-soldes',
+      domain: 'regularizations',
+      run: async (ctx) => {
+        const trialBalance = await this.reports.getTrialBalance(ctx.organizationId, {
+          fromDate: ctx.fiscalYearStartDate,
+          toDate: ctx.asAtDate,
+        });
+        const open = trialBalance.rows.filter((r) => {
+          if (!SUSPENSE_PREFIXES.some((p) => r.accountCode.startsWith(p))) return false;
+          const net = num(r.endingDebit) - num(r.endingCredit);
+          return Math.abs(net) >= AMOUNT_EPSILON;
+        });
+        const ok = open.length === 0;
+        return {
+          status: ok ? 'pass' : 'fail',
+          detail: ok
+            ? "Comptes d'attente (471) et virements de fonds (585) soldés à la date d'arrêté."
+            : `${open.length} compte(s) d'attente / virement de fonds non soldé(s) à la date d'arrêté.`,
+          data: {
+            openCount: open.length,
+            accounts: open.slice(0, 20).map((r) => ({
+              code: r.accountCode,
+              label: r.accountLabel,
+              balance: (num(r.endingDebit) - num(r.endingCredit)).toFixed(2),
             })),
           },
         };

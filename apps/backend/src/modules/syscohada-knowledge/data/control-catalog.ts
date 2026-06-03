@@ -390,6 +390,19 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     tome: 1,
     evidenceQuery: 'charges payer produits recevoir constates cloture facture exercice',
   },
+  {
+    id: 'comptes-attente-soldes',
+    domain: 'regularizations',
+    label: 'Comptes d’attente et virements de fonds soldés à la clôture',
+    description:
+      'Les comptes d’attente (471) et de virements de fonds (585) sont soldés à la clôture : un solde résiduel traduit une opération en suspens non imputée définitivement sur son compte de destination.',
+    severity: 'warning',
+    legalBasis: ['Guide SYSCOHADA Tome 1 — Comptes transitoires et d’attente'],
+    tome: 1,
+    evidenceQuery: 'compte attente 471 virement fonds 585 transitoire solde regularisation cloture',
+    remediation:
+      'Solder les comptes d’attente (471) et de virements de fonds (585) avant l’arrêté : imputer définitivement chaque opération en suspens sur son compte de destination. Un solde résiduel signale une opération non régularisée à analyser pièce par pièce.',
+  },
 
   // ── Fusions, apports et transformations de sociétés ───────────────────────
   {

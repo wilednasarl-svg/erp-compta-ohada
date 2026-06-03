@@ -14,6 +14,7 @@ const CONTROLS_BY_DOMAIN: Partial<Record<SyscohadaDomain, string[]>> = {
   reports: ['bilan-actif-egal-passif'],
   journals: ['journal-equilibre-partie-double', 'journal-chronologie-continuite'],
   'accounting-plan': ['plan-sens-normal-comptes', 'plan-numerotation-classes'],
+  regularizations: ['comptes-attente-soldes'],
   'cash-flow': ['cashflow-variation-coherente'],
 };
 
@@ -128,10 +129,10 @@ describe('SyscohadaComplianceService', () => {
     const report = await service.evaluate(ORG, QUERY);
 
     expect(report.verdict).toBe('compliant');
-    expect(report.counts).toEqual({ pass: 6, fail: 0, notEvaluable: 0 });
+    expect(report.counts).toEqual({ pass: 7, fail: 0, notEvaluable: 0 });
     expect(report.organizationId).toBe(ORG);
     expect(report.asAtDate).toBe('2025-12-31');
-    expect(report.results).toHaveLength(6);
+    expect(report.results).toHaveLength(7);
     // Aucune recommandation quand tout est conforme.
     expect(report.results.every((r) => r.recommendation === null)).toBe(true);
   });
@@ -347,6 +348,38 @@ describe('SyscohadaComplianceService', () => {
     expect(chrono?.data).toMatchObject({ outOfPeriodCount: 1 });
     expect(chrono?.domain).toBe('journals');
     expect(chrono?.recommendation).toBe('Corriger journal-chronologie-continuite');
+    expect(report.verdict).toBe('non_compliant');
+  });
+
+  it('detects unsettled suspense / internal-transfer accounts at the cut-off date', async () => {
+    const { service } = setup({
+      trialBalanceRows: [
+        {
+          accountCode: '471000',
+          accountLabel: "Compte d'attente",
+          endingDebit: '320.00',
+          endingCredit: '0.00',
+        },
+        {
+          accountCode: '476000',
+          accountLabel: 'Écart de conversion-Actif',
+          endingDebit: '90.00',
+          endingCredit: '0.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const suspense = report.results.find((r) => r.controlId === 'comptes-attente-soldes');
+
+    expect(suspense?.status).toBe('fail');
+    expect(suspense?.domain).toBe('regularizations');
+    // 471 signalé, 476 (écart de conversion) ignoré → un seul compte.
+    expect(suspense?.data).toMatchObject({ openCount: 1 });
+    expect((suspense?.data as { accounts: Array<{ code: string }> }).accounts[0].code).toBe(
+      '471000',
+    );
+    expect(suspense?.recommendation).toBe('Corriger comptes-attente-soldes');
     expect(report.verdict).toBe('non_compliant');
   });
 });
