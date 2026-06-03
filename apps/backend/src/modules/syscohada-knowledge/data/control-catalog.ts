@@ -28,6 +28,12 @@ export interface SyscohadaControl {
   readonly tome: number;
   /** Requête de recherche servant à rapatrier l'extrait sourcé du Guide. */
   readonly evidenceQuery: string;
+  /**
+   * Recommandation de correction, en langage métier, surfacée quand un
+   * contrôle exécutable détecte une non-conformité. Optionnelle tant que
+   * tous les contrôles du catalogue ne sont pas dotés d'un remède rédigé.
+   */
+  readonly remediation?: string;
 }
 
 export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
@@ -53,6 +59,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Fonctionnement des comptes'],
     tome: 1,
     evidenceQuery: 'compte solde debiteur crediteur fonctionnement classe',
+    remediation:
+      "Contrôler les comptes au solde inhabituel : un fournisseur (40) débiteur ou un client (41) créditeur traduit le plus souvent une avance mal imputée ou une erreur de compte. Reclasser sur le compte d'avance dédié (409 fournisseurs débiteurs, 419 clients créditeurs) ou corriger l'imputation de l'écriture fautive.",
   },
 
   // ── Journaux et écritures ────────────────────────────────────────────────
@@ -66,6 +74,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF art. 17 — comptabilité en partie double', 'Guide SYSCOHADA Tome 1'],
     tome: 1,
     evidenceQuery: 'partie double debit credit equilibre ecriture enregistrement',
+    remediation:
+      "Rouvrir chaque écriture déséquilibrée signalée et rétablir l'égalité débit = crédit (ligne manquante, montant ou sens erroné). Une écriture ne peut être validée tant que la partie double n'est pas respectée (AUDCIF art. 17).",
   },
   {
     id: 'journal-piece-justificative',
@@ -210,6 +220,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF art. 8 — états financiers annuels', 'Guide SYSCOHADA Tome 3'],
     tome: 3,
     evidenceQuery: 'bilan total actif passif equilibre resultat affectation',
+    remediation:
+      "Un bilan déséquilibré révèle une écriture non équilibrée ou un report à nouveau erroné. Rapprocher le total des soldes débiteurs et créditeurs de la balance générale, corriger l'imputation fautive, puis vérifier l'affectation du résultat (compte 13) avant de regénérer le bilan.",
   },
   {
     id: 'etats-tout-indissociable',
@@ -474,6 +486,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 3 — Cohérence du TFT'],
     tome: 3,
     evidenceQuery: 'variation tresorerie nette ouverture cloture flux bilan reconciliation',
+    remediation:
+      "L'écart entre la trésorerie de clôture du TFT (poste ZH) et le solde des comptes de classe 5 révèle un flux mal classé ou un compte de trésorerie oublié. Vérifier les exclusions BFR (485, 414…) et l'exhaustivité des comptes 52-58 retenus dans le périmètre de trésorerie.",
   },
 
   // ── Rapprochement bancaire ────────────────────────────────────────────────

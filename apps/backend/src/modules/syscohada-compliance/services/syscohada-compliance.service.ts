@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 
 import { type TenantId } from '../../../common/persistence/tenant-scope';
 import { CashFlowService } from '../../reports/services/cash-flow.service';
-import { ReportsService } from '../../reports/services/reports.service';
+import { ReportsService, detectUnusualBalances } from '../../reports/services/reports.service';
 import {
   SyscohadaKnowledgeService,
   type SyscohadaControlWithEvidence,
@@ -19,6 +19,13 @@ export interface ComplianceCheckResult {
   readonly detail: string;
   readonly data?: Readonly<Record<string, unknown>>;
   readonly control: SyscohadaControlWithEvidence | null;
+  /**
+   * Recommandation de correction (remède du catalogue) — renseignée
+   * uniquement quand le contrôle échoue (`status === 'fail'`), `null`
+   * sinon. Permet à l'UI d'afficher « comment corriger » à côté de
+   * l'anomalie, citée par l'article AUDCIF porté par `control.legalBasis`.
+   */
+  readonly recommendation: string | null;
 }
 
 export type ComplianceVerdict = 'compliant' | 'non_compliant' | 'partial';
@@ -81,6 +88,7 @@ export class SyscohadaComplianceService {
     this.checks = [
       this.balanceSheetEquilibriumCheck(),
       this.doubleEntryBalanceCheck(),
+      this.accountSenseCheck(),
       this.cashFlowReconciliationCheck(),
     ];
   }
@@ -103,13 +111,15 @@ export class SyscohadaComplianceService {
         };
       }
 
+      const control = this.findControl(check.domain, check.controlId);
       results.push({
         controlId: check.controlId,
         domain: check.domain,
         status: outcome.status,
         detail: outcome.detail,
         data: outcome.data,
-        control: this.findControl(check.domain, check.controlId),
+        control,
+        recommendation: outcome.status === 'fail' ? (control?.remediation ?? null) : null,
       });
     }
 
@@ -203,6 +213,56 @@ export class SyscohadaComplianceService {
           data: {
             unbalancedCount: rows.length,
             samples: rows.map((r) => ({ entryNumber: r.entry_number, imbalance: r.imbalance })),
+          },
+        };
+      },
+    };
+  }
+
+  /**
+   * Détecte les comptes au sens anormal = incohérences d'imputation
+   * probables (fournisseur débiteur, client créditeur, banque créditrice…).
+   * Réutilise le détecteur pur `detectUnusualBalances` du module reports,
+   * appliqué au solde de clôture de la balance générale. Seules les
+   * anomalies de sévérité `warning` (vraies erreurs d'imputation probables)
+   * font échouer le contrôle ; les `info` (découvert bancaire, comptes
+   * courants associés) sont rapportées sans bloquer.
+   */
+  private accountSenseCheck(): ExecutableCheck {
+    return {
+      controlId: 'plan-sens-normal-comptes',
+      domain: 'accounting-plan',
+      run: async (ctx) => {
+        const trialBalance = await this.reports.getTrialBalance(ctx.organizationId, {
+          fromDate: ctx.fiscalYearStartDate,
+          toDate: ctx.asAtDate,
+        });
+        const unusual = detectUnusualBalances(
+          trialBalance.rows.map((r) => ({
+            code: r.accountCode,
+            label: r.accountLabel,
+            debit: r.endingDebit,
+            credit: r.endingCredit,
+          })),
+        );
+        const warnings = unusual.filter((u) => u.severity === 'warning');
+        const ok = warnings.length === 0;
+        return {
+          status: ok ? 'pass' : 'fail',
+          detail: ok
+            ? "Aucun compte au sens anormal détecté (hors comptes d'avance dédiés 409/419)."
+            : `${warnings.length} compte(s) au solde inhabituel — erreur(s) d'imputation probable(s).`,
+          data: {
+            unusualCount: unusual.length,
+            warningCount: warnings.length,
+            accounts: unusual.slice(0, 20).map((u) => ({
+              code: u.code,
+              label: u.label,
+              sign: u.sign,
+              amount: u.amount,
+              severity: u.severity,
+              reason: u.reason,
+            })),
           },
         };
       },
