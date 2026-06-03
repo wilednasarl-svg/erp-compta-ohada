@@ -3,6 +3,7 @@ import type { DataSource } from 'typeorm';
 import { asTenantId } from '../../../common/persistence/tenant-scope';
 import type { CashFlowService } from '../../reports/services/cash-flow.service';
 import type { ReportsService } from '../../reports/services/reports.service';
+import { SYSCOHADA_CONTROL_CATALOG } from '../../syscohada-knowledge/data/control-catalog';
 import type {
   SyscohadaControlWithEvidence,
   SyscohadaDomain,
@@ -12,8 +13,13 @@ import { SyscohadaComplianceService } from '../services/syscohada-compliance.ser
 
 const CONTROLS_BY_DOMAIN: Partial<Record<SyscohadaDomain, string[]>> = {
   reports: ['bilan-actif-egal-passif'],
-  journals: ['journal-equilibre-partie-double', 'journal-chronologie-continuite'],
+  journals: [
+    'journal-equilibre-partie-double',
+    'journal-chronologie-continuite',
+    'journal-lettrage-tiers',
+  ],
   'accounting-plan': ['plan-sens-normal-comptes', 'plan-numerotation-classes'],
+  tva: ['tva-coherence-comptes'],
   regularizations: ['comptes-attente-soldes'],
   'cash-flow': ['cashflow-variation-coherente'],
 };
@@ -24,7 +30,8 @@ function makeControl(domain: SyscohadaDomain, id: string): SyscohadaControlWithE
     domain,
     label: `Controle ${id}`,
     description: 'desc',
-    severity: 'blocking',
+    // Sévérité réelle du catalogue → le verdict dépend de la sévérité.
+    severity: SYSCOHADA_CONTROL_CATALOG.find((c) => c.id === id)?.severity ?? 'blocking',
     legalBasis: ['AUDCIF art. 8'],
     tome: 3,
     evidenceQuery: 'q',
@@ -65,6 +72,7 @@ function setup(opts?: {
     start_date: string;
     end_date: string;
   }>;
+  letteringRows?: Array<{ code: string; cnt: string }>;
   trialBalanceRows?: TrialRow[];
   balanceThrows?: boolean;
   cashFlow?: { coherenceCheck: string };
@@ -96,11 +104,11 @@ function setup(opts?: {
   } as unknown as jest.Mocked<Pick<CashFlowService, 'getCashFlow'>>;
 
   const dataSource = {
-    query: jest.fn(async (sql: string) =>
-      /accounting_periods/i.test(sql)
-        ? (opts?.outOfPeriodRows ?? [])
-        : (opts?.unbalancedRows ?? []),
-    ),
+    query: jest.fn(async (sql: string) => {
+      if (/accounting_periods/i.test(sql)) return opts?.outOfPeriodRows ?? [];
+      if (/organization_chart_accounts/i.test(sql)) return opts?.letteringRows ?? [];
+      return opts?.unbalancedRows ?? [];
+    }),
   };
 
   const knowledge = {
@@ -129,10 +137,10 @@ describe('SyscohadaComplianceService', () => {
     const report = await service.evaluate(ORG, QUERY);
 
     expect(report.verdict).toBe('compliant');
-    expect(report.counts).toEqual({ pass: 7, fail: 0, notEvaluable: 0 });
+    expect(report.counts).toEqual({ pass: 9, fail: 0, notEvaluable: 0 });
     expect(report.organizationId).toBe(ORG);
     expect(report.asAtDate).toBe('2025-12-31');
-    expect(report.results).toHaveLength(7);
+    expect(report.results).toHaveLength(9);
     // Aucune recommandation quand tout est conforme.
     expect(report.results.every((r) => r.recommendation === null)).toBe(true);
   });
@@ -266,7 +274,8 @@ describe('SyscohadaComplianceService', () => {
     expect(sense?.domain).toBe('accounting-plan');
     expect(sense?.data).toMatchObject({ warningCount: 1 });
     expect((sense?.data as { accounts: Array<{ code: string }> }).accounts[0].code).toBe('401100');
-    expect(report.verdict).toBe('non_compliant');
+    // Sens anormal = contrôle 'warning' → réserve, pas non-conformité.
+    expect(report.verdict).toBe('partial');
   });
 
   it('surfaces the catalog remediation as a recommendation on a detected anomaly', async () => {
@@ -348,7 +357,8 @@ describe('SyscohadaComplianceService', () => {
     expect(chrono?.data).toMatchObject({ outOfPeriodCount: 1 });
     expect(chrono?.domain).toBe('journals');
     expect(chrono?.recommendation).toBe('Corriger journal-chronologie-continuite');
-    expect(report.verdict).toBe('non_compliant');
+    // Chronologie = contrôle 'warning' → réserve.
+    expect(report.verdict).toBe('partial');
   });
 
   it('detects unsettled suspense / internal-transfer accounts at the cut-off date', async () => {
@@ -380,6 +390,84 @@ describe('SyscohadaComplianceService', () => {
       '471000',
     );
     expect(suspense?.recommendation).toBe('Corriger comptes-attente-soldes');
+    // Comptes d'attente = contrôle 'warning' → réserve.
+    expect(report.verdict).toBe('partial');
+  });
+
+  it('detects VAT accounts posted on the wrong side (443 debtor / 445 creditor)', async () => {
+    const { service } = setup({
+      trialBalanceRows: [
+        {
+          accountCode: '443100',
+          accountLabel: 'TVA facturée',
+          endingDebit: '200.00',
+          endingCredit: '0.00',
+        },
+        {
+          accountCode: '445100',
+          accountLabel: 'TVA récupérable',
+          endingDebit: '500.00',
+          endingCredit: '0.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const tva = report.results.find((r) => r.controlId === 'tva-coherence-comptes');
+
+    expect(tva?.status).toBe('fail');
+    // Seul 443 débiteur est anormal (445 débiteur est normal).
+    expect(tva?.data).toMatchObject({ anomalyCount: 1 });
+    expect(tva?.recommendation).toBe('Corriger tva-coherence-comptes');
+    // TVA = contrôle 'warning' → réserve, pas non-conformité.
+    expect(report.verdict).toBe('partial');
+  });
+
+  it('flags prior-year unlettered partner lines as an informational finding', async () => {
+    const { service, dataSource } = setup({
+      letteringRows: [
+        { code: '401000', cnt: '7' },
+        { code: '411000', cnt: '3' },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+    const lettering = report.results.find((r) => r.controlId === 'journal-lettrage-tiers');
+
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringMatching(/organization_chart_accounts/),
+      [ORG, QUERY.fiscalYearStartDate],
+    );
+    expect(lettering?.status).toBe('fail');
+    expect(lettering?.data).toMatchObject({ unletteredCount: 10 });
+    expect(lettering?.recommendation).toBe('Corriger journal-lettrage-tiers');
+    // Lettrage = contrôle 'info' → réserve seulement, jamais non-conformité.
+    expect(report.verdict).toBe('partial');
+  });
+
+  it('stays non_compliant only when a BLOCKING control fails, alongside warnings', async () => {
+    const { service } = setup({
+      // Bilan déséquilibré (bloquant) + sens anormal (warning) simultanés.
+      balanceTotals: { actif: '1000.00', passif: '900.00', difference: '100.00' },
+      trialBalanceRows: [
+        {
+          accountCode: '401100',
+          accountLabel: 'Fournisseur',
+          endingDebit: '500.00',
+          endingCredit: '0.00',
+        },
+      ],
+    });
+
+    const report = await service.evaluate(ORG, QUERY);
+
+    expect(report.results.find((r) => r.controlId === 'bilan-actif-egal-passif')?.status).toBe(
+      'fail',
+    );
+    expect(report.results.find((r) => r.controlId === 'plan-sens-normal-comptes')?.status).toBe(
+      'fail',
+    );
+    // Un bloquant en échec l'emporte → non conforme.
     expect(report.verdict).toBe('non_compliant');
   });
 });

@@ -30,10 +30,10 @@ export interface SyscohadaControl {
   readonly evidenceQuery: string;
   /**
    * Recommandation de correction, en langage métier, surfacée quand un
-   * contrôle exécutable détecte une non-conformité. Optionnelle tant que
-   * tous les contrôles du catalogue ne sont pas dotés d'un remède rédigé.
+   * contrôle exécutable détecte une non-conformité. Renseignée pour tous les
+   * contrôles du catalogue.
    */
-  readonly remediation?: string;
+  readonly remediation: string;
 }
 
 export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
@@ -89,6 +89,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF art. 17 à 19 — organisation comptable', 'Guide SYSCOHADA Tome 1'],
     tome: 1,
     evidenceQuery: 'piece justificative ecriture date conservation organisation comptable',
+    remediation:
+      "Rattacher une pièce justificative (facture, reçu, contrat, relevé) à chaque écriture validée qui en est dépourvue, et la conserver. Sans justificatif, l'opération n'est ni reconstituable ni opposable (AUDCIF art. 17 à 19).",
   },
   {
     id: 'journal-chronologie-continuite',
@@ -113,6 +115,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Comptes de tiers et lettrage'],
     tome: 1,
     evidenceQuery: 'lettrage comptes tiers fournisseur client rapprochement reglement',
+    remediation:
+      'Lettrer les comptes de tiers : rapprocher chaque facture de son règlement par un code de lettrage. Analyser les lignes anciennes non lettrées (avoir non imputé, règlement non rapproché, créance ou dette à solder, à recouvrer ou à provisionner).',
   },
 
   // ── Immobilisations ───────────────────────────────────────────────────────
@@ -126,6 +130,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Amortissements'],
     tome: 1,
     evidenceQuery: 'amortissement plan duree utilite base amortissable mise en service',
+    remediation:
+      "Doter chaque immobilisation amortissable d'un plan d'amortissement dès sa mise en service (base amortissable répartie sur la durée d'utilité). Régulariser par une dotation complémentaire toute immobilisation entrée mais non encore amortie.",
   },
   {
     id: 'assets-depreciation-inventaire',
@@ -138,6 +144,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     tome: 1,
     evidenceQuery:
       'depreciation immobilisation valeur actuelle nette comptable prudence inventaire',
+    remediation:
+      'Comparer à la clôture la valeur actuelle de chaque immobilisation à sa valeur nette comptable ; si elle est durablement inférieure, constater une dépréciation (compte 29) au titre du principe de prudence.',
   },
   {
     id: 'assets-cession-resultat',
@@ -149,6 +157,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Cessions d’immobilisations'],
     tome: 1,
     evidenceQuery: 'cession immobilisation valeur nette comptable resultat prorata sortie',
+    remediation:
+      "Comptabiliser la cession en soldant la valeur nette comptable (dotation complémentaire au prorata temporis) via le compte 81, et le produit de cession via le compte 82. Sortir l'immobilisation et ses amortissements de l'actif.",
   },
 
   // ── Inventaire et stocks ──────────────────────────────────────────────────
@@ -165,6 +175,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     ],
     tome: 1,
     evidenceQuery: 'inventaire physique stock existants exercice controle quantite',
+    remediation:
+      "Réaliser un inventaire physique des stocks au moins une fois par exercice et ajuster les comptes de stock (classe 3) sur les existants constatés. Documenter et justifier l'écart entre l'inventaire et la comptabilité (AUDCIF art. 17).",
   },
   {
     id: 'inventory-cout-evaluation',
@@ -176,6 +188,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Évaluation des stocks'],
     tome: 1,
     evidenceQuery: 'stock cout acquisition production evaluation methode permanence',
+    remediation:
+      "Évaluer les stocks au coût d'acquisition (achats) ou de production, en appliquant de façon permanente la méthode retenue (CMP ou FIFO). Corriger toute valorisation au prix de vente ou à un coût non justifié.",
   },
   {
     id: 'inventory-depreciation-stock',
@@ -187,6 +201,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Dépréciation des stocks', 'Principe de prudence'],
     tome: 1,
     evidenceQuery: 'depreciation stock valeur realisation nette inferieure cout inventaire',
+    remediation:
+      "Lorsque la valeur de réalisation nette d'un stock est inférieure à son coût, constater une dépréciation (compte 39) ramenant le stock à sa valeur d'inventaire, conformément au principe de prudence.",
   },
 
   // ── TVA et fiscalité ──────────────────────────────────────────────────────
@@ -200,6 +216,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Opérations fiscales (TVA)'],
     tome: 2,
     evidenceQuery: 'tva collectee deductible 443 445 declaration due regularisation',
+    remediation:
+      "Reprendre l'imputation des comptes de TVA au sens anormal : la TVA facturée (443) est créditrice, la TVA récupérable (445) débitrice. Corriger l'écriture fautive, puis vérifier la liquidation vers le compte de TVA due (4441) ou crédit de TVA (4449).",
   },
   {
     id: 'tva-centralisation-declaration',
@@ -211,6 +229,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Liquidation et centralisation de la TVA'],
     tome: 2,
     evidenceQuery: 'tva centralisation decaisser credit liquidation declaration',
+    remediation:
+      'À chaque déclaration, centraliser la TVA collectée (443) et déductible (445) pour dégager la TVA à décaisser (4441) ou le crédit de TVA (4449). Solder les comptes de TVA de la période déclarée.',
   },
 
   // ── États financiers ──────────────────────────────────────────────────────
@@ -238,6 +258,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     tome: 3,
     evidenceQuery:
       'etats financiers bilan compte resultat flux tresorerie notes annexes systeme normal',
+    remediation:
+      "Produire et déposer ensemble les quatre états du système normal — Bilan, Compte de résultat, Tableau des flux de trésorerie et Notes annexes ; aucun n'est dissociable des autres (AUDCIF art. 8). Compléter l'état manquant avant dépôt.",
   },
   {
     id: 'resultat-cascade-sig',
@@ -250,6 +272,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     tome: 3,
     evidenceQuery:
       'soldes intermediaires gestion marge valeur ajoutee excedent brut exploitation resultat',
+    remediation:
+      "Vérifier l'enchaînement de la cascade SIG (marge commerciale → valeur ajoutée → EBE → résultat d'exploitation → financier → HAO → résultat net) : chaque solde découle du précédent. Corriger l'imputation qui fausse un palier intermédiaire.",
   },
 
   // ── Contrats de location ──────────────────────────────────────────────────
@@ -264,6 +288,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     tome: 2,
     evidenceQuery:
       'location acquisition contrat redevance immobilisation dette preneur amortissement',
+    remediation:
+      "Pour un contrat de location-acquisition (transfert des risques et avantages), inscrire le bien à l'actif immobilisé et la dette au passif, puis l'amortir. Retraiter les redevances passées à tort en charges.",
   },
   {
     id: 'leases-redevances-location-simple',
@@ -275,6 +301,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Location simple'],
     tome: 2,
     evidenceQuery: 'location simple redevance charge loyer bailleur preneur exploitation',
+    remediation:
+      "Comptabiliser les redevances d'une location simple en charges de la période (compte 622), sans porter le bien à l'actif du preneur. Reclasser toute immobilisation inscrite à tort.",
   },
 
   // ── Provisions pour risques et charges ────────────────────────────────────
@@ -288,6 +316,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['AUDCIF — provisions pour risques et charges', 'Guide SYSCOHADA Tome 2'],
     tome: 2,
     evidenceQuery: 'provision risques charges litige obligation dotation probable evaluation',
+    remediation:
+      "Ne maintenir une provision pour risques et charges (classe 19) que si l'obligation est actuelle, probable et évaluable de façon fiable à la clôture. Justifier la base d'évaluation ; à défaut de fondement, reprendre la provision.",
   },
   {
     id: 'provisions-reprise-sans-objet',
@@ -299,6 +329,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Reprises de provisions'],
     tome: 2,
     evidenceQuery: 'provision reprise sans objet devenue excedentaire resultat',
+    remediation:
+      "Reprendre au résultat toute provision devenue sans objet ou excédentaire dès l'exercice où sa cause disparaît. Une provision non reprise surévalue les charges et fausse le résultat.",
   },
 
   // ── Dépréciations et pertes de valeur ─────────────────────────────────────
@@ -316,6 +348,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     ],
     tome: 1,
     evidenceQuery: 'depreciation perte valeur actuelle nette comptable prudence inventaire',
+    remediation:
+      "À l'inventaire, déprécier tout actif dont la valeur actuelle est inférieure à sa valeur nette comptable (compte 29 ou 39), conformément au principe de prudence.",
   },
   {
     id: 'impairments-reprise-depreciation',
@@ -327,6 +361,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Reprises de dépréciation'],
     tome: 1,
     evidenceQuery: 'reprise depreciation valeur actuelle augmentation limite origine',
+    remediation:
+      "Reprendre la dépréciation d'un actif dont la valeur actuelle est remontée, dans la limite de la valeur nette comptable qu'il aurait eue sans dépréciation (valeur d'origine amortie).",
   },
 
   // ── Subventions ───────────────────────────────────────────────────────────
@@ -340,6 +376,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Subventions d’investissement'],
     tome: 2,
     evidenceQuery: 'subvention investissement quote part resultat reprise amortissement bien',
+    remediation:
+      "Inscrire la subvention d'investissement au passif (compte 14) et la rapporter au résultat (compte 865) au rythme de l'amortissement du bien financé. Régulariser la quote-part de l'exercice non encore reprise.",
   },
   {
     id: 'subsidies-exploitation-produit',
@@ -351,6 +389,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Subventions d’exploitation et d’équilibre'],
     tome: 2,
     evidenceQuery: 'subvention exploitation equilibre produit exercice etat',
+    remediation:
+      "Comptabiliser les subventions d'exploitation (compte 71) et d'équilibre (compte 88) en produits de l'exercice qu'elles concernent. Reclasser toute subvention portée à tort en capitaux propres ou en report.",
   },
 
   // ── Engagements de retraite et avantages du personnel ─────────────────────
@@ -364,6 +404,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Engagements de retraite et avantages du personnel'],
     tome: 2,
     evidenceQuery: 'engagement retraite indemnite depart personnel provision evaluation actuariel',
+    remediation:
+      "Évaluer les engagements de retraite et avantages du personnel (méthode actuarielle) et les provisionner (compte 15) ou, à défaut, les mentionner en notes annexes. Ne pas laisser l'engagement hors des comptes sans information.",
   },
 
   // ── Régularisations (cut-off) ─────────────────────────────────────────────
@@ -378,6 +420,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     tome: 1,
     evidenceQuery:
       'regularisation charges produits constates avance rattachement exercice specialisation',
+    remediation:
+      "Rattacher charges et produits à l'exercice concerné via les comptes de régularisation (charges et produits constatés d'avance 476/477, charges à payer, produits à recevoir). Corriger tout produit ou charge enregistré sur le mauvais exercice (spécialisation des exercices).",
   },
   {
     id: 'regularizations-charges-a-payer',
@@ -389,6 +433,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Charges à payer et produits à recevoir'],
     tome: 1,
     evidenceQuery: 'charges payer produits recevoir constates cloture facture exercice',
+    remediation:
+      "Constater à la clôture les charges engagées non encore facturées (charges à payer) et les produits acquis non encore facturés (produits à recevoir), pour donner une image fidèle du résultat de l'exercice.",
   },
   {
     id: 'comptes-attente-soldes',
@@ -415,6 +461,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Fusions et opérations assimilées'],
     tome: 2,
     evidenceQuery: 'fusion apport evaluation valeur echange absorption societe scission parite',
+    remediation:
+      "Évaluer les apports de fusion / scission / apport partiel (valeur réelle ou comptable selon le sens de l'opération) et justifier la parité d'échange par un rapport. Comptabiliser conformément au traité d'apport.",
   },
 
   // ── Effets de commerce ────────────────────────────────────────────────────
@@ -428,6 +476,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Effets de commerce'],
     tome: 1,
     evidenceQuery: 'effet commerce recevoir payer traite echeance acceptation tiers',
+    remediation:
+      "Enregistrer les effets de commerce acceptés en effets à recevoir (412) ou à payer (402), distincts des comptes de tiers ordinaires, jusqu'à leur échéance. Reclasser les effets restés à tort en 401/411.",
   },
   {
     id: 'bills-escompte-produits-financiers',
@@ -439,6 +489,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Escompte des effets'],
     tome: 1,
     evidenceQuery: 'escompte effet banque agios interets commissions charges financieres echeance',
+    remediation:
+      "À l'escompte d'un effet, comptabiliser les agios (intérêts et commissions) en charges financières (compte 67) et continuer à suivre l'effet jusqu'à son échéance. Ne pas solder l'effet dès l'escompte.",
   },
 
   // ── Opérations en devises ─────────────────────────────────────────────────
@@ -452,6 +504,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Opérations en devises'],
     tome: 2,
     evidenceQuery: 'devise conversion creance dette cloture cours ecart monnaie etrangere',
+    remediation:
+      "Convertir les créances et dettes en devises au cours de clôture et constater l'écart de conversion (compte 478) face à la valeur d'entrée. Mettre à jour les comptes de tiers concernés.",
   },
   {
     id: 'multicurrency-ecart-conversion-provision',
@@ -463,6 +517,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 2 — Écarts de conversion', 'Principe de prudence'],
     tome: 2,
     evidenceQuery: 'ecart conversion actif passif perte latente provision change prudence',
+    remediation:
+      'Constater une provision pour perte de change (compte 19) sur les écarts de conversion-actif (pertes latentes), au titre du principe de prudence ; les gains latents (conversion-passif) ne sont pas constatés en résultat.',
   },
 
   // ── Garanties et engagements (hors bilan) ─────────────────────────────────
@@ -479,6 +535,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     ],
     tome: 2,
     evidenceQuery: 'garantie gage hypotheque caution aval engagement donne recu notes annexes',
+    remediation:
+      'Recenser et présenter en notes annexes (engagements hors bilan) les garanties, gages, hypothèques, cautions et avals donnés ou reçus. Compléter la note des engagements omis avant dépôt.',
   },
 
   // ── Tableau des flux de trésorerie ────────────────────────────────────────
@@ -492,6 +550,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 3 — Tableau des flux de trésorerie'],
     tome: 3,
     evidenceQuery: 'tableau flux tresorerie operationnel investissement financement variation',
+    remediation:
+      "Ventiler le Tableau des flux de trésorerie en trois catégories — activités opérationnelles, d'investissement et de financement — pour expliquer la variation de trésorerie. Reclasser tout flux affecté à la mauvaise catégorie.",
   },
   {
     id: 'cashflow-variation-coherente',
@@ -518,6 +578,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA Tome 1 — Comptes de trésorerie et rapprochement'],
     tome: 1,
     evidenceQuery: 'rapprochement banque releve solde compte tresorerie ecart cheque',
+    remediation:
+      'Établir périodiquement un état de rapprochement entre le solde du compte banque (521) et le relevé bancaire, justifiant chaque écart (chèques en circulation, virements en attente). Régulariser les écritures manquantes (agios, frais).',
   },
 
   // ── Assistance métier (IA) ────────────────────────────────────────────────
@@ -531,6 +593,8 @@ export const SYSCOHADA_CONTROL_CATALOG: ReadonlyArray<SyscohadaControl> = [
     legalBasis: ['Guide SYSCOHADA — traçabilité des réponses doctrinales'],
     tome: 0,
     evidenceQuery: 'syscohada guide doctrine reference referentiel ohada',
+    remediation:
+      "Toute réponse de l'assistant sur une règle SYSCOHADA doit citer sa source (tome, titre, lignes du Guide) ; à défaut, ne rien affirmer. Reformuler la réponse non sourcée en s'appuyant sur le corpus embarqué.",
   },
 ];
 
