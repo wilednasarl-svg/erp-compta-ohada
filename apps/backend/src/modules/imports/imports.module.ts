@@ -5,8 +5,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountingPlanModule } from '../accounting-plan/accounting-plan.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { FiscalModule } from '../fiscal/fiscal.module';
 import { JournalsModule } from '../journals/journals.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { ReportsModule } from '../reports/reports.module';
+import { SyscohadaComplianceModule } from '../syscohada-compliance/syscohada-compliance.module';
 import { ImportsController } from './controllers/imports.controller';
 import { ImportFileEntity } from './entities/import-file.entity';
 import { ImportSessionEntity } from './entities/import-session.entity';
@@ -28,6 +31,7 @@ import {
 import { ImportAnalyticsService } from './services/import-analytics.service';
 import { ImportSessionService } from './services/import-session.service';
 import { MappingService } from './services/mapping.service';
+import { PostImportService } from './services/post-import.service';
 import { ValidationService } from './services/validation.service';
 
 /**
@@ -65,6 +69,9 @@ import { ValidationService } from './services/validation.service';
     AuditModule,
     AccountingPlanModule,
     JournalsModule,
+    ReportsModule,
+    SyscohadaComplianceModule,
+    FiscalModule,
   ],
   controllers: [ImportsController],
   providers: [
@@ -101,7 +108,8 @@ import { ValidationService } from './services/validation.service';
     ValidationService,
     ImportSessionService,
     ImportAnalyticsService,
+    PostImportService,
   ],
-  exports: [ImportSessionService, MappingService, ValidationService, ImportAnalyticsService],
+  exports: [ImportSessionService, MappingService, ValidationService, ImportAnalyticsService, PostImportService],
 })
 export class ImportsModule {}

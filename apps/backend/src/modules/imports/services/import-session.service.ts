@@ -87,6 +87,7 @@ import type { MappedRow, TargetField } from '../types/mapping';
 import { EntriesService, type CreateLineInput } from '../../journals/services/entries.service';
 import { FileParserService } from './file-parser.service';
 import { MappingService } from './mapping.service';
+import { PostImportService } from './post-import.service';
 import {
   ValidationService,
   findParentAccountByPrefix,
@@ -185,6 +186,7 @@ export class ImportSessionService {
     private readonly entries: EntriesService,
     private readonly audit: AuditTrailService,
     @Inject(ConfigService) private readonly config: ConfigService<AppConfig, true>,
+    private readonly postImport?: PostImportService,
     private readonly referenceAccounts?: ReferenceAccountRepository,
   ) {}
 
@@ -1203,6 +1205,19 @@ export class ImportSessionService {
       ctx: { ...ctx, userId: actorUserId, organizationId },
       legacyEventType: 'imports.session_committed',
     });
+
+    // Step 9 — trigger post-import orchestration (non-blocking).
+    // This includes: auto-create period, generate statements, SYSCOHADA validation, fiscal calc.
+    if (this.postImport && committedEntryIds.length > 0) {
+      void this.postImport
+        .processImportCompletion(organizationId, sessionId, committedEntryIds, actorUserId, ctx)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `[${sessionId}] Post-import orchestration failed (non-blocking):`,
+            error instanceof Error ? error.message : String(error),
+          );
+        });
+    }
 
     return {
       sessionId,
