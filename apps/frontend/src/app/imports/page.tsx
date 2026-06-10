@@ -288,9 +288,14 @@ export default function ImportsPage() {
             Imports
           </h1>
           <p className="max-w-[68ch] text-sm leading-relaxed text-ink-soft">
-            Importer un fichier comptable (CSV, Excel, PDF natif, export Sage Saari).
-            Pipeline en quatre étapes&nbsp;:{' '}
-            <span className="font-medium text-ink">préparation</span>,{' '}
+            Importer un fichier comptable produit par un autre logiciel —{' '}
+            <span className="font-medium text-ink">
+              compatible Sage, Ciel, EBP, Odoo, Excel
+            </span>{' '}
+            et le <span className="font-medium text-ink">FEC</span> (Fichier des Écritures
+            Comptables, le format d&apos;échange standard). Aucune ressaisie&nbsp;: vous sortez
+            vos données du logiciel tiers, l&apos;app les reprend telles quelles. Pipeline en
+            quatre étapes&nbsp;: <span className="font-medium text-ink">préparation</span>,{' '}
             <span className="font-medium text-ink">réception</span>,{' '}
             <span className="font-medium text-ink">vérification</span>,{' '}
             <span className="font-medium text-ink">passage au journal</span>. Les écritures
@@ -299,10 +304,15 @@ export default function ImportsPage() {
         </header>
 
         <Hint id="imports-intro" title="Comment fonctionne un import">
-          Déposez un export Sage Saari, un CSV, un fichier Excel ou un PDF natif. Le mapping
-          des colonnes est assisté : l&apos;outil reconnaît automatiquement Compte, Journal,
-          Date, Débit et Crédit, et vous corrigez les associations si besoin avant le passage
-          au journal.
+          Déposez un FEC, un export Sage Saari, un CSV, un fichier Excel ou un PDF natif. Le
+          mapping des colonnes est assisté : l&apos;outil reconnaît automatiquement les colonnes
+          standard (Compte, Journal, Date, Débit, Crédit) — y compris les en-têtes FEC
+          (<span className="font-mono">JournalCode</span>,{' '}
+          <span className="font-mono">CompteNum</span>,{' '}
+          <span className="font-mono">EcritureDate</span>…) — et vous corrigez les associations
+          si besoin avant le passage au journal. Pour un FEC, gardez l&apos;extension{' '}
+          <span className="font-mono">.fec</span> ou choisissez le format «&nbsp;CSV&nbsp;» /
+          «&nbsp;Texte brut&nbsp;».
         </Hint>
 
         {/* ─── Stats summary bar ──────────────────────────── */}
@@ -1032,14 +1042,14 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   <Input
                     id="file-upload"
                     type="file"
-                    accept=".csv,.xlsx,.xls,.txt,.pdf"
+                    accept=".csv,.xlsx,.xls,.txt,.pdf,.fec"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     className="sr-only"
                   />
                 </div>
                 <p className="text-xs text-ink-mute">
                   Formats acceptés&nbsp;:{' '}
-                  <span className="font-mono">.csv, .xlsx, .xls, .txt, .pdf</span>
+                  <span className="font-mono">.csv, .xlsx, .xls, .txt, .pdf, .fec</span>
                 </p>
                 {file && (
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">

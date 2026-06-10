@@ -170,7 +170,7 @@ export class ValidationService {
       if (parsed === null) {
         errors.push({
           code: 'invalid_date',
-          message: `Date "${dateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY)`,
+          message: `Date "${dateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY, AAAAMMJJ)`,
           field: 'date',
         });
       } else if (ctx.fiscalYear && dateRequired) {
@@ -191,7 +191,7 @@ export class ValidationService {
     if (dueDateRaw !== undefined && dueDateRaw.length > 0 && parseImportDate(dueDateRaw) === null) {
       errors.push({
         code: 'invalid_date',
-        message: `Date d'échéance "${dueDateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY)`,
+        message: `Date d'échéance "${dueDateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY, AAAAMMJJ)`,
         field: 'dueDate',
       });
     }
@@ -275,6 +275,7 @@ export class ValidationService {
  *   - `YYYY-MM-DD`
  *   - `DD/MM/YYYY`
  *   - `DD-MM-YYYY`
+ *   - `AAAAMMJJ` compact (format date du FEC, ex. `20260315`)
  *   - ISO complet (`2024-03-15T00:00:00Z`)
  *   - Numéro de série Excel (entier 1..80000), ex. `45658` → 2025-01-25.
  *     Cas fréquent quand l'utilisateur a converti un .xlsx en .csv sans
@@ -310,6 +311,21 @@ export function parseImportDate(value: string): Date | null {
     const month = Number(frMatch[2]);
     const year = Number(frMatch[3]);
     return makeDate(year, month, day);
+  }
+
+  // FEC compact `AAAAMMJJ` (8 chiffres, ex. `20260315`). C'est le format
+  // de date normalisé du Fichier des Écritures Comptables exporté par
+  // Sage / Ciel / EBP / Odoo. On borne l'année à 2000-2099 pour ne PAS
+  // confondre un code compte étendu Sage (ex. `40110000` → année 4011,
+  // rejetée) avec une date — le serial Excel ci-dessous ne fait que
+  // 1-5 chiffres, donc aucun chevauchement avec ce bloc 8 chiffres.
+  const fecMatch = /^(\d{4})(\d{2})(\d{2})$/.exec(trimmed);
+  if (fecMatch) {
+    const year = Number(fecMatch[1]);
+    if (year < 2000 || year > 2099) {
+      return null;
+    }
+    return makeDate(year, Number(fecMatch[2]), Number(fecMatch[3]));
   }
 
   // Excel serial date (entier sans séparateur). Plage 1..80000 couvre

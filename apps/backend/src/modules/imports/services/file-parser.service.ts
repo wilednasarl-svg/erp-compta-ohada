@@ -4,6 +4,7 @@ import { open as fsOpen } from 'node:fs/promises';
 import { AppException } from '../../../common/errors/app-exception';
 import { ERROR_CODES } from '../../../common/errors/error-codes';
 import { CsvFileParser } from '../parsers/csv-file.parser';
+import { FecFileParser } from '../parsers/fec-file.parser';
 import { Mt940FileParser } from '../parsers/mt940-file.parser';
 import { OfxFileParser } from '../parsers/ofx-file.parser';
 import { PdfFileParser } from '../parsers/pdf-file.parser';
@@ -163,8 +164,11 @@ export function buildDefaultParsers(deps: {
   pdf: PdfFileParser;
   ofx: OfxFileParser;
   mt940: Mt940FileParser;
+  fec: FecFileParser;
 }): readonly IFileParser[] {
   // Order: binaires d'abord (PDF, XLSX), puis formats bancaires à extension
-  // explicite (OFX, MT940), puis Sage (.txt spécifique), puis CSV (catch-all).
-  return [deps.pdf, deps.xlsx, deps.ofx, deps.mt940, deps.sage, deps.csv];
+  // explicite (OFX, MT940), puis FEC (.txt/.csv/.fec nommés "fec" — DOIT
+  // passer AVANT Sage qui force la tabulation sur tout .txt), puis Sage
+  // (.txt spécifique), puis CSV (catch-all).
+  return [deps.pdf, deps.xlsx, deps.ofx, deps.mt940, deps.fec, deps.sage, deps.csv];
 }

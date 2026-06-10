@@ -56,9 +56,11 @@ export interface ParseContext {
   encoding?: 'utf8' | 'latin1';
   /**
    * Délimiteur CSV. `null` ou absent → auto-détection sur la première
-   * ligne (`;` vs `,` vs `\t`).
+   * ligne (`;` vs `,` vs `\t` vs `|`). Le `|` est le séparateur normalisé
+   * du FEC (Fichier des Écritures Comptables) que Sage / Ciel / EBP / Odoo
+   * savent tous exporter.
    */
-  delimiter?: ',' | ';' | '\t' | null;
+  delimiter?: ',' | ';' | '\t' | '|' | null;
 }
 
 export interface IFileParser {

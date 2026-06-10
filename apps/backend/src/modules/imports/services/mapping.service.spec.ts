@@ -22,6 +22,32 @@ describe('MappingService', () => {
       expect(proposal.unmappedTargets).toEqual(expect.arrayContaining(['partner', 'currency']));
     });
 
+    it('maps standard FEC column headers to canonical targets', () => {
+      const proposal = service.autoMap([
+        'JournalCode',
+        'EcritureDate',
+        'CompteNum',
+        'CompAuxNum',
+        'PieceRef',
+        'EcritureLib',
+        'Debit',
+        'Credit',
+        'Idevise',
+      ]);
+
+      expect(proposal.headerToTarget).toEqual({
+        JournalCode: 'journal',
+        EcritureDate: 'date',
+        CompteNum: 'account',
+        CompAuxNum: 'partner',
+        PieceRef: 'pieceNumber',
+        EcritureLib: 'label',
+        Debit: 'debit',
+        Credit: 'credit',
+        Idevise: 'currency',
+      });
+    });
+
     it('normalises case, accents and surrounding whitespace', () => {
       const proposal = service.autoMap(['  COMPTE GENERAL  ', 'DATE ÉCRITURE', 'tiers', 'devise']);
 

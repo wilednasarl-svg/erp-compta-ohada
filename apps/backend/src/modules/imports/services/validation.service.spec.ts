@@ -401,6 +401,26 @@ describe('parseImportDate', () => {
     expect(parseImportDate('2024-13-01')).toBeNull();
   });
 
+  it('parses the FEC compact format AAAAMMJJ', () => {
+    const d = parseImportDate('20260315');
+    expect(d).not.toBeNull();
+    expect(d!.getUTCFullYear()).toBe(2026);
+    expect(d!.getUTCMonth()).toBe(2);
+    expect(d!.getUTCDate()).toBe(15);
+  });
+
+  it('does not mistake an extended Sage account code (8 digits) for a FEC date', () => {
+    // `40110000` → année 4011, hors plage 2000-2099 → pas une date.
+    expect(parseImportDate('40110000')).toBeNull();
+    // `60310000` → année 6031, idem.
+    expect(parseImportDate('60310000')).toBeNull();
+  });
+
+  it('returns null on an impossible FEC compact date', () => {
+    expect(parseImportDate('20260231')).toBeNull(); // 31 février
+    expect(parseImportDate('20261301')).toBeNull(); // mois 13
+  });
+
   it('returns null on garbage input', () => {
     expect(parseImportDate('hello')).toBeNull();
     expect(parseImportDate('')).toBeNull();

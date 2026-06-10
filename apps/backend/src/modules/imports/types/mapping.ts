@@ -142,8 +142,21 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'n compte general',
     'numero compte general',
     'no compte general',
+    // FEC : colonne "CompteNum" → "comptenum" (le libellé "CompteLib"
+    // n'est pas mappé — seul le numéro de compte nous intéresse).
+    'comptenum',
   ],
-  journal: ['journal', 'code journal', 'jrn', 'journal code', 'jo', 'jal', 'code jal'],
+  journal: [
+    'journal',
+    'code journal',
+    'jrn',
+    'journal code',
+    'jo',
+    'jal',
+    'code jal',
+    // FEC : colonne "JournalCode" → "journalcode" ("JournalLib" = libellé).
+    'journalcode',
+  ],
   date: [
     'date',
     'date ecriture',
@@ -154,10 +167,21 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'date saisie',
     'date de saisie',
     'date comptable',
+    // FEC : "EcritureDate" → "ecrituredate" (date de l'écriture).
+    'ecrituredate',
   ],
   debit: ['debit', 'montant debit', 'dr', 'debit amount'],
   credit: ['credit', 'montant credit', 'cr', 'credit amount'],
-  label: ['libelle', 'libelle ecriture', 'description', 'memo', 'label', 'narration'],
+  label: [
+    'libelle',
+    'libelle ecriture',
+    'description',
+    'memo',
+    'label',
+    'narration',
+    // FEC : "EcritureLib" → "ecriturelib" (libellé de l'écriture).
+    'ecriturelib',
+  ],
   partner: [
     'tiers',
     'compte tiers',
@@ -169,8 +193,17 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'n compte tiers',
     'numero compte tiers',
     'no compte tiers',
+    // FEC : "CompAuxNum" → "compauxnum" (n° de compte auxiliaire = tiers).
+    'compauxnum',
   ],
-  currency: ['devise', 'monnaie', 'currency', 'ccy'],
+  currency: [
+    'devise',
+    'monnaie',
+    'currency',
+    'ccy',
+    // FEC : "Idevise" → "idevise" (code ISO de la devise).
+    'idevise',
+  ],
   analyticAxisType: ['type axe', 'type analytique', 'axe type', 'axis type', 'nature analytique'],
   analyticAxisCode: [
     'chantier',
@@ -189,7 +222,17 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
   ],
   // "N° pièce" du modèle d'import journal → "n piece". Clé de
   // regroupement en écriture au commit.
-  pieceNumber: ['n piece', 'numero piece', 'no piece', 'num piece', 'piece', 'no de piece'],
+  pieceNumber: [
+    'n piece',
+    'numero piece',
+    'no piece',
+    'num piece',
+    'piece',
+    'no de piece',
+    // FEC : "PieceRef" → "pieceref" (référence de la pièce justificative,
+    // sert de clé de regroupement des lignes en une écriture au commit).
+    'pieceref',
+  ],
   // "N° facture" → "n facture".
   invoiceNumber: [
     'n facture',

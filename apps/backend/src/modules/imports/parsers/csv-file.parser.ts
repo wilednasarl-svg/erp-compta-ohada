@@ -51,15 +51,19 @@ export class CsvFileParser implements IFileParser {
     return { headers, rows };
   }
 
-  private async detectDelimiter(path: string): Promise<',' | ';' | '\t'> {
+  private async detectDelimiter(path: string): Promise<',' | ';' | '\t' | '|'> {
     const firstLine = await this.readFirstLine(path);
-    const counts: Record<',' | ';' | '\t', number> = {
+    const counts: Record<',' | ';' | '\t' | '|', number> = {
       ';': (firstLine.match(/;/g) ?? []).length,
       ',': (firstLine.match(/,/g) ?? []).length,
       '\t': (firstLine.match(/\t/g) ?? []).length,
+      // `|` est le séparateur normalisé du FEC (Fichier des Écritures
+      // Comptables). L'ajouter à l'auto-détection rend l'app directement
+      // compatible avec les exports FEC de Sage / Ciel / EBP / Odoo.
+      '|': (firstLine.match(/\|/g) ?? []).length,
     };
-    // Pick the most frequent. Tie-break: ';' (FR default) > ',' > tab.
-    const ordered: Array<',' | ';' | '\t'> = [';', ',', '\t'];
+    // Pick the most frequent. Tie-break: ';' (FR default) > ',' > tab > pipe.
+    const ordered: Array<',' | ';' | '\t' | '|'> = [';', ',', '\t', '|'];
     return ordered.reduce((best, candidate) =>
       counts[candidate] > counts[best] ? candidate : best,
     );
@@ -85,18 +89,32 @@ export class CsvFileParser implements IFileParser {
 
   private readHeaders(path: string, delimiter: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
-      const stream = createReadStream(path).pipe(
+      // On garde une référence au flux fichier SOURCE : détruire le seul
+      // flux de transformation `parseCsv` (la destination du pipe) ne ferme
+      // PAS le descripteur de fichier sous-jacent. Sans `source.destroy()`,
+      // chaque `parse()` fuyait un fd — épuisement lent côté serveur, et
+      // verrou du fichier sous Windows (rmdir impossible).
+      const source = createReadStream(path);
+      const stream = source.pipe(
         parseCsv({ headers: true, delimiter, ignoreEmpty: true, trim: true }),
       );
-      stream.on('headers', (headers: string[]) => {
+      const cleanup = () => {
+        source.destroy();
         stream.destroy();
+      };
+      stream.on('headers', (headers: string[]) => {
+        cleanup();
         // Strip BOM that fast-csv may leave on the first header.
         resolve(headers.map((h) => h.replace(/^﻿/, '').trim()));
       });
-      stream.on('error', (err: unknown) =>
-        reject(new FileParseError('Cannot parse CSV headers', err)),
-      );
-      stream.on('end', () => resolve([]));
+      stream.on('error', (err: unknown) => {
+        cleanup();
+        reject(new FileParseError('Cannot parse CSV headers', err));
+      });
+      stream.on('end', () => {
+        cleanup();
+        resolve([]);
+      });
     });
   }
 
