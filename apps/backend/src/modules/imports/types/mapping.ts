@@ -135,6 +135,9 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'compte general',
     'numero compte',
     'no compte',
+    // "N° compte" (symbole degré) se normalise en "n compte" — en-tête le
+    // plus courant des exports Sage/grands livres, distinct de "no compte".
+    'n compte',
     'account',
     'gl account',
     // Modèle d'import journal (export type Sage) : la colonne
@@ -156,6 +159,9 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'code jal',
     // FEC : colonne "JournalCode" → "journalcode" ("JournalLib" = libellé).
     'journalcode',
+    // "C.J" (Code Journal abrégé, grands livres Sage) → "c j".
+    'c j',
+    'cj',
   ],
   date: [
     'date',
@@ -181,6 +187,11 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'narration',
     // FEC : "EcritureLib" → "ecriturelib" (libellé de l'écriture).
     'ecriturelib',
+    // "Intitulé" / "Intitulé du compte" — en-tête standard des balances et
+    // grands livres FR pour le nom du compte (sert de libellé de ligne).
+    'intitule',
+    'intitule du compte',
+    'intitule compte',
   ],
   partner: [
     'tiers',

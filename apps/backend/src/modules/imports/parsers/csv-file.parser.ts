@@ -207,7 +207,7 @@ export class CsvFileParser implements IFileParser {
       }
       if (done) {
         if (error) {
-          throw new FileParseError('CSV parse error', error);
+          throw new FileParseError(buildParseErrorMessage(error), error);
         }
         return;
       }
@@ -216,4 +216,26 @@ export class CsvFileParser implements IFileParser {
       });
     }
   }
+}
+
+/**
+ * Traduit une erreur fast-csv en message actionnable. Le cas le plus
+ * fréquent et le plus déroutant est le "column header mismatch" : une
+ * ligne a plus de colonnes que l'en-tête. En contexte comptable, c'est
+ * presque toujours dû à des montants NON entre guillemets contenant des
+ * virgules comme séparateur de milliers (ex. `100,000,000`) dans un
+ * fichier délimité par la virgule — chaque virgule du montant est alors
+ * prise pour un séparateur de colonne. On oriente vers la solution.
+ */
+function buildParseErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (/column|header mismatch|expected:?\s*\d+\s*columns/i.test(raw)) {
+    return (
+      'Le nombre de colonnes ne correspond pas à l’en-tête sur au moins une ligne. ' +
+      'Cause fréquente : des montants contenant des virgules de milliers (ex. 100,000,000) ' +
+      'non entre guillemets, dans un fichier séparé par des virgules. Réexportez avec un ' +
+      'séparateur point-virgule (;) ou des montants entre guillemets ("100,000,000").'
+    );
+  }
+  return 'Erreur de lecture CSV';
 }

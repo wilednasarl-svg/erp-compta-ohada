@@ -48,6 +48,17 @@ describe('MappingService', () => {
       });
     });
 
+    it('maps balance / grand-livre headers: Intitulé→label, N°Compte→account, C.J→journal', () => {
+      const proposal = service.autoMap(['N°Compte', 'C.J', 'Intitulé', 'Débit', 'Crédit']);
+      expect(proposal.headerToTarget).toEqual({
+        'N°Compte': 'account',
+        'C.J': 'journal',
+        'Intitulé': 'label',
+        'Débit': 'debit',
+        'Crédit': 'credit',
+      });
+    });
+
     it('normalises case, accents and surrounding whitespace', () => {
       const proposal = service.autoMap(['  COMPTE GENERAL  ', 'DATE ÉCRITURE', 'tiers', 'devise']);
 
