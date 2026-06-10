@@ -93,6 +93,10 @@ describe('ImportSessionService', () => {
       entries as never,
       audit as never,
       config as never,
+      // postImport (position 11, optionnel) : non exercé dans ces tests
+      // unitaires de commit — `undefined` court-circuite le déclencheur
+      // post-import. referenceAccounts reste en position 12.
+      undefined,
       referenceRepo as never,
     );
 

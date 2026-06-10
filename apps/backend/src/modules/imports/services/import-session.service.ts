@@ -5,7 +5,7 @@ import path from 'node:path';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AppException } from '../../../common/errors/app-exception';
@@ -174,6 +174,7 @@ export interface PreviewResult {
 @Injectable()
 export class ImportSessionService {
   private static readonly MODULE = 'imports' as const;
+  private readonly logger = new Logger(ImportSessionService.name);
 
   constructor(
     private readonly sessions: ImportSessionRepository,

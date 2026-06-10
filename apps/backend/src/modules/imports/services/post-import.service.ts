@@ -6,7 +6,7 @@ import { assertTenantId, type TenantId } from '../../../common/persistence/tenan
 import { AuditTrailService, type AuditContext } from '../../audit/services/audit-trail.service';
 import { PeriodsService } from '../../journals/services/periods.service';
 import { JournalEntryRepository } from '../../journals/repositories/journal-entry.repository';
-import { ReportsService } from '../../reports/services/reports.service';
+import type { JournalEntryEntity } from '../../journals/entities/journal-entry.entity';
 import { SyscohadaComplianceService } from '../../syscohada-compliance/services/syscohada-compliance.service';
 import { FiscalDeclarationsService } from '../../fiscal/services/fiscal-declarations.service';
 
@@ -28,7 +28,6 @@ export class PostImportService {
   constructor(
     private readonly periods: PeriodsService,
     private readonly entriesRepo: JournalEntryRepository,
-    private readonly reports: ReportsService,
     private readonly syscohada: SyscohadaComplianceService,
     private readonly fiscalDeclarations: FiscalDeclarationsService,
     private readonly audit: AuditTrailService,
@@ -70,11 +69,7 @@ export class PostImportService {
       this.logger.log(`[${sessionId}] Period resolved: ${period.id} (${period.label})`);
 
       // Step 2: Generate financial statements (balance, P&L, cash flow, etc.)
-      const statements = await this.generateFinancialStatements(
-        organizationId,
-        period.id,
-        entryIds,
-      );
+      const statements = await this.generateFinancialStatements(organizationId, period.id);
       this.logger.log(`[${sessionId}] Generated ${statements.length} statement(s)`);
 
       // Step 3: Validate SYSCOHADA compliance
@@ -87,25 +82,24 @@ export class PostImportService {
       );
 
       // Step 4: Calculate fiscal obligations (DSF, taxes, payroll, etc.)
-      const fiscalReport = await this.calculateFiscalObligations(organizationId, period.startDate);
+      await this.calculateFiscalObligations(organizationId, period.startDate);
       this.logger.log(`[${sessionId}] Fiscal obligations calculated`);
 
       // Record completion in audit trail
-      await this.audit.recordAction(
-        organizationId,
-        PostImportService.MODULE,
-        'import_completed',
-        sessionId,
-        {
+      await this.audit.record({
+        module: PostImportService.MODULE,
+        action: 'import_completed',
+        entityType: 'import_session',
+        entityId: sessionId,
+        metadata: {
           periodId: period.id,
           entriesCommitted: entryIds.length,
           statementsGenerated: statements.length,
           syscohadaValid: complianceResult.status === 'passed',
           complianceIssues: complianceResult.issuesCount,
         },
-        actorUserId,
-        ctx,
-      );
+        ctx: { ...ctx, userId: actorUserId, organizationId },
+      });
 
       return {
         sessionId,
@@ -139,19 +133,18 @@ export class PostImportService {
         error instanceof Error ? error.message : String(error),
       );
 
-      await this.audit.recordAction(
-        organizationId,
-        PostImportService.MODULE,
-        'import_post_processing_failed',
-        sessionId,
-        {
+      await this.audit.record({
+        module: PostImportService.MODULE,
+        action: 'import_post_processing_failed',
+        entityType: 'import_session',
+        entityId: sessionId,
+        metadata: {
           error: error instanceof Error ? error.message : String(error),
         },
-        actorUserId,
-        ctx,
-      );
+        ctx: { ...ctx, userId: actorUserId, organizationId },
+      });
 
-      throw new AppException(ERROR_CODES.INTERNAL_SERVER_ERROR, {
+      throw new AppException(ERROR_CODES.IMPORT_COMMIT_FAILED, {
         message: 'Post-import processing failed',
         cause: error,
       });
@@ -169,8 +162,13 @@ export class PostImportService {
   ): Promise<{ id: string; label: string; startDate: string; endDate: string }> {
     assertTenantId(organizationId);
 
-    // Fetch imported entries to determine date range
-    const entries = await this.entriesRepo.findByIds(entryIds, organizationId);
+    // Fetch imported entries to determine date range. `JournalEntryRepository`
+    // n'expose qu'un `findById` unitaire — on récupère donc chaque écriture
+    // puis on écarte les introuvables (nulls).
+    const fetched = await Promise.all(
+      entryIds.map((id) => this.entriesRepo.findById(id, organizationId)),
+    );
+    const entries = fetched.filter((e): e is JournalEntryEntity => e !== null);
     if (entries.length === 0) {
       throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
         message: 'No entries found to process',
@@ -213,7 +211,7 @@ export class PostImportService {
     const newPeriod = await this.periods.createFiscalYear(
       organizationId,
       fiscalYear,
-      'ANNUAL',
+      'ANNUAL_ONLY',
       actorUserId,
       ctx,
     );
@@ -232,7 +230,6 @@ export class PostImportService {
   private async generateFinancialStatements(
     organizationId: TenantId,
     periodId: string,
-    entryIds: readonly string[],
   ): Promise<string[]> {
     assertTenantId(organizationId);
 
@@ -283,12 +280,11 @@ export class PostImportService {
         asAtDate,
       });
 
-      // Count failed checks
-      const failedChecks = (result.details || []).filter((c) => c.status === 'failed').length;
-
+      // `SyscohadaComplianceReport.counts.fail` = nombre de contrôles en
+      // échec ; on en dérive le statut binaire attendu par le pipeline.
       return {
-        status: result.passed ? 'passed' : 'failed',
-        issuesCount: failedChecks,
+        status: result.counts.fail === 0 ? 'passed' : 'failed',
+        issuesCount: result.counts.fail,
       };
     } catch (error: unknown) {
       this.logger.warn(
