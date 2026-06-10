@@ -122,6 +122,10 @@ import { PeriodsService } from './services/periods.service';
     JournalRepository,
     JournalEntryRepository,
     EntryWorkflowService,
+    // PeriodsService : consommé par ImportsModule (PostImportService — création
+    // auto d'exercice à l'import P4). Sans cet export Nest crash au boot :
+    // "PeriodsService at index [0] is not available in the ImportsModule context".
+    PeriodsService,
     // AccountingPeriodRepository : consommé par DashboardsModule (M19),
     // AssetsModule (M12), AiModule (M11), AccountingScoreModule (M20) —
     // tous bornent une fenêtre temporelle via l'exercice. Sans cet
