@@ -170,7 +170,7 @@ export class ValidationService {
       if (parsed === null) {
         errors.push({
           code: 'invalid_date',
-          message: `Date "${dateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY, AAAAMMJJ)`,
+          message: `Date "${dateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY, DD/MM/YY, AAAAMMJJ)`,
           field: 'date',
         });
       } else if (ctx.fiscalYear && dateRequired) {
@@ -191,7 +191,7 @@ export class ValidationService {
     if (dueDateRaw !== undefined && dueDateRaw.length > 0 && parseImportDate(dueDateRaw) === null) {
       errors.push({
         code: 'invalid_date',
-        message: `Date d'échéance "${dueDateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY, AAAAMMJJ)`,
+        message: `Date d'échéance "${dueDateRaw}" non reconnue (formats acceptés : YYYY-MM-DD, DD/MM/YYYY, DD/MM/YY, AAAAMMJJ)`,
         field: 'dueDate',
       });
     }
@@ -275,6 +275,7 @@ export class ValidationService {
  *   - `YYYY-MM-DD`
  *   - `DD/MM/YYYY`
  *   - `DD-MM-YYYY`
+ *   - `DD/MM/YY` / `DD-MM-YY` (année 2 chiffres, exports Sage/Ciel FR)
  *   - `AAAAMMJJ` compact (format date du FEC, ex. `20260315`)
  *   - ISO complet (`2024-03-15T00:00:00Z`)
  *   - Numéro de série Excel (entier 1..80000), ex. `45658` → 2025-01-25.
@@ -310,6 +311,21 @@ export function parseImportDate(value: string): Date | null {
     const day = Number(frMatch[1]);
     const month = Number(frMatch[2]);
     const year = Number(frMatch[3]);
+    return makeDate(year, month, day);
+  }
+
+  // DD/MM/YY or DD-MM-YY (FR, année sur 2 chiffres) — très fréquent dans
+  // les exports Sage / Ciel français (ex. `01-01-26`). Pivot d'année
+  // façon tableur : 00-69 → 2000-2069, 70-99 → 1970-1999. Mutuellement
+  // exclusif avec la branche 4 chiffres ci-dessus (le `$` après deux
+  // chiffres ne matche pas une année à 4 chiffres) et avec le serial
+  // Excel / FEC (qui n'ont pas de séparateur).
+  const fr2Match = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/.exec(trimmed);
+  if (fr2Match) {
+    const day = Number(fr2Match[1]);
+    const month = Number(fr2Match[2]);
+    const yy = Number(fr2Match[3]);
+    const year = yy < 70 ? 2000 + yy : 1900 + yy;
     return makeDate(year, month, day);
   }
 

@@ -401,6 +401,31 @@ describe('parseImportDate', () => {
     expect(parseImportDate('2024-13-01')).toBeNull();
   });
 
+  it('parses DD-MM-YY and DD/MM/YY (2-digit year, Sage/Ciel FR exports)', () => {
+    const d = parseImportDate('01-01-26');
+    expect(d).not.toBeNull();
+    expect(d!.getUTCFullYear()).toBe(2026);
+    expect(d!.getUTCMonth()).toBe(0);
+    expect(d!.getUTCDate()).toBe(1);
+
+    const d2 = parseImportDate('15/03/24');
+    expect(d2).not.toBeNull();
+    expect(d2!.getUTCFullYear()).toBe(2024);
+    expect(d2!.getUTCMonth()).toBe(2);
+    expect(d2!.getUTCDate()).toBe(15);
+  });
+
+  it('applies the year pivot for 2-digit years (00-69 → 20xx, 70-99 → 19xx)', () => {
+    expect(parseImportDate('01-01-69')!.getUTCFullYear()).toBe(2069);
+    expect(parseImportDate('01-01-70')!.getUTCFullYear()).toBe(1970);
+    expect(parseImportDate('01-01-99')!.getUTCFullYear()).toBe(1999);
+  });
+
+  it('does not let the 2-digit branch swallow a 4-digit year', () => {
+    // `15/03/2024` doit rester interprété comme année 2024, pas 20xx tronqué.
+    expect(parseImportDate('15/03/2024')!.getUTCFullYear()).toBe(2024);
+  });
+
   it('parses the FEC compact format AAAAMMJJ', () => {
     const d = parseImportDate('20260315');
     expect(d).not.toBeNull();
