@@ -209,6 +209,12 @@ async function request<T>(
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
       credentials: 'include',
+      // `no-store` : les réponses API sont dynamiques et scopées par
+      // authentification — jamais à mettre en cache navigateur. Sans ça,
+      // un GET (ex. /journals) pouvait être servi depuis le cache HTTP
+      // périmé (liste vide) même après une création, et même quand
+      // react-query relance la requête. Force un aller-réseau à chaque fois.
+      cache: 'no-store',
     });
 
   let response: Response;
