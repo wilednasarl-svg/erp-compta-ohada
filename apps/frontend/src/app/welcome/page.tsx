@@ -7,8 +7,10 @@ import {
   Calendar,
   ChevronRight,
   FileBarChart,
+  FileUp,
   Link2,
   PenLine,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -17,7 +19,7 @@ import { AppShell } from '@/components/app-shell';
 export const metadata: Metadata = {
   title: "Guide d'utilisation — ERP Compta OHADA",
   description:
-    "Guide pas à pas pour démarrer votre dossier OHADA : périodes, journaux, écritures, lettrage, états financiers.",
+    "Guide pas à pas pour démarrer votre dossier OHADA : périodes, journaux, import sans ressaisie, lettrage, conformité SYSCOHADA, états financiers et ratios interprétés.",
 };
 
 interface GuideStep {
@@ -68,54 +70,88 @@ const STEPS: ReadonlyArray<GuideStep> = [
     ],
   },
   {
-    id: 'ecritures',
+    id: 'imports',
     number: '03',
-    title: 'Saisir les premières écritures',
+    title: "Importer l'existant — zéro ressaisie",
+    summary: 'Reprenez vos données depuis Sage, Ciel, EBP, Odoo, Excel ou un FEC.',
+    description:
+      "Vous tenez déjà votre comptabilité ailleurs ? Exportez depuis le logiciel tiers et importez le fichier tel quel : balance, grand livre, journal d'écritures ou relevé bancaire. Le mapping des colonnes est automatique, chaque ligne est validée (équilibre, comptes, dates) avant tout enregistrement, et rien n'est commité sans votre aperçu.",
+    href: '/imports',
+    hrefLabel: 'Importer un fichier',
+    icon: FileUp,
+    bullets: [
+      'Sage, Ciel, EBP, Odoo, Excel, CSV et FEC reconnus automatiquement',
+      'Aperçu complet et validation de TOUTES les lignes avant commit',
+      'Regroupement des lignes en pièces par n° de pièce',
+    ],
+    tip: "C'est le chemin le plus rapide pour un dossier déjà tenu ailleurs : importez d'abord, complétez ensuite.",
+  },
+  {
+    id: 'ecritures',
+    number: '04',
+    title: 'Saisir et valider les écritures',
     summary: "Enregistrez vos opérations avec contrôle débit/crédit en temps réel.",
     description:
-      "Saisissez vos écritures dans la grille équilibrée — débit/crédit auto-balancés, autocomplétion des comptes du plan SYSCOHADA, calcul automatique de la TVA. Importez aussi depuis Sage, CSV ou PDF pour rattraper l'historique.",
+      "Saisissez vos écritures dans la grille équilibrée — débit/crédit auto-balancés, autocomplétion des comptes du plan SYSCOHADA, calcul automatique de la TVA. Le circuit préparateur → valideur → signature garantit le contrôle interne.",
     href: '/entry-workflow',
     hrefLabel: 'Saisir une écriture',
     icon: PenLine,
     bullets: [
       'Grille débit/crédit avec contrôle d’équilibre',
       'Plan SYSCOHADA révisé en autocomplétion',
-      'Import Sage, CSV, PDF avec détection des doublons',
+      'Circuit de validation préparateur / valideur / signature',
     ],
     tip: 'Une écriture déséquilibrée ne peut pas être validée. Le total Débit = Total Crédit.',
   },
   {
     id: 'lettrage',
-    number: '04',
-    title: 'Lettrer les comptes tiers',
-    summary: 'Rapprochez factures et paiements sur les comptes 411 (clients) et 401 (fournisseurs).',
+    number: '05',
+    title: 'Fiabiliser : lettrage et rapprochement',
+    summary: 'Rapprochez factures et paiements (411/401), pointez vos relevés bancaires.',
     description:
-      "Le lettrage associe chaque facture à son règlement, ce qui révèle automatiquement les créances et dettes restantes. Utilisez le lettrage semi-automatique par montant et date, ou pointez manuellement les opérations complexes.",
+      "Le lettrage associe chaque facture à son règlement, ce qui révèle automatiquement les créances et dettes restantes. Le rapprochement bancaire pointe vos relevés contre la comptabilité. Ces deux travaux conditionnent la fiabilité de tous les états qui suivent.",
     href: '/lettering',
     hrefLabel: 'Ouvrir le lettrage',
     icon: Link2,
     bullets: [
       'Association facture ↔ paiement sur les comptes auxiliaires',
       'Lettrage semi-automatique par montant + date',
-      'Balance âgée des encours non lettrés',
+      'Rapprochement bancaire et balance âgée des encours',
     ],
   },
   {
-    id: 'etats',
-    number: '05',
-    title: 'Préparer les états financiers',
-    summary: 'Générez Bilan, Compte de résultat, TFT et déclarations TVA conformes Tome 3.',
+    id: 'conformite',
+    number: '06',
+    title: 'Contrôler la conformité SYSCOHADA',
+    summary: "Détectez les anomalies AUDCIF avant qu'elles n'atteignent vos états.",
     description:
-      "Une fois les écritures saisies et les comptes lettrés, vos états financiers OHADA se génèrent depuis la balance. Bilan actif/passif, Compte de résultat par destination, TFT (ex-TAFIRE), Balance générale et déclaration TVA UEMOA — tout est exportable PDF/XLSX.",
+      "Le contrôle de conformité passe le dossier au crible des règles AUDCIF : comptes interdits, sens anormaux, ruptures de numérotation, écritures hors période. Le score de santé OHADA synthétise la qualité du dossier et chaque anomalie renvoie vers la doctrine du Guide d'application.",
+    href: '/syscohada-compliance',
+    hrefLabel: 'Lancer le contrôle',
+    icon: ShieldCheck,
+    bullets: [
+      'Détection d’anomalies AUDCIF avec recommandations',
+      'Score santé OHADA — indice qualité du dossier',
+      'Doctrine SYSCOHADA citée règle par règle',
+    ],
+    tip: 'Contrôlez AVANT de générer les états : une anomalie corrigée en amont ne se propage pas.',
+  },
+  {
+    id: 'etats',
+    number: '07',
+    title: 'Générer les états et analyser',
+    summary: 'Bilan, Compte de résultat, TFT, ratios interprétés et déclarations TVA.',
+    description:
+      "Vos états financiers OHADA se génèrent depuis la balance : Bilan actif/passif, Compte de résultat, TFT, Annexe, balances — exportables PDF/XLSX. Puis passez à la lecture managériale : ratios de structure, liquidité et rentabilité, chacun accompagné de son interprétation.",
     href: '/reports/console',
     hrefLabel: 'Générer les états',
     icon: FileBarChart,
     bullets: [
-      'Bilan, Compte de résultat, TFT conformes SYSCOHADA 2017',
-      'Balance générale, balance âgée, grand livre',
+      'Bilan, Compte de résultat, TFT, Annexe conformes SYSCOHADA 2017',
+      'Ratios commentés : structure, liquidité, rentabilité (lien direct « Ratios & interprétation »)',
       'Déclarations TVA UEMOA prêtes pour la DGI',
     ],
-    tip: 'Vérifiez le score de santé avant d’éditer les états : il signale les anomalies bloquantes.',
+    tip: 'Le paquet annuel exporte la liasse complète en un clic depuis la console des états.',
   },
 ];
 
@@ -130,9 +166,9 @@ export default function WelcomePage() {
             Guide d'utilisation
           </h1>
           <p className="mt-4 max-w-[64ch] text-base leading-relaxed text-ink-soft">
-            Cinq étapes pour démarrer un dossier OHADA, de la création de l'exercice
-            jusqu'à l'édition des états financiers. Chaque étape vous renvoie vers
-            l'écran concerné.
+            Sept étapes pour démarrer un dossier OHADA : cadrer l'exercice, importer
+            l'existant sans ressaisie, fiabiliser, contrôler la conformité SYSCOHADA,
+            puis générer et analyser les états. Chaque étape renvoie vers l'écran concerné.
           </p>
 
           {/* Progress strip */}
