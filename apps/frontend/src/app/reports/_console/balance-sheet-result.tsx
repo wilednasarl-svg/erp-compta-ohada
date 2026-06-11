@@ -129,7 +129,7 @@ function BilanSide({ title, asAtLabel, masses, total, compare }: BilanSideProps)
                   ))}
                 </Fragment>
               ))}
-              <tr className="border-b border-line-strong">
+              <tr className="border-b border-line-strong bg-sunk">
                 <td className="px-4 py-1.5 text-right text-2xs uppercase tracking-wider text-ink-mute">
                   Total {masse.label.toLowerCase()}
                 </td>
