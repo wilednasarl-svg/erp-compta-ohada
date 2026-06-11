@@ -1240,7 +1240,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   <p className="mt-1 text-sm leading-snug text-ink">
                     {preview.unmappedTargets.length > 0 ? (
                       <span className="font-mono text-xs">
-                        {preview.unmappedTargets.join(', ')}
+                        {preview.unmappedTargets.map((t) => targetLabel(t)).join(', ')}
                       </span>
                     ) : (
                       <span className="text-ink-mute">— aucune</span>
@@ -1427,7 +1427,11 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
 
 /* ─── Mapping override panel ─────────────────────────────────── */
 
-const TARGET_LABEL: Record<TargetField, string> = {
+// `Record<string, string>` (et non `Record<TargetField, string>`) :
+// le backend peut renvoyer des cibles non couvertes par le type front
+// (axes analytiques) dans `unmappedTargets` — on évite ainsi un libellé
+// vide (« champs non mappés : Journal, Devise, , »).
+const TARGET_LABEL: Record<string, string> = {
   account: 'Compte',
   journal: 'Journal',
   date: 'Date',
@@ -1441,7 +1445,14 @@ const TARGET_LABEL: Record<TargetField, string> = {
   reference: 'Référence',
   taxCode: 'Code taxe',
   dueDate: 'Date échéance',
+  analyticAxisType: 'Axe analytique (type)',
+  analyticAxisCode: 'Axe analytique (code)',
 };
+
+/** Libellé d'une cible, avec repli sur la clé brute si inconnue. */
+function targetLabel(t: string): string {
+  return TARGET_LABEL[t] ?? t;
+}
 
 const ALL_TARGETS: ReadonlyArray<TargetField> = [
   'account',
@@ -1466,6 +1477,20 @@ const REQUIRED_TARGETS: ReadonlySet<TargetField> = new Set<TargetField>([
   'label',
   'pieceNumber',
 ]);
+
+/**
+ * Journaux standards SYSCOHADA — permet de les créer en un clic depuis
+ * l'import (sans quitter le flux) quand le dossier n'en a aucun et que le
+ * fichier ne porte pas de colonne « Journal ». Miroir de la page Journaux.
+ */
+const STANDARD_JOURNAL_SEEDS: ReadonlyArray<{ code: string; label: string; kind: string }> = [
+  { code: 'AC', label: 'Journal des Achats', kind: 'AC' },
+  { code: 'VE', label: 'Journal des Ventes', kind: 'VE' },
+  { code: 'BQ', label: 'Journal de Banque', kind: 'BQ' },
+  { code: 'CA', label: 'Journal de Caisse', kind: 'CA' },
+  { code: 'OD', label: 'Journal des Opérations Diverses', kind: 'OD' },
+  { code: 'PA', label: 'Journal de Paie', kind: 'PA' },
+];
 
 interface MappingOverridePanelProps {
   readonly orgId: string;
@@ -1556,6 +1581,28 @@ function MappingOverridePanel({
     { onSuccess: () => onSaved() },
   );
 
+  const journalsClient = useQueryClient();
+  // Crée les journaux standards SYSCOHADA manquants sans quitter l'import.
+  // Idempotent : un code déjà pris (JOURNAL_CODE_TAKEN) est ignoré.
+  const seedStandardJournals = useApiMutation(
+    async () => {
+      const existing = new Set((journalsQuery.data ?? []).map((j) => j.code));
+      for (const seed of STANDARD_JOURNAL_SEEDS) {
+        if (existing.has(seed.code)) continue;
+        try {
+          await api.post(`/organizations/${orgId}/journals`, seed);
+        } catch (e) {
+          if (!(e instanceof ApiError && e.code === 'JOURNAL_CODE_TAKEN')) throw e;
+        }
+      }
+    },
+    {
+      onSuccess: () => {
+        void journalsClient.invalidateQueries({ queryKey: ['journals', orgId] });
+      },
+    },
+  );
+
   const missingRequired = useMemo(() => {
     const used = new Set(Object.values(draft).filter((v) => v !== ''));
     return ALL_TARGETS.filter((t) => REQUIRED_TARGETS.has(t) && !used.has(t));
@@ -1584,7 +1631,7 @@ function MappingOverridePanel({
         {unmappedTargets.length > 0 && (
           <Badge variant="destructive" className="rounded-full">
             {unmappedTargets.length} champ(s) non mappé(s)&nbsp;:{' '}
-            {unmappedTargets.map((t) => TARGET_LABEL[t]).join(', ')}
+            {unmappedTargets.map((t) => targetLabel(t)).join(', ')}
           </Badge>
         )}
       </div>
@@ -1673,13 +1720,35 @@ function MappingOverridePanel({
           </div>
           {!journalsQuery.isLoading &&
             (journalsQuery.data ?? []).filter((j) => j.isActive).length === 0 && (
-              <p className="mt-2 text-xs text-critical-ink">
-                Aucun journal n&apos;est configuré pour ce dossier.{' '}
-                <Link href="/journals" className="font-medium underline hover:text-critical">
-                  Créez-en un
-                </Link>{' '}
-                (ex. «&nbsp;Achats&nbsp;», code AC), puis revenez choisir le journal par défaut.
-              </p>
+              <div className="mt-2 space-y-2">
+                <p className="text-xs text-critical-ink">
+                  Aucun journal n&apos;est configuré pour ce dossier. Créez les journaux standards
+                  SYSCOHADA en un clic, puis choisissez-en un ci-dessus.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="press"
+                    disabled={seedStandardJournals.isPending}
+                    onClick={() => seedStandardJournals.mutate(undefined)}
+                  >
+                    {seedStandardJournals.isPending ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    Créer les journaux standards (AC, VE, BQ, CA, OD, PA)
+                  </Button>
+                  <Link
+                    href="/journals"
+                    className="text-xs text-ink-mute underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    Gérer les journaux
+                  </Link>
+                </div>
+                <FormError error={seedStandardJournals.error} />
+              </div>
             )}
           {setDefaultJournal.error !== null && (
             <FormError error={setDefaultJournal.error} className="mt-2" />
