@@ -1238,9 +1238,15 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                 <div className="col-span-2 bg-paper px-4 py-3 sm:col-span-1">
                   <p className="eyebrow mb-0">Champs requis non mappés</p>
                   <p className="mt-1 text-sm leading-snug text-ink">
-                    {actionableUnmapped(preview.unmappedTargets).length > 0 ? (
+                    {actionableUnmapped(preview.unmappedTargets, {
+                      hasDefaultJournal: session.defaultJournalCode !== null,
+                    }).length > 0 ? (
                       <span className="font-mono text-xs">
-                        {actionableUnmapped(preview.unmappedTargets).map(targetLabel).join(', ')}
+                        {actionableUnmapped(preview.unmappedTargets, {
+                          hasDefaultJournal: session.defaultJournalCode !== null,
+                        })
+                          .map(targetLabel)
+                          .join(', ')}
                       </span>
                     ) : (
                       <span className="text-ink-mute">— aucun</span>
@@ -1477,8 +1483,17 @@ const OPTIONAL_UNMAPPED_HIDDEN = new Set<string>([
 ]);
 
 /** Cibles non mappées qui demandent réellement une action (hors optionnelles). */
-function actionableUnmapped(targets: ReadonlyArray<string>): string[] {
-  return targets.filter((t) => !OPTIONAL_UNMAPPED_HIDDEN.has(t));
+function actionableUnmapped(
+  targets: ReadonlyArray<string>,
+  options?: { readonly hasDefaultJournal?: boolean },
+): string[] {
+  return targets.filter((t) => {
+    if (OPTIONAL_UNMAPPED_HIDDEN.has(t)) return false;
+    // Un journal par défaut couvre le champ « Journal » : inutile d'alarmer
+    // sur une colonne absente que le défaut remplit déjà ligne par ligne.
+    if (t === 'journal' && options?.hasDefaultJournal === true) return false;
+    return true;
+  });
 }
 
 const ALL_TARGETS: ReadonlyArray<TargetField> = [
@@ -1655,10 +1670,21 @@ function MappingOverridePanel({
             relancent automatiquement la vérification pour recalculer les erreurs.
           </p>
         </div>
-        {actionableUnmapped(unmappedTargets).length > 0 && (
+        {actionableUnmapped(unmappedTargets, {
+          hasDefaultJournal: currentDefaultJournalCode !== null,
+        }).length > 0 && (
           <Badge variant="destructive" className="rounded-full">
-            {actionableUnmapped(unmappedTargets).length} champ(s) requis non mappé(s)&nbsp;:{' '}
-            {actionableUnmapped(unmappedTargets).map(targetLabel).join(', ')}
+            {
+              actionableUnmapped(unmappedTargets, {
+                hasDefaultJournal: currentDefaultJournalCode !== null,
+              }).length
+            }{' '}
+            champ(s) requis non mappé(s)&nbsp;:{' '}
+            {actionableUnmapped(unmappedTargets, {
+              hasDefaultJournal: currentDefaultJournalCode !== null,
+            })
+              .map(targetLabel)
+              .join(', ')}
           </Badge>
         )}
       </div>
