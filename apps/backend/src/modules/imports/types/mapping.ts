@@ -148,6 +148,10 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     // FEC : colonne "CompteNum" → "comptenum" (le libellé "CompteLib"
     // n'est pas mappé — seul le numéro de compte nous intéresse).
     'comptenum',
+    // EBP : "N° de compte" → "n de compte".
+    'n de compte',
+    'numero de compte',
+    'no de compte',
   ],
   journal: [
     'journal',
@@ -175,9 +179,12 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'date comptable',
     // FEC : "EcritureDate" → "ecrituredate" (date de l'écriture).
     'ecrituredate',
+    // EBP : "Date de pièce" → "date de piece" ("date piece" déjà couvert).
+    'date de piece',
   ],
-  debit: ['debit', 'montant debit', 'dr', 'debit amount'],
-  credit: ['credit', 'montant credit', 'cr', 'credit amount'],
+  // "Mt Débit" / "Mt Crédit" : abréviation des exports Ciel.
+  debit: ['debit', 'montant debit', 'dr', 'debit amount', 'mt debit'],
+  credit: ['credit', 'montant credit', 'cr', 'credit amount', 'mt credit'],
   label: [
     'libelle',
     'libelle ecriture',
@@ -206,6 +213,10 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     'no compte tiers',
     // FEC : "CompAuxNum" → "compauxnum" (n° de compte auxiliaire = tiers).
     'compauxnum',
+    // Odoo (FR) : colonne "Partenaire" sur l'export des écritures.
+    'partenaire',
+    // Sage / Ciel / EBP : "Compte auxiliaire" = compte tiers.
+    'compte auxiliaire',
   ],
   currency: [
     'devise',
@@ -243,6 +254,18 @@ export const HEADER_SYNONYMS: Readonly<Record<TargetField, readonly string[]>> =
     // FEC : "PieceRef" → "pieceref" (référence de la pièce justificative,
     // sert de clé de regroupement des lignes en une écriture au commit).
     'pieceref',
+    // EBP : "N° de pièce" → "n de piece" ; "N° document" → "n document".
+    'n de piece',
+    'numero de piece',
+    'n document',
+    'numero document',
+    'no document',
+    // Odoo : la colonne "Numéro" (FR) / "Number" (EN) de l'export des
+    // écritures porte le nom de la pièce (ex. "VTE/2026/0001") — c'est la
+    // clé de regroupement naturelle. Sans risque de collision : les autres
+    // numéros sont toujours qualifiés ("N° compte", "N° facture", …).
+    'numero',
+    'number',
   ],
   // "N° facture" → "n facture".
   invoiceNumber: [

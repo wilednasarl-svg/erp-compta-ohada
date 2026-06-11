@@ -122,6 +122,100 @@ describe('MappingService', () => {
       });
     });
 
+    it('maps an EBP-style export (N° de pièce, N° de compte, Date de pièce)', () => {
+      const proposal = service.autoMap([
+        'Journal',
+        'Date de pièce',
+        'N° de pièce',
+        'N° de compte',
+        'Intitulé',
+        'Débit',
+        'Crédit',
+      ]);
+
+      expect(proposal.headerToTarget).toEqual({
+        Journal: 'journal',
+        'Date de pièce': 'date',
+        'N° de pièce': 'pieceNumber',
+        'N° de compte': 'account',
+        Intitulé: 'label',
+        Débit: 'debit',
+        Crédit: 'credit',
+      });
+    });
+
+    it('maps an Odoo FR journal items export (Numéro, Partenaire)', () => {
+      const proposal = service.autoMap([
+        'Date',
+        'Journal',
+        'Numéro',
+        'Compte',
+        'Partenaire',
+        'Libellé',
+        'Débit',
+        'Crédit',
+      ]);
+
+      expect(proposal.headerToTarget).toEqual({
+        Date: 'date',
+        Journal: 'journal',
+        Numéro: 'pieceNumber',
+        Compte: 'account',
+        Partenaire: 'partner',
+        Libellé: 'label',
+        Débit: 'debit',
+        Crédit: 'credit',
+      });
+    });
+
+    it('maps an Odoo EN journal items export (Number, Partner)', () => {
+      const proposal = service.autoMap([
+        'Date',
+        'Journal',
+        'Number',
+        'Account',
+        'Partner',
+        'Label',
+        'Debit',
+        'Credit',
+      ]);
+
+      expect(proposal.headerToTarget).toEqual({
+        Date: 'date',
+        Journal: 'journal',
+        Number: 'pieceNumber',
+        Account: 'account',
+        Partner: 'partner',
+        Label: 'label',
+        Debit: 'debit',
+        Credit: 'credit',
+      });
+    });
+
+    it('maps a Ciel-style export (Mt Débit / Mt Crédit, Compte auxiliaire)', () => {
+      const proposal = service.autoMap([
+        'Code Journal',
+        'Date',
+        'N° Pièce',
+        'N° Compte',
+        'Compte auxiliaire',
+        'Libellé',
+        'Mt Débit',
+        'Mt Crédit',
+      ]);
+
+      expect(proposal.headerToTarget).toEqual({
+        'Code Journal': 'journal',
+        Date: 'date',
+        'N° Pièce': 'pieceNumber',
+        'N° Compte': 'account',
+        'Compte auxiliaire': 'partner',
+        Libellé: 'label',
+        'Mt Débit': 'debit',
+        'Mt Crédit': 'credit',
+      });
+    });
+
     it('ignores empty / whitespace-only headers', () => {
       const proposal = service.autoMap(['', '   ', 'compte']);
       expect(proposal.headerToTarget).toEqual({ compte: 'account' });
