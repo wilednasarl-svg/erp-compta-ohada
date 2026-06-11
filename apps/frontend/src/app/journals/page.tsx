@@ -73,6 +73,11 @@ export default function JournalsPage() {
       return data.journals;
     },
     enabled: orgId !== '',
+    // Toujours rafraîchir au montage : évite d'afficher « Aucun journal »
+    // périmé alors qu'un journal a été créé entre-temps (incohérence
+    // observée : liste vide mais création refusée « code déjà pris »).
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 
   const accountsQuery = useQuery<ReadonlyArray<AccountView>, ApiError>({
@@ -1018,6 +1023,13 @@ function ManageJournalsSection({ orgId, journals, isLoading, onChanged }: Manage
         setLabel('');
         setKind('OD');
         onChanged();
+      },
+      onError: (err) => {
+        // « Code déjà pris » alors que la liste paraît vide = liste périmée.
+        // On la rafraîchit pour faire apparaître le journal existant.
+        if (err.code === 'JOURNAL_CODE_TAKEN') {
+          onChanged();
+        }
       },
     },
   );
