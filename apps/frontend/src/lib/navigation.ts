@@ -13,7 +13,6 @@ import {
   Compass,
   FileUp,
   Gauge,
-  GitBranch,
   Handshake,
   History,
   Landmark,
@@ -27,6 +26,7 @@ import {
   Percent,
   PieChart,
   Rows3,
+  Scale,
   ScrollText,
   ShieldCheck,
   Sparkles,
@@ -97,8 +97,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: '/aging', label: 'Échéancier', icon: CalendarClock, hint: 'Balance âgée clients / fournisseurs' },
       { href: '/collections', label: 'Recouvrement', icon: Mail, hint: 'Relances clients et export des créances' },
       { href: '/ai', label: 'IA — Anomalies', icon: Brain, hint: 'Détection d’écritures suspectes et mapping intelligent' },
-      { href: '/rules', label: 'Règles', icon: Sparkles, hint: 'Automatisations comptables' },
-      { href: '/workflows', label: 'Workflows', icon: GitBranch, hint: 'Séquences automatisées' },
+      { href: '/rules', label: 'Règles & automatisations', icon: Sparkles, hint: 'Imputations et contrôles automatiques' },
     ],
   },
   {
@@ -111,7 +110,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: '/impairments', label: 'Dépréciations', icon: TrendingDown, hint: 'Tests de valeur actifs & stocks (classe 29/39)' },
       { href: '/subsidies', label: 'Subventions', icon: Landmark, hint: 'Subventions d’investissement & reprises (compte 1411/799)' },
       { href: '/bills-of-exchange', label: 'Effets de commerce', icon: ScrollText, hint: 'Lettres de change & billets à ordre (402/412)' },
-      { href: '/transformations', label: 'Transformations', icon: ArrowRightLeft, hint: 'Retraitements et recalculs' },
+      { href: '/transformations', label: 'Reclassements & ajustements', icon: ArrowRightLeft, hint: 'Corriger une écriture sans casser la piste d’audit' },
     ],
   },
   {
@@ -136,6 +135,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     title: 'Analyse & décision',
     items: [
+      { href: '/reports/console?view=ratios', label: 'Ratios & interprétation', icon: Scale, hint: 'Structure, liquidité, rentabilité — lus et commentés' },
       { href: '/dashboards', label: 'Dashboards', icon: Gauge, hint: 'KPIs détaillés par exercice' },
       { href: '/dashboards/treasury', label: 'Trésorerie & Cash', icon: Wallet, hint: 'Jours de cash, soldes par banque, alertes' },
       { href: '/dashboards/profitability', label: 'Rentabilité', icon: PieChart, hint: 'Marge par activité, client, projet, zone' },

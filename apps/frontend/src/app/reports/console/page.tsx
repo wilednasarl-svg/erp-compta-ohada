@@ -9,6 +9,7 @@
  * sémantiques de période : Bilan (`as-at`) et Balance générale (`range`).
  */
 
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
@@ -108,10 +109,26 @@ const CONSOLE_GROUPS: ReadonlyArray<ConsoleGroup> = [
 
 const ALL_REPORTS: ReadonlyArray<ConsoleReportDef> = CONSOLE_GROUPS.flatMap((g) => g.items);
 
+/** Garde de type : un `?view=` inconnu retombe sur le Bilan (défaut). */
+function isConsoleReport(value: string | null): value is ConsoleReport {
+  return value !== null && ALL_REPORTS.some((r) => r.key === value);
+}
+
 export default function ReportConsolePage() {
   const org = useCurrentOrg();
   const orgId = org?.id ?? '';
-  const [active, setActive] = useState<ConsoleReport>('balance-sheet');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // L'état actif vit dans l'URL (`?view=ratios`) : chaque état devient
+  // adressable — lien direct depuis la nav, partage, retour navigateur.
+  const requested = searchParams.get('view');
+  const [active, setActive] = useState<ConsoleReport>(
+    isConsoleReport(requested) ? requested : 'balance-sheet',
+  );
+  const selectReport = (key: ConsoleReport) => {
+    setActive(key);
+    router.replace(`/reports/console?view=${key}`, { scroll: false });
+  };
   const current = ALL_REPORTS.find((r) => r.key === active);
 
   return (
@@ -145,7 +162,7 @@ export default function ReportConsolePage() {
                       key={r.key}
                       type="button"
                       aria-pressed={isActive}
-                      onClick={() => setActive(r.key)}
+                      onClick={() => selectReport(r.key)}
                       className={cn(
                         'rounded-full border px-3 py-1 text-sm transition-colors duration-fast',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',

@@ -131,14 +131,14 @@ export default function TransformationsPage(){
         {/* Hero header */}
         <header className="flex flex-col gap-6 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-2">Retraitement · Transformations</p>
+            <p className="eyebrow mb-2">Clôturer · Reclassements</p>
             <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
-              Transformations
+              Reclassements &amp; ajustements
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-              Retraitement et recalcul des écritures sans rupture d&apos;immuabilité : reclassement
-              de compte ou ajustement complémentaire. Chaque transformation est un artefact
-              additionnel, traçable et réversible — les écritures sources restent intactes.
+              Corriger une écriture sans casser la piste d&apos;audit : reclassement de compte ou
+              ajustement complémentaire. Chaque correction est un artefact additionnel, traçable
+              et réversible — les écritures sources restent intactes.
             </p>
           </div>
           <div className="hidden shrink-0 items-center gap-3 lg:flex">

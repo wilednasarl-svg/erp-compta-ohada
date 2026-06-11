@@ -232,7 +232,7 @@ export default function RulesPage(){
         {/* Hero header */}
         <header className="flex flex-col gap-6 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-2">Retraitement · Règles</p>
+            <p className="eyebrow mb-2">Fiabiliser · Règles &amp; automatisations</p>
             <h1 className="font-display text-3xl font-medium tracking-tight text-ink">
               Règles de comptabilisation
             </h1>
