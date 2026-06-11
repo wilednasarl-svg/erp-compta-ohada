@@ -39,7 +39,12 @@ export class JournalsController {
   @ApiOperation({ summary: 'Lister les journaux de l organisation' })
   async list(@Param('id', ParseUUIDPipe) pathOrgId: string, @CurrentOrg() org: CurrentOrgContext) {
     this.assertOrgMatch(pathOrgId, org.id);
-    return this.journalsService.listForOrg(asTenantId(org.id));
+    // Enveloppe nommée `{ journals }` (comme `{ sessions }` côté imports) :
+    // le front lit `data.journals`. Renvoyer le tableau nu donnait
+    // `data.journals === undefined` → liste TOUJOURS vide (page Journaux
+    // ET menu d'import), alors que les créations persistaient bien.
+    const journals = await this.journalsService.listForOrg(asTenantId(org.id));
+    return { journals };
   }
 
   @Get(':code')
@@ -51,7 +56,8 @@ export class JournalsController {
     @CurrentOrg() org: CurrentOrgContext,
   ) {
     this.assertOrgMatch(pathOrgId, org.id);
-    return this.journalsService.findByCode(asTenantId(org.id), code);
+    const journal = await this.journalsService.findByCode(asTenantId(org.id), code);
+    return { journal };
   }
 
   @Post()
@@ -67,7 +73,8 @@ export class JournalsController {
   ) {
     this.assertOrgMatch(pathOrgId, org.id);
     const ctx = { ...buildAuditRequestContext(req), userId: user.id, organizationId: org.id };
-    return this.journalsService.createCustom(asTenantId(org.id), dto, user.id, ctx);
+    const journal = await this.journalsService.createCustom(asTenantId(org.id), dto, user.id, ctx);
+    return { journal };
   }
 
   /**
