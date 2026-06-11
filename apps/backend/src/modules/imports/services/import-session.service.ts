@@ -804,6 +804,25 @@ export class ImportSessionService {
         chart,
         documentType: documentType ?? undefined,
       });
+      // Invariant commit : TOUTE écriture créée appartient à un journal.
+      // Le journal vient soit d'une colonne mappée, soit du journal par
+      // défaut. `projectStagingRow` (commit) le rejette s'il est vide —
+      // on le signale donc dès la preview pour tous les documentTypes
+      // (et pas seulement `entries`), sinon la preview est verte mais le
+      // commit échoue avec un message obscur. On évite le doublon quand
+      // `validateRow` a déjà émis l'erreur journal (cas `entries`).
+      const hasJournal = (mapped.journal ?? '').trim() !== '';
+      const alreadyFlaggedJournal = errors.some(
+        (e) => e.field === 'journal' && e.code === 'missing_required_field',
+      );
+      if (!hasJournal && !alreadyFlaggedJournal) {
+        errors.push({
+          code: 'missing_required_field',
+          message:
+            'Journal manquant — mappez une colonne « Journal » ou choisissez un journal par défaut ci-dessus.',
+          field: 'journal',
+        });
+      }
       return {
         rowNumber: row.rowNumber,
         rawValues: row.rawValues,
@@ -1275,8 +1294,17 @@ export class ImportSessionService {
     const accountCode = (mapped.account ?? '').trim();
     const label = (mapped.label ?? '').trim();
     if (journalCode === '' || entryDate === '' || accountCode === '' || label === '') {
+      // Message actionnable : on nomme les champs manquants, et on guide
+      // explicitement vers le journal par défaut (cas le plus fréquent —
+      // fichier sans colonne « Journal » et aucun journal par défaut choisi).
+      const missing: string[] = [];
+      if (journalCode === '')
+        missing.push('journal (mappez une colonne « Journal » ou choisissez un journal par défaut)');
+      if (entryDate === '') missing.push('date');
+      if (accountCode === '') missing.push('compte');
+      if (label === '') missing.push('libellé');
       throw new AppException(ERROR_CODES.IMPORT_SESSION_NOT_VALID, {
-        message: `Row ${rowNumber} is missing a required target field after mapping.`,
+        message: `Ligne ${rowNumber} : champ(s) requis manquant(s) — ${missing.join(', ')}.`,
         details: { rowNumber, mapped },
       });
     }
