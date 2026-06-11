@@ -10,7 +10,6 @@
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { cn } from '@/lib/utils';
@@ -121,12 +120,11 @@ export default function ReportConsolePage() {
   const searchParams = useSearchParams();
   // L'état actif vit dans l'URL (`?view=ratios`) : chaque état devient
   // adressable — lien direct depuis la nav, partage, retour navigateur.
+  // Dérivé (pas de useState) : un clic nav vers `?view=…` alors qu'on est
+  // déjà sur la console resynchronise l'affichage sans re-mount.
   const requested = searchParams.get('view');
-  const [active, setActive] = useState<ConsoleReport>(
-    isConsoleReport(requested) ? requested : 'balance-sheet',
-  );
+  const active: ConsoleReport = isConsoleReport(requested) ? requested : 'balance-sheet';
   const selectReport = (key: ConsoleReport) => {
-    setActive(key);
     router.replace(`/reports/console?view=${key}`, { scroll: false });
   };
   const current = ALL_REPORTS.find((r) => r.key === active);
