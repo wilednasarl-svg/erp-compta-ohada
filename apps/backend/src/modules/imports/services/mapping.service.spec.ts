@@ -122,6 +122,48 @@ describe('MappingService', () => {
       });
     });
 
+    it('ignores the Sage « Jour » column (day-of-month) — it is NOT a journal nor a date', () => {
+      const proposal = service.autoMap(
+        [
+          'Jour',
+          'Date saisie',
+          'N° pièce',
+          'N° compte général',
+          'Libellé écriture',
+          'Débit',
+          'Crédit',
+        ],
+        {},
+        [
+          { Jour: '8', 'Date saisie': '15/01/2025' },
+          { Jour: '21', 'Date saisie': '22/01/2025' },
+          { Jour: '9', 'Date saisie': '25/01/2025' },
+        ],
+      );
+
+      expect(proposal.headerToTarget).not.toHaveProperty('Jour');
+      expect(proposal.headerToTarget['Date saisie']).toBe('date');
+    });
+
+    it('does not infer a date from a day-of-month column via Excel serials', () => {
+      // Sans « Date saisie », la colonne Jour (entiers 1-31) ne doit PAS
+      // être inférée comme date : les séries Excel 1-31 seraient des
+      // dates de janvier 1900, jamais légitimes en comptabilité.
+      const proposal = service.autoMap(
+        ['Jour', 'N° compte général', 'Libellé écriture', 'Débit', 'Crédit'],
+        {},
+        [
+          { Jour: '8' },
+          { Jour: '21' },
+          { Jour: '9' },
+          { Jour: '15' },
+          { Jour: '28' },
+        ],
+      );
+
+      expect(proposal.headerToTarget).not.toHaveProperty('Jour');
+    });
+
     it('maps an EBP-style export (N° de pièce, N° de compte, Date de pièce)', () => {
       const proposal = service.autoMap([
         'Journal',

@@ -298,6 +298,15 @@ function inferTargetFromSamples(
 }
 
 function looksLikeDate(v: string): boolean {
+  // Pour l'INFÉRENCE de colonne, un entier nu n'est crédible comme série
+  // Excel qu'au-delà de 20000 (≈ 1954). En deçà, c'est presque toujours un
+  // « Jour » Sage (numéro du jour, 1-31) ou un ID — les séries 1-31
+  // donneraient des dates de janvier 1900, jamais légitimes en compta.
+  // `parseImportDate` reste permissif pour PARSER une colonne déjà mappée.
+  const bareInt = /^\d{1,5}$/.exec(v.trim());
+  if (bareInt !== null && Number(bareInt[0]) < 20000) {
+    return false;
+  }
   return parseImportDate(v) !== null;
 }
 
