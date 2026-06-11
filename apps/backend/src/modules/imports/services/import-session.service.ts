@@ -773,17 +773,16 @@ export class ImportSessionService {
         : undefined;
     const chart = allReferenceCodes !== undefined ? { ...baseChart, allReferenceCodes } : baseChart;
 
-    const stagingRows = await this.stagingEntries.listBySession(sessionId, organizationId, {
-      limit: options.limit ?? 100,
-      offset: options.offset ?? 0,
-    });
-
-    const entries: PreviewEntry[] = stagingRows.map((row) => {
+    // Validation d'UNE ligne de staging → `PreviewEntry`. Extrait en
+    // fonction pour l'appliquer à TOUTES les lignes (persistance + compte
+    // exacts), pas seulement à la page d'affichage.
+    const buildPreviewEntry = (row: {
+      rowNumber: number;
+      rawValues: Record<string, string | null>;
+    }): PreviewEntry => {
       const rawMapped = this.mapping.applyMapping(row.rawValues, proposal.headerToTarget);
       // Canonicalisation du compte : réconcilie un code zéro-paddé Sage
-      // (`40110000`) vers le compte imputable réel du plan (`4011`). On
-      // persiste le code résolu dans `mappedValues`, donc la passation (qui
-      // relit le persisté) écrit sur le bon compte sans étape supplémentaire.
+      // (`40110000`) vers le compte imputable réel du plan (`4011`).
       const rawAccount = rawMapped.account?.trim();
       const resolvedAccount =
         rawAccount !== undefined && rawAccount.length > 0
@@ -805,12 +804,6 @@ export class ImportSessionService {
         documentType: documentType ?? undefined,
       });
       // Invariant commit : TOUTE écriture créée appartient à un journal.
-      // Le journal vient soit d'une colonne mappée, soit du journal par
-      // défaut. `projectStagingRow` (commit) le rejette s'il est vide —
-      // on le signale donc dès la preview pour tous les documentTypes
-      // (et pas seulement `entries`), sinon la preview est verte mais le
-      // commit échoue avec un message obscur. On évite le doublon quand
-      // `validateRow` a déjà émis l'erreur journal (cas `entries`).
       const hasJournal = (mapped.journal ?? '').trim() !== '';
       const alreadyFlaggedJournal = errors.some(
         (e) => e.field === 'journal' && e.code === 'missing_required_field',
@@ -823,13 +816,8 @@ export class ImportSessionService {
           field: 'journal',
         });
       }
-      return {
-        rowNumber: row.rowNumber,
-        rawValues: row.rawValues,
-        mappedValues: mapped,
-        errors,
-      };
-    });
+      return { rowNumber: row.rowNumber, rawValues: row.rawValues, mappedValues: mapped, errors };
+    };
 
     // Auto-suggestion : si l'utilisateur n'a pas choisi de documentType
     // et que la structure du mapping ressemble fortement à une balance,
@@ -837,17 +825,41 @@ export class ImportSessionService {
     const suggestedDocumentType =
       documentType === null ? detectSuggestedDocumentType(proposal.headerToTarget) : null;
 
-    // Fix projet-ferme-7kn: persist mapped values + validation errors
-    // back to the staging rows so that SQL-level `countBySession` (which
-    // counts `jsonb_array_length(errors) > 0`) is accurate across ALL
-    // rows, not just the current preview page.
-    await this.stagingEntries.updateMappedValuesAndErrors(
-      stagingRows.map((row, idx) => ({
-        id: row.id,
-        mappedValues: entries[idx].mappedValues,
-        errors: entries[idx].errors,
-      })),
-    );
+    // Valider + PERSISTER les erreurs pour TOUTES les lignes (et pas
+    // seulement la page d'affichage de 100). Sinon les lignes au-delà de
+    // 100 gardaient des erreurs vides → `countBySession` sous-comptait →
+    // une ligne incomplète en position > 100 passait la preview (verte)
+    // puis faisait échouer le commit (« Ligne 101 : champs manquants »).
+    // L'affichage reste borné à `limit`/`offset` pour ne pas inonder l'UI.
+    const displayLimit = options.limit ?? 100;
+    const displayOffset = options.offset ?? 0;
+    const entries: PreviewEntry[] = [];
+    const validationPageSize = 500;
+    let validationOffset = 0;
+    while (true) {
+      const page = await this.stagingEntries.listBySession(sessionId, organizationId, {
+        limit: validationPageSize,
+        offset: validationOffset,
+      });
+      if (page.length === 0) break;
+      const validated = page.map((row) => buildPreviewEntry(row));
+      await this.stagingEntries.updateMappedValuesAndErrors(
+        page.map((row, idx) => ({
+          id: row.id,
+          mappedValues: validated[idx].mappedValues,
+          errors: validated[idx].errors,
+        })),
+      );
+      // Fenêtre d'affichage : on ne retient que [displayOffset, +displayLimit[.
+      for (let i = 0; i < validated.length; i += 1) {
+        const globalIdx = validationOffset + i;
+        if (globalIdx >= displayOffset && entries.length < displayLimit) {
+          entries.push(validated[i]);
+        }
+      }
+      if (page.length < validationPageSize) break;
+      validationOffset += validationPageSize;
+    }
 
     // Re-count AFTER the staging update so `withErrors` reflects the
     // freshly-written validation findings.
