@@ -41,64 +41,73 @@ const GROUP_COLORS: Record<string, GroupColors> = {
     itemBg: 'bg-accent-soft',
     itemText: 'text-accent-ink',
     iconBg: 'bg-accent-soft',
-    description: "Vue d'ensemble et indicateurs de gestion",
+    description: 'Où en est le dossier aujourd’hui — priorités et synthèse',
   },
-  'Référentiel': {
-    dot: 'bg-info',
-    headerBg: 'bg-info-soft',
-    headerText: 'text-info-ink',
-    itemBg: 'bg-info-soft',
-    itemText: 'text-info-ink',
-    iconBg: 'bg-info-soft',
-    description: 'Plan comptable, périodes et devises',
-  },
-  'Saisie': {
+  'Alimenter': {
     dot: 'bg-warn',
     headerBg: 'bg-warn-soft',
     headerText: 'text-warn-ink',
     itemBg: 'bg-warn-soft',
     itemText: 'text-warn-ink',
     iconBg: 'bg-warn-soft',
-    description: 'Écritures, imports et workflow de validation',
+    description: 'Faire entrer les données : imports, saisie, pièces — zéro ressaisie',
   },
-  'Retraitement': {
+  'Fiabiliser': {
     dot: 'bg-critical',
     headerBg: 'bg-critical-soft',
     headerText: 'text-critical-ink',
     itemBg: 'bg-critical-soft',
     itemText: 'text-critical-ink',
     iconBg: 'bg-critical-soft',
-    description: 'Lettrage, rapprochement et transformations',
+    description: 'Des comptes justes : lettrer, rapprocher, relancer, corriger',
   },
-  'États': {
-    dot: 'bg-accent',
-    headerBg: 'bg-accent-soft',
-    headerText: 'text-accent-ink',
-    itemBg: 'bg-accent-soft',
-    itemText: 'text-accent-ink',
-    iconBg: 'bg-accent-soft',
-    description: 'États financiers et déclarations fiscales',
-  },
-  'Analyse & IA': {
+  'Clôturer': {
     dot: 'bg-info',
     headerBg: 'bg-info-soft',
     headerText: 'text-info-ink',
     itemBg: 'bg-info-soft',
     itemText: 'text-info-ink',
     iconBg: 'bg-info-soft',
-    description: 'Scoring qualité, anomalies et automatisations',
+    description: 'Travaux d’inventaire et de fin d’exercice',
   },
-  'Organisation': {
+  'Conformité SYSCOHADA': {
+    dot: 'bg-accent',
+    headerBg: 'bg-accent-soft',
+    headerText: 'text-accent-ink',
+    itemBg: 'bg-accent-soft',
+    itemText: 'text-accent-ink',
+    iconBg: 'bg-accent-soft',
+    description: 'Un dossier conforme AUDCIF, traçable et prouvable',
+  },
+  'États & déclarations': {
+    dot: 'bg-warn',
+    headerBg: 'bg-warn-soft',
+    headerText: 'text-warn-ink',
+    itemBg: 'bg-warn-soft',
+    itemText: 'text-warn-ink',
+    iconBg: 'bg-warn-soft',
+    description: 'Produire le jeu d’états SYSCOHADA et déclarer',
+  },
+  'Analyse & décision': {
+    dot: 'bg-info',
+    headerBg: 'bg-info-soft',
+    headerText: 'text-info-ink',
+    itemBg: 'bg-info-soft',
+    itemText: 'text-info-ink',
+    iconBg: 'bg-info-soft',
+    description: 'Comprendre les chiffres : trésorerie, rentabilité, budget',
+  },
+  'Référentiel & équipe': {
     dot: 'bg-ink-mute',
     headerBg: 'bg-sunk',
     headerText: 'text-ink-soft',
     itemBg: 'bg-sunk',
     itemText: 'text-ink',
     iconBg: 'bg-sunk',
-    description: 'Membres, documents et traçabilité',
+    description: 'Socle du dossier : plan comptable, devises, membres',
   },
 };
-const DEFAULT_COLORS = GROUP_COLORS['Organisation']!;
+const DEFAULT_COLORS = GROUP_COLORS['Référentiel & équipe']!;
 
 /* ─── AppShell ─────────────────────────────────────────────────── */
 export function AppShell({ children }: { children: React.ReactNode }) {
