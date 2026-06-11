@@ -1236,14 +1236,14 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   </p>
                 </div>
                 <div className="col-span-2 bg-paper px-4 py-3 sm:col-span-1">
-                  <p className="eyebrow mb-0">Colonnes non mappées</p>
+                  <p className="eyebrow mb-0">Champs requis non mappés</p>
                   <p className="mt-1 text-sm leading-snug text-ink">
-                    {preview.unmappedTargets.length > 0 ? (
+                    {actionableUnmapped(preview.unmappedTargets).length > 0 ? (
                       <span className="font-mono text-xs">
-                        {preview.unmappedTargets.map((t) => targetLabel(t)).join(', ')}
+                        {actionableUnmapped(preview.unmappedTargets).map(targetLabel).join(', ')}
                       </span>
                     ) : (
-                      <span className="text-ink-mute">— aucune</span>
+                      <span className="text-ink-mute">— aucun</span>
                     )}
                   </p>
                 </div>
@@ -1454,6 +1454,24 @@ function targetLabel(t: string): string {
   return TARGET_LABEL[t] ?? t;
 }
 
+/**
+ * Cibles optionnelles dont l'absence n'est JAMAIS un problème : la devise
+ * a un défaut (XOF/FCFA) et les axes analytiques relèvent d'une compta
+ * analytique avancée. On les exclut de l'avertissement « champs non
+ * mappés » pour ne pas alarmer l'utilisateur sur des champs facultatifs
+ * (seul un champ requis non couvert, ex. Journal, mérite une action).
+ */
+const OPTIONAL_UNMAPPED_HIDDEN = new Set<string>([
+  'currency',
+  'analyticAxisType',
+  'analyticAxisCode',
+]);
+
+/** Cibles non mappées qui demandent réellement une action (hors optionnelles). */
+function actionableUnmapped(targets: ReadonlyArray<string>): string[] {
+  return targets.filter((t) => !OPTIONAL_UNMAPPED_HIDDEN.has(t));
+}
+
 const ALL_TARGETS: ReadonlyArray<TargetField> = [
   'account',
   'journal',
@@ -1628,10 +1646,10 @@ function MappingOverridePanel({
             relancent automatiquement la vérification pour recalculer les erreurs.
           </p>
         </div>
-        {unmappedTargets.length > 0 && (
+        {actionableUnmapped(unmappedTargets).length > 0 && (
           <Badge variant="destructive" className="rounded-full">
-            {unmappedTargets.length} champ(s) non mappé(s)&nbsp;:{' '}
-            {unmappedTargets.map((t) => targetLabel(t)).join(', ')}
+            {actionableUnmapped(unmappedTargets).length} champ(s) requis non mappé(s)&nbsp;:{' '}
+            {actionableUnmapped(unmappedTargets).map(targetLabel).join(', ')}
           </Badge>
         )}
       </div>
