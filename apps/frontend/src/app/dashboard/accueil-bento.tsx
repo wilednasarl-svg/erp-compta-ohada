@@ -29,6 +29,8 @@ import { IllustrationPlant } from '@/components/ui/illustrations';
 import { api, ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
+import { HomeImport } from './_components/home-import';
+
 /* ─── Types ───────────────────────────────────────────────────── */
 
 interface PendingCounts {
@@ -250,7 +252,10 @@ export function AccueilBento({
         <>
           {/* ── Initialisation guidée (dossier neuf) OU priorité du moment ── */}
           {isFreshDossier ? (
-            <SetupGuide hasExercise hasEntries={false} compact />
+            <>
+              <SetupGuide hasExercise hasEntries={false} compact />
+              <HomeImport />
+            </>
           ) : (
             <PriorityFocus isLoading={isLoading} priority={computePriority(pending, exerciseDays, cashPct)} />
           )}

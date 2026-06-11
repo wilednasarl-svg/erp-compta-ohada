@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BarChart3,
   CheckCircle2,
+  Download,
   FileUp,
   Loader2,
   Pencil,
@@ -28,6 +29,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiMutation } from '@/hooks/use-api-mutation';
 import { ApiError, api, getAuthToken } from '@/lib/api-client';
+import { detectImportFormat } from '@/lib/import-format-detect';
+import { downloadImportTemplate } from '@/lib/import-templates';
 import { cn } from '@/lib/utils';
 import { useCurrentOrg } from '@/stores/auth-store';
 import {
@@ -261,6 +264,18 @@ export default function ImportsPage() {
 
   const sessions = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
 
+  // Pré-sélection via `?session=<id>` (dépôt depuis l'accueil → saute à la
+  // vérification). On lit la query une fois, dès que la session ciblée
+  // apparaît dans la liste, sans écraser une sélection manuelle ultérieure.
+  useEffect(() => {
+    if (selectedSessionId !== null) return;
+    if (typeof window === 'undefined') return;
+    const wanted = new URLSearchParams(window.location.search).get('session');
+    if (wanted !== null && sessions.some((s) => s.id === wanted)) {
+      setSelectedSessionId(wanted);
+    }
+  }, [sessions, selectedSessionId]);
+
   // Stats summary by status family. We collapse the technical states
   // (parsing/parsed/validated/ready_for_import) into "in progress" so
   // the bar reads at a glance for a non-technical operator.
@@ -420,6 +435,19 @@ export default function ImportsPage() {
                       </span>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => downloadImportTemplate(createDocumentType)}
+                    className="press mt-1 inline-flex items-center gap-1.5 rounded-xs border border-line-strong bg-paper px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors duration-fast hover:border-ink hover:text-ink"
+                    title={`Télécharger un modèle ${DOCUMENT_TYPE_LABELS[createDocumentType]} prêt à remplir`}
+                  >
+                    <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    Télécharger un modèle
+                  </button>
+                  <p className="text-2xs leading-snug text-ink-mute">
+                    Fichier d&apos;exemple au bon format (séparateur «&nbsp;;&nbsp;», colonnes
+                    reconnues) — remplissez vos lignes et réimportez.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="sourceType" className="eyebrow">
@@ -739,6 +767,9 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [commitDone, setCommitDone] = useState<CommitResult | null>(null);
+  // Nom du dernier fichier téléversé — conservé après que `file` soit
+  // remis à null, pour afficher le format détecté dans le bloc de succès.
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
 
   // Inline rename — label is informational, allowed on every status.
   const [isRenaming, setIsRenaming] = useState(false);
@@ -773,6 +804,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
           message: 'Sélectionner un fichier avant de cliquer sur Téléverser.',
         });
       }
+      setUploadedName(file.name);
       const fd = new FormData();
       fd.append('file', file);
       const token = getAuthToken();
@@ -878,6 +910,7 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
   useEffect(() => {
     setPreview(null);
     setCommitDone(null);
+    setUploadedName(null);
   }, [session.id]);
 
   useEffect(() => {
@@ -1103,6 +1136,18 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                 </span>{' '}
                 lignes lues
               </p>
+              {(() => {
+                const detected = detectImportFormat({
+                  fileName: uploadedName ?? '',
+                  headers: upload.data.parsed.headers,
+                });
+                return detected === null ? null : (
+                  <p className="mt-1 text-xs font-medium text-accent-ink">
+                    <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />
+                    Format détecté&nbsp;: {detected}
+                  </p>
+                );
+              })()}
               <p className="mt-1 text-xs text-accent-ink/80">
                 Colonnes détectées&nbsp;:{' '}
                 <span className="font-mono">{upload.data.parsed.headers.join(', ')}</span>
