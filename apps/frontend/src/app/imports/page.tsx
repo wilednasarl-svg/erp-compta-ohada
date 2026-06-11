@@ -1330,10 +1330,19 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                           </td>
                           <td className="px-3 py-2 text-xs">
                             {hasErr ? (
-                              <span className="inline-flex items-center gap-1 text-critical">
-                                <XCircle className="h-3.5 w-3.5" />
-                                <span className="font-mono">
-                                  {e.errors.map((x) => x.code).join(', ')}
+                              <span
+                                className="inline-flex items-start gap-1 text-critical"
+                                title={e.errors.map((x) => x.message).join('\n')}
+                              >
+                                <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                {/* Message humain (pas le code technique) : il dit QUOI
+                                    corriger — ex. « Journal manquant — choisissez un
+                                    journal par défaut ci-dessus ». */}
+                                <span className="max-w-[36ch] leading-snug">
+                                  {e.errors[0]?.message}
+                                  {e.errors.length > 1 && (
+                                    <span className="text-ink-mute"> (+{e.errors.length - 1})</span>
+                                  )}
                                 </span>
                               </span>
                             ) : (
