@@ -286,7 +286,7 @@ export class ImportsController {
       sessionId,
       actorUserId,
       buildAuditRequestContext(req),
-      { limit: query.limit, offset: query.offset },
+      { limit: query.limit, offset: query.offset, errorsOnly: query.errorsOnly },
     );
   }
 

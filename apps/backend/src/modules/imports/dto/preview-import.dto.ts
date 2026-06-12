@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 /**
  * Query params de `POST /organizations/:id/imports/:sessionId/preview`.
@@ -24,4 +24,15 @@ export class PreviewImportDto {
   @IsInt()
   @Min(0)
   offset?: number;
+
+  /**
+   * Ne renvoyer que les lignes EN ERREUR dans la fenêtre `limit`/`offset`.
+   * Indispensable quand les erreurs sont au-delà de la première page :
+   * « 21 lignes en erreur » mais la page 1 toute verte.
+   */
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  errorsOnly?: boolean;
 }

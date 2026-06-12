@@ -672,7 +672,7 @@ export class ImportSessionService {
     sessionId: string,
     actorUserId: string,
     ctx: AuditContext,
-    options: { limit?: number; offset?: number } = {},
+    options: { limit?: number; offset?: number; errorsOnly?: boolean } = {},
   ): Promise<PreviewResult> {
     const session = await this.sessions.findById(sessionId, organizationId);
     if (session === null) {
@@ -834,6 +834,7 @@ export class ImportSessionService {
     const displayLimit = options.limit ?? 100;
     const displayOffset = options.offset ?? 0;
     const entries: PreviewEntry[] = [];
+    let matchIdx = 0; // position dans la sous-suite affichable (cf. errorsOnly)
     const validationPageSize = 500;
     let validationOffset = 0;
     while (true) {
@@ -850,12 +851,18 @@ export class ImportSessionService {
           errors: validated[idx].errors,
         })),
       );
-      // Fenêtre d'affichage : on ne retient que [displayOffset, +displayLimit[.
+      // Fenêtre d'affichage : [displayOffset, +displayLimit[ sur la
+      // sous-suite affichable — toutes les lignes, ou seulement celles
+      // en erreur quand `errorsOnly` (sinon « 21 lignes en erreur » mais
+      // une page 1 toute verte, erreurs invisibles au-delà de la page).
       for (let i = 0; i < validated.length; i += 1) {
-        const globalIdx = validationOffset + i;
-        if (globalIdx >= displayOffset && entries.length < displayLimit) {
+        if (options.errorsOnly === true && validated[i].errors.length === 0) {
+          continue;
+        }
+        if (matchIdx >= displayOffset && entries.length < displayLimit) {
           entries.push(validated[i]);
         }
+        matchIdx += 1;
       }
       if (page.length < validationPageSize) break;
       validationOffset += validationPageSize;

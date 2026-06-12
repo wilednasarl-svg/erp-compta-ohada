@@ -842,11 +842,16 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
     },
   );
 
+  // Filtre « erreurs seulement » : les lignes fautives peuvent être au-delà
+  // de la page affichée (« 21 lignes en erreur » mais page 1 toute verte).
+  const [errorsOnly, setErrorsOnly] = useState(false);
+
   // Preview — re-runs mapping + validation + persist (idempotent).
   const previewMutation = useApiMutation(
-    async () => {
+    async (opts?: { errorsOnly?: boolean }) => {
+      const eo = opts?.errorsOnly ?? errorsOnly;
       const data = await api.post<PreviewResult>(
-        `/organizations/${orgId}/imports/sessions/${session.id}/preview`,
+        `/organizations/${orgId}/imports/sessions/${session.id}/preview${eo ? '?errorsOnly=true' : ''}`,
         {},
       );
       return data;
@@ -1234,6 +1239,22 @@ function SessionDetailPanel({ orgId, session, onMutated }: DetailProps) {
                   >
                     {preview.totals.withErrors.toLocaleString('fr-FR')}
                   </p>
+                  {preview.totals.withErrors > 0 && (
+                    <button
+                      type="button"
+                      className="mt-1 text-xs font-medium text-critical-ink underline underline-offset-2 hover:opacity-80"
+                      disabled={previewMutation.isPending}
+                      onClick={() => {
+                        const next = !errorsOnly;
+                        setErrorsOnly(next);
+                        previewMutation.mutate({ errorsOnly: next });
+                      }}
+                    >
+                      {errorsOnly
+                        ? 'Revoir toutes les lignes'
+                        : 'Voir uniquement les lignes en erreur'}
+                    </button>
+                  )}
                 </div>
                 <div className="col-span-2 bg-paper px-4 py-3 sm:col-span-1">
                   <p className="eyebrow mb-0">Champs requis non mappés</p>
